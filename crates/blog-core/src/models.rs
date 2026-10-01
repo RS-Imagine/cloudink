@@ -23,7 +23,7 @@ pub struct SiteConfig {
 impl Default for SiteConfig {
     fn default() -> Self {
         Self {
-            title: "r-blog".to_string(),
+            title: "CloudInk".to_string(),
             big_title: None,
             subtitle: "Rust, Markdown, and Cloudflare Workers".to_string(),
             author: "Your Name".to_string(),

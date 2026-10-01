@@ -1,5 +1,5 @@
 {
-  "name": "r-blog",
+  "name": "cloudink",
   "private": true,
   "scripts": {
     "configure": "node scripts/deploy.mjs configure",

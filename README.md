@@ -1,6 +1,14 @@
-# r-blog
+<p align="center">
+  <img src="assets/cloudink.svg" width="112" height="112" alt="CloudInk 云砚项目图标">
+</p>
 
-使用 Rust 生成网页、Cloudflare Workers 托管的个人博客，带私人在线 Markdown 写作后台。
+# CloudInk · 云砚
+
+**云端存稿，静态成页。**
+
+基于 Cloudflare 的个人博客与云端写作空间。使用 Rust 生成静态网页，Workers 托管前台与私人 Markdown 写作后台，R2 保存内容，Workers Builds 负责发布。
+
+CloudInk — a personal blog and cloud writing space powered by Cloudflare and Rust.
 
 - 只有站点作者账号，没有公开注册。
 - 原稿、草稿、历史和发布快照保存在私有 R2；GitHub 只保存项目代码。
@@ -9,6 +17,14 @@
 - 支持免费的 `workers.dev` 地址，也可绑定自己的域名。
 
 复刻并部署自己的博客，请阅读 **[部署教程](docs/DEPLOYMENT.md)**。复制 `deployment.example.json` 为 `deployment.json`，填写自己的资源信息，再由脚本生成 Worker 配置。实际配置、初始化链接和密钥文件默认不提交 Git；访问统计默认关闭。
+
+## 从这里开始
+
+1. [Fork CloudInk](https://github.com/RS-Imagine/r-blog/fork)，准备自己的 Cloudflare 账号并启用 Workers 和 R2。
+2. 按部署教程填写配置，部署后台和图片服务，完成首次账号设置。
+3. 部署公开博客并连接 Workers Builds，以后在浏览器里写作、保存和发布。
+
+每个站点使用自己的邮箱、资源和配置；不需要先购买域名。项目名是 CloudInk，博客标题和作者由站点所有者自行设置。
 
 ## 日常写作
 
@@ -29,6 +45,7 @@
 | `cloud-images` | 供新部署使用的 R2 图片服务 |
 | `scripts` | 配置生成、初始化、构建与部署 |
 | `crates/admin` | 原有本机 Axum 后台 |
+| `assets/cloudink.svg` | 项目图标，前台和后台共用的 SVG favicon |
 
 根目录与两个 Worker 目录中的 `wrangler.jsonc` 是通用开发模板。正式部署使用 `npm run configure` 生成的 `.deploy/*.jsonc`；脚本不会自动部署模板中的示例资源。
 
@@ -67,3 +84,7 @@ npm --prefix cloud-admin run test:browser
 启用 Workers Builds 后，将代码提交到配置的生产分支即可触发公开博客部署；后台有独立构建连接时，相关代码变更也会自动部署。个人部署参数保存在 Cloudflare Builds 的 `BLOG_DEPLOY_CONFIG_JSON`，更新仓库不会用示例配置替换它。密码和构建凭据继续保存在 Cloudflare Secrets，文章和草稿继续保存在 R2。
 
 使用 Fork 的站点需先将上游更新合并到自己的生产分支，才能触发自己的部署。具体设置与升级说明见 [部署教程](docs/DEPLOYMENT.md)。
+
+## 项目图标
+
+[CloudInk SVG 图标](assets/cloudink.svg) 以云朵与笔尖留白表现云端写作。单色图形使用矢量路径、透明背景，适配浅色与深色系统主题，作为 README 标识及前台、后台的默认浏览器图标。

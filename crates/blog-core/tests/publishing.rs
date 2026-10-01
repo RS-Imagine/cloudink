@@ -1,7 +1,7 @@
 use blog_core::{build_site, content, models::{FrontMatter, PostDraft, SiteConfig}, render_preview};
 use std::{fs, path::PathBuf};
 
-fn temp() -> PathBuf { let p=std::env::temp_dir().join(format!("r-blog-test-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));fs::create_dir_all(&p).unwrap();p }
+fn temp() -> PathBuf { let p=std::env::temp_dir().join(format!("cloudink-test-{}-{}",std::process::id(),std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));fs::create_dir_all(&p).unwrap();p }
 fn draft(slug:&str, unpublished:bool) -> PostDraft { PostDraft{front_matter:FrontMatter{title:"中文与数学".into(),date:"2026-10-01".into(),updated:None,slug:slug.into(),description:"测试".into(),draft:unpublished},body_markdown:"# 小节\n\n公式 $x^2$\n\n```rust\nlet x = 1;\n```".into()} }
 
 // KaTeX stores CSS declarations in a HashMap; their order has no visual effect.

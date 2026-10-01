@@ -368,7 +368,7 @@ fn render_dashboard(posts: &[content::Post]) -> String {
         .collect();
 
     render_page(
-        "r-blog admin",
+        "CloudInk admin",
         &format!(
             r#"<section class="hero">
   <div>

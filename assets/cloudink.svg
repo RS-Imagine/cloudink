@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="cloudink-title cloudink-description">
+  <title id="cloudink-title">CloudInk · 云砚</title>
+  <desc id="cloudink-description">An ink cloud with a fountain pen cutout.</desc>
+  <style>
+    .ink { fill: #26352e; }
+    .ink-line { stroke: #26352e; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #ede8df; }
+      .ink-line { stroke: #ede8df; }
+    }
+  </style>
+  <path class="ink" fill-rule="evenodd" d="M34 104C19 104 7 92 7 77c0-13 9-24 22-27C32 29 47 14 67 14c22 0 39 17 40 39 10 4 16 13 16 24 0 15-12 27-27 27H34ZM56 43h18l14 27-23 24-23-24 14-27Z"/>
+  <circle class="ink" cx="65" cy="63" r="4"/>
+  <path class="ink-line" d="M65 66v28" fill="none" stroke-width="3"/>
+</svg>

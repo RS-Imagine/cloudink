@@ -14,18 +14,9 @@ pub fn stylesheet() -> &'static str {
     include_str!("assets/styles.css")
 }
 
-/// Returns the inline SVG favicon source.
+/// Returns the shared CloudInk SVG icon source.
 pub fn favicon_svg() -> &'static str {
-    r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#805030"/>
-      <stop offset="100%" stop-color="#502010"/>
-    </linearGradient>
-  </defs>
-  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
-  <text x="64" y="96" text-anchor="middle" font-family="Georgia, serif" font-size="92" font-weight="700" fill="#E0E0D0">Q</text>
-</svg>"##
+    include_str!("../../../assets/cloudink.svg")
 }
 
 // ---------------------------------------------------------------------------

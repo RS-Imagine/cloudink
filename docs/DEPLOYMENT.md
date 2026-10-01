@@ -1,13 +1,20 @@
-# 部署自己的 r-blog
+# 部署自己的 CloudInk · 云砚
 
 每个复刻者使用自己的 Cloudflare 账号、Worker、R2 桶和登录账号。默认可以全部使用 `workers.dev` 地址，不要求购买域名。代码不包含原维护者的密码、文章或部署密钥。
 
 ## 1. 准备账号和工具
 
-1. 在 GitHub Fork 项目，再将自己的仓库克隆到电脑。
+1. 在 GitHub [Fork CloudInk](https://github.com/RS-Imagine/r-blog/fork)，再将自己的仓库克隆到电脑。
 2. 准备 Cloudflare 账号，启用 Workers 和 R2。R2 首次启用可能需要配置计费信息，以控制台要求为准。
 3. 在 Cloudflare 的 Workers & Pages 中确认自己的 `workers.dev` 子域，例如 `reader`。
 4. 安装 Git、Node.js 22、Rust 1.98.1。命令使用 Bash；Windows 可在 WSL 中操作。
+
+先在自己的 Fork 页面复制 HTTPS 克隆地址，将下面的 `YOUR_FORK_GIT_URL` 换成它。这里将本地目录统一命名为 `cloudink`：
+
+```bash
+git clone YOUR_FORK_GIT_URL cloudink
+cd cloudink
+```
 
 在仓库根目录执行：
 
@@ -46,7 +53,7 @@ cp deployment.example.json deployment.json
 | `externalImages` | 新部署保持 `false`，使用本仓库的图片 Worker |
 | `site` | 初次建站的网站信息；页脚和 Clarity 项目 ID 也在这里 |
 
-例如子域 `reader`、公开 Worker 名称 `my-blog`，地址就是 `https://my-blog.reader.workers.dev`。后台和图片地址同样由各自的 Worker 名称生成。
+例如子域 `reader`、公开 Worker 名称 `cloudink`，地址就是 `https://cloudink.reader.workers.dev`。后台和图片地址同样由各自的 Worker 名称生成。这些名字只是新站示例，可以在自己的配置里修改。
 
 `site.clarityId` 为空时不加载统计脚本。`site.footer` 为空时，根据当前作者显示默认页脚。新站的标题、作者等首次写入 R2 后，以后台的网站设置为准；修改配置文件里的初始标题不会覆盖现有 R2 设置。页脚和统计配置由部署配置控制。
 
@@ -65,8 +72,8 @@ npm run configure
 也可以使用 Wrangler 创建，名称要与自己的配置一致：
 
 ```bash
-npx wrangler r2 bucket create my-blog-content
-npx wrangler r2 bucket create my-blog-images
+npx wrangler r2 bucket create cloudink-content
+npx wrangler r2 bucket create cloudink-images
 ```
 
 图片通过 Worker 提供访问，后台通过 R2 绑定读取。原稿和草稿不需要 R2 的公开地址。
@@ -181,7 +188,9 @@ Cloudflare 构建环境会根据根目录锁文件安装 Wrangler。Rust 构建�
 
 已有 R2 和账号的站点只更新代码及非密钥配置，再部署对应 Worker；**不要运行 setup:secrets，不要删除或重建桶，不要重新设置账号**。既有 Cloudflare Secrets 会由正常部署继承。站点内容以 R2 为准，配置文件中的初始标题不覆盖现有内容。
 
-启用 Workers Builds 后，提交或合并代码到连接的生产分支会自动构建部署。后台也需自己的构建连接，才能随后台代码更新；如果配置了构建路径过滤，需包含 `cloud-admin/**`、`crates/**`、`scripts/**`、`package*.json`、`Cargo.toml`、`Cargo.lock` 和 `rust-toolchain.toml`，以便依赖或工具链变化也触发更新。文章发布仍只触发公开博客构建。
+CloudInk 的项目名、GitHub 仓库名与部署资源名相互独立。已有站点升级时，继续使用原来的 `deployment.json` 或 Builds 配置即可；不要为了与新项目名一致而替换现有 Worker 名称、桶名或域名。默认 SVG 图标与后台项目名称会随代码更新，个人博客标题仍由后台的网站设置管理。
+
+启用 Workers Builds 后，提交或合并代码到连接的生产分支会自动构建部署。后台也需自己的构建连接，才能随后台代码更新；如果配置了构建路径过滤，需包含 `cloud-admin/**`、`crates/**`、`assets/**`、`scripts/**`、`package*.json`、`Cargo.toml`、`Cargo.lock` 和 `rust-toolchain.toml`，以便依赖或工具链变化也触发更新。文章发布仍只触发公开博客构建。
 
 Cloudflare Builds 中的 `BLOG_DEPLOY_CONFIG_JSON` 独立于仓库保存，代码更新不会覆盖它；只有需要改变部署参数时才修改这份变量。它也优先于本地配置文件。本地 `deployment.json` 是被 Git 忽略的副本，请自行备份；不要用 `deployment.example.json` 覆盖现有配置。更换电脑时，可从 Builds 复制非密钥 JSON 恢复本地配置，不需要重新初始化账号或文章。
 

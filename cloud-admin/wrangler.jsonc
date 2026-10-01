@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "my-blog-admin",
+  "name": "cloudink-admin",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": [
@@ -16,7 +16,7 @@
     "OWNER_EMAIL": "owner@example.com",
     "SITE_URL": "https://blog.example.com",
     "IMAGE_ORIGIN": "https://images.example.com",
-    "SITE_WORKER_NAME": "my-blog",
+    "SITE_WORKER_NAME": "cloudink",
     "PRODUCTION_BRANCH": "main",
     "FOOTER_TEXT": "",
     "CLARITY_ID": ""
@@ -24,11 +24,11 @@
   "r2_buckets": [
     {
       "binding": "CONTENT",
-      "bucket_name": "my-blog-content"
+      "bucket_name": "cloudink-content"
     },
     {
       "binding": "IMAGES",
-      "bucket_name": "my-blog-images"
+      "bucket_name": "cloudink-images"
     }
   ],
   "ratelimits": [
