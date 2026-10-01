@@ -26,7 +26,8 @@
 | --- | --- |
 | GitHub `RS-Imagine/r-blog` | 项目代码，生产分支 `master` |
 | `https://forimagine.eu.org`、`www.forimagine.eu.org` | 公开博客 |
-| Cloudflare Pages `r-blog` | Rust 静态网站构建与托管 |
+| Worker `r-blog` | Workers Builds + Static Assets，公开博客 |
+| Cloudflare Pages `r-blog` | 保留旧部署作回退，不再接管正式域名 |
 | `https://admin.forimagine.eu.org` | 私人写作后台 |
 | Worker `r-blog-admin` | 登录、编辑、R2 保存、上传和发布接口 |
 | 私有 R2 桶 `r-blog-content` | 原稿、草稿、历史、网站配置及不可变发布快照 |
@@ -59,7 +60,7 @@
 - `crates/admin`：保留原本机 Axum 后台。
 - `cloud-admin/src`：Worker API、认证、R2 内容和发布逻辑。
 - `cloud-admin/ui`：后台界面、预览协调器和预览 Web Worker。
-- `scripts/cloudflare-build.sh`：Pages 从 R2 发布快照读取内容，再运行 Rust。
+- `scripts/cloudflare-build.sh`：Cloudflare 构建时从 R2 发布快照读取内容，再运行 Rust。
 
 发布生成不可变快照；只有线上 `_release.json` 与目标发布 ID 相符，才确认更新已发布版本。构建失败应保留原稿和上次成功的线上内容。草稿不能经公开文章地址、首页或搜索泄露。R2 ETag 防止多个编辑窗口相互覆盖；冲突时必须保留编辑器中的文字。
 
@@ -98,9 +99,28 @@
 
 原聊天因云执行器故障未能提交体验优化；后续已经从其命令记录恢复、验证、提交并上线。该部署任务没有待补交的修改。
 
+## Pages → Workers 迁移（2026-10-01 UTC）
+
+所有者明确授权公开博客迁移 Workers，尚未选定项目新名字，仓库和服务仍使用 `r-blog`。
+
+- 迁移实现提交：`ccc18816ccfaa32624afd9d14bc96f3c88935cb8`；后续配置和文档提交应以 GitHub `master` 为准。
+- 私人后台版本：`cd28be5e-cba1-436d-aa4b-6a63d90733b4`，100% 流量；上传前校验本地完整构建 SHA-256，既有 secret、R2、限速和监控绑定均继承。
+- 公开 Worker 首次成功版本：`a59b46aa-1930-4ad6-8d83-7100defd8ca4`；Workers Builds 验证构建 `0762ce65-de70-4473-8e0b-adf293bec917` 成功。
+- 部署 Hook 实际触发构建 `9d73de69-d44f-482e-a835-d20e9e2807f1`，也成功。只重建现有快照，没有为了测试发布新文章或修改草稿。
+- `forimagine.eu.org`、`www.forimagine.eu.org` 已绑定公开 Worker `r-blog`；临时地址 `https://r-blog.rs-imagine.workers.dev`。
+- Pages 项目仍保留 `r-blog-2ht.pages.dev` 和旧部署，已关闭生产与预览自动构建。
+- 验证：构建、类型检查、9 项本地 Miniflare 集成测试、浏览器回归通过。临时地址核对 20 个公开路径、首页和全部 11 篇公开文章正文、样式与搜索索引，发布 ID 与旧站一致。关于页面差异来自域名上的 Cloudflare 邮箱保护；脚本属性和页尾差异来自 Rocket Loader 与自动注入代码。
+- 新增凭据 `WORKERS_BUILD_TOKEN`、`WORKERS_DEPLOY_HOOK` 保存在 Cloudflare secret；没有轮换旧 `BUILD_TOKEN`，R2 的原 Pages Hook 保留加密副本。
+
+以上版本和构建 ID 是历史验收记录，下一次维护仍须查询当前部署。
+
 ## 构建、测试与部署
 
-Pages 生产代码分支：`master`；仓库根目录构建；命令 `bash scripts/cloudflare-build.sh`；输出 `build-work/public`。生产和预览环境使用 `BLOG_ADMIN_URL` 及 secret `BLOG_BUILD_TOKEN`。Worker 的 `BUILD_TOKEN` 应与 Pages 对应值一致，`SETUP_TOKEN` 用于受控初始化。发布 Hook 已加密保存于私有 R2，不要读取或记录明文。
+公开 Worker `r-blog`：Workers Builds 连接 `master`，仓库根目录 `/`；构建命令 `bash scripts/cloudflare-build.sh`，部署命令 `npx wrangler deploy --config wrangler.jsonc`，静态输出 `build-work/public`，根目录锁定 Wrangler。构建环境 `BLOG_ADMIN_URL` 和 secret `BLOG_BUILD_TOKEN` 与后台新增的 secret `WORKERS_BUILD_TOKEN` 对应。后台 secret `WORKERS_DEPLOY_HOOK` 触发 Workers Builds，并让 UI 显示已连接；所有者无需再配置链接。
+
+保留旧 Pages 项目、旧 `BUILD_TOKEN` 和 R2 加密的 Pages Hook 作为回退；后台同时接受两种构建凭据。`SETUP_TOKEN` 保留受控初始化用途，不重新初始化账户。发布依旧通过线上 `_release.json` 确认部署完成，而不是仅依赖构建成功。不要输出或记录任何凭据与 Hook。
+
+回退需核对 Pages 快照，恢复正式域名到 Pages、重新开启 Pages 自动构建，并移除后台 `WORKERS_DEPLOY_HOOK` secret 以启用保存的旧连接。保留 `WORKERS_BUILD_TOKEN` 不影响旧流程；禁用 Worker 触发器后再决定是否删除它。
 
 后台 Rust 工具链为 1.98.1，目标 `wasm32-unknown-unknown`，wasm-pack 0.15；使用锁文件中的 npm 依赖。完整后台构建：
 
@@ -121,7 +141,7 @@ npm --prefix cloud-admin run test:browser
 
 修改 Rust 核心时还应运行 `cargo test --workspace`，重新构建 WASM。浏览器测试可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已安装 Chromium；`COMPARE_BASELINE=1` 会与旧版比较慢网络切换性能。测试使用本地 R2 和测试凭据，不接触生产文章。
 
-部署前检查远端分支和线上当前版本，提交精确源码，并使用其构建上传。保留原有 R2、图片、限速、域名、监控和密钥绑定。不要为了部署创建另一个站点、迁移平台、轮换账户密码或改写文章。
+部署前检查远端分支和线上当前版本，提交精确源码，并使用其构建上传。保留原有 R2、图片、限速、域名、监控和密钥绑定。平台迁移须由所有者明确授权；本次已授权 Pages → Workers。不要轮换账户密码或改写文章。
 
 ## 本次接续环境的经验
 
