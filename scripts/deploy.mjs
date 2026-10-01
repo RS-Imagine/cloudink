@@ -2,7 +2,11 @@ import { loadConfig, prepareConfigs, configPath } from './deployment-config.mjs'
 import { command, wrangler } from './commands.mjs';
 const kind = process.argv[2] || 'site';
 if (!['site', 'admin', 'images', 'configure'].includes(kind)) throw new Error('Expected site, admin, images, or configure.');
-const config = await loadConfig();
+const config = await loadConfig({ optional: kind === 'site' });
+if (!config) {
+  await command(process.execPath, [wrangler, 'deploy', '--keep-vars']);
+  process.exit(0);
+}
 await prepareConfigs(config);
 if (kind === 'configure') console.log('Generated local deployment configs in .deploy/.');
 else {

@@ -7,12 +7,12 @@ let csrf='',posts=[],site=null,doc=null,legacySlug='',dirty=0,savedVersion=0,con
 let setupToken=new URLSearchParams(location.hash.slice(1)).get('setup')||'';
 if(setupToken) history.replaceState(null,'',location.pathname);
 const articleCache=new Map(), articleRequests=new Map();
-let navigationVersion=0,editorLocked=false,publishingBusy=false,publishRequest=false,lastPublished='',polling=false;
+let navigationVersion=0,editorLocked=false,publishingBusy=false,publishRequest=false,lastPublished='',polling=false,publishingId='';
 let uploading=null;
 const activeActions=new Set();
 let noticeTimer;
 let deploymentConfig;
-const configReady=api('/api/config').then(config=>{deploymentConfig=config;configurePreview(config);$('site-link').href=config.siteUrl;$('site-worker-name').textContent=config.siteWorkerName;$('production-branch').textContent=config.productionBranch;return config;});
+const configReady=api('/api/config').then(config=>{deploymentConfig=config;configurePreview(config);$('site-link').href=config.siteUrl;$('site-worker-name').textContent=config.siteWorkerName;$('production-branch').textContent=config.productionBranch;if(config.browserPublishing){$('deployment-form').hidden=true;if(!config.initialized)$('login-description').textContent='使用部署时填写的邮箱和初始密码登录，即可开始写作。';}return config;});
 void configReady.catch(error=>{$('login-error').textContent=error.message;});
 function notice(message,tone='info'){$('notice').dataset.tone=tone;$('notice').textContent=message;$('notice').classList.add('visible');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').classList.remove('visible'),6500);}
 
@@ -37,8 +37,9 @@ function localSaved(draft,result){
 }
 
 async function api(path,options={}){
+  const {rawBody,...init}=options;options=init;
   const headers=new Headers(options.headers);
-  if(options.body && !(options.body instanceof FormData)){headers.set('Content-Type','application/json');options.body=JSON.stringify(options.body);}
+  if(options.body && !(options.body instanceof FormData)&&!rawBody){headers.set('Content-Type','application/json');options.body=JSON.stringify(options.body);}
   if(options.method && options.method!=='GET')headers.set('X-CSRF-Token',csrf);
   let response;try{response=await fetch(path,{...options,headers,credentials:'same-origin',signal:options.signal||AbortSignal.timeout(45000)});}catch{throw new Error(navigator.onLine?'请求暂时没有完成，请重试；当前文字仍保留在编辑器中。':'网络已断开，当前文字仍保留在编辑器中，请联网后保存。');}
   const data=await response.json().catch(()=>({error:'服务暂时没有响应，请稍后重试。'}));
@@ -121,8 +122,27 @@ $('show-writing').addEventListener('click',()=>{$('editor-panes').classList.remo
 matchMedia('(min-width:1100px)').addEventListener('change',()=>preview());
 function download(data,name,type){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([data],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('download-post').addEventListener('click',()=>action('download-post','正在准备下载…',async()=>{if(doc)download(markdownSource(currentDraft()),`${$('slug').value}.md`,'text/markdown');},'已开始下载原稿，请查看浏览器下载列表。'));
-function showPublishing(state){publishingBusy=!!state&&['queued','building','built'].includes(state.status);for(const id of ['publish-post','publish-settings']){if(!activeActions.has(id)){$(id).disabled=publishingBusy||publishRequest;$(id).textContent=publishingBusy?'正在发布…':id==='publish-post'?'发布这篇':'发布网站信息';}}const banner=$('publish-banner');banner.hidden=!state;if(!state)return;banner.classList.toggle('failed',state.status==='failed');banner.textContent={queued:'发布已提交，正在等待 Cloudflare 构建。草稿仍可继续编辑。',building:'正在生成网站，完成部署后这里会显示“已上线”。',built:'网页已生成，正在等待 Cloudflare 部署上线。',deployed:'最新发布已上线。',failed:state.error||'发布失败，草稿已保留，可以重试。'}[state.status]||'发布进行中';}
-async function startPublish(data){if(publishRequest)throw new Error('正在提交发布，请稍等。');publishRequest=true;try{const result=await api('/api/publish',{method:'POST',body:data});showPublishing(result);notice('发布已提交，完成后会自动显示状态。','success');}finally{publishRequest=false;}}
+function showPublishing(state){publishingId=state?.release_id||'';publishingBusy=!!state&&['queued','building','built'].includes(state.status);$('cancel-publish').hidden=!deploymentConfig?.browserPublishing||!publishingBusy||publishRequest;for(const id of ['publish-post','publish-settings']){if(!activeActions.has(id)){$(id).disabled=publishingBusy||publishRequest;$(id).textContent=publishingBusy?'正在发布…':id==='publish-post'?'发布这篇':'发布网站信息';}}const banner=$('publish-banner');banner.hidden=!state;if(!state)return;banner.classList.toggle('failed',state.status==='failed');const messages=deploymentConfig?.browserPublishing?{queued:'正在准备发布，请保持此页面打开。',building:'正在排版文章并上传页面，请保持此页面打开。',built:'正在完成发布…'}:{queued:'发布已提交，正在等待 Cloudflare 构建。草稿仍可继续编辑。',building:'正在生成网站，完成部署后这里会显示“已上线”。',built:'网页已生成，正在等待 Cloudflare 部署上线。'};banner.textContent={...messages,deployed:'最新发布已上线。',failed:state.error||'发布失败，草稿已保留，可以重试。'}[state.status]||'发布进行中';}
+async function publishInBrowser(result){
+  try{
+    showPublishing({...result,status:'building'});
+    const rendered=await engineTask('site',{release:result.browser_release});
+    const files=[...result.files];
+    const uploads=await Promise.allSettled(Array.from({length:Math.min(3,files.length)},async()=>{
+      while(files.length){const path=files.shift();if(typeof rendered[path]!=='string')throw new Error('网页生成不完整，请重新发布。');await api(`/api/publish/${result.release_id}/file?path=${encodeURIComponent(path)}`,{method:'PUT',body:rendered[path],rawBody:true,headers:{'Content-Type':'text/plain; charset=utf-8'}});}
+    }));
+    const failure=uploads.find(upload=>upload.status==='rejected');if(failure)throw failure.reason;
+    showPublishing({...result,status:'built'});
+    const done=await api(`/api/publish/${result.release_id}/commit`,{method:'POST',body:{}});showPublishing(done);
+  }catch(error){
+    const stopped=await api(`/api/publish/${result.release_id}/cancel`,{method:'POST',body:{}}).catch(()=>null);
+    if(stopped?.status==='deployed')showPublishing(stopped);
+    else {showPublishing(stopped||{...result,status:'failed',error:'发布未完成，草稿和上次上线版本已保留。联网后可取消这次发布并重试。'});throw error;}
+  }
+  await refresh();notice('发布完成，网站已更新。','success');
+}
+async function startPublish(data){if(publishRequest)throw new Error('正在提交发布，请稍等。');publishRequest=true;try{const result=await api('/api/publish',{method:'POST',body:data});showPublishing(result);if(result.browser_release)await publishInBrowser(result);else notice('发布已提交，完成后会自动显示状态。','success');}finally{publishRequest=false;await refresh().catch(()=>{});}}
+$('cancel-publish').addEventListener('click',()=>action('cancel-publish','正在取消…',async()=>{const state=await api(`/api/publish/${publishingId}/cancel`,{method:'POST',body:{}});showPublishing(state);},'发布状态已更新；草稿仍然保留。'));
 $('publish-post').addEventListener('click',()=>{if(!doc||editorLocked)return;void action('publish-post','正在提交发布…',async()=>{lockEditor(true);try{await flush();if(!doc.etag||dirty>savedVersion||!$('title').value.trim())throw new Error('请先填写文章标题并保存最新内容。');await startPublish({slug:doc.front_matter.slug,etag:doc.etag});}finally{lockEditor(false);}});});
 async function unpublish(slug){if(!confirm('取消发布后，这篇文章将从网站移除。已有原稿和历史版本会保留。继续吗？'))return;await startPublish({unpublish:slug});}
 $('unpublish-post').addEventListener('click',()=>unpublish(doc.front_matter.slug).catch(error=>notice(error.message)));
@@ -135,7 +155,7 @@ window.addEventListener('offline',()=>notice('网络已断开，请保留此页�
 window.addEventListener('online',()=>{notice('网络已恢复。');if(doc&&dirty>savedVersion&&!conflict)void saveCurrent().catch(error=>notice(error.message,'error'));});
 
 
-async function upload(file){const target=doc;const form=new FormData();form.append('file',file);const result=await api('/api/upload',{method:'POST',body:form});if(doc!==target)throw new Error('图片已上传，请返回原文章继续编辑。');const textarea=$('body');const name=file.name.replace(/[\[\]\\\n\r]/g,'');const text=`\n![${name}](${result.url})\n`;const start=textarea.selectionStart,end=textarea.selectionEnd;textarea.setRangeText(text,start,end,'end');textarea.focus();changed();}
+async function upload(file){const target=doc;const form=new FormData();form.append('file',file);const result=await api('/api/upload',{method:'POST',body:form});if(doc!==target)throw new Error('图片已上传，请返回原文章继续编辑。');const textarea=$('body');const name=file.name.replace(/[\[\]\\\n\r]/g,'');const text=`\n\n![${name}](${result.url})\n\n`;const start=textarea.selectionStart,end=textarea.selectionEnd;textarea.setRangeText(text,start,end,'end');textarea.focus();changed();}
 $('upload-image').addEventListener('click',()=>$('image-files').click());
 async function uploadFiles(files){if(editorLocked||uploading)return;uploading=(async()=>{for(const file of files)await upload(file);})();try{await action('upload-image','正在上传…',()=>uploading,'图片已上传并插入正文。');}finally{uploading=null;}}
 $('image-files').addEventListener('change',async e=>{const files=[...e.target.files];try{await uploadFiles(files);}finally{e.target.value='';}});

@@ -75,3 +75,25 @@ fn a_new_blog_about_page_uses_the_shared_site_template() {
     assert!(html.contains("<html"));assert!(html.contains("site-header"));assert!(html.contains("Reader"));
     fs::remove_dir_all(p).unwrap();
 }
+
+#[test]
+fn browser_release_matches_native_pages_and_excludes_drafts() {
+    let p=temp();let input=p.join("content");let output=p.join("public");
+    content::save_post(&input,&draft("visible",false)).unwrap();
+    content::save_post(&input,&draft("private",true)).unwrap();
+    let about="+++\ntitle = \"About\"\n+++\n\nShared $x^2$";
+    fs::write(input.join("about.md"),about).unwrap();
+    build_site(&input,&output).unwrap();
+    let bundle=serde_json::json!({"schema_version":1,"id":"release","created_at":"2026-10-01T00:00:00Z","site":SiteConfig::default(),"markdown_posts":{
+        "visible":fs::read_to_string(input.join("posts/visible.md")).unwrap(),
+        "private":fs::read_to_string(input.join("posts/private.md")).unwrap()
+    },"legacy_posts":[],"about_markdown":about});
+    let files=blog_core::bundle::render_release(&bundle.to_string()).unwrap();
+    for name in ["index.html","404.html","about/index.html","posts/visible/index.html","search_index.json","client.js","styles.css","favicon.svg"] {
+        assert_eq!(normalized_styles(&files[name]),normalized_styles(&fs::read_to_string(output.join(name)).unwrap()),"{name}");
+    }
+    assert!(!files.contains_key("posts/private/index.html"));assert!(!files["search_index.json"].contains("private"));
+    let mut invalid=bundle;invalid["markdown_posts"]["visible"]=invalid["markdown_posts"]["private"].clone();
+    assert!(blog_core::bundle::render_release(&invalid.to_string()).is_err());
+    fs::remove_dir_all(p).unwrap();
+}

@@ -1,5 +1,6 @@
+export type ImagesBindings = { [K in keyof ImagesEnv]: ImagesEnv[K] extends string ? string : ImagesEnv[K] };
 export default {
-  async fetch(request: Request, env: ImagesEnv): Promise<Response> {
+  async fetch(request: Request, env: ImagesBindings): Promise<Response> {
     if (!['GET', 'HEAD'].includes(request.method)) return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
     let allowed: string[];
     try { allowed = JSON.parse(env.ALLOWED_ORIGINS); } catch { return new Response('Image hosting is not configured', { status: 503 }); }
@@ -26,4 +27,4 @@ export default {
     }
     return new Response(body?.body || null, { headers });
   }
-} satisfies ExportedHandler<ImagesEnv>;
+} satisfies ExportedHandler<ImagesBindings>;

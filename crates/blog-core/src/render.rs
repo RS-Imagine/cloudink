@@ -19,6 +19,8 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
+pub fn client_script() -> &'static str { include_str!("assets/client.js") }
+
 // ---------------------------------------------------------------------------
 // Public page renderers
 // ---------------------------------------------------------------------------
@@ -287,22 +289,17 @@ fn page(
   </div>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://unpkg.com/swup@4"></script>
-  <script>
+  <script src="/client.js?v={client_hash}"></script>
 "#,
         site_title = escape_html(site_title),
         site_description = escape_html(site_description),
         body = body,
         footer = escape_html(&footer),
+        client_hash = crate::content_hash(client_script()),
     ));
 
-    // Embed client-side JavaScript from the separate asset file.
-    // Because we use push_str rather than format!, the JS braces are NOT
-    // interpreted as Rust format placeholders.
-    html.push_str(include_str!("assets/client.js"));
-
     html.push_str(
-        r#"  </script>
-</body>
+        r#"</body>
 </html>"#,
     );
 

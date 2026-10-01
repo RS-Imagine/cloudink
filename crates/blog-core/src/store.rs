@@ -104,9 +104,13 @@ pub fn load_page_file(path: impl AsRef<Path>) -> Result<Page> {
     let path = path.as_ref();
     let raw = fs::read_to_string(path)
         .with_context(|| format!("read {}", path.display()))?;
-    let (front_matter_src, body_markdown) = split_front_matter(&raw)?;
+    parse_page(&raw).with_context(|| format!("parse {}", path.display()))
+}
+
+pub fn parse_page(raw: &str) -> Result<Page> {
+    let (front_matter_src, body_markdown) = split_front_matter(raw)?;
     let front_matter: PageFrontMatter = toml::from_str(&front_matter_src)
-        .with_context(|| format!("parse front matter in {}", path.display()))?;
+        .context("parse page front matter")?;
     let body_html = markdown_to_html(&body_markdown);
 
     Ok(Page {

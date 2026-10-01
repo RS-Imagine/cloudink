@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const currentTheme = document.documentElement.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
           const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
           document.documentElement.setAttribute('data-theme', newTheme);
-          localStorage.setItem('theme', newTheme);
+          try { localStorage.setItem('theme', newTheme); } catch { /* Storage may be disabled. */ }
           updateHljsTheme(newTheme);
         });
       }
@@ -109,8 +109,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Highlight query
             const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            excerpt.innerHTML = excerptText.replace(regex, '<mark>$1</mark>');
-            title.innerHTML = post.title.replace(regex, '<mark>$1</mark>');
+            // Titles and Markdown excerpts are text, including raw HTML. Build
+            // highlight nodes without interpreting an author's text as markup.
+            const highlight = (node, text) => {
+              let start = 0;
+              for (const match of text.matchAll(regex)) {
+                node.append(document.createTextNode(text.slice(start, match.index)));
+                const mark = document.createElement('mark');mark.textContent = match[0];node.append(mark);
+                start = match.index + match[0].length;
+              }
+              node.append(document.createTextNode(text.slice(start)));
+            };
+            title.replaceChildren();highlight(excerpt, excerptText);highlight(title, post.title);
             
             a.appendChild(title);
             a.appendChild(excerpt);

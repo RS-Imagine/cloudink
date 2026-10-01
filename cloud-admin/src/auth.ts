@@ -1,3 +1,5 @@
+import type { CloudInkEnv } from './env';
+import { initializeBrowserContent } from './browser-publishing';
 import { HttpError, json, jsonInput, readJson } from './models';
 
 interface Account { email: string; salt: string; hash: string; version: string }
@@ -24,7 +26,7 @@ function passwordInput(value: unknown): string {
 }
 function cookie(token: string, age: number): string { return `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`; }
 function cookieToken(request: Request): string { return request.headers.get('Cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='))?.slice(COOKIE.length+1) || ''; }
-export async function requireSession(request: Request, env: Env): Promise<Session> {
+export async function requireSession(request: Request, env: CloudInkEnv): Promise<Session> {
   const token = cookieToken(request);
   if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401,'请先登录。');
   const [session,account] = await Promise.all([readJson<Session>(env.CONTENT,`auth/sessions/${await digest(token)}`),readJson<Account>(env.CONTENT,'auth/account.json')]);
@@ -35,12 +37,12 @@ export async function requireSession(request: Request, env: Env): Promise<Sessio
   }
   return session;
 }
-async function loginResponse(env: Env, account: Account): Promise<Response> {
+async function loginResponse(env: CloudInkEnv, account: Account): Promise<Response> {
   const token = randomToken(); const session: Session={csrf:randomToken(),expires:Date.now()+7*86400_000,version:account.version};
   await env.CONTENT.put(`auth/sessions/${await digest(token)}`,JSON.stringify(session));
   return json({email:account.email,csrf:session.csrf},200,{'Set-Cookie':cookie(token,7*86400)});
 }
-export async function authRoute(request: Request, env: Env, path: string): Promise<Response | null> {
+export async function authRoute(request: Request, env: CloudInkEnv, path: string): Promise<Response | null> {
   if (path === '/api/session' && request.method==='GET') {
     const session=await requireSession(request,env); return json({email:env.OWNER_EMAIL,csrf:session.csrf});
   }
@@ -50,7 +52,7 @@ export async function authRoute(request: Request, env: Env, path: string): Promi
     const limit=await env.LOGIN_LIMITER.limit({key:ip});
     if(!limit.success) throw new HttpError(429,'尝试次数过多，请一分钟后再试。');
     const data=await jsonInput(request,4096);
-    const account=await readJson<Account>(env.CONTENT,'auth/account.json');
+    let account=await readJson<Account>(env.CONTENT,'auth/account.json');
     if(path==='/api/setup') {
       if(account) throw new HttpError(409,'后台已经初始化，请使用登录页面。');
       if(!env.SETUP_TOKEN || !await sameSecret(request.headers.get('Authorization')||'',`Bearer ${env.SETUP_TOKEN}`)) throw new HttpError(403,'初始化链接无效。');
@@ -63,9 +65,18 @@ export async function authRoute(request: Request, env: Env, path: string): Promi
     const email=typeof data.email==='string'?data.email.trim().toLowerCase():'';
     const password=typeof data.password==='string'?data.password:'';
     if(password.length>128) throw new HttpError(401,'邮箱或密码不正确。');
+    if(!account&&env.browserPublishing){
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(env.OWNER_EMAIL)||!env.initialPassword||env.initialPassword.length<12||env.initialPassword.length>128)throw new HttpError(503,'请在 Cloudflare 配置作者邮箱和至少 12 个字符的初始密码。');
+      if(email!==env.OWNER_EMAIL.toLowerCase()||!await sameSecret(password,env.initialPassword))throw new HttpError(401,'邮箱或密码不正确。');
+      const salt=randomToken();
+      const created:Account={email:env.OWNER_EMAIL.toLowerCase(),salt,hash:await passwordHash(password,salt),version:randomToken()};
+      const saved=await env.CONTENT.put('auth/account.json',JSON.stringify(created),{onlyIf:{etagDoesNotMatch:'*'}});
+      account=saved?created:await readJson<Account>(env.CONTENT,'auth/account.json');
+    }
     // Hash even nonexistent accounts to avoid a cheap account-enumeration path.
     const hash=await passwordHash(password,account?.salt||'uninitialized-r-blog');
     if(!account || email!==env.OWNER_EMAIL.toLowerCase() || !await sameSecret(hash,account.hash)) throw new HttpError(401,'邮箱或密码不正确，或后台尚未初始化。');
+    if(env.browserPublishing)await initializeBrowserContent(env);
     return loginResponse(env,account);
   }
   if(path==='/api/logout' && request.method==='POST') {
