@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "r-blog-admin",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "OWNER_EMAIL": "imagine@forimagine.eu.org",
+    "SITE_URL": "https://forimagine.eu.org",
+    "IMAGE_ORIGIN": "https://img.forimagine.eu.org"
+  },
+  "r2_buckets": [
+    {
+      "binding": "CONTENT",
+      "bucket_name": "r-blog-content"
+    },
+    {
+      "binding": "IMAGES",
+      "bucket_name": "images-blog"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "LOGIN_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "admin.forimagine.eu.org",
+      "custom_domain": true
+    }
+  ]
+}

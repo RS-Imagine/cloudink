@@ -65,9 +65,15 @@ pub fn load_post_file(path: impl AsRef<Path>) -> Result<Post> {
     let path = path.as_ref();
     let raw = fs::read_to_string(path)
         .with_context(|| format!("read {}", path.display()))?;
-    let (front_matter_src, body_markdown) = split_front_matter(&raw)?;
+    parse_post(&raw).with_context(|| format!("parse {}", path.display()))
+}
+
+/// Parses an original Markdown document without filesystem access.
+pub fn parse_post(raw: &str) -> Result<Post> {
+    let (front_matter_src, body_markdown) = split_front_matter(raw)?;
     let front_matter: FrontMatter = toml::from_str(&front_matter_src)
-        .with_context(|| format!("parse front matter in {}", path.display()))?;
+        .context("parse post front matter")?;
+    validate_slug(&front_matter.slug)?;
     let body_html = markdown_to_html(&body_markdown);
     let body_plain_text = markdown_to_plain_text(&body_markdown);
 
@@ -81,6 +87,7 @@ pub fn load_post_file(path: impl AsRef<Path>) -> Result<Post> {
 
 /// Returns the parsed post for the given slug, or `None` if it does not exist.
 pub fn load_post_by_slug(content_root: impl AsRef<Path>, slug: &str) -> Result<Option<Post>> {
+    validate_slug(slug)?;
     let path = post_path(content_root, slug);
     if !path.exists() {
         return Ok(None);
@@ -119,6 +126,7 @@ pub fn load_page_file(path: impl AsRef<Path>) -> Result<Page> {
 /// afterwards; the previous clone-per-field pattern is eliminated because
 /// `PostDraft` now embeds `FrontMatter` directly.
 pub fn save_post(content_root: impl AsRef<Path>, draft: &PostDraft) -> Result<PathBuf> {
+    validate_slug(&draft.front_matter.slug)?;
     let content_root = content_root.as_ref();
     let posts_dir = content_root.join("posts");
     fs::create_dir_all(&posts_dir)?;
@@ -138,6 +146,7 @@ pub fn save_post(content_root: impl AsRef<Path>, draft: &PostDraft) -> Result<Pa
 /// Deletes the Markdown file for `slug`.  Returns `false` if the file did not
 /// exist (so the caller can decide whether to treat that as an error).
 pub fn delete_post(content_root: impl AsRef<Path>, slug: &str) -> Result<bool> {
+    validate_slug(slug)?;
     let path = post_path(content_root, slug);
     if !path.exists() {
         return Ok(false);
@@ -155,13 +164,20 @@ pub fn post_path(content_root: impl AsRef<Path>, slug: &str) -> PathBuf {
 }
 
 // ---------------------------------------------------------------------------
-// Internal: front-matter parsing
+// Validation and front-matter parsing
 // ---------------------------------------------------------------------------
 
 /// Splits a Markdown file into its TOML front-matter block and body.
 ///
 /// The file must begin with `+++`, followed by TOML lines, and then a closing
 /// `+++`.  The body is everything after the closing fence.
+pub fn validate_slug(slug: &str) -> Result<()> {
+    if slug.is_empty() || slug.len() > 100 || !slug.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_') {
+        bail!("slug must contain 1–100 ASCII letters, digits, hyphens or underscores");
+    }
+    Ok(())
+}
+
 fn split_front_matter(source: &str) -> Result<(String, String)> {
     let mut lines = source.lines();
     let first = lines.next().context("missing front matter start")?;

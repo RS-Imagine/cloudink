@@ -7,8 +7,10 @@ fn main() -> Result<()> {
 
     match command.as_str() {
         "build" => {
-            build_site("content", "public")?;
-            println!("Built static site into public/");
+            let content = env::var("BLOG_CONTENT_ROOT").unwrap_or_else(|_| "content".to_owned());
+            let output = env::var("BLOG_OUTPUT_ROOT").unwrap_or_else(|_| "public".to_owned());
+            build_site(&content, &output)?;
+            println!("Built static site into {output}");
             Ok(())
         }
         other => {
