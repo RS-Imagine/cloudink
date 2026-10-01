@@ -27,7 +27,7 @@
 | GitHub `RS-Imagine/r-blog` | 项目代码，生产分支 `master` |
 | `https://forimagine.eu.org`、`www.forimagine.eu.org` | 公开博客 |
 | Worker `r-blog` | Workers Builds + Static Assets，公开博客 |
-| Cloudflare Pages `r-blog` | 保留旧部署作回退，不再接管正式域名 |
+| 原 Cloudflare Pages `r-blog` | 所有者要求删除，项目与历史部署已删除 |
 | `https://admin.forimagine.eu.org` | 私人写作后台 |
 | Worker `r-blog-admin` | 登录、编辑、R2 保存、上传和发布接口 |
 | 私有 R2 桶 `r-blog-content` | 原稿、草稿、历史、网站配置及不可变发布快照 |
@@ -108,7 +108,7 @@
 - 公开 Worker 首次成功版本：`a59b46aa-1930-4ad6-8d83-7100defd8ca4`；Workers Builds 验证构建 `0762ce65-de70-4473-8e0b-adf293bec917` 成功。
 - 部署 Hook 实际触发构建 `9d73de69-d44f-482e-a835-d20e9e2807f1`，也成功。只重建现有快照，没有为了测试发布新文章或修改草稿。
 - `forimagine.eu.org`、`www.forimagine.eu.org` 已绑定公开 Worker `r-blog`；临时地址 `https://r-blog.rs-imagine.workers.dev`。
-- Pages 项目仍保留 `r-blog-2ht.pages.dev` 和旧部署，已关闭生产与预览自动构建。
+- 迁移验收时曾保留旧 Pages 作为回退；随后所有者明确要求删除，Pages 项目和历史部署已删除，`r-blog-2ht.pages.dev` 不再可作回退。
 - 验证：构建、类型检查、9 项本地 Miniflare 集成测试、浏览器回归通过。临时地址核对 20 个公开路径、首页和全部 11 篇公开文章正文、样式与搜索索引，发布 ID 与旧站一致。关于页面差异来自域名上的 Cloudflare 邮箱保护；脚本属性和页尾差异来自 Rocket Loader 与自动注入代码。
 - 新增凭据 `WORKERS_BUILD_TOKEN`、`WORKERS_DEPLOY_HOOK` 保存在 Cloudflare secret；没有轮换旧 `BUILD_TOKEN`，R2 的原 Pages Hook 保留加密副本。
 
@@ -118,9 +118,9 @@
 
 公开 Worker `r-blog`：Workers Builds 连接 `master`，仓库根目录 `/`；构建命令 `bash scripts/cloudflare-build.sh`，部署命令 `npx wrangler deploy --config wrangler.jsonc`，静态输出 `build-work/public`，根目录锁定 Wrangler。构建环境 `BLOG_ADMIN_URL` 和 secret `BLOG_BUILD_TOKEN` 与后台新增的 secret `WORKERS_BUILD_TOKEN` 对应。后台 secret `WORKERS_DEPLOY_HOOK` 触发 Workers Builds，并让 UI 显示已连接；所有者无需再配置链接。
 
-保留旧 Pages 项目、旧 `BUILD_TOKEN` 和 R2 加密的 Pages Hook 作为回退；后台同时接受两种构建凭据。`SETUP_TOKEN` 保留受控初始化用途，不重新初始化账户。发布依旧通过线上 `_release.json` 确认部署完成，而不是仅依赖构建成功。不要输出或记录任何凭据与 Hook。
+旧 Pages 项目已按所有者要求删除，没有 Pages 回退部署。后台仍保留旧 `BUILD_TOKEN` 与 R2 中加密的旧 Hook 作为兼容遗留配置，当前发布只使用 Workers 凭据。`SETUP_TOKEN` 保留受控初始化用途，不重新初始化账户。发布依旧通过线上 `_release.json` 确认部署完成，而不是仅依赖构建成功。不要输出或记录任何凭据与 Hook。
 
-回退需核对 Pages 快照，恢复正式域名到 Pages、重新开启 Pages 自动构建，并移除后台 `WORKERS_DEPLOY_HOOK` secret 以启用保存的旧连接。保留 `WORKERS_BUILD_TOKEN` 不影响旧流程；禁用 Worker 触发器后再决定是否删除它。
+不要尝试使用旧 Pages Hook 回退；对应项目已删除。后续恢复应使用 Workers 部署历史与 R2 发布快照，保留当前 Workers 发布连接。
 
 后台 Rust 工具链为 1.98.1，目标 `wasm32-unknown-unknown`，wasm-pack 0.15；使用锁文件中的 npm 依赖。完整后台构建：
 

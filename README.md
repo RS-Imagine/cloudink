@@ -40,7 +40,7 @@ Rust 静态博客，Cloudflare Workers Static Assets 托管公开网页，Cloudf
 
 Workers Builds 构建环境需要 `BLOG_ADMIN_URL=https://admin.forimagine.eu.org` 和 secret `BLOG_BUILD_TOKEN`，后者与后台 secret `WORKERS_BUILD_TOKEN` 相同。后台 secret `WORKERS_DEPLOY_HOOK` 触发同一 Worker 的 `master` 分支构建。构建凭据只用于构建时读取与状态回报，不放在公开静态 Worker 中。
 
-旧 Pages 项目 `r-blog` 和旧 `BUILD_TOKEN`、加密的 Pages Hook 保留作回退；正式域名由 Workers 接管后，Pages 不再自动部署。不要轮换旧 `BUILD_TOKEN`：R2 中旧 Hook 的加密密钥由它派生。回退应先核对 Pages 版本和内容，再恢复域名、自动构建及后台旧发布连接。
+旧 Pages 项目 `r-blog` 已按所有者要求删除，包括其历史部署；`r-blog-2ht.pages.dev` 不再作为部署或回退入口。博客仅由 Workers 托管，发布仍使用 Workers Builds。旧 `BUILD_TOKEN` 和 R2 加密 Hook 仅为兼容遗留配置，不能恢复已经删除的 Pages 项目。
 
 后台的 `BUILD_TOKEN`、`SETUP_TOKEN`、`WORKERS_BUILD_TOKEN`、`WORKERS_DEPLOY_HOOK` 使用 secret 配置，不写进配置文件。后台部署：
 
