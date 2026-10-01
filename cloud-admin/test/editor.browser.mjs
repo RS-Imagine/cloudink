@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
+import {readFile} from 'node:fs/promises';
 const mf=new Miniflare(convertV4MiniflareOptions({name:'admin',scriptPath:'dist/index.js',modules:true,port:8788,compatibilityDate:'2026-10-01',compatibilityFlags:['nodejs_compat'],r2Buckets:['CONTENT','IMAGES'],ratelimits:{LOGIN_LIMITER:{namespace_id:'1001',simple:{limit:50,period:60}}},bindings:{OWNER_EMAIL:'reader@example.net',SITE_URL:'https://reader-blog.example.net',IMAGE_ORIGIN:'https://reader-images.example.net',BUILD_TOKEN:'local-build',SETUP_TOKEN:'local-setup'},outboundService:()=>new MFResponse(JSON.stringify({success:true,id:'not-deployed'}),{headers:{'Content-Type':'application/json'}})}));
 let browser;
 try{
@@ -53,8 +54,16 @@ try{
  // A failed save must retain text and offer a visible error; never navigate away.
  await page.route('**/api/posts/beta',async route=>{if(route.request().method()==='PUT')return route.fulfill({status:409,contentType:'application/json',body:JSON.stringify({error:'这篇文章在另一个窗口中发生了修改。'})});return route.fallback();});
  await page.locator('#body').fill('DO NOT LOSE THIS DRAFT');await page.locator('#save-post').click();await expect(page.locator('#notice')).toContainText('另一个窗口');await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');await page.locator('.post-item').filter({hasText:'alpha'}).click();await expect(page.locator('#notice')).toContainText('云端冲突');await expect(page.locator('#title')).toHaveValue('beta');
- await page.screenshot({path:'/workspace/scratch/admin-responsive-editor.png',fullPage:true});assert.equal(errors.length,0,JSON.stringify(errors));
+ await page.screenshot({path:resolve('dist/editor.browser.png'),fullPage:true});assert.equal(errors.length,0,JSON.stringify(errors));
  console.log(JSON.stringify({checks:'non-blocking preview, parallel navigation, session cache, latest-click selection, save/download/history feedback, idle polling, conflict retention',uncachedSwitchMs:uncachedMs,cachedSwitchMs:cachedMs,extraListRequestsDuringSave:0}));
+
+ const publicPage=await browser.newPage();
+ const client=await readFile(resolve('../crates/blog-core/src/assets/client.js'),'utf8');
+ await publicPage.route('https://reader-public.example.net/',route=>route.fulfill({contentType:'text/html',body:`<!doctype html><button id="site-search-btn">Search</button><div id="search-modal"><input id="search-input"><ul id="search-results"></ul></div><script>window.Swup=class{constructor(){this.hooks={on(){}};}};</script><script>${client}</script>`}));
+ await publicPage.route('**/search_index.json',async route=>{await sleep(600);await route.fulfill({contentType:'application/json',body:JSON.stringify([{title:'Needle entry',description:'',body:'',slug:'needle'}])});});
+ await publicPage.goto('https://reader-public.example.net/');await publicPage.locator('#site-search-btn').click();await publicPage.locator('#search-input').fill('needle');
+ await expect(publicPage.locator('#search-results a')).toHaveCount(1);await publicPage.close();
+ console.log(JSON.stringify({typingBeforeSearchIndexLoads:true}));
 
  if(process.env.COMPARE_BASELINE==='1'){
   const source=execFileSync('git',['show','ee8e15f6176e4185042c8fa01e913d61f47a69c2:cloud-admin/ui/app.js'],{encoding:'utf8'});
@@ -63,7 +72,7 @@ try{
   await baseline.route('**/app.js',route=>route.fulfill({status:200,contentType:'text/javascript',path:resolve('dist/baseline.js')}));
   await baseline.route('https://cdn.jsdelivr.net/**',route=>route.fulfill({status:200,contentType:'text/css',body:''}));
   await baseline.route('**/api/**',async route=>{if(delayed){const path=new URL(route.request().url()).pathname;if(path==='/api/posts')await sleep(1500);if(/^\/api\/posts\//.test(path))await sleep(route.request().method()==='PUT'?500:700);}return route.continue();});
-  await baseline.goto('http://localhost:8788/');await baseline.locator('#login-form input[name=password]').fill('local-test-password-26');await baseline.locator('#login-submit').click();await baseline.locator('#home-view').waitFor({state:'visible'});await baseline.locator('.post-item').filter({hasText:'alpha'}).click();await expect(baseline.locator('#title')).toHaveValue('alpha');delayed=true;
+  await baseline.goto('http://localhost:8788/');await baseline.locator('#login-form input[name=email]').fill('reader@example.net');await baseline.locator('#login-form input[name=password]').fill('local-test-password-26');await baseline.locator('#login-submit').click();await baseline.locator('#home-view').waitFor({state:'visible'});await baseline.locator('.post-item').filter({hasText:'alpha'}).click();await expect(baseline.locator('#title')).toHaveValue('alpha');delayed=true;
   await baseline.locator('#body').fill('Baseline edited alpha');const t=Date.now();await baseline.locator('.post-item').filter({hasText:'beta'}).click();await expect(baseline.locator('#title')).toHaveValue('beta');console.log(JSON.stringify({baselineUncachedSwitchMs:Date.now()-t,improvedUncachedSwitchMs:uncachedMs,networkSimulation:'500ms save, 700ms article read, 1500ms full list read'}));await baseline.close();
  }
 

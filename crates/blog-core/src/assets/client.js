@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
               const res = await fetch('/search_index.json');
               searchIndex = await res.json();
+              // A reader may type before the first index download finishes.
+              searchInput.dispatchEvent(new Event('input'));
             } catch (e) {
               console.error('Failed to load search index:', e);
             }
