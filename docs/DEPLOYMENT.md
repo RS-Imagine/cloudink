@@ -4,7 +4,7 @@
 
 ## 1. 准备账号和工具
 
-1. 在 GitHub [Fork CloudInk](https://github.com/RS-Imagine/r-blog/fork)，再将自己的仓库克隆到电脑。
+1. 在 GitHub [Fork CloudInk](https://github.com/RS-Imagine/cloudink/fork)，再将自己的仓库克隆到电脑。
 2. 准备 Cloudflare 账号，启用 Workers 和 R2。R2 首次启用可能需要配置计费信息，以控制台要求为准。
 3. 在 Cloudflare 的 Workers & Pages 中确认自己的 `workers.dev` 子域，例如 `reader`。
 4. 安装 Git、Node.js 22、Rust 1.98.1。命令使用 Bash；Windows 可在 WSL 中操作。

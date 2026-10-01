@@ -20,7 +20,7 @@ CloudInk — a personal blog and cloud writing space powered by Cloudflare and R
 
 ## 从这里开始
 
-1. [Fork CloudInk](https://github.com/RS-Imagine/r-blog/fork)，准备自己的 Cloudflare 账号并启用 Workers 和 R2。
+1. [Fork CloudInk](https://github.com/RS-Imagine/cloudink/fork)，准备自己的 Cloudflare 账号并启用 Workers 和 R2。
 2. 按部署教程填写配置，部署后台和图片服务，完成首次账号设置。
 3. 部署公开博客并连接 Workers Builds，以后在浏览器里写作、保存和发布。
 
