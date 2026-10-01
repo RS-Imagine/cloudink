@@ -140,6 +140,7 @@ export async function internalRoute(request: Request, env: Env, path: string): P
     }
     const release: Release={schema_version:1,id:data.id,created_at:data.created_at,site:validateSite(data.site),legacy_posts,assets,markdown_posts:{}};
     if(typeof data.about_html==='string') release.about_html=data.about_html;
+    if(typeof data.about_markdown==='string' && data.about_markdown.length<=1_000_000) release.about_markdown=data.about_markdown;
     await env.CONTENT.put(`releases/${release.id}.json`,JSON.stringify(release));
     const saved=await env.CONTENT.put('state/published.json',JSON.stringify({id:release.id}),{onlyIf:{etagDoesNotMatch:'*'}});
     if(!saved) throw new HttpError(409,'网站已迁移。');

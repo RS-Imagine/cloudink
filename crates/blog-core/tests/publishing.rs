@@ -66,3 +66,12 @@ fn a_fork_does_not_inherit_identity_or_analytics() {
     config.clarity_id=Some("invalid\"<script>".into());
     assert!(!render_preview(&config,&draft("fork",false)).unwrap().contains("clarity.ms"));
 }
+
+#[test]
+fn a_new_blog_about_page_uses_the_shared_site_template() {
+    let p=temp();let input=p.join("content");let output=p.join("public");fs::create_dir_all(&input).unwrap();
+    fs::write(input.join("about.md"),"+++\ntitle = \"About\"\ndescription = \"\"\n+++\n\nReader").unwrap();
+    build_site(&input,&output).unwrap();let html=fs::read_to_string(output.join("about/index.html")).unwrap();
+    assert!(html.contains("<html"));assert!(html.contains("site-header"));assert!(html.contains("Reader"));
+    fs::remove_dir_all(p).unwrap();
+}

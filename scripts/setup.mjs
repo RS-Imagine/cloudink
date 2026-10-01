@@ -40,7 +40,7 @@ if (action === 'secrets') {
 } else if (action === 'content') {
   const secrets = await readSecrets();
   const escape = s => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-  const release = { schema_version: 1, id: randomUUID(), created_at: new Date().toISOString(), site: config.site, markdown_posts: {}, legacy_posts: [], assets: {}, about_html: `<section><article><h1>About</h1><p>${escape(config.site.author)}</p></article></section>` };
+  const release = { schema_version: 1, id: randomUUID(), created_at: new Date().toISOString(), site: config.site, markdown_posts: {}, legacy_posts: [], assets: {}, about_markdown: `+++\ntitle = "About"\ndescription = ""\n+++\n\n${escape(config.site.author)}\n` };
   const response = await fetch(new URL('/internal/bootstrap', config.urls.admin), { method: 'POST', headers: { Authorization: `Bearer ${secrets.WORKERS_BUILD_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(release), signal: AbortSignal.timeout(30_000) });
   if (response.status === 409) console.log('Content already exists. No articles, drafts, or settings were changed.');
   else if (!response.ok) throw new Error(`Content initialization failed (${response.status}).`);

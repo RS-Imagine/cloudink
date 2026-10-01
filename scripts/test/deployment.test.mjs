@@ -26,6 +26,8 @@ test('a fork generates isolated workers.dev resources; custom domain aliases rem
   assert.throws(() => validateConfig({ ...example(), buckets: { content: 'shared-bucket', images: 'shared-bucket' } }), /different/);
   assert.throws(() => validateConfig({ ...example(), urls: { admin: 'https://someone-else.reader.workers.dev' } }), /Worker name/);
   assert.throws(() => validateConfig({ ...example(), urls: { site: 'https://example.net/private' } }), /without a path/);
+  assert.throws(() => validateConfig({ ...example(), site: { title: ' ', author: 'Reader' } }), /title/);
+  assert.throws(() => validateConfig({ ...example(), site: { title: 'x'.repeat(301), author: 'Reader' } }), /title/);
 });
 
 test('custom production branch reports status while preview builds cannot alter it', async () => {

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 export const root = fileURLToPath(new URL('../', import.meta.url));
 export const generated = resolve(root, '.deploy');
 function required(value, field, pattern) {
-  if (typeof value !== 'string' || !value || (pattern && !pattern.test(value))) throw new Error(`Invalid deployment field: ${field}`);
+  if (typeof value !== 'string' || !value.trim() || (pattern && !pattern.test(value))) throw new Error(`Invalid deployment field: ${field}`);
   return value;
 }
 function origin(value, field) {
@@ -36,13 +36,13 @@ export function validateConfig(input) {
     if (hostname.endsWith('.workers.dev') && !hostname.startsWith(`${names[kind]}.`)) throw new Error(`urls.${kind} must match its Worker name.`);
   }
   if (!Array.isArray(input.siteAliases ?? [])) throw new Error('siteAliases must be an array.');
-  const aliases = (input.siteAliases ?? []).map(x => origin(x, 'siteAliases'));
+  const aliases = (input.siteAliases ?? []).map(x => origin(x, 'siteAliases')).filter(x => x !== urls.site);
   if (aliases.some(x => x === urls.admin || x === urls.images || new URL(x).hostname.endsWith('.workers.dev'))) throw new Error('Site aliases must be custom domains separate from admin and images.');
   const site = input.site || {};
   const content = {};
-  for (const field of ['title', 'bigTitle', 'subtitle', 'author', 'description', 'footer', 'clarityId']) {
+  for (const [field, max] of Object.entries({ title: 300, bigTitle: 300, subtitle: 1000, author: 300, description: 2000, footer: 2000, clarityId: 64 })) {
     const value = site[field] ?? '';
-    if (typeof value !== 'string' || value.length > 2000) throw new Error(`Invalid site.${field}`);
+    if (typeof value !== 'string' || value.length > max) throw new Error(`Invalid site.${field}`);
     content[field] = value;
   }
   required(content.title, 'site.title'); required(content.author, 'site.author');

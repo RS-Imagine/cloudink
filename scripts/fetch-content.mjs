@@ -21,6 +21,7 @@ const allowed=['title','bigTitle','subtitle','author','description','footer','cl
 const site=allowed.filter(k=>bundle.site[k]!==undefined).map(k=>{if(typeof bundle.site[k]!=='string')throw new Error('Invalid site configuration.');return `${k} = ${JSON.stringify(bundle.site[k])}`;}).join('\n');
 await writeFile(resolve(input,'site.toml'),site);await writeFile(resolve(input,'legacy-posts.json'),JSON.stringify(bundle.legacy_posts));
 if(bundle.about_html)await writeFile(resolve(input,'about.html'),bundle.about_html);
+if(typeof bundle.about_markdown==='string')await writeFile(resolve(input,'about.md'),bundle.about_markdown);
 for(const [path,encoded]of Object.entries(bundle.assets)){if(typeof encoded!=='string')throw new Error('Invalid asset.');const target=child(resolve(input,'static'),path);await mkdir(resolve(target,'..'),{recursive:true});await writeFile(target,Buffer.from(encoded,'base64'));}
 await writeFile(resolve(output,'_release.json'),JSON.stringify({id:bundle.id,created_at:bundle.created_at}));
 await writeFile(resolve('build-work/release-id.json'),JSON.stringify({id:bundle.id}));
