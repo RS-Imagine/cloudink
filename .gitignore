@@ -10,6 +10,7 @@ dist/
 cloud-admin/ui/wasm/
 cloud-admin/src/assets.generated.ts
 cloud-admin/ui/app.generated.js
+cloud-admin/ui/preview.worker.generated.js
 cloud-admin/worker-configuration.d.ts
 .env*
 .DS_Store

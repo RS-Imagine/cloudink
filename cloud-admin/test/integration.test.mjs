@@ -139,3 +139,10 @@ test("uploads use unique names and reject non-image bytes", async (t) => {
   assert.equal(image.status, 200);
   assert.equal(image.headers.get("Content-Type"), "image/png");
 });
+test('editor assets support conditional revalidation and expose the preview worker', async t => {
+ const f=await fixture(t);
+ const first=await f.request('/preview.worker.js');assert.equal(first.status,200);
+ const etag=first.headers.get('ETag');assert.ok(etag);assert.match(first.headers.get('Cache-Control'),/must-revalidate/);
+ const cached=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':etag});assert.equal(cached.status,304);assert.equal(await cached.text(),'');
+ assert.equal((await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':'"old"'})).status,200);
+});

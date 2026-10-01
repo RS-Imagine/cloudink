@@ -138,16 +138,18 @@ function protect(response: Response, asset=false): Response {
   headers.set('X-Content-Type-Options','nosniff');headers.set('Referrer-Policy','same-origin');
   headers.set('X-Frame-Options','DENY');headers.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');
   if(!asset) headers.set('Cache-Control','no-store');
-  headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self' blob:; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+  headers.set('Content-Security-Policy',"default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; font-src 'self' https://cdn.jsdelivr.net; frame-src 'self' blob:; worker-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
   return new Response(response.body,{status:response.status,headers});
 }
 export default {
   async fetch(request: Request,env: Env): Promise<Response> {
     try {
       const path=new URL(request.url).pathname;
-      if(request.method==='GET'&&(path==='/'||path==='/app.js'||path==='/style.css'||path==='/blog_wasm.js'||path==='/blog_wasm_bg.wasm')) {
+      if(request.method==='GET'&&(path==='/'||path==='/app.js'||path==='/preview.worker.js'||path==='/style.css'||path==='/blog_wasm.js'||path==='/blog_wasm_bg.wasm')) {
         const asset=ASSETS[path];if(!asset) throw new HttpError(404,'Not found');
-        return protect(new Response(Buffer.from(asset.data,'base64'),{headers:{'Content-Type':asset.type,'Cache-Control':path==='/'?'no-store':'public, max-age=300'}}),true);
+        const headers={'Content-Type':asset.type,'ETag':asset.etag,'Cache-Control':path==='/'?'no-store':'public, max-age=0, must-revalidate'};
+        if(path!=='/'&&request.headers.get('If-None-Match')===asset.etag) return protect(new Response(null,{status:304,headers}),true);
+        return protect(new Response(Buffer.from(asset.data,'base64'),{headers}),true);
       }
       const internal=await internalRoute(request,env,path);if(internal) return protect(internal);
       const auth=await authRoute(request,env,path);if(auth) return protect(auth);

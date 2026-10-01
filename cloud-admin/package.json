@@ -6,6 +6,7 @@
     "types": "wrangler types",
     "check": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
+    "test:browser": "node test/editor.browser.mjs",
     "ui": "node build-ui.mjs",
     "dev": "wrangler dev",
     "build": "npm run ui && wrangler deploy --dry-run --outdir dist",

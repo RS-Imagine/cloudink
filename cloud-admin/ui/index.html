@@ -17,6 +17,7 @@
   </aside>
   <main class="workspace">
     <header class="workspace-header"><div><span class="eyebrow">写下值得留下的事</span><h2 id="workspace-title">文章管理</h2></div><span id="account-email" class="muted"></span></header>
+    <div id="navigation-status" class="navigation-status" role="status" hidden></div>
     <div id="publish-banner" class="publish-banner" hidden role="status"></div>
     <section id="home-view" class="home-view"><div class="home-intro"><span class="eyebrow">你的文字，正在这里生长</span><h1>从一个想法开始。</h1><p>在线保存草稿，预览排版，准备好后再发布。</p><button id="home-new" class="primary">写一篇新文章</button></div><div class="section-heading"><h3>最近的文章</h3><span id="summary" class="muted"></span></div><div id="article-grid" class="article-grid"></div></section>
     <section id="editor-view" class="editor-view" hidden>
@@ -25,7 +26,7 @@
       <textarea id="description" class="description-input" placeholder="写一句文章摘要（可选）" aria-label="文章摘要" maxlength="2000" rows="2"></textarea>
       <details class="post-details"><summary>文章日期和地址</summary><div class="details-fields"><label>日期<input id="date" type="date"></label><label>文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100"><small>发布后建议保持地址不变</small></label></div></details>
       <div class="pane-heading"><div><button id="show-writing" class="tab active">Markdown</button><button id="show-preview" class="tab">页面预览</button></div><button id="upload-image" class="quiet">＋ 上传图片</button><input id="image-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple hidden></div>
-      <div id="editor-panes" class="editor-panes"><textarea id="body" class="markdown-input" spellcheck="false" placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。" aria-label="Markdown 正文"></textarea><div class="preview-pane"><iframe id="preview-frame" title="文章发布效果预览" sandbox=""></iframe><div id="preview-loading" class="preview-loading">正在加载 Rust 预览引擎…</div></div></div>
+      <div id="editor-panes" class="editor-panes"><textarea id="body" class="markdown-input" spellcheck="false" placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。" aria-label="Markdown 正文"></textarea><div class="preview-pane"><iframe id="preview-frame" title="文章发布效果预览" sandbox="allow-same-origin"></iframe><div id="preview-loading" class="preview-loading">正在加载 Rust 预览引擎…</div></div></div>
       <div class="editor-footer"><span id="word-count" class="muted"></span><div><button id="unpublish-post" class="quiet danger">取消发布</button><button id="delete-post" class="quiet danger">删除草稿</button></div></div>
     </section>
     <section id="legacy-view" class="empty-view" hidden><span class="eyebrow">已有文章</span><h1 id="legacy-title"></h1><p>这篇文章的网页已保留。导入你电脑上的 Markdown 原稿后，就可以在线编辑。</p><button id="legacy-import" class="primary">导入原稿</button><a id="legacy-link" target="_blank" rel="noopener">查看线上文章 ↗</a><button id="legacy-unpublish" class="quiet danger">取消发布这篇文章</button></section>
