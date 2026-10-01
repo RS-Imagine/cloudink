@@ -1,0 +1,12 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "my-blog-images",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true },
+  "vars": { "ALLOWED_ORIGINS": "[\"https://blog.example.com\"]" },
+  "r2_buckets": [{ "binding": "IMAGES", "bucket_name": "my-blog-images" }]
+}

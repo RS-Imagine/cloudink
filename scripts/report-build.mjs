@@ -1,7 +1,10 @@
 import { readFile } from 'node:fs/promises';
+import { loadConfig } from './deployment-config.mjs';
 // Preview builds must not change the production publication status.
 const branch=process.env.WORKERS_CI_BRANCH || process.env.CF_PAGES_BRANCH;
-if(branch && branch!=='master')process.exit(0);
+const config=await loadConfig({optional:true});
+const productionBranch=process.env.BLOG_PRODUCTION_BRANCH || config?.productionBranch || 'master';
+if(branch && branch!==productionBranch)process.exit(0);
 const status=process.argv[2];
 if(!['building','built','failed'].includes(status))throw new Error('Unknown build status.');
 try{

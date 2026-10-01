@@ -2,8 +2,14 @@
   "name": "r-blog",
   "private": true,
   "scripts": {
-    "build": "bash scripts/cloudflare-build.sh",
-    "deploy": "wrangler deploy --config wrangler.jsonc"
+    "configure": "node scripts/deploy.mjs configure",
+    "setup:secrets": "node scripts/setup.mjs secrets",
+    "setup:content": "node scripts/setup.mjs content",
+    "build": "node scripts/build-site.mjs",
+    "deploy": "node scripts/deploy.mjs site",
+    "deploy:admin": "node scripts/deploy.mjs admin",
+    "deploy:images": "node scripts/deploy.mjs images",
+    "test": "node --test scripts/test/*.test.mjs cloud-images/test/*.test.mjs"
   },
   "devDependencies": {
     "wrangler": "4.145.0"

@@ -2,6 +2,6 @@
 SETUP_TOKEN=local-initialization-token-for-tests-only
 BUILD_TOKEN=local-build-token-for-tests-only
 
-# Optional Workers Builds migration credentials (leave unset for Pages).
+# Workers Builds credentials. Production values are configured as secrets.
 WORKERS_BUILD_TOKEN=local-workers-build-token-for-tests-only
 WORKERS_DEPLOY_HOOK=

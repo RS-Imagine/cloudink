@@ -77,6 +77,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         ),
         "",
         css_hash,
+        config,
     )
 }
 
@@ -127,6 +128,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         &body,
         &extra_head,
         css_hash,
+        config,
     )
 }
 
@@ -158,6 +160,7 @@ pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> 
         &body,
         &extra_head,
         css_hash,
+        config,
     )
 }
 
@@ -175,6 +178,7 @@ pub fn render_404(config: &SiteConfig, css_hash: &str) -> String {
 </article>"#,
         "",
         css_hash,
+        config,
     )
 }
 
@@ -196,6 +200,7 @@ fn page(
     body: &str,
     extra_head: &str,
     css_hash: &str,
+    config: &SiteConfig,
 ) -> String {
     // Build the document in segments to avoid a 500-line format! string with
     // escaped braces.  Each segment is a distinct format! call or a raw push.
@@ -242,16 +247,20 @@ fn page(
         extra_head = extra_head,
     ));
 
-    // Microsoft Clarity analytics
-    html.push_str(r#"  <script type="text/javascript">
-    (function(c,l,a,r,i,t,y){
-        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+    // Analytics is opt-in per deployment; never inherit another author's account.
+    if let Some(id) = config.clarity_id.as_deref().filter(|id| !id.is_empty() && id.len() <= 64 && id.bytes().all(|c| c.is_ascii_alphanumeric())) {
+        html.push_str(&format!(r#"  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){{
+        c[a]=c[a]||function(){{(c[a].q=c[a].q||[]).push(arguments)}};
         t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-    })(window, document, "clarity", "script", "xszzsp0ok0");
+    }})(window, document, "clarity", "script", "{id}");
   </script>
-</head>
-"#);
+"#));
+    }
+    html.push_str("</head>\n");
+    let footer = config.footer.as_deref().filter(|text| !text.is_empty()).map(str::to_owned)
+        .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
@@ -275,7 +284,7 @@ fn page(
     <main id="swup" class="transition-fade">
       {body}
     </main>
-    <footer>Qiulin built this website using Rust.</footer>
+    <footer>{footer}</footer>
   </div>
   <div id="search-modal" class="search-modal">
     <div class="search-content">
@@ -292,6 +301,7 @@ fn page(
         site_title = escape_html(site_title),
         site_description = escape_html(site_description),
         body = body,
+        footer = escape_html(&footer),
     ));
 
     // Embed client-side JavaScript from the separate asset file.

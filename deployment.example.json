@@ -1,0 +1,20 @@
+{
+  "accountId": "",
+  "workersSubdomain": "YOUR_SUBDOMAIN",
+  "workers": { "site": "my-blog", "admin": "my-blog-admin", "images": "my-blog-images" },
+  "buckets": { "content": "my-blog-content", "images": "my-blog-images" },
+  "ownerEmail": "owner@example.com",
+  "productionBranch": "main",
+  "urls": {},
+  "siteAliases": [],
+  "externalImages": false,
+  "site": {
+    "title": "My Blog",
+    "bigTitle": "My Blog",
+    "subtitle": "Notes and ideas",
+    "author": "Your Name",
+    "description": "A personal blog.",
+    "footer": "",
+    "clarityId": ""
+  }
+}

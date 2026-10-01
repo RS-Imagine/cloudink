@@ -4,14 +4,14 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-const mf=new Miniflare(convertV4MiniflareOptions({name:'admin',scriptPath:'dist/index.js',modules:true,port:8788,compatibilityDate:'2026-10-01',compatibilityFlags:['nodejs_compat'],r2Buckets:['CONTENT','IMAGES'],ratelimits:{LOGIN_LIMITER:{namespace_id:'1001',simple:{limit:50,period:60}}},bindings:{OWNER_EMAIL:'imagine@forimagine.eu.org',SITE_URL:'https://forimagine.eu.org',IMAGE_ORIGIN:'https://img.forimagine.eu.org',BUILD_TOKEN:'local-build',SETUP_TOKEN:'local-setup'},outboundService:()=>new MFResponse(JSON.stringify({success:true,id:'not-deployed'}),{headers:{'Content-Type':'application/json'}})}));
+const mf=new Miniflare(convertV4MiniflareOptions({name:'admin',scriptPath:'dist/index.js',modules:true,port:8788,compatibilityDate:'2026-10-01',compatibilityFlags:['nodejs_compat'],r2Buckets:['CONTENT','IMAGES'],ratelimits:{LOGIN_LIMITER:{namespace_id:'1001',simple:{limit:50,period:60}}},bindings:{OWNER_EMAIL:'reader@example.net',SITE_URL:'https://reader-blog.example.net',IMAGE_ORIGIN:'https://reader-images.example.net',BUILD_TOKEN:'local-build',SETUP_TOKEN:'local-setup'},outboundService:()=>new MFResponse(JSON.stringify({success:true,id:'not-deployed'}),{headers:{'Content-Type':'application/json'}})}));
 let browser;
 try{
  await mf.ready;
- const release={schema_version:1,id:'12345678-1234-1234-1234-123456789abc',created_at:new Date().toISOString(),site:{title:'Test blog',subtitle:'Hello',author:'Test',description:'Description'},markdown_posts:{},legacy_posts:[],assets:{}};
+ const release={schema_version:1,id:'12345678-1234-1234-1234-123456789abc',created_at:new Date().toISOString(),site:{title:'Test blog',subtitle:'Hello',author:'Test',description:'Description'},markdown_posts:{},legacy_posts:[{front_matter:{title:"Archived article",slug:"archive",date:"2026-01-01",description:"",draft:false},body_markdown:"",body_html:"<p>Archive</p>",body_plain_text:"Archive"}],assets:{}};
  const r=await mf.dispatchFetch('http://localhost:8788/internal/bootstrap',{method:'POST',headers:{Authorization:'Bearer local-build','Content-Type':'application/json'},body:JSON.stringify(release)});assert.equal(r.status,200);
  const bucket=await mf.getR2Bucket('CONTENT');
- for(const slug of ['alpha','beta','gamma'])await bucket.put(`drafts/${slug}.md`,`+++\ntitle = "${slug}"\nslug = "${slug}"\ndate = "2026-10-01"\ndescription = ""\ndraft = true\n+++\n\n## ${slug}\n\n**正文** $x^2$\n\n![slow image](https://img.forimagine.eu.org/test.png)`,{customMetadata:{title:slug,date:'2026-10-01',description:''}});
+ for(const slug of ['alpha','beta','gamma'])await bucket.put(`drafts/${slug}.md`,`+++\ntitle = "${slug}"\nslug = "${slug}"\ndate = "2026-10-01"\ndescription = ""\ndraft = true\n+++\n\n## ${slug}\n\n**正文** $x^2$\n\n![slow image](https://reader-images.example.net/test.png)`,{customMetadata:{title:slug,date:'2026-10-01',description:''}});
  browser=await chromium.launch({headless:true,args:['--no-sandbox'],...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE}:{})});const page=await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const counts={list:0,poll:0};let delayList=0,delayGet=0,delaySave=0,delayHistory=0,imageRequested=false,imageFinished=false;
  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -27,6 +27,10 @@ try{
  // Local test does not depend on CDN connectivity or the runner's browser CA.
  await page.route('https://cdn.jsdelivr.net/**',route=>route.fulfill({status:200,contentType:'text/css',body:''}));
  await page.goto('http://localhost:8788/#setup=local-setup');await page.locator('#login-form input[name=password]').fill('local-test-password-26');await page.locator('#login-form input[name=confirm]').fill('local-test-password-26');await page.locator('#login-submit').click();await page.locator('#home-view').waitFor({state:'visible'});
+ await expect(page.locator('#site-link')).toHaveAttribute('href','https://reader-blog.example.net');
+ await expect(page.locator('#site-brand-title')).toHaveText('Test blog');
+ await page.locator('#logout').click();await page.locator('#login-form input[name=email]').fill('reader@example.net');await page.locator('#login-form input[name=password]').fill('local-test-password-26');await page.locator('#login-submit').click();await page.locator('#home-view').waitFor({state:'visible'});
+ await page.locator('.post-item').filter({hasText:'Archived article'}).click();await expect(page.locator('#legacy-link')).toHaveAttribute('href','https://reader-blog.example.net/posts/archive/');
  await page.locator('.post-item').filter({hasText:'alpha'}).click();await expect(page.locator('#title')).toHaveValue('alpha');
  await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();assert.equal(imageFinished,false,'Text preview must render before images finish');await expect.poll(()=>imageRequested).toBe(true);
  assert.equal(await page.evaluate(()=>document.querySelector('#preview-frame').sandbox.contains('allow-scripts')),false);

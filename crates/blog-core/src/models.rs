@@ -14,6 +14,10 @@ pub struct SiteConfig {
     pub subtitle: String,
     pub author: String,
     pub description: String,
+    #[serde(default)]
+    pub footer: Option<String>,
+    #[serde(rename = "clarityId", default)]
+    pub clarity_id: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -21,9 +25,11 @@ impl Default for SiteConfig {
         Self {
             title: "r-blog".to_string(),
             big_title: None,
-            subtitle: "Rust, Markdown, and Cloudflare Pages".to_string(),
+            subtitle: "Rust, Markdown, and Cloudflare Workers".to_string(),
             author: "Your Name".to_string(),
             description: "A personal blog built from Markdown content.".to_string(),
+            footer: None,
+            clarity_id: None,
         }
     }
 }

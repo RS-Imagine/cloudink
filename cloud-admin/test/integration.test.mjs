@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { Miniflare, convertV4MiniflareOptions, Response as MFResponse } from "miniflare";
 import { resolve } from "node:path";
 const url = "https://admin.example.com";
-const owner = "imagine@forimagine.eu.org";
+const owner = "reader@example.net";
 const password = "test-password-with-24-characters";
 function draft(slug = "article", body = "\u6B63\u6587 **Markdown** $x^2$") {
   return { front_matter: { title: "\u6D4B\u8BD5\u6587\u7AE0", slug, date: "2026-10-01", description: "\u6458\u8981", draft: true }, body_markdown: body };
 }
 async function fixture(t, bindings = {}) {
   let marker = null, failHook = false;
-  const mf = new Miniflare(convertV4MiniflareOptions({ workers: [{ name: "admin", scriptPath: resolve("dist/index.js"), modules: true, compatibilityDate: "2026-10-01", compatibilityFlags: ["nodejs_compat"], r2Buckets: ["CONTENT", "IMAGES"], ratelimits: { LOGIN_LIMITER: { namespace_id: "1001", simple: { limit: 5, period: 60 } } }, bindings: { OWNER_EMAIL: owner, SITE_URL: "https://forimagine.eu.org", IMAGE_ORIGIN: "https://img.forimagine.eu.org", BUILD_TOKEN: "test-build-secret", SETUP_TOKEN: "test-setup-secret", ...bindings }, outboundService: async (request2) => {
+  const mf = new Miniflare(convertV4MiniflareOptions({ workers: [{ name: "admin", scriptPath: resolve("dist/index.js"), modules: true, compatibilityDate: "2026-10-01", compatibilityFlags: ["nodejs_compat"], r2Buckets: ["CONTENT", "IMAGES"], ratelimits: { LOGIN_LIMITER: { namespace_id: "1001", simple: { limit: 5, period: 60 } } }, bindings: { OWNER_EMAIL: owner, SITE_URL: "https://reader-blog.example.net", IMAGE_ORIGIN: "https://reader-images.example.net", BUILD_TOKEN: "test-build-secret", SETUP_TOKEN: "test-setup-secret", ...bindings }, outboundService: async (request2) => {
     if (request2.url.includes("/pages/webhooks/") || request2.url.includes("/workers/builds/deploy_hooks/")) return new MFResponse(JSON.stringify({ success: !failHook }), { status: failHook ? 500 : 200, headers: { "Content-Type": "application/json" } });
     if (request2.url.includes("/_release.json")) return new MFResponse(JSON.stringify({ id: marker }), { headers: { "Content-Type": "application/json" } });
     return new MFResponse("Not found", { status: 404 });
@@ -172,4 +172,20 @@ test('owner-configured Workers hooks are accepted and malformed hooks are reject
   for(const url of ['https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/','https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test/extra','https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test?secret=x'])assert.equal((await f.request('/api/settings/deployment','PUT',{url})).status,400);
   assert.equal((await f.request('/api/settings/deployment','PUT',{url:'https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test'})).status,200);
   assert.equal((await f.request('/api/publish','POST',{rebuild:true})).status,202);
+});
+
+test('a fork uses its own public configuration and initialization cannot replace existing content', async t => {
+  const f=await fixture(t,{OWNER_EMAIL:'writer@example.net',SITE_URL:'https://notes.reader.workers.dev',IMAGE_ORIGIN:'https://notes-images.reader.workers.dev',SITE_WORKER_NAME:'notes',PRODUCTION_BRANCH:'release',FOOTER_TEXT:'Reader notes',CLARITY_ID:''});
+  const config=await(await f.request('/api/config')).json();
+  assert.equal(config.siteUrl,'https://notes.reader.workers.dev');assert.equal(config.productionBranch,'release');assert.equal(config.initialized,false);
+  assert.equal(JSON.stringify(config).includes('test-build-secret'),false);assert.equal('email' in config,false);
+  const duplicate=await f.request('/internal/bootstrap','POST',{...f.release,id:'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'},{Authorization:'Bearer test-build-secret'});
+  assert.equal(duplicate.status,409);
+  const unchanged=await(await f.request('/internal/bundle','GET',undefined,{Authorization:'Bearer test-build-secret'})).json();
+  assert.equal(unchanged.id,f.release.id);
+  await f.login();assert.equal((await(await f.request('/api/config')).json()).initialized,true);
+  const form=new FormData();form.set('file',new File([new Uint8Array([137,80,78,71,13,10,26,10])],'pic.png',{type:'image/png'}));
+  const encoded=new Request(url+'/api/upload',{method:'POST',body:form});
+  const upload=await f.mf.dispatchFetch(url+'/api/upload',{method:'POST',headers:{Cookie:f.cookie(),Origin:url,'X-CSRF-Token':f.csrf(),'Content-Type':encoded.headers.get('Content-Type')},body:await encoded.arrayBuffer()});
+  assert.equal(upload.status,201);assert.ok((await upload.json()).url.startsWith('https://notes-images.reader.workers.dev/'));
 });

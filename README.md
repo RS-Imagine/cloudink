@@ -1,80 +1,65 @@
 # r-blog
 
-Rust 静态博客，Cloudflare Workers Static Assets 托管公开网页，Cloudflare Worker 提供私人写作后台。
+使用 Rust 生成网页、Cloudflare Workers 托管的个人博客，带私人在线 Markdown 写作后台。
 
-文章原稿、草稿、历史版本和发布快照保存在私有 R2 桶 `r-blog-content`。图片上传到现有 `images-blog`，继续使用 `img.forimagine.eu.org`。GitHub 保存项目代码，文章发布不产生 Git 提交。
+- 只有站点作者账号，没有公开注册。
+- 原稿、草稿、历史和发布快照保存在私有 R2；GitHub 只保存项目代码。
+- 草稿与发布分开，点击发布后由 Workers Builds 构建网站。
+- Rust 与 WASM 共用排版引擎，支持数学公式、代码高亮、搜索和图片上传。
+- 支持免费的 `workers.dev` 地址，也可绑定自己的域名。
+
+复刻并部署自己的博客，请阅读 **[部署教程](docs/DEPLOYMENT.md)**。复制 `deployment.example.json` 为 `deployment.json`，填写自己的资源信息，再由脚本生成 Worker 配置。实际配置、初始化链接和密钥文件默认不提交 Git；访问统计默认关闭。
 
 ## 日常写作
 
-打开 `https://admin.forimagine.eu.org`，使用 `imagine@forimagine.eu.org` 和自己设置的密码登录。
+登录自己的后台，新建文章并填写标题、摘要和正文。支持自动保存、Ctrl/Cmd + S、图片上传/拖放/粘贴，以及导入 Markdown 原稿。
 
-- 新建文章，填写标题、摘要和 Markdown。输入后自动保存到 R2，也可以手动保存。
-- 预览使用同一套 Rust 排版引擎，支持数学公式和代码。预览在隔离的框架内展示。
-- 上传、拖入或粘贴图片，后台会插入图片地址。
-- 点击“发布这篇”，等待 Workers 构建完成。保存其他草稿不会把它们一起发布。
-- 原有网页会继续保留。导入电脑上的 Markdown 原稿后，可以在线修改。导入不会自动发布。
-- 历史版本可以恢复为草稿；“导出全部原稿”下载 ZIP 备份。图片需另从 R2 备份。
+点击“发布这篇”后等待“最新发布已上线”。保存其他草稿不会把它们一起发布。恢复历史版本也只保存为草稿，需要再次发布。网站标题、副标题、作者和描述可以在后台修改；页脚及可选统计账号由部署配置管理。
 
-首次使用时，通过私人初始化链接设置密码。链接只能使用一次，不需要在聊天里提供密码。后台没有注册入口。
-
-## 发布连接
-
-发布服务由维护者配置，后台显示“发布服务已连接”，可以直接发布文章，无需重新填写部署链接。发布会触发 Worker `r-blog` 的 Workers Builds，读取私有 R2 快照并生成静态网页。
-
-部署链接和构建密钥仅保存在 Cloudflare 的 secret 配置中，不要发送到聊天或提交 Git。密码遗忘时，可通过受控初始化流程恢复账户，后台不开放注册。
+导出全部原稿可下载 ZIP。图片需另从 R2 备份。取消发布会保留原稿和历史。
 
 ## 项目结构
 
-- `crates/blog-core`：Markdown、数学公式、模板和网站生成。
-- `crates/sitegen`：静态网站构建命令。
-- `crates/blog-wasm`：供浏览器调用的 Rust 预览和原稿解析。
-- `cloud-admin`：Worker API、登录、R2 保存和网页编辑器。
-- `scripts/cloudflare-build.sh`：Cloudflare 构建时从 R2 拉取发布快照，然后用 Rust 生成网页。
-- `crates/admin`：保留原有本地 Axum 后台，适用于本地文件。
+| 目录 | 用途 |
+| --- | --- |
+| `crates/blog-core` | Markdown、公式、模板、静态生成 |
+| `crates/sitegen` | 静态构建命令 |
+| `crates/blog-wasm` | 浏览器预览与 Markdown 导入 |
+| `cloud-admin` | 登录、在线编辑、R2 保存、上传、发布 |
+| `cloud-images` | 供新部署使用的 R2 图片服务 |
+| `scripts` | 配置生成、初始化、构建与部署 |
+| `crates/admin` | 原有本机 Axum 后台 |
 
-`content/`、`public/`、`build-work/`、密钥和编译产物不提交。旧部署分支 `forimagine` 已删除，生产部署统一使用 `master`；日常文章由后台和 R2 管理。
+根目录与两个 Worker 目录中的 `wrangler.jsonc` 是通用开发模板。正式部署使用 `npm run configure` 生成的 `.deploy/*.jsonc`；脚本不会自动部署模板中的示例资源。
 
-## 部署配置
+## 开发与验证
 
-公开 Worker `r-blog` 使用根目录 `wrangler.jsonc`，私人后台 `r-blog-admin` 使用 `cloud-admin/wrangler.jsonc`。Workers Builds 连接 GitHub 的 `master` 分支，根目录 `/`；构建命令 `bash scripts/cloudflare-build.sh`，部署命令 `npx wrangler deploy --config wrangler.jsonc`，静态输出 `build-work/public`。根目录锁定 Wrangler 依赖，构建环境会安装它们。
-
-Workers Builds 构建环境需要 `BLOG_ADMIN_URL=https://admin.forimagine.eu.org` 和 secret `BLOG_BUILD_TOKEN`，后者与后台 secret `WORKERS_BUILD_TOKEN` 相同。后台 secret `WORKERS_DEPLOY_HOOK` 触发同一 Worker 的 `master` 分支构建。构建凭据只用于构建时读取与状态回报，不放在公开静态 Worker 中。
-
-旧 Pages 项目 `r-blog` 已按所有者要求删除，包括其历史部署；`r-blog-2ht.pages.dev` 不再作为部署或回退入口。博客仅由 Workers 托管，发布仍使用 Workers Builds。旧 `BUILD_TOKEN` 和 R2 加密 Hook 仅为兼容遗留配置，不能恢复已经删除的 Pages 项目。
-
-后台的 `BUILD_TOKEN`、`SETUP_TOKEN`、`WORKERS_BUILD_TOKEN`、`WORKERS_DEPLOY_HOOK` 使用 secret 配置，不写进配置文件。后台部署：
+需要 Node.js 22、Rust 1.98.1；后台构建另需 `wasm32-unknown-unknown` 和 wasm-pack。安装步骤见部署教程。
 
 ```bash
-npm --prefix cloud-admin ci
-bash scripts/build-admin.sh
-cd cloud-admin
-npx wrangler deploy
-```
-
-构建后台需要 Rust 1.98.1、`wasm32-unknown-unknown` 和 wasm-pack 0.15。日常文章发布只构建静态网站，无需重新构建后台。
-
-## 本地验证
-
-```bash
-cargo test --workspace
+npm ci
 npm --prefix cloud-admin ci
 cp cloud-admin/.dev.vars.example cloud-admin/.dev.vars
-cd cloud-admin
-npm run types
-npm run check
-cd ..
+npm --prefix cloud-admin run types
+npx wrangler types cloud-images/worker-configuration.d.ts --config cloud-images/wrangler.jsonc --env-interface ImagesEnv --include-runtime false
 bash scripts/build-admin.sh
+npm --prefix cloud-admin run check
 npm --prefix cloud-admin test
+npm test
+cargo test --workspace
+npm --prefix cloud-admin run test:browser
 ```
 
-Worker 测试使用本地 Miniflare/R2，不访问生产桶。测试覆盖登录和 CSRF、并发编辑、历史记录、单篇发布、失败保留线上版本、图片校验和会话撤销。
+测试只使用本地临时 R2，不访问生产文章。浏览器测试可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定现有 Chromium。
 
-本地博客仍可用 `cargo run -p sitegen -- build`。输入默认为 `content/`，输出默认为 `public/`，也可用 `BLOG_CONTENT_ROOT` / `BLOG_OUTPUT_ROOT` 指定。
+本地文件方式仍可用 `cargo run -p sitegen -- build`，输入默认 `content/`，输出默认 `public/`；也可用 `BLOG_CONTENT_ROOT` / `BLOG_OUTPUT_ROOT` 指定。
 
-## 内容安全与恢复
+## 数据与恢复
 
-发布生成不可变快照；只有线上 `_release.json` 确認部署成功后才切换已发布版本。构建失败时原稿和上次成功版本保留。两个编辑窗口通过 R2 ETag 检查版本，冲突时先下载原稿，再重新打开文章。
+发布生成不可变快照，只有线上 `_release.json` 匹配目标发布 ID 才确认上线。失败时保留原稿和上次成功版本。多个编辑窗口通过 R2 ETag 检查版本；发生冲突时先下载原稿。
 
-R2 内容桶不开放公开访问。登录使用加盐 PBKDF2 密码哈希、限速、HttpOnly/Secure 会话和 CSRF 校验。原稿导出需要登录。图片上传接受 JPEG、PNG、WebP、GIF、AVIF，单张最多 10 MB。当前发布快照最多 16 MB；它包含文章和迁移时的小型本地图片，新上传图片只保存引用。
+内容桶和图片桶都保持私有。图片 Worker 允许配置的博客来源引用图片，拒绝直接访问与其他站点引用；这是防盗链措施，不是登录权限。后台预览使用登录保护的图片接口。图片格式支持 JPEG、PNG、WebP、GIF、AVIF，单张最多 10 MB，当前发布快照最多 16 MB。
 
-如发布超过 30 分钟，请先看 Worker `r-blog` 的 Workers Builds 构建与部署记录。后台保存失败时，请下载当前原稿，避免关闭窗口后丢失尚未保存的修改。
+发布超过 30 分钟时，查看自己公开 Worker 的 Workers Builds 记录。保存失败时先下载原稿。现有站点升级与受控账号恢复见部署教程；不要重新初始化已有 R2 或重置账号。
+
+原维护站点的历史与资源记录在 [项目接续文档](docs/PROJECT_CONTEXT.md)，其中的域名、账号和资源名是历史实例，不是复刻部署的默认配置。旧 Pages 项目和旧 `forimagine` 分支已删除。

@@ -53,3 +53,16 @@ fn imported_markdown_supersedes_archived_html() {
     fs::write(input.join("legacy-posts.json"),serde_json::to_vec(&vec![legacy]).unwrap()).unwrap();
     build_site(&input,&output).unwrap();let html=fs::read_to_string(output.join("posts/old/index.html")).unwrap();assert!(!html.contains("OLD ARCHIVE"));fs::remove_dir_all(p).unwrap();
 }
+
+#[test]
+fn a_fork_does_not_inherit_identity_or_analytics() {
+    let mut config=SiteConfig::default();config.author="Reader".into();
+    let html=render_preview(&config,&draft("fork",false)).unwrap();
+    assert!(html.contains("Reader built this website using Rust."));
+    assert!(!html.contains("clarity.ms"));assert!(!html.contains("Qiulin"));
+    config.footer=Some("Reader & <friends>".into());config.clarity_id=Some("reader123".into());
+    let html=render_preview(&config,&draft("fork",false)).unwrap();
+    assert!(html.contains("Reader &amp; &lt;friends&gt;"));assert!(html.contains("reader123"));
+    config.clarity_id=Some("invalid\"<script>".into());
+    assert!(!render_preview(&config,&draft("fork",false)).unwrap().contains("clarity.ms"));
+}

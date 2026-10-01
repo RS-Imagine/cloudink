@@ -1,5 +1,5 @@
 import { zipSync, strToU8 } from 'fflate';
-import { engineTask, renderPreview, invalidatePreview, disposePreview } from './preview.js';
+import { engineTask, renderPreview, invalidatePreview, disposePreview, configurePreview } from './preview.js';
 
 const $=id=>document.getElementById(id);
 const fields=['title','description','date','slug','body'];
@@ -11,6 +11,9 @@ let navigationVersion=0,editorLocked=false,publishingBusy=false,publishRequest=f
 let uploading=null;
 const activeActions=new Set();
 let noticeTimer;
+let deploymentConfig;
+const configReady=api('/api/config').then(config=>{deploymentConfig=config;configurePreview(config);$('site-link').href=config.siteUrl;$('site-worker-name').textContent=config.siteWorkerName;$('production-branch').textContent=config.productionBranch;return config;});
+void configReady.catch(error=>{$('login-error').textContent=error.message;});
 function notice(message,tone='info'){$('notice').dataset.tone=tone;$('notice').textContent=message;$('notice').classList.add('visible');clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').classList.remove('visible'),6500);}
 
 async function action(id,label,work,success=''){
@@ -42,10 +45,10 @@ async function api(path,options={}){
   if(!response.ok){const error=new Error(data.error||'操作未完成。');error.status=response.status;if(response.status===401&&path!=='/api/login')showLogin();throw error;}
   return data;
 }
-function showLogin(){clearTimeout(autosaveTimer);$('app-view').hidden=true;$('login-view').hidden=false;csrf='';articleCache.clear();articleRequests.clear();disposePreview();}
+function showLogin(){clearTimeout(autosaveTimer);$('app-view').hidden=true;$('login-view').hidden=false;csrf='';if(!setupToken){$('login-form').elements.email.readOnly=false;$('login-form').elements.email.required=true;$('login-form').elements.email.closest('label').hidden=false;$('confirm-row').hidden=true;$('login-title').textContent='登录写作空间';$('login-submit').textContent='登录';}articleCache.clear();articleRequests.clear();disposePreview();}
 function view(name){for(const id of ['home','editor','legacy','settings'])$(`${id}-view`).hidden=id!==name;$('workspace-title').textContent={home:'文章管理',editor:'写作与预览',legacy:'导入文章原稿',settings:'网站设置'}[name];}
-async function signedIn(session){csrf=session.csrf;setupToken='';$('login-view').hidden=true;$('app-view').hidden=false;$('account-email').textContent=session.email;await refresh();view('home');(window.requestIdleCallback||setTimeout)(()=>{void engineTask('warm').catch(()=>{});});}
-if(setupToken){$('login-title').textContent='设置你的登录密码';$('login-description').textContent='为你的写作空间设置一个至少 12 个字符的密码。';$('login-submit').textContent='设置密码并进入后台';$('confirm-row').hidden=false;$('login-form').elements.email.readOnly=true;$('login-form').elements.password.autocomplete='new-password';$('login-form').elements.password.minLength=12;}
+async function signedIn(session){await configReady;csrf=session.csrf;setupToken='';$('login-view').hidden=true;$('app-view').hidden=false;$('account-email').textContent=session.email;await refresh();view('home');(window.requestIdleCallback||setTimeout)(()=>{void engineTask('warm').catch(()=>{});});}
+if(setupToken){$('login-title').textContent='设置你的登录密码';$('login-description').textContent='为你的写作空间设置一个至少 12 个字符的密码。';$('login-submit').textContent='设置密码并进入后台';$('confirm-row').hidden=false;$('login-form').elements.email.readOnly=true;$('login-form').elements.email.required=false;$('login-form').elements.email.closest('label').hidden=true;$('login-form').elements.password.autocomplete='new-password';$('login-form').elements.password.minLength=12;}
 $('login-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget;$('login-error').textContent='';if(setupToken&&form.elements.password.value!==form.elements.confirm.value){$('login-error').textContent='两次输入的密码不一致。';return;}$('login-submit').disabled=true;try{await signedIn(await api(setupToken?'/api/setup':'/api/login',{method:'POST',headers:setupToken?{Authorization:`Bearer ${setupToken}`}:{},body:{email:form.elements.email.value,password:form.elements.password.value}}));form.reset();}catch(error){$('login-error').textContent=error.message;}finally{$('login-submit').disabled=false;}});
 if(!setupToken)api('/api/session').then(signedIn).catch(()=>{});
 
@@ -63,7 +66,7 @@ function renderLists(){
   if(!posts.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='还没有文章，从新建或导入原稿开始。';$('article-grid').append(empty);}
 }
 function showDeployment(deployment){$('deployment-state').textContent=deployment.managed?'发布服务已连接，可以直接发布文章。':deployment.configured?'发布连接已配置，可随时替换。':'尚未连接发布服务，请完成首次设置。';$('deployment-help').hidden=!!deployment.managed;$('deployment-help').open=!deployment.configured;for(const element of $('deployment-form').querySelectorAll('label,button'))element.hidden=!!deployment.managed;}
-async function refresh(){const data=await api('/api/posts');posts=data.posts;site=data.site;for(const [slug,cached]of articleCache){const post=posts.find(p=>p.slug===slug);if(!post||(post.etag&&post.etag!==cached.etag)||post.legacy!==cached.legacy)articleCache.delete(slug);}renderLists();showPublishing(data.publishing);showDeployment(data.deployment);}
+async function refresh(){const data=await api('/api/posts');posts=data.posts;site={...data.site,...deploymentConfig.appearance};$('site-brand-title').textContent=data.site.title;$('brand-mark').textContent=data.site.title.slice(0,1);for(const [slug,cached]of articleCache){const post=posts.find(p=>p.slug===slug);if(!post||(post.etag&&post.etag!==cached.etag)||post.legacy!==cached.legacy)articleCache.delete(slug);}renderLists();showPublishing(data.publishing);showDeployment(data.deployment);}
 function currentDraft(){return {front_matter:{title:$('title').value,slug:$('slug').value,date:$('date').value,description:$('description').value,draft:true,...(doc?.front_matter.updated?{updated:doc.front_matter.updated}:{})},body_markdown:$('body').value};}
 function markdownSource(draft){const f=draft.front_matter;const quote=s=>JSON.stringify(s);return `+++\ntitle = ${quote(f.title)}\nslug = ${quote(f.slug)}\ndate = ${quote(f.date)}\ndescription = ${quote(f.description)}\ndraft = ${!!f.draft}\n${f.updated?`updated = ${quote(f.updated)}\n`:''}+++\n\n${draft.body_markdown}`;}
 function preview(){
@@ -96,7 +99,7 @@ async function openPost(slug){
     // rejected fetch is always handled and unsaved text is never discarded.
     const [,data]=await Promise.all([flush(),request]);if(version!==navigationVersion)return;
     clearTimeout(autosaveTimer);invalidatePreview(true);
-    if(data.legacy){doc=null;legacySlug=slug;view('legacy');$('legacy-title').textContent=data.front_matter.title;$('legacy-link').href=`https://forimagine.eu.org/posts/${slug}/`;renderLists();}else fillEditor(data.draft,data.etag);
+    if(data.legacy){doc=null;legacySlug=slug;view('legacy');$('legacy-title').textContent=data.front_matter.title;$('legacy-link').href=new URL(`/posts/${slug}/`,deploymentConfig.siteUrl).href;renderLists();}else fillEditor(data.draft,data.etag);
     if(cached)void fetchArticle(slug).then(fresh=>{
       if(version!==navigationVersion||doc?.front_matter.slug!==slug||fresh.etag===doc.etag)return;
       if(dirty===0&&!savePromise&&!fresh.legacy)fillEditor(fresh.draft,fresh.etag);

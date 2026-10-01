@@ -116,7 +116,7 @@
 
 ## 构建、测试与部署
 
-公开 Worker `r-blog`：Workers Builds 连接 `master`，仓库根目录 `/`；构建命令 `bash scripts/cloudflare-build.sh`，部署命令 `npx wrangler deploy --config wrangler.jsonc`，静态输出 `build-work/public`，根目录锁定 Wrangler。构建环境 `BLOG_ADMIN_URL` 和 secret `BLOG_BUILD_TOKEN` 与后台新增的 secret `WORKERS_BUILD_TOKEN` 对应。后台 secret `WORKERS_DEPLOY_HOOK` 触发 Workers Builds，并让 UI 显示已连接；所有者无需再配置链接。
+公开 Worker `r-blog`：Workers Builds 连接 `master`，仓库根目录 `/`；构建命令 `bash scripts/cloudflare-build.sh`，部署命令 `npm run deploy`，静态输出 `build-work/public`，根目录锁定 Wrangler。构建环境 `BLOG_ADMIN_URL` 和 secret `BLOG_BUILD_TOKEN` 与后台新增的 secret `WORKERS_BUILD_TOKEN` 对应。后台 secret `WORKERS_DEPLOY_HOOK` 触发 Workers Builds，并让 UI 显示已连接；所有者无需再配置链接。
 
 旧 Pages 项目已按所有者要求删除，没有 Pages 回退部署。后台仍保留旧 `BUILD_TOKEN` 与 R2 中加密的旧 Hook 作为兼容遗留配置，当前发布只使用 Workers 凭据。`SETUP_TOKEN` 保留受控初始化用途，不重新初始化账户。发布依旧通过线上 `_release.json` 确认部署完成，而不是仅依赖构建成功。不要输出或记录任何凭据与 Hook。
 
@@ -142,6 +142,21 @@ npm --prefix cloud-admin run test:browser
 修改 Rust 核心时还应运行 `cargo test --workspace`，重新构建 WASM。浏览器测试可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已安装 Chromium；`COMPARE_BASELINE=1` 会与旧版比较慢网络切换性能。测试使用本地 R2 和测试凭据，不接触生产文章。
 
 部署前检查远端分支和线上当前版本，提交精确源码，并使用其构建上传。保留原有 R2、图片、限速、域名、监控和密钥绑定。平台迁移须由所有者明确授权；本次已授权 Pages → Workers。不要轮换账户密码或改写文章。
+
+## 可复刻部署通用化
+
+所有者选择配置文件、脚本和教程方案；允许新用户先使用 workers.dev，自定义域名可选。每个复刻者仍只有自己的站点作者账号。
+
+- `deployment.example.json` 提供通用配置，个人 `deployment.json` 和生成的 `.deploy/` 默认不提交 Git。
+- 支持 `BLOG_DEPLOY_CONFIG_JSON` 构建变量，或 `BLOG_DEPLOY_CONFIG` 指向用户自己的非密钥文件。生成的配置分别管理公开、后台和图片 Worker。
+- 根目录和两个 Worker 的 Wrangler 文件改为通用开发模板。正式部署使用生成的配置与 `npm run deploy`、`deploy:admin`、`deploy:images`。
+- 当前维护站点的正式配置外置到 Cloudflare Builds 的非密钥 JSON 变量，本地副本被 Git 忽略；原域名、Worker 名、桶、邮箱、页脚和统计账号继续使用原值。`externalImages: true` 防止部署脚本替换独立图片服务。
+- 后台前端从 `/api/config` 读取公开地址、图片地址、分支和显示配置，没有固定作者邮箱或旧站链接；该接口不返回密钥或作者邮箱。
+- 新站可用 setup 脚本生成并写入随机 secret，初始化空白 R2 快照及 About，再设置唯一作者密码。已有账号和发布版本均拒绝重复初始化，不迁移或覆盖现有文章。
+- `cloud-images` 提供可复刻的私有 R2 图片 Worker；仅允许指定博客来源引用、流式响应和条件缓存。现有 `image-hosting` 保持独立。
+- 页脚按作者或配置生成，Clarity 默认关闭；维护站点的原统计 ID 通过外置配置继续使用。
+- 公开和后台各自的 Workers Builds 可从源码部署；日常文章发布仅触发公开 Worker。构建变量与运行变量分开，secret 不能存入部署 JSON。
+- 安装、免费地址、自定义域名、自动构建、验收及现有站点升级说明见 `docs/DEPLOYMENT.md`。不要对现有站点运行新站 setup:secrets。
 
 ## 本次接续环境的经验
 

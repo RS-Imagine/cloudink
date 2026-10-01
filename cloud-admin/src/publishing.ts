@@ -11,7 +11,7 @@ export async function saveHook(env: Env, value: unknown): Promise<void> {
   if(typeof value!=='string' || value.length>1000) throw new HttpError(400,'部署链接格式不正确。');
   let url: URL;
   try {url=new URL(value.trim());}catch {throw new HttpError(400,'部署链接格式不正确。');}
-  if(url.protocol!=='https:' || url.hostname!=='api.cloudflare.com' || !/^\/client\/v4\/(?:pages\/webhooks|workers\/builds\/deploy_hooks)\/[A-Za-z0-9-]+$/.test(url.pathname) || url.username || url.password || url.search || url.hash) throw new HttpError(400,'请使用 r-blog 项目的 Cloudflare Deploy Hook 链接。');
+  if(url.protocol!=='https:' || url.hostname!=='api.cloudflare.com' || !/^\/client\/v4\/(?:pages\/webhooks|workers\/builds\/deploy_hooks)\/[A-Za-z0-9-]+$/.test(url.pathname) || url.username || url.password || url.search || url.hash) throw new HttpError(400,'请使用当前博客的 Cloudflare Deploy Hook 链接。');
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},await encryptionKey(env),new TextEncoder().encode(url.href));
   await env.CONTENT.put('private/deploy-hook.json',JSON.stringify({iv:[...iv],ciphertext:[...new Uint8Array(encrypted)]}));
@@ -25,7 +25,7 @@ async function getHook(env: Env): Promise<string | null> {
 }
 export async function currentRelease(env: Env): Promise<Release> {
   const pointer=await readJson<{id:string}>(env.CONTENT,'state/published.json');
-  if(!pointer) throw new HttpError(503,'网站内容尚未完成迁移。');
+  if(!pointer) throw new HttpError(503,'网站内容尚未初始化，请完成部署教程中的内容初始化。');
   const release=await readJson<Release>(env.CONTENT,`releases/${pointer.id}.json`);
   if(!release) throw new HttpError(503,'网站内容版本缺失，请联系维护者。');
   return release;

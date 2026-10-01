@@ -145,6 +145,7 @@ export default {
   async fetch(request: Request,env: Env): Promise<Response> {
     try {
       const path=new URL(request.url).pathname;
+      if(path==='/api/config' && request.method==='GET') return protect(json({siteUrl:env.SITE_URL,imageOrigin:env.IMAGE_ORIGIN,siteWorkerName:env.SITE_WORKER_NAME||'blog',productionBranch:env.PRODUCTION_BRANCH||'master',appearance:{footer:env.FOOTER_TEXT||'',clarityId:env.CLARITY_ID||''},initialized:!!await env.CONTENT.head('auth/account.json')}));
       if(request.method==='GET'&&(path==='/'||path==='/app.js'||path==='/preview.worker.js'||path==='/style.css'||path==='/blog_wasm.js'||path==='/blog_wasm_bg.wasm')) {
         const asset=ASSETS[path];if(!asset) throw new HttpError(404,'Not found');
         const headers={'Content-Type':asset.type,'ETag':asset.etag,'Cache-Control':path==='/'?'no-store':'public, max-age=0, must-revalidate'};

@@ -10,6 +10,7 @@ export interface FrontMatter {
 export interface Draft { front_matter: FrontMatter; body_markdown: string }
 export interface SiteConfig {
   title: string; bigTitle?: string; subtitle: string; author: string; description: string;
+  footer?: string; clarityId?: string;
 }
 export interface LegacyPost extends Draft { body_html: string; body_plain_text: string }
 export interface Release {
@@ -59,7 +60,10 @@ export function serializeDraft(draft: Draft): string {
 export function validateSite(input: unknown): SiteConfig {
   if (!input || typeof input !== 'object') throw new HttpError(400, '网站信息格式不正确。');
   const v = input as Record<string, unknown>;
-  return {title: text(v.title,'网站标题',300), subtitle:text(v.subtitle,'副标题',1000,false), author:text(v.author,'作者',300), description:text(v.description,'网站描述',2000,false), ...(v.bigTitle ? {bigTitle:text(v.bigTitle,'首页大标题',300)} : {})};
+  const appearance: Pick<SiteConfig,'footer'|'clarityId'>={};
+  if(v.footer!==undefined)appearance.footer=text(v.footer,'页脚',2000,false);
+  if(v.clarityId!==undefined){appearance.clarityId=text(v.clarityId,'统计项目',64,false);if(appearance.clarityId&&!/^[A-Za-z0-9]+$/.test(appearance.clarityId))throw new HttpError(400,'统计项目格式不正确。');}
+  return {title: text(v.title,'网站标题',300), subtitle:text(v.subtitle,'副标题',1000,false), author:text(v.author,'作者',300), description:text(v.description,'网站描述',2000,false), ...(v.bigTitle ? {bigTitle:text(v.bigTitle,'首页大标题',300)} : {}),...appearance};
 }
 export async function limitedBody(request: Request, max: number): Promise<ArrayBuffer> {
   if (Number(request.headers.get('content-length') || 0) > max) throw new HttpError(413, '上传内容太大。');

@@ -1,6 +1,8 @@
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { resolve, relative, isAbsolute } from 'node:path';
-const origin=process.env.BLOG_ADMIN_URL;
+import { loadConfig } from './deployment-config.mjs';
+const config=await loadConfig({optional:true});
+const origin=process.env.BLOG_ADMIN_URL || config?.urls.admin;
 const token=process.env.BLOG_BUILD_TOKEN;
 if(!origin||!token)throw new Error('BLOG_ADMIN_URL and BLOG_BUILD_TOKEN must be configured in the Cloudflare build environment.');
 const response=await fetch(new URL('/internal/bundle',origin),{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(60_000)});
@@ -14,7 +16,8 @@ if(input===output||!relative(resolve('build-work'),input)||!relative(resolve('bu
 await rm(input,{recursive:true,force:true});await rm(output,{recursive:true,force:true});await mkdir(resolve(input,'posts'),{recursive:true});await mkdir(output,{recursive:true});
 function child(root,path){const target=resolve(root,path),rel=relative(root,target);if(!rel||rel.startsWith('..')||isAbsolute(rel))throw new Error('Unsafe content path.');return target;}
 for(const [slug,source]of Object.entries(bundle.markdown_posts)){if(!/^[A-Za-z0-9_-]{1,100}$/.test(slug)||typeof source!=='string')throw new Error('Invalid article source.');await writeFile(child(resolve(input,'posts'),slug+'.md'),source);}
-const allowed=['title','bigTitle','subtitle','author','description'];
+if(config)Object.assign(bundle.site,{footer:config.site.footer,clarityId:config.site.clarityId});
+const allowed=['title','bigTitle','subtitle','author','description','footer','clarityId'];
 const site=allowed.filter(k=>bundle.site[k]!==undefined).map(k=>{if(typeof bundle.site[k]!=='string')throw new Error('Invalid site configuration.');return `${k} = ${JSON.stringify(bundle.site[k])}`;}).join('\n');
 await writeFile(resolve(input,'site.toml'),site);await writeFile(resolve(input,'legacy-posts.json'),JSON.stringify(bundle.legacy_posts));
 if(bundle.about_html)await writeFile(resolve(input,'about.html'),bundle.about_html);

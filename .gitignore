@@ -12,6 +12,9 @@ cloud-admin/src/assets.generated.ts
 cloud-admin/ui/app.generated.js
 cloud-admin/ui/preview.worker.generated.js
 cloud-admin/worker-configuration.d.ts
+cloud-images/worker-configuration.d.ts
 .env*
+deployment.json
+.deploy/
 .DS_Store
 Thumbs.db
