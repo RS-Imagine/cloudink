@@ -8,10 +8,10 @@ const password = "test-password-with-24-characters";
 function draft(slug = "article", body = "\u6B63\u6587 **Markdown** $x^2$") {
   return { front_matter: { title: "\u6D4B\u8BD5\u6587\u7AE0", slug, date: "2026-10-01", description: "\u6458\u8981", draft: true }, body_markdown: body };
 }
-async function fixture(t) {
+async function fixture(t, bindings = {}) {
   let marker = null, failHook = false;
-  const mf = new Miniflare(convertV4MiniflareOptions({ workers: [{ name: "admin", scriptPath: resolve("dist/index.js"), modules: true, compatibilityDate: "2026-10-01", compatibilityFlags: ["nodejs_compat"], r2Buckets: ["CONTENT", "IMAGES"], ratelimits: { LOGIN_LIMITER: { namespace_id: "1001", simple: { limit: 5, period: 60 } } }, bindings: { OWNER_EMAIL: owner, SITE_URL: "https://forimagine.eu.org", IMAGE_ORIGIN: "https://img.forimagine.eu.org", BUILD_TOKEN: "test-build-secret", SETUP_TOKEN: "test-setup-secret" }, outboundService: async (request2) => {
-    if (request2.url.includes("/pages/webhooks/")) return new MFResponse(JSON.stringify({ success: !failHook }), { status: failHook ? 500 : 200, headers: { "Content-Type": "application/json" } });
+  const mf = new Miniflare(convertV4MiniflareOptions({ workers: [{ name: "admin", scriptPath: resolve("dist/index.js"), modules: true, compatibilityDate: "2026-10-01", compatibilityFlags: ["nodejs_compat"], r2Buckets: ["CONTENT", "IMAGES"], ratelimits: { LOGIN_LIMITER: { namespace_id: "1001", simple: { limit: 5, period: 60 } } }, bindings: { OWNER_EMAIL: owner, SITE_URL: "https://forimagine.eu.org", IMAGE_ORIGIN: "https://img.forimagine.eu.org", BUILD_TOKEN: "test-build-secret", SETUP_TOKEN: "test-setup-secret", ...bindings }, outboundService: async (request2) => {
+    if (request2.url.includes("/pages/webhooks/") || request2.url.includes("/workers/builds/deploy_hooks/")) return new MFResponse(JSON.stringify({ success: !failHook }), { status: failHook ? 500 : 200, headers: { "Content-Type": "application/json" } });
     if (request2.url.includes("/_release.json")) return new MFResponse(JSON.stringify({ id: marker }), { headers: { "Content-Type": "application/json" } });
     return new MFResponse("Not found", { status: 404 });
   } }] }));
@@ -148,4 +148,28 @@ test('editor assets support conditional revalidation and expose the preview work
  const multiple=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':`"old", W/${etag}`});assert.equal(multiple.status,304);
  const wildcard=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':'*'});assert.equal(wildcard.status,304);
  assert.equal((await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':'"old"'})).status,200);
+});
+
+test('Workers managed publishing uses its build token and preserves Pages rollback credentials', async t => {
+  const f=await fixture(t,{WORKERS_BUILD_TOKEN:'test-workers-build-secret',WORKERS_DEPLOY_HOOK:'https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test'});
+  assert.equal((await f.request('/internal/bundle','GET',undefined,{Authorization:'Bearer test-workers-build-secret'})).status,200);
+  assert.equal((await f.request('/internal/bundle','GET',undefined,{Authorization:'Bearer wrong'})).status,401);
+  await f.login();
+  const settings=await (await f.request('/api/settings')).json();
+  assert.deepEqual(settings.deployment,{configured:true,managed:true});
+  assert.equal((await f.request('/api/settings/deployment','PUT',{url:'https://api.cloudflare.com/client/v4/pages/webhooks/test'})).status,409);
+  const published=await f.request('/api/publish','POST',{rebuild:true});
+  assert.equal(published.status,202);
+  const state=await published.json();
+  const status=await f.request('/internal/status','POST',{id:state.release_id,status:'built'},{Authorization:'Bearer test-workers-build-secret'});
+  assert.equal(status.status,200);
+  assert.equal((await (await f.request('/api/publish/status')).json()).status,'built');
+  f.setMarker(state.release_id);
+  assert.equal((await (await f.request('/api/publish/status')).json()).status,'deployed');
+});
+test('owner-configured Workers hooks are accepted and malformed hooks are rejected', async t => {
+  const f=await fixture(t);await f.login();
+  for(const url of ['https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/','https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test/extra','https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test?secret=x'])assert.equal((await f.request('/api/settings/deployment','PUT',{url})).status,400);
+  assert.equal((await f.request('/api/settings/deployment','PUT',{url:'https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/test'})).status,200);
+  assert.equal((await f.request('/api/publish','POST',{rebuild:true})).status,202);
 });

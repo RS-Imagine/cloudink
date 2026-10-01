@@ -2,7 +2,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { resolve, relative, isAbsolute } from 'node:path';
 const origin=process.env.BLOG_ADMIN_URL;
 const token=process.env.BLOG_BUILD_TOKEN;
-if(!origin||!token)throw new Error('BLOG_ADMIN_URL and BLOG_BUILD_TOKEN must be configured in Pages.');
+if(!origin||!token)throw new Error('BLOG_ADMIN_URL and BLOG_BUILD_TOKEN must be configured in the Cloudflare build environment.');
 const response=await fetch(new URL('/internal/bundle',origin),{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(60_000)});
 if(!response.ok)throw new Error(`Content download failed (${response.status}).`);
 const reader=response.body.getReader();const chunks=[];let size=0;

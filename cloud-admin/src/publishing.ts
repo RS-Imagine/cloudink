@@ -7,15 +7,17 @@ async function encryptionKey(env: Env): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw',bytes,{name:'AES-GCM'},false,['encrypt','decrypt']);
 }
 export async function saveHook(env: Env, value: unknown): Promise<void> {
+  if(env.WORKERS_DEPLOY_HOOK) throw new HttpError(409,'发布服务已由部署配置管理，无需重新设置。');
   if(typeof value!=='string' || value.length>1000) throw new HttpError(400,'部署链接格式不正确。');
   let url: URL;
   try {url=new URL(value.trim());}catch {throw new HttpError(400,'部署链接格式不正确。');}
-  if(url.protocol!=='https:' || url.hostname!=='api.cloudflare.com' || !url.pathname.startsWith('/client/v4/pages/webhooks/') || url.username || url.password || url.search || url.hash) throw new HttpError(400,'请使用 r-blog 项目的 Cloudflare Pages Deploy Hook 链接。');
+  if(url.protocol!=='https:' || url.hostname!=='api.cloudflare.com' || !/^\/client\/v4\/(?:pages\/webhooks|workers\/builds\/deploy_hooks)\/[A-Za-z0-9-]+$/.test(url.pathname) || url.username || url.password || url.search || url.hash) throw new HttpError(400,'请使用 r-blog 项目的 Cloudflare Deploy Hook 链接。');
   const iv=crypto.getRandomValues(new Uint8Array(12));
   const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},await encryptionKey(env),new TextEncoder().encode(url.href));
   await env.CONTENT.put('private/deploy-hook.json',JSON.stringify({iv:[...iv],ciphertext:[...new Uint8Array(encrypted)]}));
 }
 async function getHook(env: Env): Promise<string | null> {
+  if(env.WORKERS_DEPLOY_HOOK) return env.WORKERS_DEPLOY_HOOK;
   const record=await readJson<StoredHook>(env.CONTENT,'private/deploy-hook.json');
   if(!record) return null;
   const data=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(record.iv)},await encryptionKey(env),new Uint8Array(record.ciphertext));
@@ -33,7 +35,7 @@ export async function publishStatus(env: Env): Promise<Publishing | null> {
   const obj=await env.CONTENT.get('state/pending.json'); if(!obj) return null;
   const state=await obj.json<Publishing>(); if(!busy(state)) return state;
   // The marker is uploaded with the static site. A build finishing is not proof
-  // that Pages has deployed it, so only this live marker commits the release.
+  // that Cloudflare has deployed it, so only this live marker commits the release.
   try {
     const response=await fetch(`${env.SITE_URL}/_release.json?version=${state.release_id}`,{cache:'no-store',signal:AbortSignal.timeout(5000)});
     if(response.ok && Number(response.headers.get('content-length')||0)<2048) {
@@ -51,14 +53,14 @@ export async function publishStatus(env: Env): Promise<Publishing | null> {
     }
   } catch { /* Transient network failures must not change the published version. */ }
   if(busy(state) && Date.now()-Date.parse(state.started_at)>30*60_000) {
-    state.status='failed';state.error='构建或部署超过 30 分钟，请检查 Pages 的部署记录后重试。';
+    state.status='failed';state.error='构建或部署超过 30 分钟，请检查 Cloudflare 的部署记录后重试。';
   }
   if(state.status==='deployed'||state.status==='failed') await env.CONTENT.put('state/pending.json',JSON.stringify(state),{onlyIf:{etagMatches:obj.etag}});
   return state;
 }
 export async function publish(request: Request, env: Env): Promise<Response> {
   const data=await jsonInput(request,4096);
-  const hook=await getHook(env); if(!hook) throw new HttpError(503,'请先在“设置 → 发布连接”中配置 Cloudflare Pages Deploy Hook。');
+  const hook=await getHook(env); if(!hook) throw new HttpError(503,'请先在“设置 → 发布连接”中配置 Cloudflare Deploy Hook。');
   await publishStatus(env);
   const previous=await env.CONTENT.get('state/pending.json');
   if(previous && busy(await previous.json<Publishing>())) throw new HttpError(409,'上一次发布还在进行中，请等待完成。');
@@ -100,7 +102,10 @@ export async function publish(request: Request, env: Env): Promise<Response> {
 }
 export async function internalRoute(request: Request, env: Env, path: string): Promise<Response | null> {
   if(!path.startsWith('/internal/')) return null;
-  if(!env.BUILD_TOKEN || !await sameSecret(request.headers.get('Authorization')||'',`Bearer ${env.BUILD_TOKEN}`)) throw new HttpError(401,'Unauthorized');
+  const authorization=request.headers.get('Authorization')||'';
+  const primary=!!env.BUILD_TOKEN && await sameSecret(authorization,`Bearer ${env.BUILD_TOKEN}`);
+  const workers=!!env.WORKERS_BUILD_TOKEN && await sameSecret(authorization,`Bearer ${env.WORKERS_BUILD_TOKEN}`);
+  if(!primary && !workers) throw new HttpError(401,'Unauthorized');
   if(path==='/internal/bundle' && request.method==='GET') {
     const pending=await readJson<Publishing>(env.CONTENT,'state/pending.json');
     const id=pending && busy(pending)?pending.release_id:(await currentRelease(env)).id;
@@ -114,7 +119,7 @@ export async function internalRoute(request: Request, env: Env, path: string): P
     const state=await obj.json<Publishing>();
     if(state.release_id===data.id && busy(state) && ['building','built','failed'].includes(String(data.status))) {
       state.status=data.status as Publishing['status'];
-      if(state.status==='failed') state.error='Cloudflare 构建失败，请查看 Pages 部署日志后重试。';
+      if(state.status==='failed') state.error='Cloudflare 构建失败，请查看 Cloudflare 构建日志后重试。';
       await env.CONTENT.put('state/pending.json',JSON.stringify(state),{onlyIf:{etagMatches:obj.etag}});
     }
     return json({ok:true});
@@ -142,6 +147,6 @@ export async function internalRoute(request: Request, env: Env, path: string): P
   }
   throw new HttpError(404,'Not found');
 }
-export async function deploymentSettings(env: Env): Promise<{configured:boolean}> {
-  return {configured:!!await env.CONTENT.head('private/deploy-hook.json')};
+export async function deploymentSettings(env: Env): Promise<{configured:boolean;managed:boolean}> {
+  return {configured:!!env.WORKERS_DEPLOY_HOOK || !!await env.CONTENT.head('private/deploy-hook.json'),managed:!!env.WORKERS_DEPLOY_HOOK};
 }

@@ -1,0 +1,11 @@
+{
+  "name": "r-blog",
+  "private": true,
+  "scripts": {
+    "build": "bash scripts/cloudflare-build.sh",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.145.0"
+  }
+}
