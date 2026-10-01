@@ -141,6 +141,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "blog-wasm"
+version = "0.1.0"
+dependencies = [
+ "blog-core",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "bon"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

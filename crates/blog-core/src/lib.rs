@@ -37,7 +37,21 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     let output_root = output_root.as_ref();
 
     let config = content::load_site_config(content_root)?;
-    let posts = content::load_posts(content_root)?;
+    let mut posts = content::load_posts(content_root)?;
+    // Keep existing published articles available until their original Markdown
+    // is imported. Imported sources take precedence over archived HTML.
+    let legacy_path = content_root.join("legacy-posts.json");
+    if legacy_path.exists() {
+        let legacy: Vec<models::Post> = serde_json::from_slice(&fs::read(legacy_path)?)?;
+        let source_slugs: HashSet<String> = posts.iter().map(|p| p.slug().to_owned()).collect();
+        for post in legacy {
+            content::validate_slug(post.slug())?;
+            if !source_slugs.contains(post.slug()) { posts.push(post); }
+        }
+    }
+    // Drafts must never be written to public output, including direct URLs.
+    posts.retain(|post| !post.draft());
+    posts.sort_by(|a, b| b.updated().unwrap_or(b.date()).cmp(a.updated().unwrap_or(a.date())).then_with(|| b.slug().cmp(a.slug())));
 
     fs::create_dir_all(output_root.join("posts"))?;
 
@@ -63,13 +77,15 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     let about_path = content_root.join("about.md");
     let about_dir = output_root.join("about");
     if about_path.exists() {
-        if let Ok(about_page) = content::load_page_file(&about_path) {
+        let about_page = content::load_page_file(&about_path)?;
             fs::create_dir_all(&about_dir)?;
             write_if_changed(
                 about_dir.join("index.html"),
                 render::render_page(&config, &about_page, &css_hash),
             )?;
-        }
+    } else if content_root.join("about.html").exists() {
+        fs::create_dir_all(&about_dir)?;
+        write_if_changed(about_dir.join("index.html"), fs::read(content_root.join("about.html"))?)?;
     } else if about_dir.exists() {
         fs::remove_dir_all(&about_dir)?;
     }
@@ -121,6 +137,18 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     write_if_changed(output_root.join("search_index.json"), search_index_json)?;
 
     Ok(())
+}
+
+/// The browser preview and native generator share this exact Markdown pipeline.
+pub fn render_preview(config: &models::SiteConfig, draft: &models::PostDraft) -> Result<String> {
+    content::validate_slug(&draft.front_matter.slug)?;
+    let post = models::Post {
+        front_matter: draft.front_matter.clone(),
+        body_markdown: draft.body_markdown.clone(),
+        body_html: markdown::markdown_to_html(&draft.body_markdown),
+        body_plain_text: markdown::markdown_to_plain_text(&draft.body_markdown),
+    };
+    Ok(render::render_post(config, &post, &content_hash(render::stylesheet())))
 }
 
 // ---------------------------------------------------------------------------

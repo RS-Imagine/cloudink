@@ -3,5 +3,6 @@ members = [
   "crates/blog-core",
   "crates/sitegen",
   "crates/admin",
+  "crates/blog-wasm",
 ]
 resolver = "2"

@@ -1,6 +1,16 @@
-.github/
 content/
 public/
 target/
+build-work/
+node_modules/
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+dist/
+cloud-admin/ui/wasm/
+cloud-admin/src/assets.generated.ts
+cloud-admin/ui/app.generated.js
+cloud-admin/worker-configuration.d.ts
+.env*
 .DS_Store
 Thumbs.db
