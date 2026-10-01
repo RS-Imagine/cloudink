@@ -7,8 +7,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "keep_vars": true,
-  "secrets": { "required": ["INITIAL_PASSWORD"] },
-  "vars": { "OWNER_EMAIL": "", "SITE_URL": "" },
+  "secrets": { "required": ["OWNER_EMAIL", "INITIAL_PASSWORD"] },
   "r2_buckets": [
     { "binding": "CONTENT", "bucket_name": "cloudink-content" },
     { "binding": "IMAGES", "bucket_name": "cloudink-images" }

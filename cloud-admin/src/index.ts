@@ -99,7 +99,7 @@ async function apiRoute(request: Request, env: CloudInkEnv, path: string, sessio
     const basename=file.name.replace(/\.[^.]*$/,'').replace(/[^A-Za-z0-9_-]/g,'-').slice(0,50)||'image';
     const key=`uploads/${new Date().toISOString().slice(0,7).replace('-','/')}/${crypto.randomUUID()}-${basename}.${type.ext}`;
     await env.IMAGES.put(key,bytes,{httpMetadata:{contentType:type.type,cacheControl:'public, max-age=31536000, immutable'}});
-    return json({key,url:`${env.IMAGE_ORIGIN}/${key}`,name:file.name},201);
+    return json({key,url:env.browserPublishing?`/images/${key}`:`${env.IMAGE_ORIGIN}/${key}`,name:file.name},201);
   }
   if(path==='/api/image'&&request.method==='GET') {
     const key=new URL(request.url).searchParams.get('key');

@@ -6,14 +6,8 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 export type WebBindings = { [K in keyof WebEnv]: WebEnv[K] extends string ? string : WebEnv[K] };
 const editorAssets = new Set(['/app.js', '/style.css', '/preview.worker.js', '/blog_wasm.js', '/blog_wasm_bg.wasm']);
 const compiledAssets = new Set(['/client.js', '/theme.js', '/styles.css', '/favicon.svg']);
-function siteOrigin(request: Request, env: WebBindings): string {
-  if (!env.SITE_URL?.trim()) return new URL(request.url).origin;
-  const url = new URL(env.SITE_URL.trim());
-  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Invalid SITE_URL');
-  return url.origin;
-}
 function adminEnv(request: Request, env: WebBindings): CloudInkEnv {
-  const site = siteOrigin(request, env);
+  const site = new URL(request.url).origin;
   return { CONTENT: env.CONTENT, IMAGES: env.IMAGES, LOGIN_LIMITER: env.LOGIN_LIMITER,
     OWNER_EMAIL: env.OWNER_EMAIL.trim().toLowerCase(), SITE_URL: site, IMAGE_ORIGIN: `${site}/images`,
     SITE_WORKER_NAME: new URL(site).hostname.split('.')[0], PRODUCTION_BRANCH: 'master', FOOTER_TEXT: '', CLARITY_ID: '',
@@ -62,7 +56,7 @@ export default {
       if (path.startsWith('/internal/')) return protect(new Response('Not found', { status: 404 }));
       if (path.startsWith('/images/')) {
         url.pathname = path.slice('/images'.length);
-        return images.fetch(new Request(url, request), { IMAGES: env.IMAGES, ALLOWED_ORIGINS: JSON.stringify([...new Set([url.origin, siteOrigin(request, env)])]) });
+        return images.fetch(new Request(url, request), { IMAGES: env.IMAGES, ALLOWED_ORIGINS: JSON.stringify([url.origin]) });
       }
       if (!['GET', 'HEAD'].includes(request.method)) return protect(new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }));
       if (compiledAssets.has(path)) return staticAsset(request, env, path);

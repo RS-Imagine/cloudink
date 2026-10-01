@@ -37,8 +37,7 @@ Cloudflare 自动复制仓库、创建一个 Worker 和两个私有 R2 桶，并
 
 | 配置 | 位置 |
 | --- | --- |
-| 作者登录邮箱、可选站点地址 | Cloudflare Worker 普通变量 |
-| 初始密码 | Cloudflare Worker Secret |
+| 作者登录邮箱、初始密码 | Cloudflare Worker Secrets |
 | 博客标题、作者、文章、草稿、历史 | 私有 R2，通过后台修改 |
 | 程序、模板、默认图标 | GitHub 仓库 |
 
@@ -78,7 +77,7 @@ npm run test:web:browser
 npm --prefix cloud-admin run test:browser
 ```
 
-测试只使用本地临时 R2，不访问生产文章。可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定现有 Chromium。单 Worker 本地预览：复制根目录 `.dev.vars.example` 为 `.dev.vars`，填写本地测试密码，在 `wrangler.jsonc` 配置测试邮箱后运行 `npx wrangler dev`。
+测试只使用本地临时 R2，不访问生产文章。可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定现有 Chromium。单 Worker 本地预览：复制根目录 `.dev.vars.example` 为 `.dev.vars`，填写本地测试邮箱和密码后运行 `npx wrangler dev`。
 
 本地文件构建仍可用 `cargo run -p sitegen -- build`，输入默认 `content/`、输出默认 `public/`；也可用 `BLOG_CONTENT_ROOT` / `BLOG_OUTPUT_ROOT` 指定。
 

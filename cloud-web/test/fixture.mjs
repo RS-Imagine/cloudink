@@ -8,7 +8,7 @@ export function workerOptions(bindings = {}) {
     compatibilityDate: '2026-10-01', compatibilityFlags: ['nodejs_compat'],
     assets: { directory: resolve('build-work/web-public'), binding: 'ASSETS', run_worker_first: true, routerConfig: { has_user_worker: true }, assetConfig: { html_handling: 'auto-trailing-slash', not_found_handling: '404-page' } },
     r2Buckets: ['CONTENT', 'IMAGES'], ratelimits: { LOGIN_LIMITER: { namespace_id: '1002', simple: { limit: 50, period: 60 } } },
-    bindings: { OWNER_EMAIL: owner, INITIAL_PASSWORD: password, SITE_URL: '', ...bindings } };
+    bindings: { OWNER_EMAIL: owner, INITIAL_PASSWORD: password, ...bindings } };
 }
 export async function fixture(t, bindings = {}) {
   const mf = new Miniflare(convertV4MiniflareOptions(workerOptions(bindings)));t.after(() => mf.dispose());

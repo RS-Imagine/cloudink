@@ -14,13 +14,12 @@
 
 | 字段 | 填什么 | 存在哪里 |
 | --- | --- | --- |
-| `OWNER_EMAIL` | 你的后台登录邮箱；无需配置邮件服务 | Worker 普通变量 |
+| `OWNER_EMAIL` | 你的后台登录邮箱；无需配置邮件服务 | Cloudflare Secret |
 | `INITIAL_PASSWORD` | 自选 12–128 字符的初始密码 | Cloudflare 加密 Secret |
-| `SITE_URL` | 留空即可；绑定自己的域名后可填写其 HTTPS 地址 | Worker 普通变量 |
 
 保留自动检测的构建命令 `npm run build`、部署命令 `npm run deploy`、项目根目录 `/`，点击部署。首次构建需要下载 Rust 工具链并编译，请等待 Cloudflare 显示成功。
 
-密码不要填写到 GitHub 文件、提交记录或普通变量里。`INITIAL_PASSWORD` 是运行时 Secret，不需要添加到构建环境变量。文章、草稿和账号都保存在你的私有 R2，GitHub 仓库只保存项目代码。
+邮箱和密码都通过部署页面保存为 Cloudflare Secrets；不需要编辑仓库配置。密码不要填写到 GitHub 文件、提交记录或普通变量里。`INITIAL_PASSWORD` 是运行时 Secret，不需要添加到构建环境变量。文章、草稿和账号都保存在你的私有 R2，GitHub 仓库只保存项目代码。
 
 ## 3. 打开后台开始写作
 
@@ -32,7 +31,7 @@
 
 ## 后续配置和更新
 
-- **域名可选**：在 Worker 的 Settings → Domains & Routes 中添加 Custom Domain，然后在 Settings → Variables and Secrets 将 `SITE_URL` 设置为 `https://你的域名`，保存并部署。需要把自定义域名放在这个 Cloudflare 账号中。留空时链接使用当前访问地址。
+- **域名可选**：在 Worker 的 Settings → Domains & Routes 中添加 Custom Domain 即可；域名需位于这个 Cloudflare 账号。链接自动使用当前访问地址，图片使用相对路径，不需要配置站点 URL。
 - **改密码**：登录后台后在“设置 → 修改密码”中操作。账号创建后，修改 `INITIAL_PASSWORD` 不会重置现有密码；保留这一 Secret 供部署校验使用，不影响后续更新，也不会覆盖后台修改后的密码。
 - **代码自动部署**：部署按钮已连接 Workers Builds。向你自己的 GitHub 仓库生产分支提交或合并代码后，Cloudflare 会自动构建并更新同一个 Worker。运行时变量通过 `keep_vars` 保留，Secret 和 R2 内容也会保留。
 - **采用上游更新**：部署按钮创建的仓库副本不会自动同步本项目。把所需上游变更合并或复制到你的仓库后才会触发部署；如果你的仓库是 Fork，可使用 GitHub 的 Sync fork。已有静态文章的 HTML 在下次发布时重新生成；后台、公共脚本、样式和图标随代码部署更新。可发布一次“网站信息”重新生成全部已发布页面，其他草稿不会跟着上线。
@@ -40,7 +39,7 @@
 
 ## 常见问题
 
-**忘记初始密码或第一次无法登录**：在 Cloudflare Worker 的 Variables and Secrets 检查 `OWNER_EMAIL` 和 Secret `INITIAL_PASSWORD`，密码必须是 12–128 字符，保存并部署。确认访问的是自己的 `/admin`。
+**忘记初始密码或第一次无法登录**：在 Cloudflare Worker 的 Variables and Secrets 检查 Secrets `OWNER_EMAIL` 和 `INITIAL_PASSWORD`，密码必须是 12–128 字符，保存并部署。确认访问的是自己的 `/admin`。
 
 **账号创建后忘记密码**：只有 Cloudflare 账号所有者能执行恢复。先备份内容桶，设置一个新的 `INITIAL_PASSWORD` Secret 并保存部署，再从内容桶中仅删除 `auth/account.json`，然后用原登录邮箱及新初始密码登录。系统会重建账号并使旧会话失效，保留原有文章、草稿、历史和线上版本。不要删除桶、`state/`、`releases/`、`public/` 或 `drafts/`；三 Worker 的旧站点按其维护流程恢复。
 

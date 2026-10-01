@@ -20,9 +20,8 @@
   "dependencies": { "swup": "4.10.0" },
   "cloudflare": {
     "bindings": {
-      "OWNER_EMAIL": { "description": "Your admin login email. No email service is required. / 后台登录邮箱，无需邮件服务。" },
+      "OWNER_EMAIL": { "description": "Your admin login email, stored as a Cloudflare Secret. No email service is required. / 后台登录邮箱，保存到 Cloudflare Secret，无需邮件服务。" },
       "INITIAL_PASSWORD": { "description": "Choose a private password of 12–128 characters for your first login. / 设置 12–128 字符的初始密码，作为加密 Secret 保存。" },
-      "SITE_URL": { "description": "Optional: leave blank to use your workers.dev address. For a custom domain, enter its HTTPS origin. / 可选，留空即可；绑定自己的域名后可填写 https://你的域名。" },
       "CONTENT": { "description": "Private storage for drafts, history and published pages. Cloudflare creates this R2 bucket. / 私有内容桶，自动创建。" },
       "IMAGES": { "description": "Private storage for uploaded images. Cloudflare creates this R2 bucket. / 私有图片桶，自动创建。" }
     }
