@@ -22,7 +22,7 @@ async function fixture(t, bindings = {}) {
     if (body !== void 0) headers["Content-Type"] = "application/json";
     return mf.dispatchFetch(url + path, { method, headers, body: body === void 0 ? void 0 : JSON.stringify(body) });
   }
-  const release = { schema_version: 1, id: "12345678-1234-1234-1234-123456789abc", created_at: (/* @__PURE__ */ new Date()).toISOString(), site: { title: "Existing Blog", bigTitle: "Brain Dump", subtitle: "Hello", author: "Qiulin", description: "Existing description" }, markdown_posts: {}, legacy_posts: [{ front_matter: { title: "Old article", slug: "existing", date: "2026-06-11", description: "Old summary", draft: false }, body_markdown: "", body_html: "<p>Original HTML</p>", body_plain_text: "Original HTML" }], assets: {} };
+  const release = { schema_version: 1, id: "12345678-1234-1234-1234-123456789abc", created_at: (/* @__PURE__ */ new Date()).toISOString(), site: { title: "Existing Blog", bigTitle: "Brain Dump", subtitle: "Hello", author: "Test Author", description: "Existing description" }, markdown_posts: {}, legacy_posts: [{ front_matter: { title: "Old article", slug: "existing", date: "2026-06-11", description: "Old summary", draft: false }, body_markdown: "", body_html: "<p>Original HTML</p>", body_plain_text: "Original HTML" }], assets: {} };
   const bootstrap = await request("/internal/bootstrap", "POST", release, { Authorization: "Bearer test-build-secret" });
   assert.equal(bootstrap.status, 200);
   async function login() {

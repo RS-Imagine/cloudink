@@ -62,4 +62,8 @@ npm --prefix cloud-admin run test:browser
 
 发布超过 30 分钟时，查看自己公开 Worker 的 Workers Builds 记录。保存失败时先下载原稿。现有站点升级与受控账号恢复见部署教程；不要重新初始化已有 R2 或重置账号。
 
-原维护站点的历史与资源记录在 [项目接续文档](docs/PROJECT_CONTEXT.md)，其中的域名、账号和资源名是历史实例，不是复刻部署的默认配置。旧 Pages 项目和旧 `forimagine` 分支已删除。
+## 更新项目代码
+
+启用 Workers Builds 后，将代码提交到配置的生产分支即可触发公开博客部署；后台有独立构建连接时，相关代码变更也会自动部署。个人部署参数保存在 Cloudflare Builds 的 `BLOG_DEPLOY_CONFIG_JSON`，更新仓库不会用示例配置替换它。密码和构建凭据继续保存在 Cloudflare Secrets，文章和草稿继续保存在 R2。
+
+使用 Fork 的站点需先将上游更新合并到自己的生产分支，才能触发自己的部署。具体设置与升级说明见 [部署教程](docs/DEPLOYMENT.md)。

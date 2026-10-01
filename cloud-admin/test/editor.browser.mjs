@@ -1,8 +1,6 @@
 import { Miniflare,convertV4MiniflareOptions,Response as MFResponse } from 'miniflare';
 import {chromium,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
-import {build} from 'esbuild';
-import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
 import {readFile} from 'node:fs/promises';
 const mf=new Miniflare(convertV4MiniflareOptions({name:'admin',scriptPath:'dist/index.js',modules:true,port:8788,compatibilityDate:'2026-10-01',compatibilityFlags:['nodejs_compat'],r2Buckets:['CONTENT','IMAGES'],ratelimits:{LOGIN_LIMITER:{namespace_id:'1001',simple:{limit:50,period:60}}},bindings:{OWNER_EMAIL:'reader@example.net',SITE_URL:'https://reader-blog.example.net',IMAGE_ORIGIN:'https://reader-images.example.net',BUILD_TOKEN:'local-build',SETUP_TOKEN:'local-setup'},outboundService:()=>new MFResponse(JSON.stringify({success:true,id:'not-deployed'}),{headers:{'Content-Type':'application/json'}})}));
@@ -64,16 +62,5 @@ try{
  await publicPage.goto('https://reader-public.example.net/');await publicPage.locator('#site-search-btn').click();await publicPage.locator('#search-input').fill('needle');
  await expect(publicPage.locator('#search-results a')).toHaveCount(1);await publicPage.close();
  console.log(JSON.stringify({typingBeforeSearchIndexLoads:true}));
-
- if(process.env.COMPARE_BASELINE==='1'){
-  const source=execFileSync('git',['show','ee8e15f6176e4185042c8fa01e913d61f47a69c2:cloud-admin/ui/app.js'],{encoding:'utf8'});
-  await build({stdin:{contents:source,resolveDir:resolve('ui'),sourcefile:'baseline.js'},outfile:'dist/baseline.js',bundle:true,format:'esm',minify:true,external:['/blog_wasm.js']});
-  const baseline=await browser.newPage({viewport:{width:1440,height:1000}});let delayed=false;
-  await baseline.route('**/app.js',route=>route.fulfill({status:200,contentType:'text/javascript',path:resolve('dist/baseline.js')}));
-  await baseline.route('https://cdn.jsdelivr.net/**',route=>route.fulfill({status:200,contentType:'text/css',body:''}));
-  await baseline.route('**/api/**',async route=>{if(delayed){const path=new URL(route.request().url()).pathname;if(path==='/api/posts')await sleep(1500);if(/^\/api\/posts\//.test(path))await sleep(route.request().method()==='PUT'?500:700);}return route.continue();});
-  await baseline.goto('http://localhost:8788/');await baseline.locator('#login-form input[name=email]').fill('reader@example.net');await baseline.locator('#login-form input[name=password]').fill('local-test-password-26');await baseline.locator('#login-submit').click();await baseline.locator('#home-view').waitFor({state:'visible'});await baseline.locator('.post-item').filter({hasText:'alpha'}).click();await expect(baseline.locator('#title')).toHaveValue('alpha');delayed=true;
-  await baseline.locator('#body').fill('Baseline edited alpha');const t=Date.now();await baseline.locator('.post-item').filter({hasText:'beta'}).click();await expect(baseline.locator('#title')).toHaveValue('beta');console.log(JSON.stringify({baselineUncachedSwitchMs:Date.now()-t,improvedUncachedSwitchMs:uncachedMs,networkSimulation:'500ms save, 700ms article read, 1500ms full list read'}));await baseline.close();
- }
 
 }finally{await browser?.close();await mf.dispose();}

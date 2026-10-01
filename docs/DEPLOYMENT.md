@@ -101,7 +101,7 @@ npm run setup:content
 - `.deploy/secrets.json`：初始化与构建凭据；后续构建变量的 `BLOG_BUILD_TOKEN` 使用其中的 `WORKERS_BUILD_TOKEN`。
 - `.deploy/first-login.txt`：打开里面的链接，设置自己的密码。首次设置完成后，初始化入口不能再创建第二个账号。
 
-不要分享这些文件或截图，不要提交 Git，也不要发送到聊天。初始化链接把 token 放在 URL 片段，页面读取后会移除；浏览器不会把 URL 片段发送给服务器。设置密码后可删除 `first-login.txt`，妥善保存构建凭据。
+不要分享这些文件或截图，也不要提交 Git。初始化链接把 token 放在 URL 片段，页面读取后会移除；浏览器不会把 URL 片段发送给服务器。设置密码后可删除 `first-login.txt`，妥善保存构建凭据。
 
 ## 6. 第一次部署公开博客
 
@@ -180,6 +180,12 @@ Cloudflare 构建环境会根据根目录锁文件安装 Wrangler。Rust 构建�
 ## 已有站点升级与恢复
 
 已有 R2 和账号的站点只更新代码及非密钥配置，再部署对应 Worker；**不要运行 setup:secrets，不要删除或重建桶，不要重新设置账号**。既有 Cloudflare Secrets 会由正常部署继承。站点内容以 R2 为准，配置文件中的初始标题不覆盖现有内容。
+
+启用 Workers Builds 后，提交或合并代码到连接的生产分支会自动构建部署。后台也需自己的构建连接，才能随后台代码更新；如果配置了构建路径过滤，需包含 `cloud-admin/**`、`crates/**`、`scripts/**`、`package*.json`、`Cargo.toml`、`Cargo.lock` 和 `rust-toolchain.toml`，以便依赖或工具链变化也触发更新。文章发布仍只触发公开博客构建。
+
+Cloudflare Builds 中的 `BLOG_DEPLOY_CONFIG_JSON` 独立于仓库保存，代码更新不会覆盖它；只有需要改变部署参数时才修改这份变量。它也优先于本地配置文件。本地 `deployment.json` 是被 Git 忽略的副本，请自行备份；不要用 `deployment.example.json` 覆盖现有配置。更换电脑时，可从 Builds 复制非密钥 JSON 恢复本地配置，不需要重新初始化账号或文章。
+
+Fork 不会自动跟随上游更新：先在 GitHub 同步 Fork，或将上游改动合并到自己配置的生产分支，再检查自己公开和后台 Worker 的构建结果。使用独立图片服务的站点，其图片服务代码另行维护。
 
 保留 `BUILD_TOKEN` 的原值：私有 R2 中部署链接的加密密钥由它派生。正常更改服务名、邮箱或桶名不是数据迁移工具；账号建立后更换登录邮箱应做受控账号迁移，不能只改变量。图片桶绑定与图片地址必须指向同一套图片数据。
 
