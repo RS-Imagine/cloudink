@@ -36,7 +36,7 @@ Cloudflare 的连接器目前没有创建 Pages Deploy Hook 的接口，需要�
 - `scripts/cloudflare-build.sh`：Pages 从 R2 拉取发布快照，然后用 Rust 生成网页。
 - `crates/admin`：保留原有本地 Axum 后台，适用于本地文件。
 
-`content/`、`public/`、`build-work/`、密钥和编译产物不提交。此前的 `forimagine` 分支和 Git 历史保留作迁移备份，日常文章维护不再使用它。
+`content/`、`public/`、`build-work/`、密钥和编译产物不提交。旧部署分支 `forimagine` 已删除，生产部署统一使用 `master`；日常文章由后台和 R2 管理。
 
 ## 部署配置
 
