@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+// Preview builds must not change the production publication status.
+if(process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_BRANCH!=='master')process.exit(0);
 const status=process.argv[2];
 if(!['building','built','failed'].includes(status))throw new Error('Unknown build status.');
 try{
