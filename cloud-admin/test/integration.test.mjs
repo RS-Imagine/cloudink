@@ -144,5 +144,8 @@ test('editor assets support conditional revalidation and expose the preview work
  const first=await f.request('/preview.worker.js');assert.equal(first.status,200);
  const etag=first.headers.get('ETag');assert.ok(etag);assert.match(first.headers.get('Cache-Control'),/must-revalidate/);
  const cached=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':etag});assert.equal(cached.status,304);assert.equal(await cached.text(),'');
+ const weak=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':`W/${etag}`});assert.equal(weak.status,304);
+ const multiple=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':`"old", W/${etag}`});assert.equal(multiple.status,304);
+ const wildcard=await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':'*'});assert.equal(wildcard.status,304);
  assert.equal((await f.request('/preview.worker.js','GET',undefined,{'If-None-Match':'"old"'})).status,200);
 });

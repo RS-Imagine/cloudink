@@ -148,7 +148,8 @@ export default {
       if(request.method==='GET'&&(path==='/'||path==='/app.js'||path==='/preview.worker.js'||path==='/style.css'||path==='/blog_wasm.js'||path==='/blog_wasm_bg.wasm')) {
         const asset=ASSETS[path];if(!asset) throw new HttpError(404,'Not found');
         const headers={'Content-Type':asset.type,'ETag':asset.etag,'Cache-Control':path==='/'?'no-store':'public, max-age=0, must-revalidate'};
-        if(path!=='/'&&request.headers.get('If-None-Match')===asset.etag) return protect(new Response(null,{status:304,headers}),true);
+        const validators=request.headers.get('If-None-Match')?.split(',').map(tag=>tag.trim().replace(/^W\//,''));
+        if(path!=='/'&&validators?.some(tag=>tag===asset.etag||tag==='*')) return protect(new Response(null,{status:304,headers}),true);
         return protect(new Response(Buffer.from(asset.data,'base64'),{headers}),true);
       }
       const internal=await internalRoute(request,env,path);if(internal) return protect(internal);
