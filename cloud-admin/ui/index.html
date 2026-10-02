@@ -117,6 +117,7 @@
             class="quiet"
           >
             导出全部原稿</button
+          ><button id="images" class="quiet">图片库</button
           ><button id="settings" class="quiet">网站设置</button
           ><a id="site-link" target="_blank" rel="noopener">查看网站 ↗</a
           ><button id="logout" class="quiet muted">退出登录</button>
@@ -148,6 +149,43 @@
             <span id="summary" class="muted"></span>
           </div>
           <div id="article-grid" class="article-grid"></div>
+        </section>
+        <section id="images-view" class="images-view" hidden>
+          <div class="section-heading">
+            <div>
+              <h1>图片库</h1>
+              <p class="muted">
+                上传一次，随时复用。仍被文章、历史版本或网站设置引用的图片不能删除。
+              </p>
+            </div>
+            <div class="form-actions">
+              <button id="image-library-back" hidden>返回当前文章</button>
+              <button id="image-library-refresh">刷新</button>
+              <button id="image-library-upload" class="primary">＋ 上传图片</button>
+              <input
+                id="image-library-files"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                multiple
+                hidden
+              />
+            </div>
+          </div>
+          <div class="image-library-filters">
+            <input
+              id="image-library-search"
+              type="search"
+              placeholder="筛选已加载的图片名称或路径"
+              aria-label="搜索图片"
+            />
+            <label><input id="image-library-unused" type="checkbox" />只看未发现引用的图片</label>
+            <span id="image-library-summary" class="muted"></span>
+          </div>
+          <p id="image-library-status" class="muted" role="status" aria-live="polite"></p>
+          <p id="image-library-warning" class="error" role="alert" hidden></p>
+          <div id="image-library-grid" class="image-library-grid"></div>
+          <p id="image-library-empty" class="muted" hidden></p>
+          <button id="image-library-more" hidden>加载更多图片</button>
         </section>
         <section id="editor-view" class="editor-view" hidden>
           <div class="editor-toolbar">
@@ -190,7 +228,8 @@
               <button id="show-writing" class="tab active">Markdown</button
               ><button id="show-preview" class="tab">页面预览</button>
             </div>
-            <button id="upload-image" class="quiet">＋ 上传图片</button
+            <button id="choose-library-image" class="quiet">从图片库选择</button
+            ><button id="upload-image" class="quiet">＋ 上传图片</button
             ><input
               id="image-files"
               type="file"
@@ -355,6 +394,13 @@
         </section>
       </main>
     </div>
+    <dialog id="image-preview-dialog" class="image-preview-dialog">
+      <div class="dialog-heading">
+        <h3 id="image-preview-title">图片预览</h3>
+        <button id="image-preview-close">关闭</button>
+      </div>
+      <img id="image-preview-full" alt="完整图片预览" />
+    </dialog>
     <dialog id="history-dialog">
       <div class="dialog-heading">
         <h3>历史版本</h3>
