@@ -24,3 +24,9 @@ pub fn parse_markdown(source: &str) -> Result<String, JsValue> {
 
 #[wasm_bindgen]
 pub fn stylesheet() -> String { blog_core::render::stylesheet().to_owned() }
+
+#[wasm_bindgen]
+pub fn render_release(input: &str) -> Result<String, JsValue> {
+    let files = blog_core::bundle::render_release(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    serde_json::to_string(&files).map_err(|e| JsValue::from_str(&e.to_string()))
+}

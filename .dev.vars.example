@@ -1,0 +1,3 @@
+# Set these in Cloudflare during deployment; never commit your real values.
+OWNER_EMAIL=
+INITIAL_PASSWORD=

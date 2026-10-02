@@ -3,8 +3,8 @@ const loading=document.getElementById('preview-loading');
 const imageCache=new Map();
 let worker=null,nextId=0,generation=0,desired=null,running=false;
 const tasks=new Map();
-let siteURL='',imageOrigin='';
-export function configurePreview(config){siteURL=new URL(config.siteUrl).origin;imageOrigin=new URL(config.imageOrigin).origin;}
+let siteURL='',imageOrigin='',imagePrefix='/';
+export function configurePreview(config){siteURL=new URL(config.siteUrl).origin;const imageURL=new URL(config.imageOrigin);imageOrigin=imageURL.origin;imagePrefix=imageURL.pathname.replace(/\/$/,'')+'/';}
 function resetWorker(error){worker?.terminate();worker=null;for(const {reject,timer}of tasks.values()){clearTimeout(timer);reject(error);}tasks.clear();}
 export function engineTask(type,payload={}){
   if(!worker){worker=new Worker('/preview.worker.js',{type:'module'});worker.onmessage=({data})=>{const task=tasks.get(data.id);if(!task)return;tasks.delete(data.id);clearTimeout(task.timer);data.error?task.reject(new Error(data.error)):task.resolve(data.result);};worker.onerror=()=>resetWorker(new Error('预览引擎未能加载，请重试。'));}
@@ -40,7 +40,7 @@ async function pump(){
     page.querySelectorAll('link[href^="/styles.css"]').forEach(n=>n.remove());
     const style=page.createElement('style');style.textContent=css+'\nheader nav,footer,.share-container{display:none!important}body .site{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}img[data-r2-key]{display:block;min-height:60px;background:#e8e6dd}';page.head.append(style);
     const highlight=page.createElement('link');highlight.rel='stylesheet';highlight.href='https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css';page.head.append(highlight);
-    page.querySelectorAll('img').forEach(image=>{const src=image.getAttribute('src')||'';let url;try{url=new URL(src,siteURL);}catch{return;}if(url.origin===imageOrigin){try{image.dataset.r2Key=decodeURIComponent(url.pathname.slice(1));}catch{image.alt='图片地址无效';}image.removeAttribute('src');image.removeAttribute('srcset');}else if(src.startsWith('/'))image.src=url.href;});
+    page.querySelectorAll('img').forEach(image=>{const src=image.getAttribute('src')||'';let url;try{url=new URL(src,siteURL);}catch{return;}if(url.origin===imageOrigin&&url.pathname.startsWith(imagePrefix)){try{image.dataset.r2Key=decodeURIComponent(url.pathname.slice(imagePrefix.length));}catch{image.alt='图片地址无效';}image.removeAttribute('src');image.removeAttribute('srcset');}else if(src.startsWith('/'))image.src=url.href;});
     page.querySelectorAll('a').forEach(a=>{a.removeAttribute('href');a.style.cursor='default';});
     // Scripts stay disabled by the sandbox. Same-origin lets the parent insert
     // authenticated images after the text is visible, without reloading the frame.

@@ -1,3 +1,5 @@
+import type { CloudInkEnv } from './env';
+import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './browser-publishing';
 import { ASSETS } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
@@ -14,7 +16,7 @@ async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
   do { const page=await bucket.list({prefix:'drafts/',limit:1000,include:['customMetadata'],cursor});objects.push(...page.objects);cursor=page.truncated?page.cursor:undefined; }while(cursor);
   return objects;
 }
-async function saveDraft(request: Request, env: Env, slug: string): Promise<Response> {
+async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
   const input=await jsonInput(request);
   let draft: Draft,source: string;
   if(typeof input.source==='string') {source=input.source;draft=parseSource(source);}
@@ -37,7 +39,15 @@ function imageType(bytes: Uint8Array): {type:string;ext:string} {
   if(text.slice(4,8)==='ftyp'&&['avif','avis'].includes(text.slice(8,12))) return {type:'image/avif',ext:'avif'};
   throw new HttpError(400,'请上传 JPEG、PNG、GIF、WebP 或 AVIF 图片。');
 }
-async function apiRoute(request: Request, env: Env, path: string, session: Session): Promise<Response> {
+async function apiRoute(request: Request, env: CloudInkEnv, path: string, session: Session): Promise<Response> {
+  const browserPublish=path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|commit|cancel)$/);
+  if(env.browserPublishing&&browserPublish){
+    const [,id,action]=browserPublish;
+    if(action==='file'&&request.method==='PUT')return stageBrowserPage(request,env,id);
+    if(action==='commit'&&request.method==='POST')return commitBrowserPublish(env,id);
+    if(action==='cancel'&&request.method==='POST')return cancelBrowserPublish(env,id);
+    throw new HttpError(405,'请求方式不正确。');
+  }
   if(path==='/api/posts'&&request.method==='GET') {
     const publishing=await publishStatus(env);
     const [release,drafts]=await Promise.all([currentRelease(env),listDrafts(env.CONTENT)]);
@@ -89,7 +99,7 @@ async function apiRoute(request: Request, env: Env, path: string, session: Sessi
     const basename=file.name.replace(/\.[^.]*$/,'').replace(/[^A-Za-z0-9_-]/g,'-').slice(0,50)||'image';
     const key=`uploads/${new Date().toISOString().slice(0,7).replace('-','/')}/${crypto.randomUUID()}-${basename}.${type.ext}`;
     await env.IMAGES.put(key,bytes,{httpMetadata:{contentType:type.type,cacheControl:'public, max-age=31536000, immutable'}});
-    return json({key,url:`${env.IMAGE_ORIGIN}/${key}`,name:file.name},201);
+    return json({key,url:env.browserPublishing?`/images/${key}`:`${env.IMAGE_ORIGIN}/${key}`,name:file.name},201);
   }
   if(path==='/api/image'&&request.method==='GET') {
     const key=new URL(request.url).searchParams.get('key');
@@ -142,10 +152,10 @@ function protect(response: Response, asset=false): Response {
   return new Response(response.body,{status:response.status,headers});
 }
 export default {
-  async fetch(request: Request,env: Env): Promise<Response> {
+  async fetch(request: Request,env: CloudInkEnv): Promise<Response> {
     try {
       const path=new URL(request.url).pathname;
-      if(path==='/api/config' && request.method==='GET') return protect(json({siteUrl:env.SITE_URL,imageOrigin:env.IMAGE_ORIGIN,siteWorkerName:env.SITE_WORKER_NAME||'blog',productionBranch:env.PRODUCTION_BRANCH||'master',appearance:{footer:env.FOOTER_TEXT||'',clarityId:env.CLARITY_ID||''},initialized:!!await env.CONTENT.head('auth/account.json')}));
+      if(path==='/api/config' && request.method==='GET') return protect(json({siteUrl:env.SITE_URL,imageOrigin:env.IMAGE_ORIGIN,siteWorkerName:env.SITE_WORKER_NAME||'blog',productionBranch:env.PRODUCTION_BRANCH||'master',browserPublishing:env.browserPublishing===true,appearance:{footer:env.FOOTER_TEXT||'',clarityId:env.CLARITY_ID||''},initialized:!!await env.CONTENT.head('auth/account.json')}));
       if(request.method==='GET'&&Object.hasOwn(ASSETS,path)) {
         const asset=ASSETS[path];if(!asset) throw new HttpError(404,'Not found');
         const headers={'Content-Type':asset.type,'ETag':asset.etag,'Cache-Control':path==='/'?'no-store':'public, max-age=0, must-revalidate'};
@@ -165,4 +175,4 @@ export default {
       return protect(json({error:'操作未完成，请稍后重试。'},500));
     }
   }
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<CloudInkEnv>;

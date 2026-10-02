@@ -22,6 +22,7 @@ export interface Release {
 export interface Publishing {
   release_id: string; previous_id: string; status: 'queued' | 'building' | 'built' | 'deployed' | 'failed';
   started_at: string; error?: string;
+  files?: string[];
 }
 
 export function validSlug(slug: string): string {

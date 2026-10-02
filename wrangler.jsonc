@@ -1,11 +1,25 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "cloudink",
+  "main": "cloud-web/src/index.ts",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  "keep_vars": true,
+  "secrets": { "required": ["OWNER_EMAIL", "INITIAL_PASSWORD"] },
+  "r2_buckets": [
+    { "binding": "CONTENT", "bucket_name": "cloudink-content" },
+    { "binding": "IMAGES", "bucket_name": "cloudink-images" }
+  ],
+  "ratelimits": [
+    { "name": "LOGIN_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } }
+  ],
+  "observability": { "enabled": true },
   "assets": {
-    "directory": "build-work/public",
+    "directory": "build-work/web-public",
+    "binding": "ASSETS",
+    "run_worker_first": true,
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   }
