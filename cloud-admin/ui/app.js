@@ -1,5 +1,6 @@
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
+import { configureImages } from './images.js';
 import {
   engineTask,
   renderPreview,
@@ -171,11 +172,12 @@ function showLogin() {
   disposePreview();
 }
 function view(name) {
-  for (const id of ['home', 'editor', 'settings']) $(`${id}-view`).hidden = id !== name;
+  for (const id of ['home', 'editor', 'images', 'settings']) $(`${id}-view`).hidden = id !== name;
   $('workspace-title').textContent = {
     home: '文章管理',
     editor: '写作与预览',
     settings: '网站设置',
+    images: '图片库',
   }[name];
 }
 async function signedIn(session) {
@@ -798,15 +800,36 @@ async function upload(file) {
   form.append('file', file);
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
+  insertImage({ url: result.url, name: file.name });
+}
+function insertImage(image) {
+  if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
-  const name = file.name.replace(/[\[\]\\\n\r]/g, '');
-  const text = `\n\n![${name}](${result.url})\n\n`;
-  const start = textarea.selectionStart,
-    end = textarea.selectionEnd;
-  textarea.setRangeText(text, start, end, 'end');
+  const name = image.name.replace(/[\[\]\\\n\r]/g, '');
+  const text = `\n\n![${name}](${image.url})\n\n`;
+  view('editor');
+  textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
   textarea.focus();
   changed();
 }
+configureImages({
+  api,
+  flush,
+  notice,
+  action,
+  open: (back = false) => {
+    ++navigationVersion;
+    invalidatePreview();
+    view(back ? 'editor' : 'images');
+  },
+  insert: insertImage,
+  canInsert: () => !!doc && !editorLocked,
+  siteUrl: () => appConfig.siteUrl,
+  beginNavigation: () => {
+    const version = ++navigationVersion;
+    return () => version === navigationVersion;
+  },
+});
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {
   if (editorLocked || uploading) return;

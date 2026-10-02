@@ -12,6 +12,7 @@ import {
   type SiteConfig,
 } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
+import { imageReferenceMetadata, ensureManagedImages } from './image-library';
 
 const MAX_TEXT = 8_000_000;
 const MAX_MANIFEST = 18_000_000;
@@ -148,6 +149,11 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
+  await ensureManagedImages(
+    env.STORAGE,
+    [site.about || '', ...drafts.values(), ...histories.values()],
+    new URL(request.url).origin,
+  );
   const oldSettings = await env.STORAGE.get('draft-site.json');
   if (oldSettings && input.settings_etag !== oldSettings.etag)
     throw new HttpError(409, '网站设置已变化，请重新打开设置后恢复。');
@@ -168,9 +174,10 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       ...(key.startsWith('drafts/')
         ? {
             customMetadata: {
-              title: matter.title,
+              title: matter.title.slice(0, 120),
               date: matter.date,
-              description: matter.description.slice(0, 1000),
+              description: matter.description.slice(0, 240),
+              ...imageReferenceMetadata(source),
               digest: await digest(
                 JSON.stringify([
                   matter.title,
@@ -182,7 +189,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
               ),
             },
           }
-        : {}),
+        : { customMetadata: imageReferenceMetadata(source) }),
     });
     if (saved) restored++;
     else {

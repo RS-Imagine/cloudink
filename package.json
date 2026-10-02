@@ -6,7 +6,7 @@
     "deploy": "wrangler deploy",
     "types": "node scripts/types.mjs",
     "test": "node --test cloud-web/test/*.test.mjs",
-    "test:web:browser": "node cloud-web/test/deployment.browser.mjs && node cloud-web/test/editor.browser.mjs",
+    "test:web:browser": "node cloud-web/test/deployment.browser.mjs && node cloud-web/test/editor.browser.mjs && node cloud-web/test/images.browser.mjs",
     "check": "npm run types && npm --prefix cloud-admin run check",
     "format": "prettier --write cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
     "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",

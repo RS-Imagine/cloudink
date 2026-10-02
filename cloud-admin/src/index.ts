@@ -20,6 +20,8 @@ import {
 
 import { backupRoute } from './backup';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
+import { imageLibraryRoute, imageReferenceMetadata, ensureManagedImages } from './image-library';
+import { changesContentReferences, withContentMutation } from './storage-mutations';
 function editorial(draft: Draft): string {
   const f = draft.front_matter;
   return JSON.stringify([f.title, f.slug, f.date, f.description, draft.body_markdown]);
@@ -27,9 +29,10 @@ function editorial(draft: Draft): string {
 async function draftSummary(draft: Draft): Promise<Record<string, string>> {
   const f = draft.front_matter;
   return {
-    title: f.title,
+    title: f.title.slice(0, 120),
     date: f.date,
-    description: f.description.slice(0, 1000),
+    description: f.description.slice(0, 240),
+    ...imageReferenceMetadata(draft.body_markdown),
     digest: await digest(editorial(draft)),
   };
 }
@@ -60,6 +63,7 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     source = serializeDraft(draft);
   }
   if (draft.front_matter.slug !== slug) throw new HttpError(400, '文章地址与保存地址不一致。');
+  await ensureManagedImages(env.STORAGE, source, new URL(request.url).origin);
   const existing = await env.STORAGE.head(`drafts/${slug}.md`);
   if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
@@ -72,6 +76,7 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
   await env.STORAGE.put(`history/${slug}/${Date.now()}-${crypto.randomUUID()}.md`, source, {
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
+    customMetadata: imageReferenceMetadata(source),
   });
   return json({ draft, source, etag: saved.etag, saved_at: new Date().toISOString() });
 }
@@ -81,6 +86,8 @@ async function apiRoute(
   path: string,
   session: Session,
 ): Promise<Response> {
+  const images = await imageLibraryRoute(request, env, path);
+  if (images) return images;
   const backup = await backupRoute(request, env, path);
   if (backup) return backup;
   const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|commit|cancel)$/);
@@ -195,6 +202,7 @@ async function apiRoute(
         .slice(0, 50) || 'image';
     const key = `uploads/${new Date().toISOString().slice(0, 7).replace('-', '/')}/${crypto.randomUUID()}-${basename}.${type.ext}`;
     await env.STORAGE.put(key, bytes, {
+      customMetadata: { name: file.name.slice(0, 160) },
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
     return json(
@@ -242,6 +250,7 @@ async function apiRoute(
     const data = await jsonInput(request, 500_000),
       site = validateSite(data.site),
       old = await env.STORAGE.head('draft-site.json');
+    await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
@@ -333,7 +342,12 @@ export default {
       if (auth) return protect(auth);
       if (path.startsWith('/api/')) {
         const session = await requireSession(request, env);
-        return protect(await apiRoute(request, env, path, session));
+        const route = () => apiRoute(request, env, path, session);
+        return protect(
+          await (changesContentReferences(path, request.method)
+            ? withContentMutation(env.STORAGE, route)
+            : route()),
+        );
       }
       throw new HttpError(404, '页面不存在。');
     } catch (e) {
