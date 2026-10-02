@@ -1,3 +1,3 @@
 # Set these in Cloudflare during deployment; never commit your real values.
-OWNER_EMAIL=
-INITIAL_PASSWORD=
+# Choose a private 16–128 character setup token. Used only before an account exists.
+SETUP_TOKEN=

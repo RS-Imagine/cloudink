@@ -2,14 +2,14 @@
 
 这是需要本地工具的进阶方案，供现有三 Worker 站点继续维护，或需要将博客、后台、图片拆分部署的用户使用。新用户请先阅读 [网页部署教程](DEPLOYMENT.md)。
 
-每个复刻者使用自己的 Cloudflare 账号、Worker、R2 桶和登录账号。默认可以全部使用 `workers.dev` 地址，不要求购买域名。代码不包含原维护者的密码、文章或部署密钥。
+每个复刻者使用自己的 Cloudflare 账号、Worker、R2 桶和登录账号。默认可以全部使用 `workers.dev` 地址，不要求购买域名。私人文章、账号和部署密钥仅保存在部署者自己的环境与云端资源中。
 
 ## 1. 准备账号和工具
 
 1. 在 GitHub [Fork CloudInk](https://github.com/RS-Imagine/cloudink/fork)，再将自己的仓库克隆到电脑。
 2. 准备 Cloudflare 账号，启用 Workers 和 R2。R2 首次启用可能需要配置计费信息，以控制台要求为准。
 3. 在 Cloudflare 的 Workers & Pages 中确认自己的 `workers.dev` 子域，例如 `reader`。
-4. 安装 Git、Node.js 22、Rust 1.98.1。命令使用 Bash；Windows 可在 WSL 中操作。
+4. 安装 Git、Node.js 24、Rust 1.98.1。命令使用 Bash；Windows 可在 WSL 中操作。
 
 先在自己的 Fork 页面复制 HTTPS 克隆地址，将下面的 `YOUR_FORK_GIT_URL` 换成它。这里将本地目录统一命名为 `cloudink`：
 

@@ -1,42 +1,430 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>写作后台 · CloudInk 云砚</title><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/style.css"></head>
-<body>
-<div id="notice" role="status" aria-live="polite"></div>
-<section id="login-view" class="login-view">
-  <div class="login-card"><span class="eyebrow">CloudInk · 云砚</span><h1 id="login-title">回到你的写作空间</h1><p id="login-description">写下所想，慢慢整理，再与世界分享。</p>
-  <form id="login-form"><label>邮箱<input name="email" type="email" autocomplete="username" required></label><label>密码<input name="password" type="password" autocomplete="current-password" required></label><label id="confirm-row" hidden>再次输入密码<input name="confirm" type="password" autocomplete="new-password"></label><button class="primary wide" id="login-submit">登录</button><p id="login-error" class="error" role="alert"></p></form><small>仅限站点作者使用</small></div>
-</section>
-<div id="app-view" class="app" hidden>
-  <aside class="sidebar"><a class="brand" href="#"><span class="brand-mark"><img src="/favicon.svg" width="32" height="32" alt=""></span><span>写作空间<small id="site-brand-title">CloudInk</small></span></a>
-    <button id="new-post" class="primary wide">＋ 新建文章</button>
-    <div class="sidebar-label">文章 <span id="post-count">0</span></div>
-    <input id="search" class="search" placeholder="搜索文章…" aria-label="搜索文章">
-    <div id="post-list" class="post-list"></div>
-    <div class="sidebar-footer"><button id="import-posts" class="quiet">导入 Markdown</button><input id="import-files" type="file" accept=".md,.markdown" multiple hidden><button id="export-posts" class="quiet">导出全部原稿</button><button id="settings" class="quiet">网站设置</button><a id="site-link" target="_blank" rel="noopener">查看网站 ↗</a><button id="logout" class="quiet muted">退出登录</button></div>
-  </aside>
-  <main class="workspace">
-    <header class="workspace-header"><div><span class="eyebrow">写下值得留下的事</span><h2 id="workspace-title">文章管理</h2></div><span id="account-email" class="muted"></span></header>
-    <div id="navigation-status" class="navigation-status" role="status" hidden></div>
-    <div id="publish-banner" class="publish-banner" hidden role="status"></div><button id="cancel-publish" hidden>取消未完成的发布</button>
-    <section id="home-view" class="home-view"><div class="home-intro"><span class="eyebrow">你的文字，正在这里生长</span><h1>从一个想法开始。</h1><p>在线保存草稿，预览排版，准备好后再发布。</p><button id="home-new" class="primary">写一篇新文章</button></div><div class="section-heading"><h3>最近的文章</h3><span id="summary" class="muted"></span></div><div id="article-grid" class="article-grid"></div></section>
-    <section id="editor-view" class="editor-view" hidden>
-      <div class="editor-toolbar"><span id="save-state" class="muted" role="status">尚未保存</span><div class="toolbar-actions"><button id="download-post" class="quiet">下载原稿</button><button id="history-post" class="quiet">历史版本</button><button id="save-post">保存草稿</button><button id="publish-post" class="primary">发布这篇</button></div></div>
-      <input id="title" class="title-input" placeholder="文章标题" aria-label="文章标题" maxlength="300">
-      <textarea id="description" class="description-input" placeholder="写一句文章摘要（可选）" aria-label="文章摘要" maxlength="2000" rows="2"></textarea>
-      <details class="post-details"><summary>文章日期和地址</summary><div class="details-fields"><label>日期<input id="date" type="date"></label><label>文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100"><small>发布后建议保持地址不变</small></label></div></details>
-      <div class="pane-heading"><div><button id="show-writing" class="tab active">Markdown</button><button id="show-preview" class="tab">页面预览</button></div><button id="upload-image" class="quiet">＋ 上传图片</button><input id="image-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" multiple hidden></div>
-      <div id="editor-panes" class="editor-panes"><textarea id="body" class="markdown-input" spellcheck="false" placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。" aria-label="Markdown 正文"></textarea><div class="preview-pane"><iframe id="preview-frame" title="文章发布效果预览" sandbox="allow-same-origin"></iframe><div id="preview-loading" class="preview-loading">正在加载 Rust 预览引擎…</div></div></div>
-      <div class="editor-footer"><span id="word-count" class="muted"></span><div><button id="unpublish-post" class="quiet danger">取消发布</button><button id="delete-post" class="quiet danger">删除草稿</button></div></div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>写作后台 · CloudInk 云砚</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <section id="login-view" class="login-view">
+      <div class="login-card">
+        <span class="eyebrow">CloudInk · 云砚</span>
+        <h1 id="login-title">回到你的写作空间</h1>
+        <p id="login-description">写下所想，慢慢整理，再与世界分享。</p>
+        <form id="login-form">
+          <label>邮箱<input name="email" type="email" autocomplete="username" required /></label
+          ><label
+            >密码<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required /></label
+          ><label id="confirm-row" hidden
+            >再次输入密码<input name="confirm" type="password" autocomplete="new-password" /></label
+          ><button class="primary wide" id="login-submit">登录</button>
+          <p id="login-error" class="error" role="alert"></p>
+        </form>
+        <small>仅限站点作者使用</small>
+      </div>
     </section>
-    <section id="legacy-view" class="empty-view" hidden><span class="eyebrow">已有文章</span><h1 id="legacy-title"></h1><p>这篇文章的网页已保留。导入你电脑上的 Markdown 原稿后，就可以在线编辑。</p><button id="legacy-import" class="primary">导入原稿</button><a id="legacy-link" target="_blank" rel="noopener">查看线上文章 ↗</a><button id="legacy-unpublish" class="quiet danger">取消发布这篇文章</button></section>
-    <section id="settings-view" class="settings-view" hidden>
-      <form id="site-form" class="settings-card"><h3>网站信息</h3><p class="muted">保存后仍需点击发布，线上网站才会更新。</p><label>网站标题<input name="title" required maxlength="300"></label><label>首页大标题<input name="bigTitle" maxlength="300"></label><label>首页副标题<input name="subtitle" maxlength="1000"></label><label>作者<input name="author" required maxlength="300"></label><label>网站描述<textarea name="description" maxlength="2000" rows="3"></textarea></label><div class="form-actions"><button>保存网站信息</button><button type="button" id="publish-settings" class="primary">发布网站信息</button></div></form>
-      <form id="deployment-form" class="settings-card"><h3>发布连接</h3><p id="deployment-state" class="muted"></p><details id="deployment-help"><summary>首次设置步骤</summary><ol><li>在 Cloudflare 打开 Workers & Pages → <code id="site-worker-name">博客 Worker</code>。</li><li>进入 Settings → Builds → Add deploy hook。</li><li>名称填 <code>online-admin</code>，分支选择 <code id="production-branch">生产分支</code>。</li><li>复制生成的链接，粘贴到下方并保存。</li></ol><p class="muted">链接只用于触发部署，请在这里输入并妥善保管。</p></details><label>Cloudflare Deploy Hook<input name="url" type="password" autocomplete="off" placeholder="https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/…"></label><button>保存发布连接</button></form>
-      <form id="password-form" class="settings-card"><h3>修改登录密码</h3><label>当前密码<input name="current_password" type="password" autocomplete="current-password" required></label><label>新密码<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>再次输入新密码<input name="confirm" type="password" autocomplete="new-password" required></label><button>更新密码</button><p class="muted">修改后，其他设备的登录会失效。</p></form>
+    <section id="setup-view" class="login-view" hidden>
+      <div class="setup-card">
+        <a class="setup-brand" href="/"
+          ><img src="/favicon.svg" width="40" height="40" alt="" /><span>CloudInk · 云砚</span></a
+        >
+        <h1>让你的博客从这里开始</h1>
+        <p class="muted">只需完成这次设置，之后就可以在这里写作和管理网站。</p>
+        <ol class="setup-progress" aria-label="设置进度">
+          <li id="setup-progress-account" aria-current="step">1 · 创建账号</li>
+          <li id="setup-progress-site">2 · 命名博客</li>
+        </ol>
+        <form id="setup-form">
+          <fieldset id="setup-account-step">
+            <legend>创建你的唯一管理员账号</legend>
+            <label
+              >初始化口令<input
+                name="token"
+                type="password"
+                autocomplete="off"
+                minlength="16"
+                maxlength="128"
+                required
+                aria-describedby="setup-token-help"
+              /><small id="setup-token-help">填写部署时设置的口令，仅用于这次初始化。</small></label
+            >
+            <label
+              >登录邮箱<input
+                name="email"
+                type="email"
+                autocomplete="username"
+                maxlength="254"
+                required
+              /><small>作为登录账号使用，无需接入邮件服务。</small></label
+            >
+            <div class="settings-columns">
+              <label
+                >登录密码<input
+                  name="password"
+                  type="password"
+                  autocomplete="new-password"
+                  minlength="12"
+                  maxlength="128"
+                  required /></label
+              ><label
+                >再次输入密码<input
+                  name="confirm"
+                  type="password"
+                  autocomplete="new-password"
+                  required
+              /></label>
+            </div>
+            <button type="button" id="setup-next" class="primary wide">下一步 · 设置博客</button>
+          </fieldset>
+          <fieldset id="setup-site-step" hidden disabled>
+            <legend>给你的博客一个名字</legend>
+            <label
+              >博客名称<input name="title" maxlength="300" required placeholder="例如：我的随笔"
+            /></label>
+            <label>作者名称<input name="author" maxlength="300" required /></label>
+            <label
+              >一句话介绍<input name="subtitle" maxlength="1000" placeholder="记录生活，也记录思考"
+            /></label>
+            <p class="muted">标题、介绍和外观都可以稍后在后台修改。</p>
+            <div class="form-actions">
+              <button type="button" id="setup-back">上一步</button
+              ><button id="setup-submit" class="primary">创建账号并上线</button>
+            </div>
+          </fieldset>
+          <p id="setup-error" class="error" role="alert"></p>
+        </form>
+      </div>
     </section>
-  </main>
-</div>
-<dialog id="history-dialog"><div class="dialog-heading"><h3>历史版本</h3><button id="close-history" class="quiet">关闭</button></div><p class="muted">恢复后先作为草稿保存，不会直接更新线上文章。</p><div id="history-list"></div></dialog>
-<script type="module" src="/app.js"></script>
-</body></html>
+    <div id="app-view" class="app" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="#"
+          ><span class="brand-mark"><img src="/favicon.svg" width="32" height="32" alt="" /></span
+          ><span>写作空间<small id="site-brand-title">CloudInk</small></span></a
+        >
+        <button id="new-post" class="primary wide">＋ 新建文章</button>
+        <div class="sidebar-label">文章 <span id="post-count">0</span></div>
+        <input id="search" class="search" placeholder="搜索文章…" aria-label="搜索文章" />
+        <div id="post-list" class="post-list"></div>
+        <div class="sidebar-footer">
+          <button id="import-posts" class="quiet">导入 Markdown</button
+          ><input id="import-files" type="file" accept=".md,.markdown" multiple hidden /><button
+            id="export-posts"
+            class="quiet"
+          >
+            导出全部原稿</button
+          ><button id="settings" class="quiet">网站设置</button
+          ><a id="site-link" target="_blank" rel="noopener">查看网站 ↗</a
+          ><button id="logout" class="quiet muted">退出登录</button>
+        </div>
+      </aside>
+      <main class="workspace">
+        <header class="workspace-header">
+          <div>
+            <span class="eyebrow">写下值得留下的事</span>
+            <h2 id="workspace-title">文章管理</h2>
+          </div>
+          <span id="account-email" class="muted"></span>
+        </header>
+        <div id="navigation-status" class="navigation-status" role="status" hidden></div>
+        <div id="publish-banner" class="publish-banner" hidden role="status"></div>
+        <button id="cancel-publish" hidden>取消未完成的发布</button>
+        <section id="home-view" class="home-view">
+          <div class="home-intro">
+            <span class="eyebrow">你的文字，正在这里生长</span>
+            <h1>从一个想法开始。</h1>
+            <p>在线保存草稿，预览排版，准备好后再发布。</p>
+            <div class="form-actions">
+              <button id="home-new" class="primary">写一篇新文章</button
+              ><button id="publish-welcome" hidden>发布博客首页</button>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h3>最近的文章</h3>
+            <span id="summary" class="muted"></span>
+          </div>
+          <div id="article-grid" class="article-grid"></div>
+        </section>
+        <section id="editor-view" class="editor-view" hidden>
+          <div class="editor-toolbar">
+            <span id="save-state" class="muted" role="status">尚未保存</span>
+            <div class="toolbar-actions">
+              <button id="download-post" class="quiet">下载原稿</button
+              ><button id="history-post" class="quiet">历史版本</button
+              ><button id="save-post">保存草稿</button
+              ><button id="publish-post" class="primary">发布这篇</button>
+            </div>
+          </div>
+          <input
+            id="title"
+            class="title-input"
+            placeholder="文章标题"
+            aria-label="文章标题"
+            maxlength="300"
+          />
+          <textarea
+            id="description"
+            class="description-input"
+            placeholder="写一句文章摘要（可选）"
+            aria-label="文章摘要"
+            maxlength="2000"
+            rows="2"
+          ></textarea>
+          <details class="post-details">
+            <summary>文章日期和地址</summary>
+            <div class="details-fields">
+              <label>日期<input id="date" type="date" /></label
+              ><label
+                >文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" /><small
+                  >发布后建议保持地址不变</small
+                ></label
+              >
+            </div>
+          </details>
+          <div class="pane-heading">
+            <div>
+              <button id="show-writing" class="tab active">Markdown</button
+              ><button id="show-preview" class="tab">页面预览</button>
+            </div>
+            <button id="upload-image" class="quiet">＋ 上传图片</button
+            ><input
+              id="image-files"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+              multiple
+              hidden
+            />
+          </div>
+          <div id="editor-panes" class="editor-panes">
+            <textarea
+              id="body"
+              class="markdown-input"
+              spellcheck="false"
+              placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。"
+              aria-label="Markdown 正文"
+            ></textarea>
+            <div class="preview-pane">
+              <iframe
+                id="preview-frame"
+                title="文章发布效果预览"
+                sandbox="allow-same-origin"
+              ></iframe>
+              <div id="preview-loading" class="preview-loading">正在加载 Rust 预览引擎…</div>
+            </div>
+          </div>
+          <div class="editor-footer">
+            <span id="word-count" class="muted"></span>
+            <div>
+              <button id="unpublish-post" class="quiet danger">取消发布</button
+              ><button id="delete-post" class="quiet danger">删除草稿</button>
+            </div>
+          </div>
+        </section>
+        <section id="legacy-view" class="empty-view" hidden>
+          <span class="eyebrow">已有文章</span>
+          <h1 id="legacy-title"></h1>
+          <p>这篇文章的网页已保留。导入你电脑上的 Markdown 原稿后，就可以在线编辑。</p>
+          <button id="legacy-import" class="primary">导入原稿</button
+          ><a id="legacy-link" target="_blank" rel="noopener">查看线上文章 ↗</a
+          ><button id="legacy-unpublish" class="quiet danger">取消发布这篇文章</button>
+        </section>
+        <section id="settings-view" class="settings-view" hidden>
+          <nav class="settings-nav" aria-label="设置分类">
+            <a href="#site-form">网站与外观</a><a href="#account-form">账号</a
+            ><a href="#backup-card">备份与恢复</a><a href="#service-card">运行信息</a>
+          </nav>
+          <form id="site-form" class="settings-card">
+            <h3>网站信息</h3>
+            <p class="muted">保存后仍需点击发布，线上网站才会更新。</p>
+            <label>网站标题<input name="title" required maxlength="300" /></label
+            ><label>首页大标题<input name="bigTitle" maxlength="300" /></label
+            ><label>首页副标题<input name="subtitle" maxlength="1000" /></label
+            ><label>作者<input name="author" required maxlength="300" /></label
+            ><label
+              >网站描述<textarea name="description" maxlength="2000" rows="3"></textarea>
+            </label>
+            <details class="settings-details">
+              <summary>外观与关于页面</summary>
+              <label
+                >页脚文字<input
+                  name="footer"
+                  maxlength="2000"
+                  placeholder="留空使用默认页脚" /></label
+              ><label
+                >关于页面<textarea
+                  name="about"
+                  maxlength="100000"
+                  rows="7"
+                  placeholder="用 Markdown 介绍自己；留空关闭关于页面"
+                ></textarea>
+              </label>
+            </details>
+            <details class="settings-details">
+              <summary>访问统计（可选）</summary>
+              <p class="muted">
+                默认关闭。填写 Microsoft Clarity 项目 ID 后，发布网站信息以启用统计。
+              </p>
+              <label
+                >Clarity 项目 ID<input
+                  name="clarityId"
+                  maxlength="64"
+                  pattern="[A-Za-z0-9]*"
+                  placeholder="留空关闭统计"
+              /></label>
+            </details>
+            <div class="form-actions">
+              <button>保存网站信息</button
+              ><button type="button" id="publish-settings" class="primary">发布网站信息</button>
+            </div>
+          </form>
+          <form id="deployment-form" class="settings-card">
+            <h3>发布连接</h3>
+            <p id="deployment-state" class="muted"></p>
+            <details id="deployment-help">
+              <summary>首次设置步骤</summary>
+              <ol>
+                <li>
+                  在 Cloudflare 打开 Workers & Pages →
+                  <code id="site-worker-name">博客 Worker</code>。
+                </li>
+                <li>进入 Settings → Builds → Add deploy hook。</li>
+                <li>
+                  名称填 <code>online-admin</code>，分支选择
+                  <code id="production-branch">生产分支</code>。
+                </li>
+                <li>复制生成的链接，粘贴到下方并保存。</li>
+              </ol>
+              <p class="muted">链接只用于触发部署，请在这里输入并妥善保管。</p>
+            </details>
+            <label
+              >Cloudflare Deploy Hook<input
+                name="url"
+                type="password"
+                autocomplete="off"
+                placeholder="https://api.cloudflare.com/client/v4/workers/builds/deploy_hooks/…" /></label
+            ><button>保存发布连接</button>
+          </form>
+          <form id="account-form" class="settings-card" hidden>
+            <h3>登录账号</h3>
+            <p class="muted">修改邮箱或密码需要验证当前密码。修改后，其他设备的登录会失效。</p>
+            <label
+              >登录邮箱<input
+                name="email"
+                type="email"
+                maxlength="254"
+                autocomplete="username"
+                required /></label
+            ><label
+              >当前密码<input
+                name="current_password"
+                type="password"
+                maxlength="128"
+                autocomplete="current-password"
+                required
+            /></label>
+            <div class="settings-columns">
+              <label
+                >新密码（可选）<input
+                  name="password"
+                  type="password"
+                  minlength="12"
+                  maxlength="128"
+                  autocomplete="new-password" /></label
+              ><label
+                >再次输入新密码<input
+                  name="confirm"
+                  type="password"
+                  maxlength="128"
+                  autocomplete="new-password"
+              /></label>
+            </div>
+            <button id="save-account">更新账号</button>
+          </form>
+          <form id="password-form" class="settings-card">
+            <h3>修改登录密码</h3>
+            <label
+              >当前密码<input
+                name="current_password"
+                type="password"
+                autocomplete="current-password"
+                required /></label
+            ><label
+              >新密码<input
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                minlength="12"
+                maxlength="128"
+                required /></label
+            ><label
+              >再次输入新密码<input
+                name="confirm"
+                type="password"
+                autocomplete="new-password"
+                required /></label
+            ><button>更新密码</button>
+            <p class="muted">修改后，其他设备的登录会失效。</p>
+          </form>
+          <section id="backup-card" class="settings-card" hidden>
+            <h3>备份与恢复</h3>
+            <p>
+              下载一份包含网站设置、文章原稿、历史版本和上传图片的 ZIP
+              备份。备份包含未发布的文字，请妥善保存。
+            </p>
+            <div class="form-actions">
+              <button id="download-backup">下载网站备份</button
+              ><button id="restore-backup">从备份恢复</button
+              ><input id="backup-file" type="file" accept=".zip" hidden />
+            </div>
+            <p class="muted">
+              恢复为草稿与待发布设置，不修改登录账号或当前线上版本；检查后再发布。相同内容会跳过，不覆盖已有的不同原稿。
+            </p>
+            <p id="backup-status" role="status" aria-live="polite"></p>
+          </section>
+          <section id="service-card" class="settings-card" hidden>
+            <h3>运行信息</h3>
+            <dl class="service-info">
+              <div>
+                <dt>网站地址</dt>
+                <dd><a id="service-site-link" target="_blank" rel="noopener"></a></dd>
+              </div>
+              <div>
+                <dt>管理方式</dt>
+                <dd>一个 Worker · 一个私有存储桶</dd>
+              </div>
+              <div>
+                <dt>文章发布</dt>
+                <dd>后台生成并发布，无需部署链接</dd>
+              </div>
+            </dl>
+            <p class="muted">
+              自定义域名在 Cloudflare 的 Domains & Routes 中绑定。程序更新由 GitHub 与 Cloudflare
+              Builds 管理，网站设置会保留。
+            </p>
+            <a
+              href="https://github.com/RS-Imagine/cloudink/blob/master/docs/DEPLOYMENT.md"
+              target="_blank"
+              rel="noopener"
+              >查看部署与维护说明 ↗</a
+            >
+          </section>
+        </section>
+      </main>
+    </div>
+    <dialog id="history-dialog">
+      <div class="dialog-heading">
+        <h3>历史版本</h3>
+        <button id="close-history" class="quiet">关闭</button>
+      </div>
+      <p class="muted">恢复后先作为草稿保存，不会直接更新线上文章。</p>
+      <div id="history-list"></div>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

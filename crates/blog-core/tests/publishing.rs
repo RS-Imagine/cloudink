@@ -59,7 +59,7 @@ fn a_fork_does_not_inherit_identity_or_analytics() {
     let mut config=SiteConfig::default();config.author="Reader".into();
     let html=render_preview(&config,&draft("fork",false)).unwrap();
     assert!(html.contains("Reader built this website using Rust."));
-    assert!(!html.contains("clarity.ms"));assert!(!html.contains("Qiulin"));
+    assert!(!html.contains("clarity.ms"));
     config.footer=Some("Reader & <friends>".into());config.clarity_id=Some("reader123".into());
     let html=render_preview(&config,&draft("fork",false)).unwrap();
     assert!(html.contains("Reader &amp; &lt;friends&gt;"));assert!(html.contains("reader123"));

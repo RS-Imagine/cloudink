@@ -1,88 +1,63 @@
-<p align="center">
-  <img src="assets/cloudink.svg" width="112" height="112" alt="CloudInk 云砚项目图标">
-</p>
+<div align="center">
+  <img src="assets/cloudink.svg" width="88" height="88" alt="CloudInk 云砚图标">
+  <h1>CloudInk · 云砚</h1>
+  <p>依托 Cloudflare 的个人博客，在浏览器里完成部署、写作和管理。</p>
+</div>
 
-# CloudInk · 云砚
-
-**云端存稿，静态成页。**
-
-基于 Cloudflare 的个人博客与云端写作空间。只需 GitHub 和 Cloudflare 两个账号，在网页里部署，再到浏览器后台写作、上传图片和发布文章。
-
-CloudInk — a personal blog and cloud writing space powered by Cloudflare and Rust.
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/RS-Imagine/cloudink)
+CloudInk 使用一个 Worker 和一个私有 R2 存储桶，提供博客、管理后台、图片与文章发布。只需 GitHub 和 Cloudflare 账号，无需本地克隆、编辑 JSON 或安装开发工具；自己的域名可选。
 
 ## 三步开始
 
-1. 点击上面的部署按钮，登录 GitHub 和 Cloudflare；按提示启用 R2。
-2. 填 `OWNER_EMAIL`（后台邮箱）和 `INITIAL_PASSWORD`（12–128 字符的 Secret）。其他保持默认，点击部署。
-3. 打开部署得到的 `workers.dev` 地址，进入 **`/admin`**，用刚填的邮箱和密码登录。设置网站信息，就可以写作和发布了。
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/RS-Imagine/cloudink)
 
-Cloudflare 自动复制仓库、创建一个 Worker 和两个私有 R2 桶，并连接代码自动部署。无需本地克隆、编辑 JSON、安装工具、设置构建令牌或 Deploy Hook；自己的域名可选。详细说明见 **[网页部署教程](docs/DEPLOYMENT.md)**，已有三个 Worker 的站点继续使用 [进阶部署与维护教程](docs/ADVANCED_DEPLOYMENT.md)。
+1. **点击部署**：授权 GitHub 与 Cloudflare，自动创建 Worker、存储桶和构建连接。
+2. **填一个初始化口令**：`SETUP_TOKEN`，自选 16–128 字符，保存为 Cloudflare Secret。
+3. **打开 `/admin`**：在首次设置向导填写口令、登录邮箱、登录密码和博客名称。向导创建唯一账号，并生成博客首页。
 
-## 日常写作
+以后通过后台管理网站设置、文章、图片、账号和备份。邮箱只是登录账号，不需要接入邮件服务。完整步骤与故障处理见 [部署教程](docs/DEPLOYMENT.md)。
 
-- 只有唯一作者账号，没有公开注册。
-- 文章原稿、草稿、历史和发布快照保存到私有 R2，GitHub 只保存项目代码。
-- 支持自动保存、Ctrl/Cmd + S、Markdown 导入、图片拖放和粘贴。
-- Rust 与浏览器 WASM 共用排版引擎，支持数学公式、代码高亮、搜索和图片预览。
-- 保存与发布分开；点击“发布这篇”只更新选中的文章，其他草稿保留。
-- 标题、副标题、作者和描述在后台设置。项目名 CloudInk 不限制你的博客名称。
+## 写作与设置
 
-默认单 Worker 模式在浏览器中生成静态页面，上传完整后一次切换线上版本。**发布时保持后台页面打开并联网，直到显示“最新发布已上线”。** 失败或取消时保留原稿及上次成功版本；关闭浏览器后可在后台取消未完成的任务并重新发布。
+- Markdown 在线编辑、自动保存、导入原稿、图片拖放与粘贴。
+- Rust / WASM 共用排版引擎，支持数学公式、代码高亮、搜索、主题切换和图片预览。
+- 草稿保存与发布分开，发布一篇文章不会连带发布其他草稿。
+- 标题、副标题、作者、页脚、关于页面和可选 Clarity 统计均在后台配置。
+- 登录邮箱、密码在后台修改，更新后其他设备的登录失效。
+- 网站备份 ZIP 包含设置、原稿、历史和上传图片；恢复为草稿与待发布设置，检查后再发布。
 
-导出全部原稿可下载 ZIP；图片另外在 R2 中备份。恢复历史版本只保存为草稿，点击发布后才上线。取消发布会保留原稿和历史。
+发布由浏览器生成页面并上传，全部完成后切换线上版本。**发布、首次生成首页或备份恢复期间，请保持后台打开并联网，直到显示完成。** 失败时原稿与上次成功的线上版本保留，可取消未完成的发布后重试。
 
-## 配置与代码更新
+## 配置放在哪里
 
-| 配置 | 位置 |
-| --- | --- |
-| 作者登录邮箱、初始密码 | Cloudflare Worker Secrets |
-| 博客标题、作者、文章、草稿、历史 | 私有 R2，通过后台修改 |
-| 程序、模板、默认图标 | GitHub 仓库 |
+| 内容                       | 管理位置                                      |
+| -------------------------- | --------------------------------------------- |
+| 初始化口令                 | Cloudflare Secret，仅在账户不存在时用于初始化 |
+| 博客信息、文章、图片、账户 | 私有 R2，通过网站后台管理                     |
+| 默认模板、程序、项目图标   | GitHub 项目代码                               |
+| 自定义域名、计费与平台权限 | Cloudflare 控制台                             |
 
-向自己的 GitHub 仓库生产分支提交或合并代码，Workers Builds 自动更新同一个 Worker，运行时变量、Secret 和 R2 内容保留。部署按钮创建的仓库副本不会自动同步上游；Fork 用户可以先用 GitHub Sync fork 合并更新。后台、样式、脚本和图标随部署更新；已有文章 HTML 在下次发布时重新生成，发布一次网站信息即可刷新全部已发布页面。
+存储桶保持私有，网站通过 Worker 公开已发布页面和允许访问的图片。无需 S3 访问密钥、构建令牌、Deploy Hook 或手动上传初始文章。后台不会要求拥有 Cloudflare 账号管理权限的 API Token。
 
-已有三 Worker 部署的 `BLOG_DEPLOY_CONFIG_JSON` / 私有 `deployment.json` 仍受支持，会选择原有构建和发布流程，保留站点部署参数、账号及内容。代码更新不会自动迁移现有站点。实际个人配置、密钥和本地内容默认不提交 Git；访问统计默认关闭。
+## 程序更新与数据保留
 
-## 项目结构
+Cloudflare Workers Builds 连接自己的 GitHub 仓库；提交或合并代码到生产分支后自动更新 Worker。博客设置、账户和文章保存在 R2，正常代码更新不重新初始化或覆盖这些数据。
 
-| 目录 | 用途 |
-| --- | --- |
-| `cloud-web` | 默认单 Worker：博客、`/admin` 后台、图片路由 |
-| `crates/blog-core` | Markdown、公式、模板与静态生成 |
-| `crates/blog-wasm` | 浏览器预览、导入与完整网站生成 |
-| `crates/sitegen` | 原有原生静态构建命令 |
-| `cloud-admin` | 登录、在线编辑、私有 R2、上传与发布 API |
-| `cloud-images` | 图片响应与来源检查，可独立部署 |
-| `scripts` | 构建、类型生成、部署与进阶配置 |
-| `crates/admin` | 原有本机 Axum 后台 |
-| `assets/cloudink.svg` | 云朵与笔尖留白的单色 SVG 项目图标及 favicon |
+部署按钮创建的仓库副本不会自动同步上游；Fork 可通过 GitHub Sync fork 更新，独立副本需要合并所需上游变更。后台、样式和公共脚本随部署更新；已发布文章 HTML 在下次发布时重新生成，可在后台发布一次网站信息来更新全部已发布页面。
 
-## 开发与验证
+**旧部署不会自动迁移。** 三 Worker 配置与构建流程仍兼容，维护说明见 [进阶文档](docs/ADVANCED_DEPLOYMENT.md)。已有双桶单 Worker 部署需要另行规划存储绑定与账号初始化方式的迁移，不能直接替换为新的单桶根配置。
 
-以下工具仅供开发者使用，网页部署无需安装。需要 Node.js 22+、Rust 1.98.1 和 Chromium；构建脚本会准备 WASM 工具与目标。
+## 开发与项目结构
 
-```bash
-npm ci
-npm run build:web
-npm run types
-npx wrangler deploy --dry-run --outdir cloud-web/dist
-npm --prefix cloud-admin run build
-npm --prefix cloud-admin run check
-npm --prefix cloud-admin test
-npm test
-cargo test --workspace
-npm run test:web:browser
-npm --prefix cloud-admin run test:browser
-```
+| 路径                                    | 用途                                     |
+| --------------------------------------- | ---------------------------------------- |
+| `cloud-web`                             | 默认单 Worker：博客、后台、图片访问      |
+| `cloud-admin/src`                       | 初始化、认证、编辑、设置、备份与发布 API |
+| `cloud-admin/ui`                        | 首次设置向导、写作界面与网站设置         |
+| `crates/blog-core` / `crates/blog-wasm` | Rust 渲染核心与浏览器 WASM               |
+| `cloud-images`                          | 通用图片响应与旧部署兼容服务             |
+| `scripts`                               | 构建、类型生成、通用部署与兼容配置       |
+| `assets/cloudink.svg`                   | 单色云朵与笔尖项目图标                   |
 
-测试只使用本地临时 R2，不访问生产文章。可用 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定现有 Chromium。单 Worker 本地预览：复制根目录 `.dev.vars.example` 为 `.dev.vars`，填写本地测试邮箱和密码后运行 `npx wrangler dev`。
+开发命令、存储结构和检查流程见 [开发说明](docs/DEVELOPMENT.md)。仓库只保存项目代码、通用模板、测试和文档；实际部署配置、个人文章、密钥及构建产物均不提交。
 
-本地文件构建仍可用 `cargo run -p sitegen -- build`，输入默认 `content/`、输出默认 `public/`；也可用 `BLOG_CONTENT_ROOT` / `BLOG_OUTPUT_ROOT` 指定。
-
-## 数据与限制
-
-内容桶和图片桶保持私有；公开路由只读取已完成发布的页面。多窗口通过 R2 ETag 检查版本，发生冲突时先下载原稿。后台预览使用登录保护的图片接口；公开图片的来源检查属于防盗链措施，并非登录权限。
-
-图片支持 JPEG、PNG、WebP、GIF、AVIF，单张最多 10 MB。单页上传最多 8 MB，发布内容与生成网页各最多 16 MB、最多 750 个生成文件。默认模式的公开请求与发布消耗 Worker、R2 额度，费用及故障处理见 [部署教程](docs/DEPLOYMENT.md)。
+图片支持 JPEG、PNG、WebP、GIF、AVIF，单张最多 10 MB。发布内容与生成网页各最多 16 MB、最多 750 个生成文件。网页备份支持最多 8 MB 原稿与历史、100 MB 文字及图片数据；更大的站点通过 Cloudflare R2 备份。资源使用超出免费额度时按 Cloudflare 定价计费，详见部署教程。
