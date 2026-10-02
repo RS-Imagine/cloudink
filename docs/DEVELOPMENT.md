@@ -16,7 +16,7 @@ npm --prefix cloud-admin run build
 
 根目录 `.dev.vars.example` 复制为 `.dev.vars`，填写本地测试用 `SETUP_TOKEN`，然后运行 `npx wrangler dev`，访问显示地址的 `/admin`。Wrangler 默认使用本地存储；开发过程中不要添加生产远程桶绑定。
 
-`build:web` 始终构建通用模板，不读取个人部署配置或文章。`build` / `deploy` 为兼容已有三 Worker 部署，存在显式旧部署配置时选择旧流程，否则使用默认单 Worker。类型由 Wrangler 生成，不提交生成文件。
+`build:web` 始终构建通用模板，不读取个人部署配置或文章。`build` / `deploy` 为兼容已有三 Worker 部署，存在显式旧部署配置时选择旧流程，否则使用默认单 Worker。类型由 Wrangler 生成，不提交生成文件。兼容后台通过已提交的 `.dev.vars.example` 占位示例声明密钥名称，类型检查无需私人 `.dev.vars` 文件或生产凭据。
 
 ## 代码边界
 
