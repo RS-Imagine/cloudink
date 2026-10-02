@@ -1,0 +1,12 @@
+node_modules/
+**/node_modules/
+worker-configuration.d.ts
+**/worker-configuration.d.ts
+cloud-admin/src/assets.generated.ts
+cloud-admin/ui/*.generated.js
+cloud-admin/ui/wasm/
+**/dist/
+build-work/
+.deploy/
+content/
+public/

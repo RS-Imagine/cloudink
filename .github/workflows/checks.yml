@@ -1,0 +1,44 @@
+name: Project checks
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cloud-admin/package-lock.json
+      - name: Install project tools
+        run: npm ci
+      - name: Check source formatting
+        run: npm run format:check
+      - name: Build the browser deployment
+        run: npm run build
+      - name: Generate binding types and check TypeScript
+        run: npm run check
+      - name: Bundle the Worker without deploying
+        run: |
+          npx wrangler deploy --dry-run --outdir cloud-web/dist
+      - name: Run storage, authentication and publication tests
+        run: |
+          npm test
+          cargo test --workspace --locked
+      - name: Install Chromium
+        working-directory: cloud-admin
+        run: npx playwright install --with-deps chromium
+      - name: Verify onboarding and editor flows in Chromium
+        run: |
+          npm run test:web:browser

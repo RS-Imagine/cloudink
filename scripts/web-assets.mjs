@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { build } from '../cloud-admin/node_modules/esbuild/lib/main.js';
-import { root } from './deployment-config.mjs';
+import { root } from './commands.mjs';
 const content = resolve(root, 'build-work/web-content');
 const output = resolve(root, 'build-work/web-public');
 if (process.argv[2] === 'seed') {

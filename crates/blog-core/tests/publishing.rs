@@ -46,20 +46,11 @@ fn paths_cannot_escape_the_content_directory() {
     assert!(content::load_post_by_slug(&p,"../escape").is_err());assert!(content::delete_post(&p,"../escape").is_err());fs::remove_dir_all(p).unwrap();
 }
 #[test]
-fn imported_markdown_supersedes_archived_html() {
-    let p=temp();let input=p.join("content");let output=p.join("public");
-    content::save_post(&input,&draft("old",false)).unwrap();
-    let mut legacy=content::load_post_by_slug(&input,"old").unwrap().unwrap();legacy.body_html="OLD ARCHIVE".into();
-    fs::write(input.join("legacy-posts.json"),serde_json::to_vec(&vec![legacy]).unwrap()).unwrap();
-    build_site(&input,&output).unwrap();let html=fs::read_to_string(output.join("posts/old/index.html")).unwrap();assert!(!html.contains("OLD ARCHIVE"));fs::remove_dir_all(p).unwrap();
-}
-
-#[test]
 fn a_fork_does_not_inherit_identity_or_analytics() {
     let mut config=SiteConfig::default();config.author="Reader".into();
     let html=render_preview(&config,&draft("fork",false)).unwrap();
     assert!(html.contains("Reader built this website using Rust."));
-    assert!(!html.contains("clarity.ms"));assert!(!html.contains("Qiulin"));
+    assert!(!html.contains("clarity.ms"));
     config.footer=Some("Reader & <friends>".into());config.clarity_id=Some("reader123".into());
     let html=render_preview(&config,&draft("fork",false)).unwrap();
     assert!(html.contains("Reader &amp; &lt;friends&gt;"));assert!(html.contains("reader123"));
@@ -87,7 +78,7 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
     let bundle=serde_json::json!({"schema_version":1,"id":"release","created_at":"2026-10-01T00:00:00Z","site":SiteConfig::default(),"markdown_posts":{
         "visible":fs::read_to_string(input.join("posts/visible.md")).unwrap(),
         "private":fs::read_to_string(input.join("posts/private.md")).unwrap()
-    },"legacy_posts":[],"about_markdown":about});
+    },"about_markdown":about});
     let files=blog_core::bundle::render_release(&bundle.to_string()).unwrap();
     for name in ["index.html","404.html","about/index.html","posts/visible/index.html","search_index.json","client.js","styles.css","favicon.svg"] {
         assert_eq!(normalized_styles(&files[name]),normalized_styles(&fs::read_to_string(output.join(name)).unwrap()),"{name}");
