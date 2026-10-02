@@ -142,15 +142,13 @@ try {
   await sleep(6500);
   assert.equal(counts.poll, polls, 'Idle editor must not poll publication status');
   // Import parsing also runs in the preview worker.
-  await page
-    .locator('#import-files')
-    .setInputFiles({
-      name: 'import.md',
-      mimeType: 'text/markdown',
-      buffer: Buffer.from(
-        '+++\ntitle = "Imported"\nslug = "imported"\ndate = "2026-10-01"\ndescription = ""\ndraft = true\n+++\n\nOriginal source',
-      ),
-    });
+  await page.locator('#import-files').setInputFiles({
+    name: 'import.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from(
+      '+++\ntitle = "Imported"\nslug = "imported"\ndate = "2026-10-01"\ndescription = ""\ndraft = true\n+++\n\nOriginal source',
+    ),
+  });
   await expect(page.locator('#notice')).toContainText('已导入 1 篇');
   // A failed save must retain text and offer a visible error; never navigate away.
   await page.route('**/api/posts/beta', async (route) => {
