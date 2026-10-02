@@ -10,16 +10,18 @@ export interface ImageReference {
   title: string;
   slug?: string;
 }
-export function managedImageKeys(source: string): string[] {
-  // Conservative matching also protects raw HTML and reference-style Markdown,
-  // absolute site URLs, encoded paths, and literal mentions of a stored key.
-  const normalized = source
+function normalizePaths(source: string): string {
+  return source
     .replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&#(x[0-9a-f]+|[0-9]+);/gi, (_, code: string) => {
       const value = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
       return value > 0 && value < 128 ? String.fromCharCode(value) : '';
     })
     .replace(/&sol;/g, '/');
+}
+export function managedImageKeys(source: string): string[] {
+  // Conservatively protect literal mentions as well as rendered references.
+  const normalized = normalizePaths(source);
   const matches =
     normalized.match(/uploads\/[A-Za-z0-9_./-]+\.(?:jpeg|jpg|png|webp|gif|avif)\b/g) || [];
   return [...new Set(matches.filter(validImageKey))];
@@ -29,13 +31,46 @@ export function imageReferenceMetadata(source: string): Record<string, string> {
   // Metadata is bounded; oversized reference sets are checked from the source.
   return new TextEncoder().encode(value).byteLength <= 600 ? { image_refs: value } : {};
 }
+function localImageKeys(source: string, origin: string): string[] {
+  // Validation applies to image URLs, not examples of bucket keys in prose or
+  // code. External image hosts remain supported. Cleanup matching is broader.
+  const text = normalizePaths(source)
+    .replace(/^\+\+\+[\s\S]*?\r?\n\+\+\+\r?\n/, '')
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`/g, '');
+  const urls: string[] = [];
+  for (const match of text.matchAll(/!\[[^\]]*\]\(\s*(?:<([^>]+)>|([^\s)]+))/g))
+    urls.push(match[1] || match[2]);
+  for (const match of text.matchAll(/^\s*\[[^\]]+\]:\s*(?:<([^>]+)>|([^\s]+))/gm))
+    urls.push(match[1] || match[2]);
+  for (const tag of text.matchAll(/<(?:img|source)\b[^>]*>/gi))
+    for (const match of tag[0].matchAll(
+      /\b(?:src|srcset)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+    ))
+      urls.push(
+        ...(match[1] || match[2] || match[3]).split(',').map((part) => part.trim().split(/\s/)[0]),
+      );
+  const keys = new Set<string>();
+  for (const input of urls) {
+    let url: URL;
+    try {
+      url = new URL(input, origin);
+    } catch {
+      continue;
+    }
+    if (url.origin !== origin || !url.pathname.startsWith('/images/')) continue;
+    const key = url.pathname.slice('/images/'.length);
+    if (validImageKey(key)) keys.add(key);
+  }
+  return [...keys];
+}
 export async function ensureManagedImages(
   storage: R2Bucket,
   source: string | Iterable<string>,
+  origin: string,
 ): Promise<void> {
   const needed = new Set<string>();
   for (const text of typeof source === 'string' ? [source] : source)
-    for (const key of managedImageKeys(text)) needed.add(key);
+    for (const key of localImageKeys(text, origin)) needed.add(key);
   if (!needed.size) return;
   let cursor: string | undefined;
   do {

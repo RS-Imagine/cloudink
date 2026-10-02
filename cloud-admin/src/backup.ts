@@ -149,11 +149,11 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
-  await ensureManagedImages(env.STORAGE, [
-    JSON.stringify(site),
-    ...drafts.values(),
-    ...histories.values(),
-  ]);
+  await ensureManagedImages(
+    env.STORAGE,
+    [site.about || '', ...drafts.values(), ...histories.values()],
+    new URL(request.url).origin,
+  );
   const oldSettings = await env.STORAGE.get('draft-site.json');
   if (oldSettings && input.settings_etag !== oldSettings.etag)
     throw new HttpError(409, '网站设置已变化，请重新打开设置后恢复。');

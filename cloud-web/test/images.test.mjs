@@ -167,3 +167,33 @@ test('incomplete reference checks allow browsing but never allow deletion', asyn
   assert.equal((await f.request('/api/images', 'DELETE', page.images[0])).status, 413);
   assert.ok(await bucket.head('uploads/unused.png'));
 });
+
+test('external image links and code examples remain writable while missing local image URLs are rejected', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const body =
+    '![External](https://photos.example.org/images/uploads/example.png)\n\nCode: `uploads/not-stored.png` and `/images/uploads/example.png`';
+  const saved = await f.request('/api/posts/external', 'PUT', {
+    draft: draft('external', body),
+    etag: null,
+  });
+  assert.equal(saved.status, 200, await saved.clone().text());
+  assert.equal(
+    (
+      await f.request('/api/posts/html', 'PUT', {
+        draft: draft('html', '<img src="/images/uploads/missing.png">'),
+        etag: null,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await f.request('/api/posts/reference', 'PUT', {
+        draft: draft('reference', '![photo][picture]\n\n[picture]: /images/uploads/missing.png'),
+        etag: null,
+      })
+    ).status,
+    400,
+  );
+});

@@ -63,7 +63,7 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     source = serializeDraft(draft);
   }
   if (draft.front_matter.slug !== slug) throw new HttpError(400, '文章地址与保存地址不一致。');
-  await ensureManagedImages(env.STORAGE, source);
+  await ensureManagedImages(env.STORAGE, source, new URL(request.url).origin);
   const existing = await env.STORAGE.head(`drafts/${slug}.md`);
   if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
@@ -250,7 +250,7 @@ async function apiRoute(
     const data = await jsonInput(request, 500_000),
       site = validateSite(data.site),
       old = await env.STORAGE.head('draft-site.json');
-    await ensureManagedImages(env.STORAGE, JSON.stringify(site));
+    await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
