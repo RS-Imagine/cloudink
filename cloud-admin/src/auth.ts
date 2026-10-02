@@ -7,7 +7,7 @@ interface Account {
   salt: string;
   hash: string;
   version: string;
-  initialSite?: SiteConfig;
+  initialSite: SiteConfig;
 }
 export interface Session {
   csrf: string;
@@ -15,8 +15,7 @@ export interface Session {
   version: string;
   email?: string;
 }
-// Keep the cookie name stable for existing deployments.
-const COOKIE = '__Host-rblog_session';
+const COOKIE = '__Host-cloudink_session';
 const encoder = new TextEncoder();
 export function randomToken(): string {
   return hex(crypto.getRandomValues(new Uint8Array(32)));
@@ -83,8 +82,8 @@ export async function requireSession(request: Request, env: CloudInkEnv): Promis
   const token = cookieToken(request);
   if (!/^[a-f0-9]{64}$/.test(token)) throw new HttpError(401, '请先登录。');
   const [session, account] = await Promise.all([
-    readJson<Session>(env.CONTENT, `auth/sessions/${await digest(token)}`),
-    readJson<Account>(env.CONTENT, 'auth/account.json'),
+    readJson<Session>(env.STORAGE, `auth/sessions/${await digest(token)}`),
+    readJson<Account>(env.STORAGE, 'auth/account.json'),
   ]);
   if (!session || !account || session.expires < Date.now() || session.version !== account.version)
     throw new HttpError(401, '登录已过期，请重新登录。');
@@ -102,7 +101,7 @@ async function loginResponse(env: CloudInkEnv, account: Account): Promise<Respon
     expires: Date.now() + 7 * 86400_000,
     version: account.version,
   };
-  await env.CONTENT.put(`auth/sessions/${await digest(token)}`, JSON.stringify(session));
+  await env.STORAGE.put(`auth/sessions/${await digest(token)}`, JSON.stringify(session));
   return json({ email: account.email, csrf: session.csrf }, 200, {
     'Set-Cookie': cookie(token, 7 * 86400),
   });
@@ -123,13 +122,10 @@ export async function authRoute(
     });
     if (!limit.success) throw new HttpError(429, '尝试次数过多，请一分钟后再试。');
     const data = await jsonInput(request, 16384);
-    const account = await readJson<Account>(env.CONTENT, 'auth/account.json');
+    const account = await readJson<Account>(env.STORAGE, 'auth/account.json');
     if (path === '/api/setup') {
       if (account) throw new HttpError(409, '后台已经初始化，请使用登录页面。');
-      if (
-        env.browserPublishing &&
-        (!env.SETUP_TOKEN || env.SETUP_TOKEN.length < 16 || env.SETUP_TOKEN.length > 128)
-      )
+      if (!env.SETUP_TOKEN || env.SETUP_TOKEN.length < 16 || env.SETUP_TOKEN.length > 128)
         throw new HttpError(
           503,
           '请在 Cloudflare 设置 16–128 个字符的 SETUP_TOKEN Secret，再打开初始化页面。',
@@ -139,10 +135,10 @@ export async function authRoute(
         !(await sameSecret(request.headers.get('Authorization') || '', `Bearer ${env.SETUP_TOKEN}`))
       )
         throw new HttpError(403, '初始化口令不正确。');
-      const email = env.browserPublishing ? emailInput(data.email) : env.OWNER_EMAIL.toLowerCase();
+      const email = emailInput(data.email);
       const password = passwordInput(data.password),
         salt = randomToken();
-      const initialSite = env.browserPublishing ? validateSite(data.site) : undefined;
+      const initialSite = validateSite(data.site);
       // Store the initial site with the account: interrupted setup can be resumed
       // by a normal login without reopening setup or resetting the password.
       const created: Account = {
@@ -150,13 +146,13 @@ export async function authRoute(
         salt,
         hash: await passwordHash(password, salt),
         version: randomToken(),
-        ...(initialSite ? { initialSite } : {}),
+        initialSite,
       };
-      const saved = await env.CONTENT.put('auth/account.json', JSON.stringify(created), {
+      const saved = await env.STORAGE.put('auth/account.json', JSON.stringify(created), {
         onlyIf: { etagDoesNotMatch: '*' },
       });
       if (!saved) throw new HttpError(409, '后台已经初始化，请使用登录页面。');
-      if (env.browserPublishing) await initializeBrowserContent(env, initialSite);
+      await initializeBrowserContent(env, initialSite);
       return loginResponse(env, created);
     }
     const email = typeof data.email === 'string' ? data.email.trim().toLowerCase() : '';
@@ -164,24 +160,20 @@ export async function authRoute(
     if (password.length > 128) throw new HttpError(401, '邮箱或密码不正确。');
     // Hash even nonexistent accounts to avoid a cheap account-enumeration path.
     const hash = await passwordHash(password, account?.salt || 'uninitialized-cloudink');
-    const expectedEmail = env.browserPublishing ? account?.email : env.OWNER_EMAIL.toLowerCase();
-    if (!account || email !== expectedEmail || !(await sameSecret(hash, account.hash)))
+    if (!account || email !== account.email || !(await sameSecret(hash, account.hash)))
       throw new HttpError(401, '邮箱或密码不正确，或后台尚未初始化。');
-    if (env.browserPublishing) await initializeBrowserContent(env, account.initialSite);
+    await initializeBrowserContent(env, account.initialSite);
     return loginResponse(env, account);
   }
   if (path === '/api/logout' && request.method === 'POST') {
     await requireSession(request, env);
-    await env.CONTENT.delete(`auth/sessions/${await digest(cookieToken(request))}`);
+    await env.STORAGE.delete(`auth/sessions/${await digest(cookieToken(request))}`);
     return json({ ok: true }, 200, { 'Set-Cookie': cookie('', 0) });
   }
-  if (
-    (path === '/api/password' && request.method === 'POST') ||
-    (path === '/api/account' && request.method === 'PUT' && env.browserPublishing)
-  ) {
+  if (path === '/api/account' && request.method === 'PUT') {
     await requireSession(request, env);
     const data = await jsonInput(request, 4096),
-      object = await env.CONTENT.get('auth/account.json');
+      object = await env.STORAGE.get('auth/account.json');
     if (!object) throw new HttpError(401, '请重新登录。');
     const account = await object.json<Account>();
     if (
@@ -193,18 +185,18 @@ export async function authRoute(
     const salt = randomToken();
     const updated: Account = {
       ...account,
-      email: path === '/api/account' ? emailInput(data.email) : account.email,
+      email: emailInput(data.email),
       version: randomToken(),
     };
-    if (path === '/api/password' || data.password) {
+    if (data.password) {
       updated.salt = salt;
       updated.hash = await passwordHash(passwordInput(data.password), salt);
     }
-    const saved = await env.CONTENT.put('auth/account.json', JSON.stringify(updated), {
+    const saved = await env.STORAGE.put('auth/account.json', JSON.stringify(updated), {
       onlyIf: { etagMatches: object.etag },
     });
     if (!saved) throw new HttpError(409, '账户刚刚发生了修改，请重新登录。');
-    await env.CONTENT.delete(`auth/sessions/${await digest(cookieToken(request))}`);
+    await env.STORAGE.delete(`auth/sessions/${await digest(cookieToken(request))}`);
     return loginResponse(env, updated);
   }
   return null;

@@ -19,10 +19,11 @@ test('authorized setup initializes one account and empty private content; existi
   assert.equal((await f.request('/api/posts')).status, 200);
   const fresh = await (await f.request('/api/posts')).json();
   assert.equal(fresh.posts.length, 0);
-  assert.deepEqual(fresh.deployment, { configured: true, managed: true });
+  assert.equal(Object.hasOwn(fresh, 'deployment'), false);
   assert.equal(
     (
-      await f.request('/api/password', 'POST', {
+      await f.request('/api/account', 'PUT', {
+        email: owner,
         current_password: password,
         password: 'replacement-password-private',
       })

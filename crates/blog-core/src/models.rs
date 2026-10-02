@@ -18,7 +18,7 @@ pub struct SiteConfig {
     pub footer: Option<String>,
     #[serde(rename = "clarityId", default)]
     pub clarity_id: Option<String>,
-    /// Managed About page; absent keeps the original file-based navigation.
+    /// About page Markdown; an empty value disables its navigation entry.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
 }

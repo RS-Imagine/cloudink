@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
-import { root } from './deployment-config.mjs';
+import { fileURLToPath } from 'node:url';
+export const root = fileURLToPath(new URL('../', import.meta.url));
 export const wrangler = resolve(root, 'node_modules/wrangler/bin/wrangler.js');
 export async function command(file, args, options = {}) {
   await new Promise((accept, reject) => {

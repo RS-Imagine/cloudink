@@ -53,7 +53,7 @@ function sourceSlug(key: string): string | null {
 }
 async function createBackup(env: CloudInkEnv): Promise<Backup> {
   const release = await currentRelease(env);
-  const settings = await env.CONTENT.get('draft-site.json');
+  const settings = await env.STORAGE.get('draft-site.json');
   const site = settings ? validateSite(await settings.json()) : release.site;
   const files: Record<string, string> = {};
   let textBytes = 0;
@@ -66,17 +66,17 @@ async function createBackup(env: CloudInkEnv): Promise<Backup> {
   for (const [slug, source] of Object.entries(release.markdown_posts))
     add(`published/${slug}.md`, source);
   for (const prefix of ['drafts/', 'history/']) {
-    for (const object of await objects(env.CONTENT, prefix)) {
+    for (const object of await objects(env.STORAGE, prefix)) {
       if (object.customMetadata?.deleted) continue;
       if (textBytes + object.size > MAX_TEXT)
         throw new HttpError(413, '文字与历史超过网页备份限制，请通过 Cloudflare R2 备份。');
-      const value = await env.CONTENT.get(object.key);
+      const value = await env.STORAGE.get(object.key);
       if (value) add(object.key, await value.text());
     }
   }
   const images: BackupImage[] = [];
   let imageBytes = 0;
-  for (const object of await objects(env.IMAGES, 'uploads/')) {
+  for (const object of await objects(env.STORAGE, 'uploads/')) {
     if (!validImageKey(object.key)) continue;
     imageBytes += object.size;
     if (object.size > MAX_IMAGE || textBytes + imageBytes > MAX_BACKUP)
@@ -144,17 +144,17 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       throw new HttpError(400, '备份图片信息不正确。');
     total += raw.size;
     if (total > MAX_BACKUP) throw new HttpError(413, '备份图片超过 100 MB。');
-    const object = await env.IMAGES.head(raw.key);
+    const object = await env.STORAGE.head(raw.key);
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
-  const oldSettings = await env.CONTENT.get('draft-site.json');
+  const oldSettings = await env.STORAGE.get('draft-site.json');
   if (oldSettings && input.settings_etag !== oldSettings.etag)
     throw new HttpError(409, '网站设置已变化，请重新打开设置后恢复。');
   const writes = new Map<string, string>(histories);
   for (const [slug, source] of drafts) writes.set(`drafts/${slug}.md`, source);
   for (const [key, source] of writes) {
-    const existing = await env.CONTENT.get(key);
+    const existing = await env.STORAGE.get(key);
     if (existing && (await existing.text()) !== source)
       throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
   }
@@ -162,7 +162,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   for (const [key, source] of writes) {
     const draft = parseSource(source),
       matter = draft.front_matter;
-    const saved = await env.CONTENT.put(key, source, {
+    const saved = await env.STORAGE.put(key, source, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       ...(key.startsWith('drafts/')
@@ -186,12 +186,12 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     });
     if (saved) restored++;
     else {
-      const current = await env.CONTENT.get(key);
+      const current = await env.STORAGE.get(key);
       if (!current || (await current.text()) !== source)
         throw new HttpError(409, '另一窗口修改了原稿。已恢复的内容保留，请检查后重试。');
     }
   }
-  const settings = await env.CONTENT.put('draft-site.json', JSON.stringify(site), {
+  const settings = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
     onlyIf: oldSettings ? { etagMatches: oldSettings.etag } : { etagDoesNotMatch: '*' },
   });
   if (!settings) throw new HttpError(409, '原稿已恢复，但网站设置发生了修改，请检查后重试。');
@@ -208,7 +208,6 @@ export async function backupRoute(
   env: CloudInkEnv,
   path: string,
 ): Promise<Response | null> {
-  if (!env.browserPublishing) return null;
   if (path === '/api/backup' && request.method === 'GET') return json(await createBackup(env));
   if (path === '/api/backup/restore' && request.method === 'POST')
     return restoreBackup(request, env);
@@ -217,12 +216,12 @@ export async function backupRoute(
     if (!validImageKey(key)) throw new HttpError(400, '图片路径不正确。');
     const bytes = new Uint8Array(await limitedBody(request, MAX_IMAGE)),
       type = imageType(bytes);
-    const saved = await env.IMAGES.put(key, bytes, {
+    const saved = await env.STORAGE.put(key, bytes, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
     if (!saved) {
-      const old = await env.IMAGES.get(key);
+      const old = await env.STORAGE.get(key);
       if (
         !old ||
         old.size !== bytes.byteLength ||

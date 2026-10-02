@@ -14,7 +14,6 @@ let csrf = '',
   posts = [],
   site = null,
   doc = null,
-  legacySlug = '',
   dirty = 0,
   savedVersion = 0,
   conflict = false,
@@ -22,8 +21,6 @@ let csrf = '',
   autosaveTimer = null,
   previewTimer = null,
   settingsEtag = null;
-let setupToken = new URLSearchParams(location.hash.slice(1)).get('setup') || '';
-if (setupToken) history.replaceState(null, '', location.pathname);
 const articleCache = new Map(),
   articleRequests = new Map();
 let navigationVersion = 0,
@@ -36,27 +33,14 @@ let navigationVersion = 0,
 let uploading = null;
 const activeActions = new Set();
 let noticeTimer;
-let deploymentConfig;
+let appConfig;
 const configReady = api('/api/config').then((config) => {
-  deploymentConfig = config;
+  appConfig = config;
   configurePreview(config);
   $('site-link').href = config.siteUrl;
-  $('site-worker-name').textContent = config.siteWorkerName;
-  $('production-branch').textContent = config.productionBranch;
-  if (config.setupWizard) {
-    $('deployment-form').hidden = true;
-    $('password-form').hidden = true;
-    for (const id of ['account-form', 'backup-card', 'service-card']) $(id).hidden = false;
-    $('service-site-link').href = config.siteUrl;
-    $('service-site-link').textContent = config.siteUrl;
-    if (!config.initialized) showLogin();
-  } else {
-    document.querySelector('.settings-nav').hidden = true;
-    for (const detail of $('site-form').querySelectorAll('details')) {
-      detail.hidden = true;
-      for (const input of detail.querySelectorAll('input,textarea')) input.disabled = true;
-    }
-  }
+  $('service-site-link').href = config.siteUrl;
+  $('service-site-link').textContent = config.siteUrl;
+  if (!config.initialized) showLogin();
   return config;
 });
 void configReady.catch((error) => {
@@ -128,7 +112,6 @@ function localSaved(draft, result) {
     post = {
       ...draft.front_matter,
       published: !!old?.published,
-      legacy: false,
       has_draft: true,
       changed: true,
       etag: result.etag,
@@ -139,7 +122,6 @@ function localSaved(draft, result) {
     draft: result.draft,
     source: result.source,
     etag: result.etag,
-    legacy: false,
   });
   renderLists();
 }
@@ -180,36 +162,26 @@ async function api(path, options = {}) {
 function showLogin() {
   clearTimeout(autosaveTimer);
   $('app-view').hidden = true;
-  const wizard = deploymentConfig?.setupWizard && !deploymentConfig.initialized;
+  const wizard = appConfig && !appConfig.initialized;
   $('setup-view').hidden = !wizard;
   $('login-view').hidden = wizard;
   csrf = '';
-  if (!setupToken) {
-    $('login-form').elements.email.readOnly = false;
-    $('login-form').elements.email.required = true;
-    $('login-form').elements.email.closest('label').hidden = false;
-    $('confirm-row').hidden = true;
-    $('login-title').textContent = '登录写作空间';
-    $('login-submit').textContent = '登录';
-  }
   articleCache.clear();
   articleRequests.clear();
   disposePreview();
 }
 function view(name) {
-  for (const id of ['home', 'editor', 'legacy', 'settings']) $(`${id}-view`).hidden = id !== name;
+  for (const id of ['home', 'editor', 'settings']) $(`${id}-view`).hidden = id !== name;
   $('workspace-title').textContent = {
     home: '文章管理',
     editor: '写作与预览',
-    legacy: '导入文章原稿',
     settings: '网站设置',
   }[name];
 }
 async function signedIn(session) {
   await configReady;
   csrf = session.csrf;
-  setupToken = '';
-  deploymentConfig.initialized = true;
+  appConfig.initialized = true;
   $('setup-view').hidden = true;
   $('login-view').hidden = true;
   $('app-view').hidden = false;
@@ -221,31 +193,15 @@ async function signedIn(session) {
     void engineTask('warm').catch(() => {});
   });
 }
-if (setupToken) {
-  $('login-title').textContent = '设置你的登录密码';
-  $('login-description').textContent = '为你的写作空间设置一个至少 12 个字符的密码。';
-  $('login-submit').textContent = '设置密码并进入后台';
-  $('confirm-row').hidden = false;
-  $('login-form').elements.email.readOnly = true;
-  $('login-form').elements.email.required = false;
-  $('login-form').elements.email.closest('label').hidden = true;
-  $('login-form').elements.password.autocomplete = 'new-password';
-  $('login-form').elements.password.minLength = 12;
-}
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.currentTarget;
   $('login-error').textContent = '';
-  if (setupToken && form.elements.password.value !== form.elements.confirm.value) {
-    $('login-error').textContent = '两次输入的密码不一致。';
-    return;
-  }
   $('login-submit').disabled = true;
   try {
     await signedIn(
-      await api(setupToken ? '/api/setup' : '/api/login', {
+      await api('/api/login', {
         method: 'POST',
-        headers: setupToken ? { Authorization: `Bearer ${setupToken}` } : {},
         body: { email: form.elements.email.value, password: form.elements.password.value },
       }),
     );
@@ -256,10 +212,9 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-submit').disabled = false;
   }
 });
-if (!setupToken)
-  api('/api/session')
-    .then(signedIn)
-    .catch(() => {});
+api('/api/session')
+  .then(signedIn)
+  .catch(() => {});
 
 function setupStep(siteStep) {
   $('setup-account-step').hidden = siteStep;
@@ -316,7 +271,7 @@ $('setup-form').addEventListener('submit', async (event) => {
     } catch (error) {
       $('setup-error').textContent = error.message;
       if (error.status === 409) {
-        deploymentConfig.initialized = true;
+        appConfig.initialized = true;
         showLogin();
         $('login-error').textContent = '账号已经创建，请使用设置的邮箱和密码登录。';
       }
@@ -329,13 +284,7 @@ $('publish-welcome').addEventListener('click', () =>
 );
 
 function badge(post) {
-  return post.legacy
-    ? '待导入原稿'
-    : post.published
-      ? post.changed
-        ? '有未发布修改'
-        : '已发布'
-      : '草稿';
+  return post.published ? (post.changed ? '有未发布修改' : '已发布') : '草稿';
 }
 function renderLists() {
   const query = $('search').value.trim().toLowerCase();
@@ -364,8 +313,7 @@ function renderLists() {
     const card = document.createElement('button');
     card.className = 'article-card';
     const tag = document.createElement('span');
-    tag.className =
-      'badge' + (post.legacy ? ' legacy' : post.changed || !post.published ? ' draft' : '');
+    tag.className = 'badge' + (post.changed || !post.published ? ' draft' : '');
     tag.textContent = badge(post);
     const h = document.createElement('h3');
     h.textContent = post.title;
@@ -388,31 +336,18 @@ function renderLists() {
     $('article-grid').append(empty);
   }
 }
-function showDeployment(deployment) {
-  $('deployment-state').textContent = deployment.managed
-    ? '发布服务已连接，可以直接发布文章。'
-    : deployment.configured
-      ? '发布连接已配置，可随时替换。'
-      : '尚未连接发布服务，请完成首次设置。';
-  $('deployment-help').hidden = !!deployment.managed;
-  $('deployment-help').open = !deployment.configured;
-  for (const element of $('deployment-form').querySelectorAll('label,button'))
-    element.hidden = !!deployment.managed;
-}
 async function refresh() {
   const data = await api('/api/posts');
   posts = data.posts;
-  $('publish-welcome').hidden = !deploymentConfig.setupWizard || data.publicInitialized;
-  site = { ...data.site, ...deploymentConfig.appearance };
+  $('publish-welcome').hidden = data.publicInitialized;
+  site = data.site;
   $('site-brand-title').textContent = data.site.title;
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
-    if (!post || (post.etag && post.etag !== cached.etag) || post.legacy !== cached.legacy)
-      articleCache.delete(slug);
+    if (!post || (post.etag && post.etag !== cached.etag)) articleCache.delete(slug);
   }
   renderLists();
   showPublishing(data.publishing);
-  showDeployment(data.deployment);
 }
 function currentDraft() {
   return {
@@ -558,14 +493,7 @@ async function openPost(slug) {
     if (version !== navigationVersion) return;
     clearTimeout(autosaveTimer);
     invalidatePreview(true);
-    if (data.legacy) {
-      doc = null;
-      legacySlug = slug;
-      view('legacy');
-      $('legacy-title').textContent = data.front_matter.title;
-      $('legacy-link').href = new URL(`/posts/${slug}/`, deploymentConfig.siteUrl).href;
-      renderLists();
-    } else fillEditor(data.draft, data.etag);
+    fillEditor(data.draft, data.etag);
     if (cached)
       void fetchArticle(slug)
         .then((fresh) => {
@@ -575,7 +503,7 @@ async function openPost(slug) {
             fresh.etag === doc.etag
           )
             return;
-          if (dirty === 0 && !savePromise && !fresh.legacy) fillEditor(fresh.draft, fresh.etag);
+          if (dirty === 0 && !savePromise) fillEditor(fresh.draft, fresh.etag);
           // If editing has begun, retain the input and its old ETag. The next save
           // reports a conflict instead of silently adopting another window's version.
         })
@@ -688,8 +616,7 @@ $('download-post').addEventListener('click', () =>
 function showPublishing(state) {
   publishingId = state?.release_id || '';
   publishingBusy = !!state && ['queued', 'building', 'built'].includes(state.status);
-  $('cancel-publish').hidden =
-    !deploymentConfig?.browserPublishing || !publishingBusy || publishRequest;
+  $('cancel-publish').hidden = !publishingBusy || publishRequest;
   for (const id of ['publish-post', 'publish-settings']) {
     if (!activeActions.has(id)) {
       $(id).disabled = publishingBusy || publishRequest;
@@ -704,17 +631,11 @@ function showPublishing(state) {
   banner.hidden = !state;
   if (!state) return;
   banner.classList.toggle('failed', state.status === 'failed');
-  const messages = deploymentConfig?.browserPublishing
-    ? {
-        queued: '正在准备发布，请保持此页面打开。',
-        building: '正在排版文章并上传页面，请保持此页面打开。',
-        built: '正在完成发布…',
-      }
-    : {
-        queued: '发布已提交，正在等待 Cloudflare 构建。草稿仍可继续编辑。',
-        building: '正在生成网站，完成部署后这里会显示“已上线”。',
-        built: '网页已生成，正在等待 Cloudflare 部署上线。',
-      };
+  const messages = {
+    queued: '正在准备发布，请保持此页面打开。',
+    building: '正在排版文章并上传页面，请保持此页面打开。',
+    built: '正在完成发布…',
+  };
   banner.textContent =
     {
       ...messages,
@@ -775,8 +696,7 @@ async function startPublish(data) {
   try {
     const result = await api('/api/publish', { method: 'POST', body: data });
     showPublishing(result);
-    if (result.browser_release) await publishInBrowser(result);
-    else notice('发布已提交，完成后会自动显示状态。', 'success');
+    await publishInBrowser(result);
   } finally {
     publishRequest = false;
     await refresh().catch(() => {});
@@ -813,9 +733,6 @@ async function unpublish(slug) {
 }
 $('unpublish-post').addEventListener('click', () =>
   unpublish(doc.front_matter.slug).catch((error) => notice(error.message)),
-);
-$('legacy-unpublish').addEventListener('click', () =>
-  unpublish(legacySlug).catch((error) => notice(error.message)),
 );
 $('delete-post').addEventListener('click', () => {
   if (!doc || editorLocked || !confirm('删除这份草稿？历史版本仍会保留。')) return;
@@ -927,8 +844,7 @@ $('body').addEventListener('drop', (e) => {
   e.preventDefault();
   void uploadFiles(images);
 });
-for (const id of ['import-posts', 'legacy-import'])
-  $(id).addEventListener('click', () => $('import-files').click());
+$('import-posts').addEventListener('click', () => $('import-files').click());
 $('import-files').addEventListener('change', async (e) => {
   try {
     await flush();
@@ -962,9 +878,7 @@ $('export-posts').addEventListener('click', async () => {
     await flush();
     const backup = await api('/api/export'),
       files = {};
-    for (const [path, source] of Object.entries(backup.files))
-      files[path === 'site.toml' ? 'site.json' : path] = strToU8(source);
-    files['archived-pages.json'] = strToU8(JSON.stringify(backup.legacy_posts, null, 2));
+    for (const [path, source] of Object.entries(backup.files)) files[path] = strToU8(source);
     download(
       zipSync(files),
       `cloudink-backup-${new Date().toISOString().slice(0, 10)}.zip`,
@@ -988,7 +902,6 @@ $('settings').addEventListener('click', async () => {
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
     for (const key of ['bigTitle', 'footer', 'clarityId', 'about'])
       if (!data.site[key]) $('site-form').elements[key].value = '';
-    showDeployment(data.deployment);
     invalidatePreview();
     view('settings');
   } catch (error) {
@@ -1022,43 +935,6 @@ $('publish-settings').addEventListener('click', () =>
     await startPublish({ settings: true });
   }),
 );
-$('deployment-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    await api('/api/settings/deployment', {
-      method: 'PUT',
-      body: { url: e.currentTarget.elements.url.value },
-    });
-    e.currentTarget.reset();
-    $('deployment-state').textContent = '发布连接已配置。';
-    $('deployment-help').open = false;
-    notice('发布连接已保存。');
-  } catch (error) {
-    notice(error.message);
-  }
-});
-$('password-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const form = e.currentTarget;
-  if (form.elements.password.value !== form.elements.confirm.value) {
-    notice('两次新密码不一致。');
-    return;
-  }
-  try {
-    const data = await api('/api/password', {
-      method: 'POST',
-      body: {
-        current_password: form.elements.current_password.value,
-        password: form.elements.password.value,
-      },
-    });
-    csrf = data.csrf;
-    form.reset();
-    notice('密码已更新，其他设备需要重新登录。');
-  } catch (error) {
-    notice(error.message);
-  }
-});
 $('logout').addEventListener('click', async () => {
   if (editorLocked) return;
   ++navigationVersion;

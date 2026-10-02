@@ -1,10 +1,9 @@
 import admin from '../../cloud-admin/src/index';
-import images from '../../cloud-images/src/index';
-import { validImageKey } from '../../cloud-admin/src/media';
+import { publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
 
-export type WebBindings = { [K in keyof WebEnv]: WebEnv[K] extends string ? string : WebEnv[K] };
+export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
   '/app.js',
   '/style.css',
@@ -13,26 +12,6 @@ const editorAssets = new Set([
   '/blog_wasm_bg.wasm',
 ]);
 const compiledAssets = new Set(['/client.js', '/theme.js', '/styles.css', '/favicon.svg']);
-function adminEnv(request: Request, env: WebBindings): CloudInkEnv {
-  const site = new URL(request.url).origin;
-  return {
-    CONTENT: env.STORAGE,
-    IMAGES: env.STORAGE,
-    LOGIN_LIMITER: env.LOGIN_LIMITER,
-    OWNER_EMAIL: '',
-    SITE_URL: site,
-    IMAGE_ORIGIN: `${site}/images`,
-    SITE_WORKER_NAME: new URL(site).hostname.split('.')[0],
-    PRODUCTION_BRANCH: 'master',
-    FOOTER_TEXT: '',
-    CLARITY_ID: '',
-    BUILD_TOKEN: '',
-    SETUP_TOKEN: env.SETUP_TOKEN,
-    WORKERS_BUILD_TOKEN: '',
-    WORKERS_DEPLOY_HOOK: '',
-    browserPublishing: true,
-  };
-}
 function protect(response: Response, analytics = false): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Content-Type-Options', 'nosniff');
@@ -74,14 +53,6 @@ function publicPath(path: string): string | null {
   if (/^\/about(?:\/|\/index.html)?$/.test(path)) return 'about/index.html';
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
   if (post) return `posts/${post[1]}/index.html`;
-  if (
-    /^\/(?:assets|fonts)\/[A-Za-z0-9_./-]+$/.test(path) &&
-    !path
-      .split('/')
-      .slice(1)
-      .some((p) => !p || p === '.' || p === '..')
-  )
-    return path.slice(1);
   return null;
 }
 export default {
@@ -95,27 +66,12 @@ export default {
         url.pathname = '/';
         const response = await admin.fetch(
           new Request(url, { method: 'GET', headers: request.headers }),
-          adminEnv(request, env),
+          env,
         );
         return request.method === 'HEAD' ? new Response(null, response) : response;
       }
-      if (path.startsWith('/api/') || editorAssets.has(path))
-        return admin.fetch(request, adminEnv(request, env));
-      if (path.startsWith('/internal/')) return protect(new Response('Not found', { status: 404 }));
-      if (path.startsWith('/images/')) {
-        let key: string;
-        try {
-          key = decodeURIComponent(path.slice('/images/'.length));
-        } catch {
-          return protect(new Response('Invalid image path', { status: 400 }));
-        }
-        if (!validImageKey(key)) return protect(new Response('Not found', { status: 404 }));
-        url.pathname = path.slice('/images'.length);
-        return images.fetch(new Request(url, request), {
-          IMAGES: env.STORAGE,
-          ALLOWED_ORIGINS: JSON.stringify([url.origin]),
-        });
-      }
+      if (path.startsWith('/api/') || editorAssets.has(path)) return admin.fetch(request, env);
+      if (path.startsWith('/images/')) return publicImage(request, env.STORAGE);
       if (!['GET', 'HEAD'].includes(request.method))
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),

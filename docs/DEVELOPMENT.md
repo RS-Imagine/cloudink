@@ -1,6 +1,6 @@
 # 开发 CloudInk
 
-默认产品流程是单 Worker、单私有 R2 桶、一次性设置向导。用户通过 GitHub 与 Cloudflare 网页部署，本文中的工具仅供项目开发者使用。
+唯一产品流程是单 Worker、单私有 R2 桶、一次性设置向导。用户通过 GitHub 与 Cloudflare 网页部署，本文中的工具仅供项目开发者使用。
 
 ## 本地构建
 
@@ -8,29 +8,28 @@
 
 ```bash
 npm ci
-npm run build:web
+npm run build
 npm run check
 npx wrangler deploy --dry-run --outdir cloud-web/dist
-npm --prefix cloud-admin run build
 ```
 
 根目录 `.dev.vars.example` 复制为 `.dev.vars`，填写本地测试用 `SETUP_TOKEN`，然后运行 `npx wrangler dev`，访问显示地址的 `/admin`。Wrangler 默认使用本地存储；开发过程中不要添加生产远程桶绑定。
 
-`build:web` 始终构建通用模板，不读取个人部署配置或文章。`build` / `deploy` 为兼容已有三 Worker 部署，存在显式旧部署配置时选择旧流程，否则使用默认单 Worker。类型由 Wrangler 生成，不提交生成文件。兼容后台通过已提交的 `.dev.vars.example` 占位示例声明密钥名称，类型检查无需私人 `.dev.vars` 文件或生产凭据。
+`build` 始终构建通用模板，不读取个人配置或文章；`deploy` 只部署根目录的一个 Worker。`cloud-admin` 是内部模块，没有独立 Worker 配置。所有模块共享根配置生成的 `WebEnv` 类型；类型检查使用已提交的 `.dev.vars.example` 声明密钥名称，无需私人文件或生产凭据。
 
 ## 代码边界
 
-- `cloud-web/src/index.ts`：使用根配置生成的 `WebEnv`，将唯一 `STORAGE` 绑定交给后台和图片服务。公开 URL 只对应固定页面与图片范围。
+- `cloud-web/src/index.ts`：使用根配置生成的 `WebEnv`，所有功能共享唯一 `STORAGE` 绑定。公开 URL 只对应固定页面与图片范围。
 - `cloud-admin/src/auth.ts`：初始化口令校验、唯一账户条件写入、密码哈希、会话和账号修改。
 - `cloud-admin/src/models.ts`：输入校验、文章原稿、设置和发布结构。
-- `cloud-admin/src/media.ts`：允许访问的上传图片路径、类型识别和大小限制。
+- `cloud-admin/src/media.ts`：允许访问的上传图片路径、类型识别和大小限制，以及公共图片响应。
 - `cloud-admin/src/backup.ts`：受登录保护的备份清单、图片导入和原稿恢复；不导入账号或线上指针。
 - `cloud-admin/src/browser-publishing.ts`：页面上传、完整性检查、取消和原子切换线上指针。
-- `cloud-admin/src/publishing.ts`：通用发布快照及旧构建发布兼容流程。
+- `cloud-admin/src/publishing.ts`：发布快照准备与状态查询。
 - `cloud-admin/ui`：首次设置、写作、网站设置、账号及备份界面；WASM 渲染运行在 Web Worker 中。
 - `crates/blog-core` / `crates/blog-wasm`：原生与浏览器共用 Markdown、公式与页面生成。
 
-现有三 Worker 路径属于通用兼容能力，不依赖任何具体站点的资源 ID 或域名。不要把个人部署配置、文章、实际凭据或维护记录放入仓库。
+根目录 `wrangler.jsonc` 是唯一部署配置。项目不提供多 Worker、双桶、本地后台或 Deploy Hook 发布模式。不要把个人部署配置、文章、实际凭据或维护记录放入仓库。
 
 ## 单桶数据布局
 
@@ -62,14 +61,12 @@ npm --prefix cloud-admin run build
 npm run format:check
 npm run check
 npm test
-npm --prefix cloud-admin test
 cargo test --workspace --locked
 npm run test:web:browser
-npm --prefix cloud-admin run test:browser
 ```
 
 测试前完成上述构建。浏览器测试需要 Playwright Chromium，可在 `cloud-admin` 目录运行 `npx playwright install chromium`；也可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已有 Chromium。
 
-测试使用本地临时 R2，覆盖初始化、账号、单桶隔离、备份恢复、发布失败与并发、设置、图片、预览及浏览器完整流程。兼容后台测试继续验证旧发布流程。截图与测试 ZIP 写入被忽略的 `dist/`，不提交仓库。GitHub Actions 对 PR 执行同一套检查，不部署云端资源，也不使用生产凭据。
+测试使用本地临时 R2，覆盖初始化、账号、单桶隔离、备份恢复、发布失败与并发、设置、图片、预览及浏览器完整流程。截图与测试 ZIP 写入被忽略的 `dist/`，不提交仓库。GitHub Actions 对 PR 执行同一套检查，不部署云端资源，也不使用生产凭据。
 
 格式化使用 `npm run format`。改动 Worker 绑定后重新生成类型。提交前检查 `git diff --check`，并核对暂存文件，仅包含项目源代码、通用配置、文档和必要测试。

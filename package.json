@@ -2,20 +2,15 @@
   "name": "cloudink",
   "private": true,
   "scripts": {
-    "configure": "node scripts/deploy.mjs configure",
-    "setup:secrets": "node scripts/setup.mjs secrets",
-    "setup:content": "node scripts/setup.mjs content",
-    "build": "node scripts/build.mjs",
-    "build:web": "bash scripts/build-web.sh",
-    "deploy": "node scripts/deploy.mjs site",
-    "deploy:admin": "node scripts/deploy.mjs admin",
-    "deploy:images": "node scripts/deploy.mjs images",
+    "build": "bash scripts/build-web.sh",
+    "deploy": "wrangler deploy",
     "types": "node scripts/types.mjs",
-    "test": "node --test scripts/test/*.test.mjs cloud-images/test/*.test.mjs cloud-web/test/*.test.mjs",
-    "test:web:browser": "node cloud-web/test/deployment.browser.mjs",
+    "test": "node --test cloud-web/test/*.test.mjs",
+    "test:web:browser": "node cloud-web/test/deployment.browser.mjs && node cloud-web/test/editor.browser.mjs",
     "check": "npm run types && npm --prefix cloud-admin run check",
     "format": "prettier --write cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
-    "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json"
+    "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
+    "dev": "wrangler dev"
   },
   "devDependencies": {
     "prettier": "3.9.9",

@@ -30,20 +30,13 @@ export interface SiteConfig {
   clarityId?: string;
   about?: string;
 }
-export interface LegacyPost extends Draft {
-  body_html: string;
-  body_plain_text: string;
-}
 export interface Release {
   schema_version: 1;
   id: string;
   created_at: string;
   site: SiteConfig;
   markdown_posts: Record<string, string>;
-  legacy_posts: LegacyPost[];
-  about_html?: string;
   about_markdown?: string;
-  assets: Record<string, string>;
 }
 export interface Publishing {
   release_id: string;

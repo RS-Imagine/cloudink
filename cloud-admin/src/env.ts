@@ -1,4 +1,2 @@
-// Runtime strings can differ from the example values in generated Wrangler types.
-export type CloudInkEnv = { [K in keyof Env]: Env[K] extends string ? string : Env[K] } & {
-  browserPublishing?: boolean;
-};
+// Binding types are generated from the only deployment configuration at the repository root.
+export type CloudInkEnv = { [K in keyof WebEnv]: WebEnv[K] extends string ? string : WebEnv[K] };

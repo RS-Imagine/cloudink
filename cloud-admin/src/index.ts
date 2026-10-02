@@ -3,14 +3,7 @@ import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './
 import { ASSETS } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
-import {
-  currentRelease,
-  deploymentSettings,
-  internalRoute,
-  publish,
-  publishStatus,
-  saveHook,
-} from './publishing';
+import { currentRelease, publish, publishStatus } from './publishing';
 import {
   HttpError,
   json,
@@ -67,17 +60,17 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     source = serializeDraft(draft);
   }
   if (draft.front_matter.slug !== slug) throw new HttpError(400, '文章地址与保存地址不一致。');
-  const existing = await env.CONTENT.head(`drafts/${slug}.md`);
+  const existing = await env.STORAGE.head(`drafts/${slug}.md`);
   if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
   if (!existing && input.etag) throw new HttpError(409, '文章已被删除，请重新打开。');
-  const saved = await env.CONTENT.put(`drafts/${slug}.md`, source, {
+  const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
     customMetadata: await draftSummary(draft),
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
-  await env.CONTENT.put(`history/${slug}/${Date.now()}-${crypto.randomUUID()}.md`, source, {
+  await env.STORAGE.put(`history/${slug}/${Date.now()}-${crypto.randomUUID()}.md`, source, {
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   return json({ draft, source, etag: saved.etag, saved_at: new Date().toISOString() });
@@ -91,7 +84,7 @@ async function apiRoute(
   const backup = await backupRoute(request, env, path);
   if (backup) return backup;
   const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|commit|cancel)$/);
-  if (env.browserPublishing && browserPublish) {
+  if (browserPublish) {
     const [, id, action] = browserPublish;
     if (action === 'file' && request.method === 'PUT') return stageBrowserPage(request, env, id);
     if (action === 'commit' && request.method === 'POST') return commitBrowserPublish(env, id);
@@ -100,26 +93,17 @@ async function apiRoute(
   }
   if (path === '/api/posts' && request.method === 'GET') {
     const publishing = await publishStatus(env);
-    const [release, drafts] = await Promise.all([currentRelease(env), listDrafts(env.CONTENT)]);
+    const [release, drafts] = await Promise.all([currentRelease(env), listDrafts(env.STORAGE)]);
     const published = new Map<string, { draft: Draft; digest: string }>();
     for (const [slug, source] of Object.entries(release.markdown_posts)) {
       const draft = parseSource(source);
       published.set(slug, { draft, digest: await digest(editorial(draft)) });
     }
     const posts = new Map<string, unknown>();
-    for (const post of release.legacy_posts)
-      posts.set(post.front_matter.slug, {
-        ...post.front_matter,
-        published: true,
-        legacy: true,
-        has_draft: false,
-        changed: false,
-      });
     for (const [slug, p] of published)
       posts.set(slug, {
         ...p.draft.front_matter,
         published: true,
-        legacy: false,
         has_draft: false,
         changed: false,
       });
@@ -132,9 +116,7 @@ async function apiRoute(
         title: meta.title || slug,
         date: meta.date || '',
         description: meta.description || '',
-        published:
-          published.has(slug) || release.legacy_posts.some((p) => p.front_matter.slug === slug),
-        legacy: false,
+        published: published.has(slug),
         has_draft: true,
         changed: published.get(slug)?.digest !== meta.digest,
         etag: object.etag,
@@ -144,12 +126,9 @@ async function apiRoute(
       posts: [...posts.values()],
       site: release.site,
       publishing,
-      deployment: await deploymentSettings(env),
       email: session.email,
       csrf: session.csrf,
-      publicInitialized: env.browserPublishing
-        ? !!(await env.CONTENT.head(`public/${release.id}/index.html`))
-        : true,
+      publicInitialized: !!(await env.STORAGE.head(`public/${release.id}/index.html`)),
     });
   }
   const match = path.match(/^\/api\/posts\/([A-Za-z0-9_-]+)$/);
@@ -157,33 +136,27 @@ async function apiRoute(
     const slug = validSlug(match[1]);
     if (request.method === 'PUT') return saveDraft(request, env, slug);
     if (request.method === 'GET') {
-      const object = await env.CONTENT.get(`drafts/${slug}.md`);
+      const object = await env.STORAGE.get(`drafts/${slug}.md`);
       if (object && !object.customMetadata?.deleted) {
         const source = await object.text();
-        return json({ draft: parseSource(source), source, etag: object.etag, legacy: false });
+        return json({ draft: parseSource(source), source, etag: object.etag });
       }
       const release = await currentRelease(env),
         source = release.markdown_posts[slug];
-      if (source) return json({ draft: parseSource(source), source, etag: null, legacy: false });
-      const legacy = release.legacy_posts.find((p) => p.front_matter.slug === slug);
-      if (legacy) return json({ legacy: true, front_matter: legacy.front_matter });
+      if (source) return json({ draft: parseSource(source), source, etag: null });
       throw new HttpError(404, '文章不存在。');
     }
     if (request.method === 'DELETE') {
       const release = await currentRelease(env);
-      if (
-        release.markdown_posts[slug] ||
-        release.legacy_posts.some((p) => p.front_matter.slug === slug)
-      )
-        throw new HttpError(409, '请先取消发布，再删除草稿。');
+      if (release.markdown_posts[slug]) throw new HttpError(409, '请先取消发布，再删除草稿。');
       const input = await jsonInput(request, 4096),
-        object = await env.CONTENT.head(`drafts/${slug}.md`);
+        object = await env.STORAGE.head(`drafts/${slug}.md`);
       if (object && input.etag !== object.etag)
         throw new HttpError(409, '文章已修改，请重新打开。');
       // R2 delete has no conditional variant; serialize deletion with an ETag
       // guarded tombstone so an editor cannot silently overwrite the deletion.
       if (object) {
-        const locked = await env.CONTENT.put(
+        const locked = await env.STORAGE.put(
           `drafts/${slug}.md`,
           serializeDraft({
             front_matter: {
@@ -221,13 +194,13 @@ async function apiRoute(
         .replace(/[^A-Za-z0-9_-]/g, '-')
         .slice(0, 50) || 'image';
     const key = `uploads/${new Date().toISOString().slice(0, 7).replace('-', '/')}/${crypto.randomUUID()}-${basename}.${type.ext}`;
-    await env.IMAGES.put(key, bytes, {
+    await env.STORAGE.put(key, bytes, {
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
     return json(
       {
         key,
-        url: env.browserPublishing ? `/images/${key}` : `${env.IMAGE_ORIGIN}/${key}`,
+        url: `/images/${key}`,
         name: file.name,
       },
       201,
@@ -240,10 +213,10 @@ async function apiRoute(
       key.length > 1024 ||
       key.includes('..') ||
       key.startsWith('/') ||
-      (env.browserPublishing && !validImageKey(key))
+      !validImageKey(key)
     )
       throw new HttpError(400, '图片地址不正确。');
-    const image = await env.IMAGES.get(key);
+    const image = await env.STORAGE.get(key);
     if (!image) throw new HttpError(404, '图片不存在。');
     const headers = new Headers({
       'Cache-Control': 'private, max-age=300',
@@ -258,43 +231,37 @@ async function apiRoute(
   if (path === '/api/publish/status' && request.method === 'GET')
     return json(await publishStatus(env));
   if (path === '/api/settings' && request.method === 'GET') {
-    const site = await env.CONTENT.get('draft-site.json'),
+    const site = await env.STORAGE.get('draft-site.json'),
       release = await currentRelease(env);
     return json({
       site: site ? await site.json() : release.site,
       etag: site?.etag || null,
-      deployment: await deploymentSettings(env),
     });
   }
   if (path === '/api/settings' && request.method === 'PUT') {
     const data = await jsonInput(request, 500_000),
       site = validateSite(data.site),
-      old = await env.CONTENT.head('draft-site.json');
+      old = await env.STORAGE.head('draft-site.json');
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
-    const saved = await env.CONTENT.put('draft-site.json', JSON.stringify(site), {
+    const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
       onlyIf: old ? { etagMatches: old.etag } : { etagDoesNotMatch: '*' },
     });
     if (!saved) throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     return json({ site, etag: saved.etag });
   }
-  if (path === '/api/settings/deployment' && request.method === 'PUT') {
-    const data = await jsonInput(request, 4096);
-    await saveHook(env, data.url);
-    return json({ configured: true });
-  }
   if (path === '/api/export' && request.method === 'GET') {
     const release = await currentRelease(env),
-      drafts = await listDrafts(env.CONTENT),
+      drafts = await listDrafts(env.STORAGE),
       files: Record<string, string> = {};
     for (const [slug, source] of Object.entries(release.markdown_posts))
       files[`published/${slug}.md`] = source;
     for (const obj of drafts) {
-      const source = await env.CONTENT.get(obj.key);
+      const source = await env.STORAGE.get(obj.key);
       if (source && !obj.customMetadata?.deleted) files[obj.key] = await source.text();
     }
     files['site.json'] = JSON.stringify(release.site); // UI writes this as site.json.
-    return json({ files, legacy_posts: release.legacy_posts, release_id: release.id });
+    return json({ files, release_id: release.id });
   }
   const history = path.match(/^\/api\/history\/([A-Za-z0-9_-]+)$/);
   if (history && request.method === 'GET') {
@@ -306,12 +273,12 @@ async function apiRoute(
         !/^history\/[A-Za-z0-9_-]+\/[a-f0-9-]+\.md$/.test(key)
       )
         throw new HttpError(400, '历史版本地址不正确。');
-      const obj = await env.CONTENT.get(key);
+      const obj = await env.STORAGE.get(key);
       if (!obj) throw new HttpError(404, '历史版本不存在。');
       const source = await obj.text();
       return json({ source, draft: parseSource(source) });
     }
-    const page = await env.CONTENT.list({ prefix: `history/${slug}/`, limit: 1000 });
+    const page = await env.STORAGE.list({ prefix: `history/${slug}/`, limit: 1000 });
     return json(
       page.objects
         .map((o) => ({ key: o.key, saved_at: o.uploaded.toISOString() }))
@@ -341,16 +308,9 @@ export default {
       if (path === '/api/config' && request.method === 'GET')
         return protect(
           json({
-            siteUrl: env.SITE_URL,
-            imageOrigin: env.IMAGE_ORIGIN,
-            siteWorkerName: env.SITE_WORKER_NAME || 'blog',
-            productionBranch: env.PRODUCTION_BRANCH || 'master',
-            browserPublishing: env.browserPublishing === true,
-            setupWizard: env.browserPublishing === true,
-            appearance: env.browserPublishing
-              ? {}
-              : { footer: env.FOOTER_TEXT || '', clarityId: env.CLARITY_ID || '' },
-            initialized: !!(await env.CONTENT.head('auth/account.json')),
+            siteUrl: new URL(request.url).origin,
+            imageOrigin: `${new URL(request.url).origin}/images`,
+            initialized: !!(await env.STORAGE.head('auth/account.json')),
           }),
         );
       if (request.method === 'GET' && Object.hasOwn(ASSETS, path)) {
@@ -369,8 +329,6 @@ export default {
           return protect(new Response(null, { status: 304, headers }), true);
         return protect(new Response(Buffer.from(asset.data, 'base64'), { headers }), true);
       }
-      const internal = await internalRoute(request, env, path);
-      if (internal) return protect(internal);
       const auth = await authRoute(request, env, path);
       if (auth) return protect(auth);
       if (path.startsWith('/api/')) {

@@ -354,10 +354,6 @@ h3 {
   color: #917638;
   background: #f7efd9;
 }
-.badge.legacy {
-  background: #f0f0ed;
-  color: #80847b;
-}
 .editor-view {
   background: var(--paper);
   border-radius: 14px;

@@ -39,7 +39,7 @@ try {
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await expect(page.locator('#site-link')).toHaveAttribute('href', 'http://localhost:8791');
   await page.locator('#settings').click();
-  await expect(page.locator('#deployment-form')).toBeHidden();
+  await expect(page.locator('#deployment-form')).toHaveCount(0);
   await page.locator('#site-form input[name=title]').fill('Browser deployed blog');
   await page.locator('#site-form input[name=author]').fill('Reader');
   await page.locator('#publish-settings').click();
@@ -150,7 +150,6 @@ try {
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({
-      setupWizard: true,
       singleBucket: true,
       firstHomePublication: true,
       backupRoundTrip: true,

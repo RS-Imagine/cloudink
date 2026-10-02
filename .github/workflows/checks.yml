@@ -26,22 +26,19 @@ jobs:
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
-        run: npm run build:web
+        run: npm run build
       - name: Generate binding types and check TypeScript
         run: npm run check
-      - name: Bundle Workers without deploying
+      - name: Bundle the Worker without deploying
         run: |
           npx wrangler deploy --dry-run --outdir cloud-web/dist
-          npm --prefix cloud-admin run build
       - name: Run storage, authentication and publication tests
         run: |
           npm test
-          npm --prefix cloud-admin test
           cargo test --workspace --locked
       - name: Install Chromium
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium
-      - name: Verify new and compatible editor flows in Chromium
+      - name: Verify onboarding and editor flows in Chromium
         run: |
           npm run test:web:browser
-          npm --prefix cloud-admin run test:browser
