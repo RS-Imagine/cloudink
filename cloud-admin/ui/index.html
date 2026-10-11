@@ -154,9 +154,7 @@
           <div class="section-heading">
             <div>
               <h1>图片库</h1>
-              <p class="muted">
-                上传一次，随时复用。仍被文章、历史版本或网站设置引用的图片不能删除。
-              </p>
+              <p class="muted">上传一次，随时复用。仍被文章或网站设置引用的图片不能删除。</p>
             </div>
             <div class="form-actions">
               <button id="image-library-back" hidden>返回当前文章</button>
@@ -192,7 +190,6 @@
             <span id="save-state" class="muted" role="status">尚未保存</span>
             <div class="toolbar-actions">
               <button id="download-post" class="quiet">下载原稿</button
-              ><button id="history-post" class="quiet">历史版本</button
               ><button id="save-post">保存草稿</button
               ><button id="publish-post" class="primary">发布这篇</button>
             </div>
@@ -351,7 +348,7 @@
           <section id="backup-card" class="settings-card">
             <h3>备份与恢复</h3>
             <p>
-              下载一份包含网站设置、文章原稿、历史版本和上传图片的 ZIP
+              下载一份包含网站设置、文章原稿和上传图片的 ZIP
               备份。备份包含未发布的文字，请妥善保存。
             </p>
             <div class="form-actions">
@@ -400,14 +397,6 @@
         <button id="image-preview-close">关闭</button>
       </div>
       <img id="image-preview-full" alt="完整图片预览" />
-    </dialog>
-    <dialog id="history-dialog">
-      <div class="dialog-heading">
-        <h3>历史版本</h3>
-        <button id="close-history" class="quiet">关闭</button>
-      </div>
-      <p class="muted">恢复后先作为草稿保存，不会直接更新线上文章。</p>
-      <div id="history-list"></div>
     </dialog>
     <script type="module" src="/app.js"></script>
   </body>

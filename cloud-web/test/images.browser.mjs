@@ -100,7 +100,6 @@ try {
   await expect(reusable.getByRole('button', { name: '删除', exact: true })).toBeDisabled();
   await reusable.locator('summary').click();
   await expect(reusable.locator('ul')).toContainText('草稿');
-  await expect(reusable.locator('ul')).toContainText('历史版本');
   await page
     .locator('#image-library-files')
     .setInputFiles({ name: 'unused.png', mimeType: 'image/png', buffer: png });

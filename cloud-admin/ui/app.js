@@ -730,14 +730,14 @@ $('publish-post').addEventListener('click', () => {
   });
 });
 async function unpublish(slug) {
-  if (!confirm('取消发布后，这篇文章将从网站移除。已有原稿和历史版本会保留。继续吗？')) return;
+  if (!confirm('取消发布后，这篇文章将从网站移除，原稿保留为草稿。继续吗？')) return;
   await startPublish({ unpublish: slug });
 }
 $('unpublish-post').addEventListener('click', () =>
   unpublish(doc.front_matter.slug).catch((error) => notice(error.message)),
 );
 $('delete-post').addEventListener('click', () => {
-  if (!doc || editorLocked || !confirm('删除这份草稿？历史版本仍会保留。')) return;
+  if (!doc || editorLocked || !confirm('删除这份草稿？删除后无法恢复。')) return;
   void action(
     'delete-post',
     '正在删除…',
@@ -972,57 +972,6 @@ $('logout').addEventListener('click', async () => {
     notice(error.message);
   }
 });
-$('history-post').addEventListener('click', () => {
-  if (!doc || editorLocked) return;
-  void action('history-post', '正在读取…', async () => {
-    $('history-list').textContent = '正在读取历史版本…';
-    $('history-dialog').showModal();
-    try {
-      await flush();
-      const slug = doc.front_matter.slug,
-        versions = await api(`/api/history/${slug}`);
-      $('history-list').replaceChildren();
-      for (const item of versions) {
-        const button = document.createElement('button');
-        button.textContent = new Date(item.saved_at).toLocaleString();
-        const span = document.createElement('span');
-        span.textContent = '恢复为草稿';
-        button.append(span);
-        button.addEventListener('click', async () => {
-          if (editorLocked || !confirm('将此历史版本恢复为草稿？当前版本也已保存在历史记录中。'))
-            return;
-          lockEditor(true);
-          button.disabled = true;
-          span.textContent = '正在恢复…';
-          try {
-            if (doc?.front_matter.slug !== slug) throw new Error('请重新打开这篇文章的历史版本。');
-            await flush();
-            const previous = await api(`/api/history/${slug}?key=${encodeURIComponent(item.key)}`);
-            const etag = doc.etag;
-            fillEditor(previous.draft, etag);
-            lockEditor(true);
-            changed();
-            await saveCurrent();
-            $('history-dialog').close();
-            notice('已恢复并保存为草稿，点击发布后更新网站。', 'success');
-          } catch (error) {
-            notice(error.message, 'error');
-          } finally {
-            lockEditor(false);
-            button.disabled = false;
-            span.textContent = '恢复为草稿';
-          }
-        });
-        $('history-list').append(button);
-      }
-      if (!versions.length) $('history-list').textContent = '还没有保存过的历史版本。';
-    } catch (error) {
-      $('history-list').textContent = error.message;
-      throw error;
-    }
-  });
-});
-$('close-history').addEventListener('click', () => $('history-dialog').close());
 
 $('account-form').addEventListener('submit', (event) => {
   event.preventDefault();

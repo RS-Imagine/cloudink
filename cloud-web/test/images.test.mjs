@@ -61,7 +61,7 @@ test('unused image deletion physically removes the object and rejects stale meta
   assert.equal((await f.request('/api/images', 'DELETE', image)).status, 404);
 });
 
-test('published posts, drafts, history, About and pending settings protect shared images; removing a draft retains history protection', async (t) => {
+test('published posts, drafts, About and pending settings protect shared images; saving creates no history and legacy history is ignored', async (t) => {
   const f = await fixture(t);
   await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
@@ -73,6 +73,7 @@ test('published posts, drafts, history, About and pending settings protect share
   const saved = await f.request('/api/posts/referenced', 'PUT', { draft: source, etag: null });
   assert.equal(saved.status, 200, await saved.clone().text());
   const { etag } = await saved.json();
+  assert.equal((await bucket.list({ prefix: 'history/' })).objects.length, 0);
   const pending = await f.prepare({ slug: 'referenced', etag });
   let image = (await catalog(f)).images[0];
   assert.ok(image.references.some((r) => r.kind === 'pending'));
@@ -80,21 +81,15 @@ test('published posts, drafts, history, About and pending settings protect share
   await f.stage(pending);
   assert.equal((await f.commit(pending)).status, 200);
   image = (await catalog(f)).images[0];
-  assert.deepEqual(
-    new Set(image.references.map((r) => r.kind)),
-    new Set(['published', 'draft', 'history']),
-  );
+  assert.deepEqual(new Set(image.references.map((r) => r.kind)), new Set(['published', 'draft']));
   assert.equal((await f.request('/api/images', 'DELETE', image)).status, 409);
   const offline = await f.prepare({ unpublish: 'referenced' });
   await f.stage(offline);
   assert.equal((await f.commit(offline)).status, 200);
   assert.equal((await f.request('/api/posts/referenced', 'DELETE', { etag })).status, 200);
+  await bucket.put('history/referenced/1700000000000-abc.md', source.body_markdown);
   image = (await catalog(f)).images[0];
-  assert.deepEqual(
-    image.references.map((r) => r.kind),
-    ['history'],
-  );
-  assert.equal((await f.request('/api/images', 'DELETE', image)).status, 409);
+  assert.deepEqual(image.references, []);
   await seed(bucket, 'uploads/about.png');
   const settings = await f.request('/api/settings', 'PUT', {
     site: {
@@ -159,7 +154,7 @@ test('incomplete reference checks allow browsing but never allow deletion', asyn
   await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
   await seed(bucket);
-  for (let i = 0; i < 31; i++) await bucket.put(`history/old/${i}.md`, 'old source');
+  for (let i = 0; i < 31; i++) await bucket.put(`drafts/old-${i}.md`, 'old source');
   const page = await catalog(f);
   assert.equal(page.images.length, 1);
   assert.equal(page.referencesChecked, false);
