@@ -49,7 +49,6 @@ try {
   let delayList = 0,
     delayGet = 0,
     delaySave = 0,
-    delayHistory = 0,
     imageRequested = false,
     imageFinished = false;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -62,7 +61,6 @@ try {
     }
     if (url.pathname === '/api/publish/status') counts.poll++;
     if (/^\/api\/posts\//.test(url.pathname)) await sleep(method === 'PUT' ? delaySave : delayGet);
-    if (url.pathname.startsWith('/api/history/')) await sleep(delayHistory);
     if (url.pathname === '/api/image') {
       imageRequested = true;
       await sleep(3000);
@@ -132,12 +130,7 @@ try {
   await page.locator('#download-post').click();
   await downloadPromise;
   await expect(page.locator('#notice')).toContainText('已开始下载原稿');
-  delayHistory = 800;
-  await page.locator('#history-post').click();
-  await expect(page.locator('#history-dialog')).toBeVisible();
-  await expect(page.locator('#history-list')).toHaveText('正在读取历史版本…');
-  await expect(page.locator('#history-list')).toHaveText('还没有保存过的历史版本。');
-  await page.locator('#close-history').click();
+  await expect(page.locator('#history-post')).toHaveCount(0);
   const polls = counts.poll;
   await sleep(6500);
   assert.equal(counts.poll, polls, 'Idle editor must not poll publication status');
@@ -172,7 +165,7 @@ try {
   console.log(
     JSON.stringify({
       checks:
-        'non-blocking preview, parallel navigation, session cache, latest-click selection, save/download/history feedback, idle polling, conflict retention',
+        'non-blocking preview, parallel navigation, session cache, latest-click selection, save/download feedback, idle polling, conflict retention',
       uncachedSwitchMs: uncachedMs,
       cachedSwitchMs: cachedMs,
       extraListRequestsDuringSave: 0,

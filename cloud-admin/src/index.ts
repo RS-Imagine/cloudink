@@ -74,10 +74,6 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
-  await env.STORAGE.put(`history/${slug}/${Date.now()}-${crypto.randomUUID()}.md`, source, {
-    httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
-    customMetadata: imageReferenceMetadata(source),
-  });
   return json({ draft, source, etag: saved.etag, saved_at: new Date().toISOString() });
 }
 async function apiRoute(
@@ -271,29 +267,6 @@ async function apiRoute(
     }
     files['site.json'] = JSON.stringify(release.site); // UI writes this as site.json.
     return json({ files, release_id: release.id });
-  }
-  const history = path.match(/^\/api\/history\/([A-Za-z0-9_-]+)$/);
-  if (history && request.method === 'GET') {
-    const slug = validSlug(history[1]),
-      key = new URL(request.url).searchParams.get('key');
-    if (key) {
-      if (
-        !key.startsWith(`history/${slug}/`) ||
-        !/^history\/[A-Za-z0-9_-]+\/[a-f0-9-]+\.md$/.test(key)
-      )
-        throw new HttpError(400, '历史版本地址不正确。');
-      const obj = await env.STORAGE.get(key);
-      if (!obj) throw new HttpError(404, '历史版本不存在。');
-      const source = await obj.text();
-      return json({ source, draft: parseSource(source) });
-    }
-    const page = await env.STORAGE.list({ prefix: `history/${slug}/`, limit: 1000 });
-    return json(
-      page.objects
-        .map((o) => ({ key: o.key, saved_at: o.uploaded.toISOString() }))
-        .reverse()
-        .slice(0, 50),
-    );
   }
   throw new HttpError(404, '接口不存在。');
 }

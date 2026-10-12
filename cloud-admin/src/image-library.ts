@@ -6,7 +6,7 @@ const MAX_SOURCES = 2000;
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const MAX_UNINDEXED = 30;
 export interface ImageReference {
-  kind: 'published' | 'draft' | 'history' | 'settings' | 'pending';
+  kind: 'published' | 'draft' | 'settings' | 'pending';
   title: string;
   slug?: string;
 }
@@ -136,53 +136,51 @@ async function references(
     if (settings.size > 500_000) throw new HttpError(413, '网站设置过大，无法安全检查图片引用。');
     source(await settings.text(), { kind: 'settings', title: '待发布网站设置' });
   }
-  for (const prefix of ['drafts/', 'history/']) {
-    let cursor: string | undefined;
-    do {
-      const page = await storage.list({ prefix, cursor, limit: 1000, include: ['customMetadata'] });
-      for (const object of page.objects) {
-        if (++count > MAX_SOURCES)
-          throw new HttpError(413, '原稿与历史超过 2000 个，无法完整检查引用；图片不会被删除。');
-        if (object.customMetadata?.deleted) continue;
-        const slug = object.key.match(
-          /^(?:drafts|history)\/([A-Za-z0-9_-]{1,100})(?:\.md|\/)/,
-        )?.[1];
-        if (!slug) throw new HttpError(503, '原稿目录包含无法识别的对象，无法安全检查图片引用。');
-        const ref: ImageReference = {
-          kind: prefix === 'drafts/' ? 'draft' : 'history',
-          title: prefix === 'drafts/' ? object.customMetadata?.title || slug : slug,
-          slug,
-        };
-        const indexed = object.customMetadata?.image_refs;
-        if (indexed !== undefined) {
-          let parsed: unknown;
-          try {
-            parsed = JSON.parse(indexed);
-          } catch {
-            throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
-          }
-          if (
-            !Array.isArray(parsed) ||
-            !parsed.every((key) => typeof key === 'string' && validImageKey(key))
-          )
-            throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
-          add(parsed, ref);
-        } else {
-          if (++unindexed > MAX_UNINDEXED)
-            throw new HttpError(
-              413,
-              '旧原稿与历史较多，暂时无法完成引用检查；为避免误删，图片会保留。',
-            );
-          if (bytes + object.size > MAX_TEXT_BYTES)
-            throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
-          const body = await storage.get(object.key);
-          if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
-          source(await body.text(), ref);
+  let cursor: string | undefined;
+  do {
+    const page = await storage.list({
+      prefix: 'drafts/',
+      cursor,
+      limit: 1000,
+      include: ['customMetadata'],
+    });
+    for (const object of page.objects) {
+      if (++count > MAX_SOURCES)
+        throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
+      if (object.customMetadata?.deleted) continue;
+      const slug = object.key.match(/^drafts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
+      if (!slug) throw new HttpError(503, '原稿目录包含无法识别的对象，无法安全检查图片引用。');
+      const ref: ImageReference = {
+        kind: 'draft',
+        title: object.customMetadata?.title || slug,
+        slug,
+      };
+      const indexed = object.customMetadata?.image_refs;
+      if (indexed !== undefined) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(indexed);
+        } catch {
+          throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
         }
+        if (
+          !Array.isArray(parsed) ||
+          !parsed.every((key) => typeof key === 'string' && validImageKey(key))
+        )
+          throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
+        add(parsed, ref);
+      } else {
+        if (++unindexed > MAX_UNINDEXED)
+          throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
+        if (bytes + object.size > MAX_TEXT_BYTES)
+          throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
+        const body = await storage.get(object.key);
+        if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
+        source(await body.text(), ref);
       }
-      cursor = page.truncated ? page.cursor : undefined;
-    } while (cursor);
-  }
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
   return result;
 }
 export async function imageLibraryRoute(
@@ -281,10 +279,7 @@ export async function imageLibraryRoute(
       throw new HttpError(409, '网站正在发布，请等待完成或取消发布后再删除图片。');
     const refs = (await references(env.STORAGE, [input.key])).get(input.key) || [];
     if (refs.length)
-      return json(
-        { error: '图片仍被文章、历史版本或网站设置引用，请先处理引用。', references: refs },
-        409,
-      );
+      return json({ error: '图片仍被文章或网站设置引用，请先处理引用。', references: refs }, 409);
     await env.STORAGE.delete(input.key);
     return json({ deleted: true, key: input.key });
   }

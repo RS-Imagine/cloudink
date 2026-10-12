@@ -2,7 +2,6 @@ const $ = (id) => document.getElementById(id);
 const kinds = {
   published: '已发布',
   draft: '草稿',
-  history: '历史版本',
   settings: '网站设置',
   pending: '正在发布',
 };
@@ -137,7 +136,7 @@ export function configureImages({
       remove.title = !image.referencesChecked
         ? '引用检查未完成，暂时不能删除。'
         : image.references.length
-          ? '先处理文章、历史版本或网站设置中的引用。'
+          ? '先处理文章或网站设置中的引用。'
           : '永久删除这张图片';
       body.append(actions);
       card.append(preview, body);

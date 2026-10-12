@@ -4,7 +4,7 @@ import { fixture, draft } from './fixture.mjs';
 
 const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0]);
 
-test('portable backup restores drafts, history, images and settings while preserving the target account and live release', async (t) => {
+test('portable backup restores drafts, images and settings while preserving the target account and live release; legacy history entries are skipped', async (t) => {
   const source = await fixture(t);
   await source.login();
   const sourceBucket = await source.mf.getR2Bucket('STORAGE');
@@ -39,6 +39,11 @@ test('portable backup restores drafts, history, images and settings while preser
   assert.equal(exported.status, 200);
   const backup = await exported.json();
   assert.equal(backup.images.length, 1);
+  assert.equal(
+    Object.keys(backup.files).some((key) => key.startsWith('history/')),
+    false,
+  );
+  backup.files['history/article/1700000000000-abc.md'] = backup.files['drafts/article.md'];
   assert.equal(backup.site.title, 'Backed up site');
   assert.equal(
     Object.keys(backup.files).some((key) => key.startsWith('auth/')),
@@ -66,7 +71,8 @@ test('portable backup restores drafts, history, images and settings while preser
   assert.equal(restored.status, 200, await restored.clone().text());
   const result = await restored.json();
   assert.equal(result.drafts, 1);
-  assert.equal(result.history, 2);
+  assert.equal(result.history, undefined);
+  assert.equal((await bucket.list({ prefix: 'history/' })).objects.length, 0);
   assert.equal(await (await bucket.get('auth/account.json')).text(), beforeAccount);
   assert.equal(await (await bucket.get('state/published.json')).text(), beforePointer);
   const imported = await (await target.request('/api/posts/article')).json();

@@ -56,7 +56,7 @@ export function configureBackup({
         'application/zip',
       );
       status(
-        `备份已下载，包含 ${Object.keys(manifest.files).length} 份原稿与历史、${manifest.images.length} 张图片。`,
+        `备份已下载，包含 ${Object.keys(manifest.files).length} 份原稿、${manifest.images.length} 张图片。`,
       );
     }),
   );
@@ -67,7 +67,7 @@ export function configureBackup({
     try {
       if (
         !confirm(
-          '恢复会导入草稿、历史、图片和待发布设置。登录账号与线上版本会保留，已有不同原稿不会被覆盖。继续吗？',
+          '恢复会导入草稿、图片和待发布设置。登录账号与线上版本会保留，已有不同原稿不会被覆盖。继续吗？',
         )
       )
         return;
@@ -82,6 +82,7 @@ export function configureBackup({
             total += entry.originalSize;
             if (++count > 5000 || total > MAX_ARCHIVE + 2_000_000)
               throw new Error('备份解压后的大小或文件数量超过限制。');
+            // Older backups may contain content/history/, which the server skips.
             if (
               entry.name !== 'manifest.json' &&
               !/^(?:content\/(?:published|drafts|history)\/|media\/uploads\/)/.test(entry.name)
@@ -130,9 +131,7 @@ export function configureBackup({
         });
         restored(result);
         await refresh();
-        status(
-          `已恢复 ${result.drafts} 篇草稿、${result.history} 份历史；检查网站设置和文章后再发布。`,
-        );
+        status(`已恢复 ${result.drafts} 篇草稿；检查网站设置和文章后再发布。`);
         notice('备份已恢复为草稿，线上版本与账号均保留。', 'success');
       });
     } catch (error) {
