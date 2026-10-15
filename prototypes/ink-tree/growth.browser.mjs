@@ -58,6 +58,8 @@ try {
   await expect(mobilePage.locator('#scene[data-ready="true"]')).toBeAttached({ timeout: 30000 });
   await mobilePage.touchscreen.tap(150, 280);
   await expect.poll(() => mobilePage.evaluate(() => window.__inkTree?.stats().grow)).toBe(1);
+  const mobileStats = await mobilePage.evaluate(() => window.__inkTree.stats());
+  if (mobileStats.drawCalls > 10 || mobileStats.triangles > 35000) throw new Error(`Mobile scene budget exceeded: ${JSON.stringify(mobileStats)}`);
   await mobile.close();
 
   const reduced = await browser.newContext({ reducedMotion: 'reduce' });
