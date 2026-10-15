@@ -147,14 +147,17 @@ body.scene-fallback #anchors,body.lightweight #anchors,body.scene-fallback .tree
       const t = .37 + j*.19, origin = primary.getPointAt(t);
       const turn = a + (j%2 ? .65 : -.65);
       const end = origin.clone().add(v(Math.cos(turn)*range(2,3.8),range(2.0,3.9),Math.sin(turn)*range(2,3.8)));
-      const secondary = tube([origin,origin.clone().lerp(end,.55).add(v(range(-.4,.4),.4,range(-.4,.4))),end],.12*(1-t)+.075,.018,mobile?8:12,mobile?5:7,.39+i*.009+j*.034,.68+i*.005+j*.018);
+      const secondaryStart=.39+i*.009+j*.034,secondaryEnd=.68+i*.005+j*.018;
+      const secondary = tube([origin,origin.clone().lerp(end,.55).add(v(range(-.4,.4),.4,range(-.4,.4))),end],.12*(1-t)+.075,.018,mobile?8:12,mobile?5:7,secondaryStart,secondaryEnd);
       for(let k=0;k<2;k++){
         const twigStart=secondary.getPointAt(.5+k*.36);
         const twigEnd=twigStart.clone().add(v(Math.cos(turn+(k?-.9:.8))*range(1,2),range(.8,1.8),Math.sin(turn+(k?-.9:.8))*range(1,2)));
-        tube([twigStart,twigStart.clone().lerp(twigEnd,.5),twigEnd],.035,.006,mobile?4:6,mobile?4:5,.58+i*.008+j*.027+k*.02,.81+i*.002+j*.008+k*.009);
-        leafClusters.push({point:twigEnd,r:range(1.25,1.85),birth:.67+i*.006+j*.012+k*.01});
+        const twigBirth=secondaryStart+(secondaryEnd-secondaryStart)*(.5+k*.36)+.015;
+        const twigEndTime=Math.min(.85,twigBirth+.12);
+        tube([twigStart,twigStart.clone().lerp(twigEnd,.5),twigEnd],.035,.006,mobile?4:6,mobile?4:5,twigBirth,twigEndTime);
+        leafClusters.push({point:twigEnd,r:range(1.25,1.85),birth:twigEndTime-.02});
       }
-      leafClusters.push({point:end,r:range(1.4,2.0),birth:.64+i*.007+j*.014});
+      leafClusters.push({point:end,r:range(1.4,2.0),birth:secondaryEnd-.02});
     }
   }
   const articleAnchors=[];
