@@ -27,6 +27,7 @@ body.scene-fallback #anchors,body.lightweight #anchors,body.scene-fallback .tree
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media print{#scene,.atmosphere,.topbar,#anchors,.scene-controls,.tree-lines,.position-label,.hero,.panel-header{display:none!important}body{background:white}.panel{position:static;display:block;transform:none;opacity:1;width:100%;height:auto;max-height:none;overflow:visible;background:white;box-shadow:none;border:0}.panel-scroll{height:auto;overflow:visible}.panel:not([open]){display:none!important}}
 @media(max-width:600px){.intro{top:15%;width:92%;left:8%}.intro h1{font-size:40px;line-height:1.2;margin:16px 0 12px}.intro h1 span{display:inline;margin-left:0}.intro p{max-width:240px}.atmosphere{background:linear-gradient(180deg,#e9ecdf 0%,#e9ecdfed 17%,#e9ecdf99 29%,#e9ecdf00 44%),linear-gradient(90deg,#e9ecdf55,transparent 70%)}body.is-exploring .atmosphere{opacity:.15}}
+.panel{transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1),width .6s ease,top .6s cubic-bezier(.2,.8,.2,1),bottom .6s;transition-delay:.2s,.1s,0s,0s,0s}.panel:not(.visible){transition-duration:.22s,.3s,.6s,.6s,.6s;transition-delay:0s}@media(prefers-reduced-motion:reduce){.panel{transition:none}}
 </style>
 </head>
 <body>
@@ -373,7 +374,7 @@ const scroller=document.getElementById("panel-scroll");
 const sceneStatus=document.getElementById("scene-status");
 const reduced=matchMedia("(prefers-reduced-motion:reduce)");
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let engine=null,loading=false,loadFailed=false,homeScroll=0,activePlace=null,restoreFocus=null,routeId=0;
+let engine=null,loading=false,loadFailed=false,homeScroll=0,activePlace=null,restoreFocus=null,routeId=0,closeTimer=null;
 let lightweight=false,paused=reduced.matches;
 try{lightweight=sessionStorage.getItem("cloudink-prototype-lightweight")==="true";}catch{}
 function route(){const raw=location.hash.slice(1)||"/";const q=raw.indexOf("?");return {path:q<0?raw:raw.slice(0,q),params:new URLSearchParams(q<0?"":raw.slice(q+1))};}
@@ -436,18 +437,22 @@ function tabs(selected){
 }
 function render(){
  const id=++routeId,{path,params}=route();
+ clearTimeout(closeTimer);
  const base=path==="/"||path==="";
  if(base){
    activePlace=null;
    const target=history.state?.homeScroll??homeScroll;
    document.title="云砚 · 字里生长";
    document.body.classList.remove("is-exploring");
-   if(panel.open){panel.classList.remove("visible");panel.close();}
+   if(panel.open){
+     panel.classList.remove("visible");
+     closeTimer=setTimeout(()=>{if(id!==routeId)return;panel.close();if(restoreFocus?.isConnected)restoreFocus.focus({preventScroll:true});},reduced.matches?0:230);
+   }
    document.body.style.overflow="";
    window.scrollTo(0,target);homeScroll=target;
    document.body.dataset.cameraMoving=String(!!engine&&!reduced.matches&&!lightweight);
    engine?.fly(null);
-   if(restoreFocus?.isConnected)restoreFocus.focus({preventScroll:true});
+   if(!panel.open&&restoreFocus?.isConnected)restoreFocus.focus({preventScroll:true});
    return;
  }
  if(!panel.open){
@@ -458,6 +463,9 @@ function render(){
    panel.showModal();
    requestAnimationFrame(()=>panel.classList.add("visible"));
  }
+ document.body.style.overflow="hidden";
+ document.body.classList.add("is-exploring");
+ requestAnimationFrame(()=>panel.classList.add("visible"));
  let place="notes",title="",body="",reading=false,crumb="树冠 / ";
  const backTo=history.state?.returnTo;
  const headerBack=document.getElementById("panel-back");
