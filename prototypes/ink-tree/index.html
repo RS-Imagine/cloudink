@@ -3,166 +3,553 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#f6f3eb">
+<meta name="theme-color" content="#e9ecdf">
 <meta name="robots" content="noindex,nofollow">
-<meta name="description" content="CloudInk 水墨树形博客交互原型：以文字为叶，以时间为枝。">
+<meta name="description" content="云砚三维树形博客原型。以文字为叶，以时间为枝。">
 <title>云砚 · 字里生长</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%23f6f3eb'/%3E%3Cpath d='M20 34V17M20 25L10 16M20 21L29 12' fill='none' stroke='%23596f51' stroke-width='2'/%3E%3Cpath d='M10 17Q2 8 9 4Q16 9 10 17M28 14Q23 5 33 4Q37 12 28 14M20 19Q13 8 20 4Q27 10 20 19' fill='%23596f51'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='7' fill='%23e9ecdf'/%3E%3Cpath d='M20 33V17M20 25L10 16M20 21L29 12' fill='none' stroke='%23425f3b' stroke-width='2'/%3E%3Cpath d='M10 17Q2 8 9 4Q16 9 10 17M28 14Q23 5 33 4Q37 12 28 14M20 19Q13 8 20 4Q27 10 20 19' fill='%23425f3b'/%3E%3C/svg%3E">
 <style>
-:root{color-scheme:light;--paper:#f6f3eb;--ink:#303a34;--muted:#6e756a;--line:#d5d8cb;--green:#596f51;--serif:"Songti SC","STSong","Noto Serif CJK SC","Source Han Serif SC","SimSun",serif;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
-*{box-sizing:border-box}html{scroll-behavior:auto;scroll-padding-top:28px}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);-webkit-font-smoothing:antialiased}body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.17;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23848070' opacity='.22' filter='url(%23n)' d='M0 0h180v180H0z'/%3E%3C/svg%3E")}a{color:inherit;text-decoration:none}button,input{font:inherit}button{cursor:pointer;color:inherit}button,a,input{touch-action:manipulation}a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--green);outline-offset:5px}button{background:none;border:0}svg{display:block}::selection{background:#d9e0cf}[hidden]{display:none!important}
-.skip{position:fixed;top:8px;left:12px;transform:translateY(-160%);z-index:20;background:var(--paper);padding:12px}.skip:focus{transform:none}
-.topbar{width:min(1320px,calc(100% - 96px));height:88px;margin:auto;display:flex;align-items:center;justify-content:space-between;font-family:var(--sans);font-size:12px;letter-spacing:.08em}.brand{display:flex;gap:11px;align-items:center;font-family:var(--serif);font-size:19px;letter-spacing:.12em}.mark{border:1px solid #7e8974;padding:4px 6px;font-size:15px;border-radius:2px;transform:rotate(-4deg)}.top-actions{display:flex;gap:25px;align-items:center}.prototype{color:var(--muted);font-size:11px;letter-spacing:.1em}.search-button{display:flex;align-items:center;gap:9px;min-height:44px}.search-icon{width:14px;height:14px;border:1px solid currentColor;border-radius:50%;position:relative;margin-right:4px}.search-icon:after{content:"";position:absolute;width:6px;height:1px;background:currentColor;transform:rotate(45deg);right:-5px;bottom:-2px}
-.crown{position:relative;width:min(1120px,100%);margin:0 auto;height:clamp(360px,52svh,520px)}.crown-art{position:absolute;bottom:0;width:100%;height:100%;pointer-events:none}.inscription{position:absolute;top:29%;left:50%;transform:translateX(-50%);width:340px;text-align:center;padding:16px 10px;background:radial-gradient(ellipse,rgba(246,243,235,.97) 0%,rgba(246,243,235,.88) 45%,rgba(246,243,235,0) 72%)}.eyebrow{font:10px var(--sans);letter-spacing:.3em;color:var(--muted);margin:0 0 20px}.inscription h1{font-weight:400;font-size:clamp(44px,5vw,62px);letter-spacing:.18em;margin:0 0 18px;text-indent:.18em}.inscription .subtitle{font-size:14px;letter-spacing:.22em;line-height:1.9;margin:0;color:#626b5e}.crown-pages{position:absolute;top:3%;left:50%;transform:translateX(-50%);display:flex;gap:36px;font-size:14px;white-space:nowrap}.crown-pages a{padding:12px 5px;border-bottom:1px solid transparent}.crown-pages a:hover{border-color:var(--green)}
-.category{position:absolute;min-height:44px;padding:10px 17px;border:1px solid #c9cebd;background:rgba(246,243,235,.95);border-radius:49% 46% 47% 44% / 46% 47% 44% 49%;font-size:15px;letter-spacing:.1em;transition:background .18s,transform .18s}.category:hover{transform:translateY(-3px);background:#e9eddf}.category[aria-pressed=true]{background:#3e5140;border-color:#3e5140;color:var(--paper)}.category small{font:10px var(--sans);margin-left:8px;opacity:.75}.cat-0{left:17%;top:49%}.cat-1{right:16%;top:47%}.cat-2{left:27%;top:74%}.cat-3{right:25%;top:74%}.margin-note{position:absolute;left:6%;top:35%;writing-mode:vertical-rl;font-size:12px;letter-spacing:.35em;color:#7a8273}.scroll-note{position:absolute;right:7%;bottom:10%;writing-mode:vertical-rl;font-size:11px;letter-spacing:.22em;color:var(--muted)}
-.journal{position:relative;max-width:1000px;margin:0 auto;padding:0 32px 80px;min-height:420px}.journal-top{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:18px 0 42px;font:12px var(--sans);color:var(--muted)}.journal-top .filter-label{font-family:var(--serif);font-size:15px;color:var(--ink)}.reset{font-size:12px;border-bottom:1px solid #89977e;padding:5px 0;margin-left:14px;min-height:36px}.trunk{position:absolute;top:0;bottom:0;left:calc(50% - 19px);width:38px;height:100%;pointer-events:none}.year{position:relative;z-index:1;width:max-content;margin:0 auto 30px;background:var(--paper);padding:9px 16px;font:12px var(--sans);letter-spacing:.16em;color:#6b7766;border:1px solid #ced3c3;border-radius:50%}.entry{position:relative;width:50%;padding:0 92px 0 8px;margin:0 0 18px;min-height:155px}.entry:nth-of-type(even){margin-left:50%;padding:0 8px 0 92px}.twig{position:absolute;right:-3px;top:2px;width:100px;height:80px;overflow:visible;pointer-events:none}.entry:nth-of-type(even) .twig{right:auto;left:-3px;transform:scaleX(-1)}.entry .meta{font:10px var(--sans);letter-spacing:.12em;color:var(--muted);display:flex;align-items:center;gap:10px}.entry .meta .dot{width:3px;height:3px;border-radius:50%;background:#9aa48e}.entry h2{font-size:25px;font-weight:400;line-height:1.6;margin:12px 0 9px;letter-spacing:.04em}.entry h2 a{background:linear-gradient(#849377,#849377) bottom left/0 1px no-repeat;transition:background-size .2s}.entry h2 a:hover{background-size:100% 1px}.entry p{font-size:14px;color:#6c7468;line-height:1.95;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.entry .read{display:inline-block;font:11px var(--sans);letter-spacing:.1em;margin-top:18px;color:#68795e;min-height:28px}.entry:hover .read{color:#30482d}.end{position:relative;text-align:center;padding:25px 0 15px}.load-more{border:1px solid #b9c2ad;background:var(--paper);padding:13px 25px;border-radius:2px;font-size:13px;letter-spacing:.12em}.load-more:hover{background:#e9eddf}.end-note{display:inline-block;background:var(--paper);padding:15px;font-size:12px;color:var(--muted);letter-spacing:.14em}.empty{position:relative;z-index:1;margin:30px auto 60px;padding:35px;background:var(--paper);text-align:center;max-width:440px;line-height:2}
-.roots{width:170px;height:70px;margin:0 auto;color:#7b8971}.footer{max-width:1160px;margin:0 auto;padding:30px 32px 40px;display:flex;justify-content:space-between;gap:18px;color:var(--muted);font:11px var(--sans);letter-spacing:.08em;border-top:1px solid #dedfd3}.footer a:hover{text-decoration:underline}
-.reading{max-width:720px;margin:35px auto 100px;padding:0 28px;min-height:65vh}.back{display:inline-flex;min-height:44px;align-items:center;font-size:13px;color:var(--green);gap:10px}.reading .eyebrow{margin-top:45px;letter-spacing:.15em}.reading h1{font-size:clamp(30px,4.5vw,44px);font-weight:400;line-height:1.55;letter-spacing:.04em;margin:20px 0}.reading .lead{color:var(--muted);font-size:17px;line-height:1.9;padding-bottom:30px;border-bottom:1px solid var(--line)}.prose{font-size:18px;line-height:2.1;overflow-wrap:anywhere}.prose p{margin:1.5em 0}.prose h2{font-size:26px;font-weight:400;margin:2em 0 .5em}.prose blockquote{margin:32px 0;padding:8px 24px;border-left:2px solid #889578;color:#68745f;background:#eef0e6}.prose code{font-family:monospace;font-size:.85em;background:#e9ecdf;padding:2px 5px}.article-end{border-top:1px solid var(--line);margin-top:50px;padding-top:20px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}.archive-year{font:14px var(--sans);margin:45px 0 12px;color:var(--green)}.archive-link{display:flex;justify-content:space-between;gap:20px;padding:18px 0;border-bottom:1px solid var(--line);font-size:17px;line-height:1.6}.archive-link time{flex-shrink:0;font:12px var(--sans);color:var(--muted);padding-top:6px}.archive-link:hover{color:var(--green)}
-dialog{width:min(540px,calc(100% - 32px));border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);padding:28px;box-shadow:0 25px 100px #17201720}dialog::backdrop{background:#29312850;backdrop-filter:blur(3px)}.dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.dialog-head h2{font-size:23px;font-weight:400;margin:0}.close{font:26px var(--sans);min-width:44px;min-height:44px}.search-form label{display:block;font-size:13px;margin-bottom:12px;color:var(--muted)}.search-row{display:flex;gap:10px}.search-row input{min-width:0;width:100%;padding:13px 12px;border:1px solid #b9c2ad;background:#fbfaf5;border-radius:2px;font-size:16px}.search-row button{background:#40533f;color:var(--paper);padding:10px 20px;flex-shrink:0;border-radius:2px}.search-help{font-size:12px;color:var(--muted);margin:16px 0 0;line-height:1.8}
-@media(min-width:1500px){.crown{max-width:1200px}.journal{max-width:1080px}}
-@media(max-width:800px){.topbar{width:calc(100% - 40px);height:70px}.top-actions{gap:16px}.prototype{font-size:10px}.brand{font-size:17px}.search-button .search-text{display:none}.crown{height:450px;max-height:none;overflow:hidden}.crown-art{width:760px;max-width:none;left:50%;transform:translateX(-50%);height:450px;opacity:.82}.crown-pages{top:1%;gap:28px}.inscription{top:26%;width:290px}.inscription h1{font-size:46px}.inscription .subtitle{font-size:12px}.eyebrow{font-size:9px}.category{font-size:13px;padding:9px 12px}.category small{margin-left:4px}.cat-0{left:5%;top:58%}.cat-1{right:5%;top:58%}.cat-2{left:15%;top:78%}.cat-3{right:15%;top:78%}.margin-note,.scroll-note{display:none}.journal{padding:0 24px 45px;margin-top:0}.journal-top{padding:22px 0 36px 32px;gap:10px}.journal-top .filter-label{font-size:14px}.trunk{left:14px;top:0;width:24px}.journal:before{content:"";position:absolute;left:25px;right:50%;top:-1px;height:18px;border-left:2px solid #718063;border-bottom:2px solid #718063;border-bottom-left-radius:14px}.year{margin:0 0 34px -13px;padding:7px 10px;font-size:10px}.entry,.entry:nth-of-type(even){width:100%;padding:0 0 0 48px;margin:0 0 44px;min-height:0}.entry .twig,.entry:nth-of-type(even) .twig{left:-3px;right:auto;width:44px;top:3px;transform:scaleX(-1)}.entry h2{font-size:23px;margin-top:11px}.entry p{font-size:14px;line-height:1.9}.entry .read{margin-top:13px}.end{padding-left:32px}.roots{margin-left:0;width:110px}.footer{margin:0 24px;padding:25px 0;flex-wrap:wrap;font-size:10px}.reading{margin-top:16px;padding:0 24px}.reading .eyebrow{margin-top:28px}.prose{font-size:17px;line-height:2}.prose h2{font-size:24px}.archive-link{font-size:15px}.article-end{gap:20px}.empty{margin-left:30px;padding:24px 12px}}
-@media(max-width:360px){.category{font-size:12px;padding:8px 10px}.cat-0{left:3%}.cat-1{right:3%}.topbar{width:calc(100% - 32px)}.prototype{display:none}.entry h2{font-size:21px}.journal-top{font-size:10px}.reading h1{font-size:28px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
-@media print{.topbar,.footer,.back,.article-end,.crown-art,.trunk,.twig,dialog,body:before{display:none!important}.reading{max-width:none;margin:0;padding:0}body{background:white;color:black}.prose{font-size:12pt}}
-
-.trunk-bend{display:none}@media(max-width:800px){.crown{height:390px}.crown-art{height:390px}.journal:before{display:none}.trunk-bend{display:block;position:absolute;top:-1px;left:0;width:100%;height:72px;pointer-events:none}.trunk{top:69px;height:calc(100% - 69px)}.journal-top{padding-top:84px;padding-bottom:28px}}
-@media(max-width:800px){.inscription{top:16%;padding:8px 10px}.inscription .eyebrow{margin-bottom:14px}.inscription h1{margin-bottom:12px}.cat-0,.cat-1{top:60%}}
+:root{color-scheme:light;--ink:#25382e;--muted:#677364;--paper:#f5f3e9;--line:#c7cdbd;--accent:#425f3b;--serif:"Songti SC","STSong","Noto Serif CJK SC","SimSun",serif;--sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html{scrollbar-gutter:stable;scroll-padding-top:110px}body{margin:0;background:#e9ecdf;color:var(--ink);font-family:var(--serif);-webkit-font-smoothing:antialiased}button,input{font:inherit}button,a{touch-action:manipulation}button{color:inherit;cursor:pointer}button{border:0;background:none}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:5px}[hidden]{display:none!important}::selection{background:#c6d1b6}
+#scene{position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(ellipse at 73% 22%,#f3ead0 0%,#e6eadb 46%,#cdd7ca 100%)}#scene canvas{width:100%;height:100%;display:block;opacity:0;transition:opacity 1.2s}body.scene-ready #scene canvas{opacity:1}.atmosphere{position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,#edf0e3c9 0%,#edf0e350 28%,transparent 51%),linear-gradient(0deg,#ecede088,transparent 24%);transition:opacity .7s}body.is-exploring .atmosphere{opacity:.3}
+.topbar{height:94px;padding:0 4.5vw;display:flex;justify-content:space-between;align-items:center;position:fixed;inset:0 0 auto;z-index:20;background:linear-gradient(#e9ecdfed,#e9ecdf80,transparent);font-family:var(--sans)}.brand{display:flex;align-items:center;gap:12px;font-family:var(--serif);font-size:23px;letter-spacing:.13em}.brand-icon{width:26px;height:34px}.brand span{display:block}.brand small{display:block;font:8px var(--sans);letter-spacing:.3em;margin-top:5px}.nav{display:flex;align-items:center;gap:29px;font-size:12px;letter-spacing:.12em}.nav button,.nav a{padding:12px 0;min-height:44px}.nav button:hover,.nav a:hover{color:#81934f}.nav .nav-search{display:flex;align-items:center;gap:8px}.search-symbol{width:13px;height:13px;border:1px solid;border-radius:50%;display:inline-block;position:relative;margin-right:5px}.search-symbol:after{content:"";position:absolute;width:5px;height:1px;background:currentColor;bottom:-2px;right:-4px;transform:rotate(45deg)}.skip{position:fixed;left:15px;top:-80px;z-index:40;background:var(--paper);padding:15px}.skip:focus{top:15px}
+.hero{height:76svh;min-height:580px;max-height:840px;position:relative;pointer-events:none}.intro{position:absolute;top:28%;left:9%;width:340px;transition:opacity .5s,transform .7s}.overline{font:10px var(--sans);letter-spacing:.3em;text-transform:uppercase;color:#5c6b5a;display:flex;align-items:center;gap:13px}.overline:before{content:"";width:24px;height:1px;background:#80936e}.intro h1{font-size:clamp(55px,5.4vw,82px);font-weight:400;line-height:1.25;letter-spacing:.13em;margin:26px 0 22px}.intro h1 span{display:block;margin-left:1em}.intro p{font-size:15px;line-height:2;letter-spacing:.12em;color:#67715e}.intro .intro-foot{font:10px var(--sans);letter-spacing:.2em;margin-top:38px;display:flex;align-items:center;gap:15px}.intro-foot span{height:1px;width:32px;background:#a2af92}.scene-status{position:absolute;bottom:43px;left:9%;font:10px var(--sans);letter-spacing:.14em;color:#69765e;max-width:300px;line-height:1.7;pointer-events:auto}.scene-status:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#7e9661;margin-right:9px}.hero-note{position:absolute;bottom:43px;right:6%;font:11px var(--sans);letter-spacing:.15em;color:#5f6e59;line-height:1.9;text-align:right}.hero-note span{display:block;font-size:9px;color:#7f8c72}
+#anchors{position:fixed;inset:0;z-index:8;pointer-events:none;transition:opacity .5s}.anchor{position:absolute;pointer-events:auto;white-space:nowrap;background:#f8f6e9e8;box-shadow:0 8px 35px #33482a10;border:1px solid #ffffffb3;border-radius:2px;padding:11px 17px;display:flex;align-items:center;gap:15px;font-size:14px;letter-spacing:.1em;transform:translate(-50%,-50%);transition:background .2s,box-shadow .2s;backdrop-filter:blur(10px);min-height:44px}.anchor:before{content:"";position:absolute;bottom:-25px;left:50%;width:1px;height:24px;background:#faf8eac9}.anchor:after{content:"";position:absolute;bottom:-29px;left:calc(50% - 3px);width:6px;height:6px;background:#fff9dc;border:1px solid #6d8150;border-radius:50%;box-shadow:0 0 15px #fff4ab}.anchor small{font:9px var(--sans);color:#7b8768;letter-spacing:.12em}.anchor:hover{background:#fffdf1;box-shadow:0 6px 25px #40562c27}.anchor .arrow{font:12px var(--sans);color:#7b895f}.anchor[data-place="about"],.anchor[data-place="archive"]{font-size:12px;padding:9px 13px;background:#f3f5e4b8}.scene-ready .anchor{will-change:transform}.fallback-nav{display:none;gap:10px;flex-wrap:wrap;position:absolute;bottom:90px;left:9%;right:8%;pointer-events:auto}.fallback-nav button{padding:10px 16px;border:1px solid #9ba98e;background:#f5f4e7bd;min-height:44px;font-size:13px}
+.scene-controls{position:fixed;left:35px;bottom:26px;z-index:15;display:flex;gap:12px;font:10px var(--sans);color:#58674d}.scene-controls button{background:#f4f4e8c9;backdrop-filter:blur(8px);border:1px solid #ffffff80;padding:10px 13px;border-radius:2px;min-height:38px}.scene-controls button:hover{background:#fffdf2}.position-label{position:fixed;right:31px;bottom:31px;z-index:9;font:9px var(--sans);letter-spacing:.2em;color:#677359;writing-mode:vertical-rl}.compass{border:1px solid #94a283;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;margin-top:12px;font-size:14px}
+.journal{position:relative;max-width:1200px;margin:0 auto;padding:24px 65px 100px}.journal-heading{display:flex;align-items:center;justify-content:space-between;border-top:1px solid #aab79a66;padding:25px 0 45px;margin-bottom:0}.journal-heading h2{font-size:20px;font-weight:400;letter-spacing:.12em;margin:0}.journal-heading span{font:10px var(--sans);color:#718060;letter-spacing:.12em}.entry{width:37%;margin-bottom:75px;position:relative;min-height:165px}.entry:nth-child(even){margin-left:63%}.entry a.entry-link{display:block;padding:25px 29px 22px;background:linear-gradient(105deg,#f5f5e9eb,#f5f5e9b3);border:1px solid #f9faeff0;box-shadow:0 10px 40px #273d2526;backdrop-filter:blur(14px);border-radius:3px;transition:transform .4s,background .4s}.entry a.entry-link:hover{transform:translateY(-4px);background:#faf9eff2}.meta{display:flex;gap:12px;align-items:center;font:9px var(--sans);letter-spacing:.13em;color:#697b59}.meta .tag{border-left:1px solid #b6c2a7;padding-left:12px}.entry h3{font-weight:400;font-size:25px;line-height:1.6;margin:13px 0 10px;letter-spacing:.03em}.entry p{font-size:13px;line-height:1.95;color:#697560;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}.entry .read{font:10px var(--sans);letter-spacing:.12em;color:#5e7550;margin-top:22px;display:flex;justify-content:space-between}.entry .read span:last-child{font-size:17px;line-height:10px}.entry:before{content:attr(data-year);position:absolute;top:-27px;left:3px;font:10px var(--sans);letter-spacing:.17em;color:#6b7f58}.tree-lines{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1}.endnote{font-size:13px;color:#647758;line-height:2;text-align:center;margin:30px 0 60px;letter-spacing:.15em}.endnote small{display:block;font:9px var(--sans);letter-spacing:.2em;margin-top:15px}.footer{display:flex;justify-content:space-between;gap:20px;padding:28px max(6vw,24px) 90px;border-top:1px solid #b7c2a17a;font:10px var(--sans);color:#607454;letter-spacing:.08em}
+.panel{border:1px solid #ffffffd6;color:var(--ink);background:#f6f6ebf2;backdrop-filter:blur(8px);box-shadow:0 20px 100px #172a282b;padding:0;border-radius:5px;position:fixed;top:100px;bottom:28px;right:35px;left:auto;width:min(450px,42vw);height:auto;max-height:none;margin:0;max-width:none;overflow:hidden;opacity:0;transform:translateX(35px);transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1),width .6s}.panel::backdrop{background:#243a2d08;transition:background .6s}.panel[open].visible{opacity:1;transform:none}.panel.reading{width:min(760px,64vw);background:#f9f8eff7}.panel-header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 24px 13px;border-bottom:1px solid #b6c2a354;flex-shrink:0}.panel-header .breadcrumb{font:10px var(--sans);letter-spacing:.13em;color:#698058}.panel-close{width:38px;height:38px;min-height:38px;border:1px solid #bec9ad77;border-radius:50%;font:23px var(--sans);color:#60764f}.panel-close:hover{background:#e7edda}.panel-back{font-size:13px;min-height:38px;color:#4f6e43}.panel-scroll{overflow-y:auto;overscroll-behavior:contain;height:calc(100% - 70px);padding:25px 32px 45px;scrollbar-width:thin;scrollbar-color:#b4c19d transparent}.panel h2{font-size:36px;font-weight:400;line-height:1.5;letter-spacing:.05em;margin:10px 0 15px}.panel .panel-subtitle{font-size:13px;color:#6c795e;line-height:1.9;letter-spacing:.04em;margin:0 0 25px}.panel .panel-eyebrow{font:9px var(--sans);letter-spacing:.2em;color:#8a9673;margin:12px 0 20px}.branch-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}.branch-tabs a{font:11px var(--sans);padding:9px 12px;border:1px solid #bfcaac;border-radius:2px;min-height:34px}.branch-tabs a[aria-current=true]{background:#4a613e;color:#fafbef;border-color:#4a613e}.panel-item{display:block;padding:22px 0;border-bottom:1px solid #cbd3bd}.panel-item h3{font-size:20px;font-weight:400;line-height:1.5;margin:10px 0 8px}.panel-item p{font-size:12px;line-height:1.9;color:#78836c;margin:0}.panel-item:hover h3{color:#74904b}.panel-item time{font:9px var(--sans);letter-spacing:.1em;color:#85916e}.panel-item .item-bottom{display:flex;justify-content:space-between;gap:15px;margin-top:16px;font:10px var(--sans);color:#7c8d64}.prose{font-size:17px;line-height:2.1;overflow-wrap:anywhere}.prose p{margin:1.5em 0}.prose h3{font-size:25px;font-weight:400;margin:2em 0 .5em}.prose blockquote{border-left:2px solid #9aaa7a;margin:30px 0;padding:1px 22px;background:#e9efdd80;color:#65814e}.article-heading{border-bottom:1px solid #c9d3b8;padding-bottom:20px}.article-heading h2{font-size:36px}.article-end{margin-top:42px;padding-top:24px;border-top:1px solid #c9d3b8;color:#728563;font-size:12px;display:flex;justify-content:space-between;gap:20px}.archive-year{font:12px var(--sans);letter-spacing:.17em;color:#8a9673;margin:30px 0 8px}.search-form label{display:block;font-size:12px;color:#768368;margin:18px 0 12px}.search-row{display:flex;gap:8px}.search-row input{min-width:0;width:100%;padding:12px;border:1px solid #b3c09f;border-radius:2px;background:#fbfcf4;font-size:16px}.search-row button{background:#4b633d;color:#fffdf0;padding:10px 17px;border-radius:2px;white-space:nowrap}.empty{font-size:14px;line-height:2;padding:25px 0;color:#758367}.panel-enter{animation:contentEnter .6s both}@keyframes contentEnter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+body.is-exploring .intro,body.is-exploring .hero-note,body.is-exploring #anchors,body.is-exploring .scene-status{opacity:0;pointer-events:none}body.is-exploring .anchor{pointer-events:none}body.is-exploring .journal,body.is-exploring .footer{opacity:0;pointer-events:none}.journal,.footer{transition:opacity .6s}body.is-exploring .tree-lines{opacity:0}
+body.scene-fallback #anchors,body.lightweight #anchors,body.scene-fallback .tree-lines,body.lightweight .tree-lines{display:none}body.scene-fallback .fallback-nav,body.lightweight .fallback-nav{display:flex}body.scene-fallback #scene,body.lightweight #scene{opacity:.45}body.scene-fallback .hero,body.lightweight .hero{height:620px;min-height:620px}body.scene-fallback .intro,body.lightweight .intro{left:15%;top:20%}body.scene-fallback .fallback-nav,body.lightweight .fallback-nav{left:15%;bottom:95px}body.scene-fallback .entry,body.lightweight .entry{width:70%;margin-left:auto;margin-right:auto;margin-bottom:45px}.mode-tip{font:11px var(--sans);color:#6d7a60;margin-top:20px;line-height:1.7}
+@media(min-width:1600px){.intro{left:12%}.hero{height:76svh}.journal{max-width:1350px}.entry{width:35%}.entry:nth-child(even){margin-left:65%}}
+@media(max-width:900px){.topbar{height:78px;padding:0 24px}.brand{font-size:20px}.nav{gap:18px;font-size:11px}.hero{height:76svh;min-height:570px;max-height:690px}.intro{left:7%;top:21%;width:270px}.intro h1{font-size:55px}.intro p{font-size:13px}.intro-foot{display:none!important}.hero-note{right:5%;font-size:10px}.scene-status{left:7%}.anchor{font-size:12px;padding:10px 12px;gap:10px}.journal{padding:20px 35px 80px}.entry{width:43%}.entry:nth-child(even){margin-left:57%}.entry a.entry-link{padding:20px}.entry h3{font-size:23px}.panel{width:min(440px,57vw);right:20px;top:86px;bottom:20px}.panel.reading{width:min(680px,80vw)}.panel-scroll{padding:25px}.scene-controls{left:20px;bottom:20px}.position-label{right:18px;bottom:25px}}
+@media(max-width:600px){.topbar{height:72px;padding:0 20px}.brand{font-size:18px;gap:8px}.brand-icon{width:21px;height:29px}.brand small{font-size:7px}.nav{gap:19px;font-size:11px}.nav .desktop-nav{display:none}.hero{height:79svh;min-height:560px;max-height:700px}.intro{top:16%;left:8%;width:220px;pointer-events:none}.intro .overline{font-size:8px;letter-spacing:.2em}.intro h1{font-size:46px;line-height:1.18;margin:18px 0 15px}.intro h1 span{margin-left:.6em}.intro p{font-size:11px;line-height:1.9;letter-spacing:.09em;max-width:200px}.hero-note{right:24px;bottom:29px;font-size:9px}.hero-note span{font-size:8px}.scene-status{left:8%;bottom:29px;font-size:9px;max-width:155px}.anchor{font-size:12px;padding:9px 12px;gap:7px;min-height:42px}.anchor small{font-size:8px}.anchor[data-place="about"],.anchor[data-place="archive"]{font-size:11px;padding:8px 10px}.anchor:before{height:16px;bottom:-17px}.anchor:after{bottom:-21px}.journal{padding:10px 24px 55px}.journal-heading{padding:20px 0 42px}.journal-heading h2{font-size:17px}.journal-heading span{font-size:9px}.entry,.entry:nth-child(even){width:calc(100% - 52px);margin-left:52px;margin-bottom:60px}.entry h3{font-size:23px}.entry a.entry-link{padding:20px 22px}.entry p{font-size:13px}.entry:before{font-size:9px}.footer{font-size:9px;line-height:1.8;flex-wrap:wrap;padding-bottom:90px}.scene-controls{bottom:14px;left:14px;gap:7px;font-size:9px}.scene-controls button{padding:8px 11px;min-height:35px}.position-label{display:none}.panel,.panel.reading{width:calc(100% - 24px);top:27svh;right:12px;bottom:12px;border-radius:8px}.panel.reading{top:12px;bottom:12px}.panel-header{padding:12px 18px}.panel-scroll{padding:18px 24px 35px;height:calc(100% - 63px)}.panel h2{font-size:30px}.article-heading h2{font-size:29px}.prose{font-size:16px}.prose h3{font-size:23px}.panel.reading .panel-scroll{padding-top:25px}body.is-exploring .topbar{opacity:.6}body.scene-fallback .hero,body.lightweight .hero{min-height:530px;height:530px}body.scene-fallback .intro,body.lightweight .intro{left:9%}body.scene-fallback .fallback-nav,body.lightweight .fallback-nav{left:9%;bottom:90px}body.scene-fallback .entry,body.lightweight .entry{width:100%;margin-left:0}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{#scene,.atmosphere,.topbar,#anchors,.scene-controls,.tree-lines,.position-label,.hero,.panel-header{display:none!important}body{background:white}.panel{position:static;display:block;transform:none;opacity:1;width:100%;height:auto;max-height:none;overflow:visible;background:white;box-shadow:none;border:0}.panel-scroll{height:auto;overflow:visible}.panel:not([open]){display:none!important}}
+@media(max-width:600px){.intro{top:15%;width:92%;left:8%}.intro h1{font-size:40px;line-height:1.2;margin:16px 0 12px}.intro h1 span{display:inline;margin-left:0}.intro p{max-width:240px}.atmosphere{background:linear-gradient(180deg,#e9ecdf 0%,#e9ecdfed 17%,#e9ecdf99 29%,#e9ecdf00 44%),linear-gradient(90deg,#e9ecdf55,transparent 70%)}body.is-exploring .atmosphere{opacity:.15}}
 </style>
 </head>
 <body>
-<a class="skip" href="#main">跳至正文</a>
-<header class="topbar"><a class="brand" href="#/" aria-label="云砚首页"><span class="mark" aria-hidden="true">云</span>云砚 <span style="font:10px var(--sans);letter-spacing:.15em">CLOUDINK</span></a><div class="top-actions"><span class="prototype">树形主题 · 交互预览</span><button class="search-button" id="open-search" aria-label="搜索文章"><span class="search-icon" aria-hidden="true"></span><span class="search-text">寻一篇文字</span></button></div></header>
-<main id="main" tabindex="-1"></main>
-<noscript><section class="reading"><h1>字里生长</h1><p>此交互原型需要 JavaScript 来演示分类、搜索和阅读切换。正式主题将由 CloudInk 输出文章 HTML。</p></section></noscript>
-<footer class="footer"><span>以文字为叶，以时间为枝。</span><span>CloudInk 云砚 &nbsp; · &nbsp; <a href="#/about">关于这片园地</a> &nbsp; · &nbsp; 示例内容</span></footer>
-<dialog id="search-dialog" aria-labelledby="search-title"><div class="dialog-head"><h2 id="search-title">寻一篇文字</h2><button class="close" id="close-search" aria-label="关闭搜索">×</button></div><form class="search-form" id="search-form"><label for="search-input">搜索标题、摘要或分类</label><div class="search-row"><input id="search-input" name="q" maxlength="100" placeholder="例如：日子、山路、造物" autocomplete="off" type="search"><button type="submit">寻找</button></div></form><p class="search-help">在这片园地里，找一段与你有关的文字。</p></dialog>
-<template id="crown-template"><svg class="crown-art" viewBox="0 0 1120 520" preserveAspectRatio="xMidYMax meet" aria-hidden="true"><g fill="none" stroke="#52604e" stroke-linecap="round">
-<path d="M560 525 C554 481 573 437 557 393 C543 358 532 335 520 311" stroke-width="17" opacity=".82"/>
-<path d="M558 519 C564 467 552 433 559 401 C575 354 606 316 638 283" stroke-width="9"/>
-<path d="M553 396 C521 344 473 309 423 285 C372 260 309 231 235 217" stroke-width="8"/>
-<path d="M523 320 C488 277 476 223 459 194 C438 157 403 131 353 108" stroke-width="5"/>
-<path d="M566 389 C598 341 661 326 716 300 C761 278 813 240 864 209" stroke-width="7"/>
-<path d="M628 295 C651 261 660 224 683 190 C711 152 746 128 783 119" stroke-width="4.5"/>
-<path d="M437 292 C414 246 382 217 333 193 C298 176 272 148 254 123" stroke-width="4"/>
-<path d="M400 274 C344 270 303 275 254 269 L191 247" stroke-width="3"/>
-<path d="M297 235 C276 211 227 190 187 181 L151 163" stroke-width="3"/>
-<path d="M477 235 C482 191 476 156 489 125 L509 91" stroke-width="3"/>
-<path d="M451 179 C420 174 391 166 366 151 L327 153" stroke-width="2.5"/>
-<path d="M662 240 C636 197 632 175 634 147 L621 121" stroke-width="3"/>
-<path d="M721 298 C758 295 812 292 854 277 L910 253" stroke-width="3"/>
-<path d="M777 258 C806 222 801 182 821 159 L855 138" stroke-width="3"/>
-<path d="M704 163 C698 136 702 109 718 88" stroke-width="2"/>
-<path d="M845 219 C875 218 907 199 932 182" stroke-width="2"/>
-<path d="M558 442 C521 412 479 399 441 395 L398 373" stroke-width="3"/>
-<path d="M570 428 C609 406 648 402 678 379 L717 355" stroke-width="3"/>
-<path d="M556 517 C554 474 565 442 551 405" stroke="#bcc1ac" stroke-width="2" opacity=".7"/>
-</g><ellipse cx="175" cy="163" rx="43.92" ry="20.52" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(153.6 150.3) rotate(-34) scale(0.82)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(198.6 178.0) rotate(-16) scale(0.67)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(158.3 150.5) rotate(44) scale(1.05)" fill="#596b50" opacity="0.57"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(179.9 154.8) rotate(-39) scale(1.28)" fill="#596b50" opacity="0.55"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(152.7 172.6) rotate(-24) scale(0.79)" fill="#596b50" opacity="0.23"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(154.6 173.1) rotate(-31) scale(1.04)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(184.5 170.6) rotate(-7) scale(1.17)" fill="#596b50" opacity="0.24"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(158.0 160.7) rotate(15) scale(0.99)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(194.2 156.6) rotate(35) scale(1.08)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(142.7 149.8) rotate(-56) scale(0.87)" fill="#596b50" opacity="0.53"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(167.1 148.4) rotate(-62) scale(0.70)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(157.2 179.7) rotate(-45) scale(1.14)" fill="#596b50" opacity="0.30"/><ellipse cx="223" cy="188" rx="52.46" ry="24.509999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(272.9 205.6) rotate(-51) scale(0.73)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(231.2 189.5) rotate(-2) scale(1.08)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(253.3 165.5) rotate(57) scale(0.96)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(198.6 209.6) rotate(-37) scale(0.69)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(237.9 206.7) rotate(-4) scale(1.18)" fill="#596b50" opacity="0.56"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(181.1 206.3) rotate(-34) scale(0.83)" fill="#596b50" opacity="0.50"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(274.5 201.8) rotate(48) scale(0.98)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(251.1 169.5) rotate(-68) scale(0.90)" fill="#596b50" opacity="0.36"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(239.5 164.7) rotate(-49) scale(0.81)" fill="#596b50" opacity="0.23"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(267.5 204.7) rotate(18) scale(0.98)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(190.8 167.6) rotate(-61) scale(0.96)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(217.0 170.4) rotate(16) scale(1.07)" fill="#596b50" opacity="0.50"/><ellipse cx="248" cy="122" rx="39.04" ry="18.24" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(237.6 112.3) rotate(63) scale(0.68)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(213.0 133.0) rotate(-1) scale(1.02)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(267.0 110.9) rotate(50) scale(0.92)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(277.5 109.7) rotate(49) scale(0.79)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(272.0 131.8) rotate(-8) scale(1.14)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(212.6 118.2) rotate(35) scale(0.96)" fill="#596b50" opacity="0.61"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(247.5 135.6) rotate(-25) scale(1.13)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(257.4 122.7) rotate(62) scale(1.19)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(281.5 105.5) rotate(27) scale(1.15)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(221.7 128.2) rotate(11) scale(1.24)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(241.8 126.4) rotate(36) scale(1.11)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(257.2 129.8) rotate(-50) scale(1.13)" fill="#596b50" opacity="0.54"/><ellipse cx="304" cy="180" rx="47.58" ry="22.229999999999997" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(284.3 179.2) rotate(-22) scale(1.17)" fill="#596b50" opacity="0.23"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(301.7 191.1) rotate(58) scale(0.66)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(338.8 159.2) rotate(-39) scale(0.98)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(276.0 168.6) rotate(25) scale(1.26)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(293.9 160.2) rotate(-17) scale(0.95)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(329.6 182.9) rotate(37) scale(0.72)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(286.2 168.7) rotate(-26) scale(0.86)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(302.7 170.3) rotate(30) scale(1.20)" fill="#596b50" opacity="0.45"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(344.2 160.4) rotate(-45) scale(0.67)" fill="#596b50" opacity="0.63"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(330.8 160.6) rotate(63) scale(1.17)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(259.6 180.8) rotate(-15) scale(1.20)" fill="#596b50" opacity="0.29"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(316.3 189.9) rotate(-47) scale(1.08)" fill="#596b50" opacity="0.61"/><ellipse cx="341" cy="107" rx="43.92" ry="20.52" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(327.6 115.8) rotate(19) scale(0.82)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(365.5 92.9) rotate(-7) scale(1.15)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(338.7 87.4) rotate(17) scale(0.74)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(339.4 117.9) rotate(4) scale(0.82)" fill="#596b50" opacity="0.35"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(346.8 88.7) rotate(4) scale(1.26)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(355.9 94.9) rotate(2) scale(0.96)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(306.0 109.8) rotate(8) scale(0.99)" fill="#596b50" opacity="0.29"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(335.6 124.9) rotate(-54) scale(1.07)" fill="#596b50" opacity="0.50"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(375.5 92.2) rotate(-24) scale(0.98)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(306.4 112.4) rotate(-53) scale(0.96)" fill="#596b50" opacity="0.34"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(365.1 104.5) rotate(-20) scale(0.84)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(353.1 115.9) rotate(-26) scale(1.22)" fill="#596b50" opacity="0.34"/><ellipse cx="376" cy="145" rx="51.24" ry="23.939999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(360.4 158.2) rotate(-53) scale(1.28)" fill="#596b50" opacity="0.24"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(348.7 129.0) rotate(-3) scale(1.23)" fill="#596b50" opacity="0.21"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(361.6 151.7) rotate(7) scale(0.74)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(404.4 157.4) rotate(46) scale(0.84)" fill="#596b50" opacity="0.29"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(412.8 155.4) rotate(-4) scale(1.29)" fill="#596b50" opacity="0.34"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(343.2 153.5) rotate(23) scale(1.04)" fill="#596b50" opacity="0.50"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(402.4 156.2) rotate(-49) scale(1.10)" fill="#596b50" opacity="0.21"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(338.9 145.5) rotate(65) scale(0.88)" fill="#596b50" opacity="0.21"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(360.4 144.8) rotate(-38) scale(1.00)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(351.9 162.8) rotate(16) scale(1.23)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(401.0 132.3) rotate(-4) scale(1.03)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(386.3 154.9) rotate(-22) scale(0.96)" fill="#596b50" opacity="0.27"/><ellipse cx="430" cy="158" rx="46.36" ry="21.659999999999997" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(411.3 152.0) rotate(26) scale(0.70)" fill="#596b50" opacity="0.42"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(438.8 178.3) rotate(65) scale(1.09)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(412.6 162.0) rotate(64) scale(1.24)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(469.4 139.6) rotate(43) scale(1.05)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(432.1 157.1) rotate(20) scale(1.11)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(443.0 143.3) rotate(13) scale(1.13)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(402.0 141.3) rotate(50) scale(1.22)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(412.9 140.0) rotate(-35) scale(0.92)" fill="#596b50" opacity="0.35"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(414.4 146.4) rotate(-46) scale(1.11)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(451.2 167.9) rotate(38) scale(0.83)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(397.0 156.6) rotate(6) scale(0.88)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(388.7 171.2) rotate(18) scale(0.95)" fill="#596b50" opacity="0.45"/><ellipse cx="482" cy="121" rx="36.6" ry="17.099999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(515.2 118.7) rotate(-40) scale(1.20)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(500.4 108.5) rotate(-28) scale(0.68)" fill="#596b50" opacity="0.55"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(499.6 112.1) rotate(58) scale(0.78)" fill="#596b50" opacity="0.42"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(450.0 112.2) rotate(-5) scale(1.00)" fill="#596b50" opacity="0.57"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(471.6 135.4) rotate(-27) scale(1.30)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(478.0 134.8) rotate(68) scale(1.01)" fill="#596b50" opacity="0.33"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(452.9 120.7) rotate(68) scale(1.17)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(468.2 105.1) rotate(7) scale(0.82)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(477.4 129.5) rotate(67) scale(1.29)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(516.6 131.5) rotate(-5) scale(0.86)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(485.1 109.2) rotate(47) scale(0.87)" fill="#596b50" opacity="0.56"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(484.1 117.8) rotate(28) scale(0.94)" fill="#596b50" opacity="0.56"/><ellipse cx="510" cy="86" rx="28.06" ry="13.11" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(508.7 89.7) rotate(38) scale(1.22)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(530.1 82.5) rotate(-53) scale(0.78)" fill="#596b50" opacity="0.32"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(497.5 96.9) rotate(-29) scale(0.79)" fill="#596b50" opacity="0.23"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(522.3 80.9) rotate(27) scale(1.14)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(498.6 98.4) rotate(42) scale(0.67)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(496.5 81.6) rotate(14) scale(1.29)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(514.4 96.7) rotate(-44) scale(0.90)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(503.0 88.3) rotate(45) scale(1.30)" fill="#596b50" opacity="0.53"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(498.7 78.9) rotate(-32) scale(0.95)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(495.3 89.5) rotate(-40) scale(0.72)" fill="#596b50" opacity="0.53"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(533.7 77.9) rotate(-68) scale(1.19)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(503.9 88.2) rotate(23) scale(1.15)" fill="#596b50" opacity="0.56"/><ellipse cx="624" cy="125" rx="32.94" ry="15.389999999999999" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(632.9 117.1) rotate(13) scale(1.15)" fill="#596b50" opacity="0.43"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(636.5 135.8) rotate(-35) scale(0.67)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(609.7 132.7) rotate(-29) scale(1.18)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(598.9 137.5) rotate(66) scale(0.86)" fill="#596b50" opacity="0.34"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(592.3 124.4) rotate(35) scale(0.77)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(643.5 133.4) rotate(62) scale(1.00)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(605.9 120.1) rotate(69) scale(1.06)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(655.2 120.3) rotate(50) scale(0.72)" fill="#596b50" opacity="0.32"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(645.4 131.1) rotate(-49) scale(1.12)" fill="#596b50" opacity="0.28"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(608.5 128.5) rotate(9) scale(0.79)" fill="#596b50" opacity="0.28"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(649.4 111.2) rotate(40) scale(1.16)" fill="#596b50" opacity="0.61"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(635.0 118.3) rotate(7) scale(0.66)" fill="#596b50" opacity="0.58"/><ellipse cx="680" cy="185" rx="47.58" ry="22.229999999999997" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(710.4 186.0) rotate(-36) scale(1.14)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(706.9 197.8) rotate(-57) scale(1.16)" fill="#596b50" opacity="0.42"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(704.5 177.4) rotate(-55) scale(0.70)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(706.3 166.4) rotate(9) scale(1.00)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(662.5 176.9) rotate(-7) scale(1.17)" fill="#596b50" opacity="0.35"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(683.0 183.0) rotate(-48) scale(1.21)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(698.8 206.2) rotate(-54) scale(1.16)" fill="#596b50" opacity="0.35"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(673.7 173.1) rotate(63) scale(0.87)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(695.4 166.9) rotate(-32) scale(0.68)" fill="#596b50" opacity="0.50"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(671.3 205.7) rotate(-17) scale(1.02)" fill="#596b50" opacity="0.29"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(724.3 190.0) rotate(-50) scale(0.76)" fill="#596b50" opacity="0.50"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(660.3 170.9) rotate(58) scale(1.14)" fill="#596b50" opacity="0.64"/><ellipse cx="718" cy="90" rx="36.6" ry="17.099999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(734.2 83.6) rotate(16) scale(1.09)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(716.9 85.5) rotate(-26) scale(0.70)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(684.4 106.1) rotate(-41) scale(1.08)" fill="#596b50" opacity="0.21"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(746.6 82.4) rotate(-47) scale(0.97)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(697.3 104.5) rotate(35) scale(1.08)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(751.3 76.1) rotate(1) scale(1.16)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(701.3 89.2) rotate(22) scale(1.21)" fill="#596b50" opacity="0.64"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(709.8 77.5) rotate(11) scale(0.91)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(707.2 106.4) rotate(-20) scale(0.74)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(708.9 99.8) rotate(-2) scale(1.16)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(689.0 81.7) rotate(-56) scale(1.21)" fill="#596b50" opacity="0.54"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(743.8 87.6) rotate(-48) scale(1.28)" fill="#596b50" opacity="0.50"/><ellipse cx="757" cy="128" rx="51.24" ry="23.939999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(732.7 126.6) rotate(7) scale(0.85)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(806.5 115.5) rotate(14) scale(1.30)" fill="#596b50" opacity="0.32"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(709.6 141.2) rotate(68) scale(1.12)" fill="#596b50" opacity="0.63"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(713.1 147.2) rotate(-23) scale(0.79)" fill="#596b50" opacity="0.32"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(793.8 129.3) rotate(-66) scale(0.76)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(773.3 139.6) rotate(-56) scale(0.67)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(769.1 115.9) rotate(33) scale(0.67)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(723.8 109.1) rotate(-58) scale(1.24)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(742.0 111.7) rotate(3) scale(0.72)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(754.5 139.1) rotate(55) scale(0.90)" fill="#596b50" opacity="0.43"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(748.2 124.5) rotate(-41) scale(1.25)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(778.9 144.5) rotate(-8) scale(0.82)" fill="#596b50" opacity="0.47"/><ellipse cx="805" cy="157" rx="45.14" ry="21.09" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(796.3 165.6) rotate(-36) scale(1.15)" fill="#596b50" opacity="0.28"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(762.1 165.3) rotate(29) scale(0.70)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(787.9 160.6) rotate(33) scale(1.26)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(767.1 145.8) rotate(-26) scale(1.07)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(829.1 144.3) rotate(-49) scale(1.07)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(771.5 163.6) rotate(43) scale(0.84)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(845.5 145.8) rotate(-30) scale(1.03)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(848.8 163.8) rotate(41) scale(0.69)" fill="#596b50" opacity="0.54"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(843.2 174.5) rotate(-67) scale(1.12)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(793.0 150.8) rotate(-15) scale(1.27)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(770.0 159.3) rotate(-30) scale(1.09)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(767.0 172.0) rotate(-36) scale(0.73)" fill="#596b50" opacity="0.53"/><ellipse cx="859" cy="139" rx="34.16" ry="15.959999999999999" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(880.3 130.5) rotate(38) scale(1.14)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(872.6 129.3) rotate(-33) scale(0.84)" fill="#596b50" opacity="0.53"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(825.8 138.4) rotate(-41) scale(0.91)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(839.6 150.6) rotate(59) scale(0.66)" fill="#596b50" opacity="0.61"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(888.8 126.7) rotate(3) scale(0.71)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(826.1 127.9) rotate(6) scale(1.03)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(844.7 126.0) rotate(-62) scale(0.78)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(851.4 152.7) rotate(61) scale(1.04)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(851.9 125.5) rotate(-30) scale(0.82)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(855.2 149.7) rotate(-20) scale(1.25)" fill="#596b50" opacity="0.33"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(889.2 123.9) rotate(-45) scale(0.99)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(848.2 140.6) rotate(37) scale(1.11)" fill="#596b50" opacity="0.58"/><ellipse cx="878" cy="209" rx="50.019999999999996" ry="23.369999999999997" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(873.9 218.2) rotate(-24) scale(1.02)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(909.3 216.3) rotate(57) scale(0.98)" fill="#596b50" opacity="0.43"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(862.0 202.9) rotate(-42) scale(0.77)" fill="#596b50" opacity="0.35"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(923.8 204.2) rotate(15) scale(0.78)" fill="#596b50" opacity="0.63"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(920.5 207.3) rotate(4) scale(0.95)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(877.9 210.5) rotate(-28) scale(1.21)" fill="#596b50" opacity="0.58"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(855.1 222.7) rotate(58) scale(1.23)" fill="#596b50" opacity="0.62"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(881.8 201.6) rotate(-23) scale(0.87)" fill="#596b50" opacity="0.56"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(862.0 225.2) rotate(-23) scale(1.02)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(873.7 222.4) rotate(67) scale(0.70)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(894.4 189.7) rotate(-11) scale(0.77)" fill="#596b50" opacity="0.57"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(833.6 214.1) rotate(50) scale(1.09)" fill="#596b50" opacity="0.41"/><ellipse cx="924" cy="183" rx="39.04" ry="18.24" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(931.4 166.8) rotate(-51) scale(0.90)" fill="#596b50" opacity="0.24"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(922.1 177.2) rotate(35) scale(1.14)" fill="#596b50" opacity="0.24"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(916.0 172.8) rotate(64) scale(1.15)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(905.6 192.9) rotate(-60) scale(0.82)" fill="#596b50" opacity="0.63"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(955.1 182.6) rotate(-53) scale(0.81)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(939.7 190.4) rotate(26) scale(0.90)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(895.0 166.5) rotate(-61) scale(0.71)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(909.5 172.4) rotate(37) scale(0.77)" fill="#596b50" opacity="0.23"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(949.4 171.5) rotate(66) scale(1.27)" fill="#596b50" opacity="0.28"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(886.5 171.3) rotate(-17) scale(0.99)" fill="#596b50" opacity="0.29"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(916.0 190.3) rotate(-54) scale(1.03)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(956.3 166.1) rotate(-51) scale(0.97)" fill="#596b50" opacity="0.50"/><ellipse cx="901" cy="250" rx="46.36" ry="21.659999999999997" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(937.3 251.0) rotate(62) scale(0.79)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(930.5 256.4) rotate(-17) scale(1.01)" fill="#596b50" opacity="0.30"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(884.4 251.6) rotate(-22) scale(1.24)" fill="#596b50" opacity="0.39"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(906.1 230.0) rotate(41) scale(0.72)" fill="#596b50" opacity="0.21"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(872.8 229.3) rotate(-46) scale(1.20)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(895.4 239.0) rotate(38) scale(0.86)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(895.6 238.1) rotate(54) scale(0.76)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(866.1 259.4) rotate(-9) scale(0.88)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(920.0 236.7) rotate(-30) scale(0.75)" fill="#596b50" opacity="0.43"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(945.1 253.0) rotate(-47) scale(1.11)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(926.9 237.4) rotate(3) scale(1.22)" fill="#596b50" opacity="0.34"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(944.3 254.2) rotate(-3) scale(1.29)" fill="#596b50" opacity="0.28"/><ellipse cx="843" cy="276" rx="36.6" ry="17.099999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(844.2 276.2) rotate(26) scale(0.84)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(842.1 269.5) rotate(23) scale(1.29)" fill="#596b50" opacity="0.57"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(815.7 291.9) rotate(-69) scale(0.80)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(838.3 272.6) rotate(-3) scale(0.74)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(875.6 269.4) rotate(65) scale(0.78)" fill="#596b50" opacity="0.55"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(861.9 277.1) rotate(2) scale(0.98)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(872.7 271.4) rotate(-29) scale(1.21)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(876.9 285.6) rotate(63) scale(0.91)" fill="#596b50" opacity="0.42"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(835.2 278.8) rotate(-7) scale(1.04)" fill="#596b50" opacity="0.62"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(811.6 284.9) rotate(-2) scale(0.72)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(846.2 260.7) rotate(-66) scale(0.77)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(863.6 291.2) rotate(-62) scale(1.21)" fill="#596b50" opacity="0.63"/><ellipse cx="284" cy="267" rx="36.6" ry="17.099999999999998" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(273.1 275.2) rotate(39) scale(0.74)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(298.5 282.2) rotate(-38) scale(0.80)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(300.8 253.2) rotate(-59) scale(0.69)" fill="#596b50" opacity="0.47"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(287.1 276.3) rotate(-34) scale(0.71)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(315.0 259.3) rotate(-66) scale(0.99)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(254.4 268.9) rotate(-46) scale(1.06)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(267.7 256.8) rotate(66) scale(0.82)" fill="#596b50" opacity="0.59"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(272.2 272.8) rotate(35) scale(0.73)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(313.0 279.4) rotate(35) scale(0.92)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(314.1 272.9) rotate(22) scale(0.86)" fill="#596b50" opacity="0.31"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(283.1 272.7) rotate(2) scale(0.70)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(264.8 264.3) rotate(4) scale(0.67)" fill="#596b50" opacity="0.63"/><ellipse cx="207" cy="246" rx="39.04" ry="18.24" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(236.0 262.0) rotate(61) scale(0.90)" fill="#596b50" opacity="0.38"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(199.3 257.6) rotate(-20) scale(1.27)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(172.3 250.3) rotate(-64) scale(1.29)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(243.4 240.8) rotate(-43) scale(1.20)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(200.4 229.9) rotate(57) scale(0.66)" fill="#596b50" opacity="0.42"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(230.1 255.9) rotate(-31) scale(1.12)" fill="#596b50" opacity="0.34"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(170.5 256.4) rotate(59) scale(0.81)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(217.4 257.7) rotate(57) scale(0.98)" fill="#596b50" opacity="0.46"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(169.4 253.5) rotate(-12) scale(0.75)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(223.1 246.0) rotate(43) scale(1.15)" fill="#596b50" opacity="0.54"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(195.1 263.6) rotate(-14) scale(1.21)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(196.3 259.6) rotate(-44) scale(0.88)" fill="#596b50" opacity="0.58"/><ellipse cx="395" cy="372" rx="28.06" ry="13.11" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(383.3 364.9) rotate(20) scale(0.66)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(408.3 366.9) rotate(13) scale(0.98)" fill="#596b50" opacity="0.27"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(367.8 362.9) rotate(50) scale(0.81)" fill="#596b50" opacity="0.52"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(393.3 368.6) rotate(-25) scale(0.91)" fill="#596b50" opacity="0.49"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(414.8 376.1) rotate(46) scale(0.76)" fill="#596b50" opacity="0.55"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(402.3 373.4) rotate(-34) scale(0.82)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(407.9 363.9) rotate(-69) scale(0.98)" fill="#596b50" opacity="0.22"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(396.6 362.0) rotate(22) scale(0.81)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(403.9 374.9) rotate(19) scale(0.74)" fill="#596b50" opacity="0.60"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(419.4 376.8) rotate(-31) scale(0.84)" fill="#596b50" opacity="0.44"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(418.3 375.7) rotate(34) scale(0.77)" fill="#596b50" opacity="0.45"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(379.3 380.5) rotate(-58) scale(0.93)" fill="#596b50" opacity="0.57"/><ellipse cx="713" cy="353" rx="26.84" ry="12.54" fill="#879576" opacity=".09"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(726.2 350.3) rotate(17) scale(1.17)" fill="#596b50" opacity="0.41"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(727.7 346.2) rotate(-7) scale(0.65)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(689.3 352.4) rotate(2) scale(1.29)" fill="#596b50" opacity="0.37"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(689.0 363.2) rotate(-18) scale(1.01)" fill="#596b50" opacity="0.48"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(731.3 350.8) rotate(-24) scale(1.27)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(702.2 344.2) rotate(33) scale(0.68)" fill="#596b50" opacity="0.61"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(735.2 348.1) rotate(6) scale(1.12)" fill="#596b50" opacity="0.25"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(702.8 343.2) rotate(-33) scale(0.99)" fill="#596b50" opacity="0.26"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(693.8 351.6) rotate(47) scale(1.18)" fill="#596b50" opacity="0.40"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(733.7 362.3) rotate(11) scale(0.89)" fill="#596b50" opacity="0.61"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(707.1 352.3) rotate(-38) scale(0.98)" fill="#596b50" opacity="0.51"/><path d="M0 0 Q-12 -15 -4 -27 Q8 -19 0 0 M1 0 Q8 -17 20 -16 Q16 -4 1 0" transform="translate(726.3 360.6) rotate(-4) scale(1.15)" fill="#596b50" opacity="0.64"/><g fill="none" stroke="#74816a" stroke-width="1.2" opacity=".6"><path d="M296 84q11-10 21 0q10-11 21-3M861 81q8-7 15 0q7-8 15-2"/></g></svg></template>
-<template id="twig-template"><svg class="twig" viewBox="0 0 110 80" preserveAspectRatio="none" aria-hidden="true"><path d="M109 75C88 55 68 27 0 22C46 24 83 36 109 68Z" fill="#718065"/><path d="M64 34Q43 19 40 7M85 48Q67 53 55 50" fill="none" stroke="#78866d" stroke-width="1.4"/><path d="M40 9Q26 1 26-8Q40-4 40 9M56 50Q44 39 34 45Q45 54 56 50" fill="#8c9a7c" opacity=".7"/></svg></template>
+<a class="skip" href="#main">跳至文章</a>
+<div id="scene" aria-hidden="true"></div><div class="atmosphere" aria-hidden="true"></div>
+<header class="topbar"><a href="#/" class="brand" aria-label="云砚首页"><svg class="brand-icon" viewBox="0 0 28 38" aria-hidden="true"><g fill="none" stroke="#425f3b" stroke-width="1.3"><path d="M14 35V13M14 25L5 16M14 21L23 11"/><path d="M5 16Q-1 8 4 4Q12 8 5 16M23 12Q17 5 24 2Q29 8 23 12M14 17Q8 7 14 2Q20 9 14 17" fill="#657c4b" stroke="none"/></g></svg><span>云砚<small>CLOUDINK</small></span></a><nav class="nav" aria-label="主导航"><button class="desktop-nav" id="return-crown">树冠</button><a class="desktop-nav" href="#/archive">年轮</a><a href="#/about">关于</a><button class="nav-search" id="open-search"><span class="search-symbol" aria-hidden="true"></span>寻文</button></nav></header>
+<main id="main" tabindex="-1">
+<section class="hero" aria-label="字里生长，树冠导航">
+<div class="intro"><div class="overline">A living journal</div><h1>字里<span>生长。</span></h1><p>以文字为叶，以时间为枝。<br>在自己的节奏里，慢慢长成一棵树。</p><div class="intro-foot"><span></span>随笔 · 行记 · 造物</div></div>
+<nav class="fallback-nav" aria-label="文章分类与页面"><button data-place="notes">随笔</button><button data-place="travel">行记</button><button data-place="making">造物</button><button data-place="archive">归档</button></nav>
+<div class="scene-status" id="scene-status" role="status">枝叶与光影，正在苏醒</div><div class="hero-note">滚动，走进时间的年轮 ↓<span>从最新的枝叶，到最初的一片嫩芽</span></div>
+</section>
+<section class="journal" id="journal" aria-labelledby="journal-title"><header class="journal-heading"><h2 id="journal-title">最近的枝叶</h2><span>08 篇文字 &nbsp; / &nbsp; 从新到旧</span></header><div id="entries"><article class="entry" data-year="2026" id="entry-a-tree-of-words"><a class="entry-link" href="#/post/a-tree-of-words"><div class="meta"><time datetime="2026-10-12">2026 · 10 · 12</time><span class="tag">随笔</span></div><h3>把日子，写成一棵树</h3><p>有些念头不必急着开花。把它们写下来，交给时间，慢慢长成自己的枝叶。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-afternoon-path"><a class="entry-link" href="#/post/afternoon-path"><div class="meta"><time datetime="2026-09-28">2026 · 09 · 28</time><span class="tag">行记</span></div><h3>山路转弯的地方</h3><p>沿着一条不熟悉的小路走到傍晚，才发现，最好的风景常常没有名字。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-small-web"><a class="entry-link" href="#/post/small-web"><div class="meta"><time datetime="2026-09-06">2026 · 09 · 06</time><span class="tag">造物</span></div><h3>一个轻一点的网站</h3><p>少一些等待，少一些装饰的负担。让打开网页这件事，像翻开一本书一样自然。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-reading-in-rain"><a class="entry-link" href="#/post/reading-in-rain"><div class="meta"><time datetime="2026-08-19">2026 · 08 · 19</time><span class="tag">随笔</span></div><h3>雨天读书，晴天散步</h3><p>生活不一定需要一张严格的时间表，也可以跟着天气，给自己安排一点小事。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-window-light"><a class="entry-link" href="#/post/window-light"><div class="meta"><time datetime="2026-06-03">2026 · 06 · 03</time><span class="tag">造物</span></div><h3>留住窗边的一束光</h3><p>做一件小东西，不为解决多大的问题，只因为想把那个瞬间留下来。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="2025" id="entry-winter-letter"><a class="entry-link" href="#/post/winter-letter"><div class="meta"><time datetime="2025-12-21">2025 · 12 · 21</time><span class="tag">随笔</span></div><h3>写给冬天的一封信</h3><p>这一年也有许多没有完成的事情。但回头看，走过的路已经足够长了。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-by-the-river"><a class="entry-link" href="#/post/by-the-river"><div class="meta"><time datetime="2025-10-08">2025 · 10 · 08</time><span class="tag">行记</span></div><h3>在河边，听水流过去</h3><p>午后沿河走了很久。水没有回答任何问题，却让心里安静了一些。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article>
+<article class="entry" data-year="" id="entry-first-leaf"><a class="entry-link" href="#/post/first-leaf"><div class="meta"><time datetime="2025-04-16">2025 · 04 · 16</time><span class="tag">随笔</span></div><h3>第一片叶子</h3><p>在这里种下一点文字。从今天起，给想法一个慢慢生长的地方。</p><div class="read"><span>沿此枝阅读</span><span aria-hidden="true">↗</span></div></a></article></div><div class="endnote">已至初芽，故事仍在生长。<small>EVERY WORD TAKES ROOT.</small></div></section>
+</main>
+<div id="anchors" aria-label="树冠入口"><button class="anchor" data-place="notes" style="left:50%;top:42%">随笔 <small>04</small><span class="arrow" aria-hidden="true">↗</span></button><button class="anchor" data-place="travel" style="left:80%;top:48%">行记 <small>02</small><span class="arrow" aria-hidden="true">↗</span></button><button class="anchor" data-place="making" style="left:70%;top:25%">造物 <small>02</small><span class="arrow" aria-hidden="true">↗</span></button><button class="anchor" data-place="about" style="left:50%;top:22%">关于这棵树 <span class="arrow" aria-hidden="true">↗</span></button><button class="anchor" data-place="archive" style="left:86%;top:31%">岁月年轮 <span class="arrow" aria-hidden="true">↗</span></button></div>
+<svg id="tree-lines" class="tree-lines" aria-hidden="true"></svg>
+<div class="scene-controls"><button id="motion-button" aria-pressed="false">暂停微风</button><button id="mode-button" aria-pressed="false">轻量阅读</button></div><div class="position-label" aria-hidden="true">THE TREE OF WORDS<div class="compass">↑</div></div>
+<footer class="footer"><span>以文字为叶，以时间为枝。</span><span>CloudInk 云砚 &nbsp; · &nbsp; 三维场景原型 &nbsp; · &nbsp; 示例内容</span></footer>
+<dialog id="reading-panel" class="panel" aria-labelledby="panel-title"><div class="panel-header"><span id="breadcrumb" class="breadcrumb">树冠</span><button id="panel-back" class="panel-back" hidden>← 返回</button><button id="panel-close" class="panel-close" aria-label="回到树冠，关闭阅读">×</button></div><div class="panel-scroll" id="panel-scroll"><div id="panel-content"></div></div></dialog>
+<noscript><style>#anchors,.scene-controls{display:none}.scene-status{display:none}.hero{min-height:480px;height:480px}</style><p style="padding:24px">三维探索需要 JavaScript；下方仍提供全部文章摘要。</p></noscript>
 <script type="application/json" id="post-data">[{"slug":"a-tree-of-words","title":"把日子，写成一棵树","date":"2026-10-12","category":"随笔","summary":"有些念头不必急着开花。把它们写下来，交给时间，慢慢长成自己的枝叶。","body":[["p","以前总觉得，记录应该等到有什么值得讲述的事情发生。后来才发现，许多值得留下的东西，恰恰藏在那些平常的日子里。"],["p","比如窗边慢慢变凉的一杯茶，散步时听见的鸟鸣，或是在读到某句话时，忽然停住的一瞬间。这些细小的片段，看起来互不相干，却在时间里悄悄连成了一条线。"],["h2","让文字有自己的生长方式"],["p","我想象过一个这样的地方：打开它，先看见树冠。不同的枝叶通向不同的话题，顺着树干向下走，就能遇见过去写下的自己。"],["quote","写作不是把每一天变得特别，而是让那些原本就特别的时刻，有一个可以停留的地方。"],["p","新的文章长在上方，旧的文章留在更深的年轮里。它们不必争夺注意力，也不必排列得整整齐齐。每一段文字都可以保有自己的节奏。"],["h2","给阅读留一点空白"],["p","页面不需要一直提醒你还有多少没有看。读完一篇，停一会儿；喜欢的话，再顺着另一条枝杈走走。偶尔什么也不点，只看看树，也很好。"],["p","这棵树会长得很慢。但只要还愿意观察、思考和记录，它就会一直长下去。"]]},{"slug":"afternoon-path","title":"山路转弯的地方","date":"2026-09-28","category":"行记","summary":"沿着一条不熟悉的小路走到傍晚，才发现，最好的风景常常没有名字。","body":[["p","出门的时候，没有想好要走到哪里。山脚下的小路还有一点潮湿，石阶缝里长着细细的草。"],["p","走过第一个转弯，城市的声音忽然远了。能听见风从树叶之间穿过去，像有人把一页纸轻轻翻开。"],["h2","不急着抵达"],["p","一路上停了好几次。有时看苔藓，有时看云，有时只是找块干净的石头坐一会儿。没有目的地，时间反而变得宽裕。"],["quote","路的意义，也许不全在于它通往哪里。"],["p","回头时，天色刚好变成淡淡的蓝灰色。我没有拍很多照片，却记得那天风的温度。"]]},{"slug":"small-web","title":"一个轻一点的网站","date":"2026-09-06","category":"造物","summary":"少一些等待，少一些装饰的负担。让打开网页这件事，像翻开一本书一样自然。","body":[["p","一个网页可以装下很多东西，但读者打开它，往往只是想看一段文字。"],["h2","从等待开始"],["p","图片的尺寸、字体的加载、脚本的数量，都会变成读者真实的等待时间。把页面做轻，首先是尊重这段时间。"],["p","装饰可以使用矢量图形，文字可以先出现。大图片按显示尺寸提供，屏幕之外的图片稍后再加载。看起来微小的选择，会累积成流畅的阅读。"],["quote","好的设计，是让内容顺利到达读者面前。"],["h2","保留必要的东西"],["p","清楚的标题、舒适的行距、能找到的导航，以及随时可以返回的位置。简单的页面也可以有鲜明的性格。"]]},{"slug":"reading-in-rain","title":"雨天读书，晴天散步","date":"2026-08-19","category":"随笔","summary":"生活不一定需要一张严格的时间表，也可以跟着天气，给自己安排一点小事。","body":[["p","下雨的时候，房间安静了许多。窗外的声音变得均匀，正好适合读那些一直放在桌边的书。"],["p","晴天就出去走走。沿着熟悉的街道，看看哪家店换了招牌，哪棵树开始落叶。"],["h2","平常也值得记录"],["p","这样的日子没有特别鲜明的故事，却有稳定而柔和的纹理。写下来，回头再读，能想起当时的光线。"]]},{"slug":"window-light","title":"留住窗边的一束光","date":"2026-06-03","category":"造物","summary":"做一件小东西，不为解决多大的问题，只因为想把那个瞬间留下来。","body":[["p","下午四点，阳光会从书架的空隙穿过，在桌上停留十几分钟。我想为这束光做一个小小的记录。"],["h2","从观察到动手"],["p","先画几条线，再选一种纸。反复试过之后，才慢慢接近脑海里的样子。"],["quote","亲手做过的东西，会记得你花在它身上的时间。"],["p","最后得到的物件很简单。放在窗边，刚好能接住一小片明亮。"]]},{"slug":"winter-letter","title":"写给冬天的一封信","date":"2025-12-21","category":"随笔","summary":"这一年也有许多没有完成的事情。但回头看，走过的路已经足够长了。","body":[["p","冬至这天，天黑得很早。收拾桌面时翻到了年初写的几页计划，有些完成了，有些已经不再重要。"],["p","比起勾掉多少事项，我更愿意记住这一年里，那些让我觉得踏实的瞬间。"],["h2","允许事情慢一点"],["p","并不是每个问题都需要在年底得到答案。有些想法适合先放着，等春天来了，再看看它有没有发芽。"]]},{"slug":"by-the-river","title":"在河边，听水流过去","date":"2025-10-08","category":"行记","summary":"午后沿河走了很久。水没有回答任何问题，却让心里安静了一些。","body":[["p","河岸边的树已经开始发黄。几片叶子落在水面上，慢慢漂过桥洞。"],["p","我沿着河边走，没有戴耳机。水声、脚步声和远处的谈话声，合在一起，刚好填满这个下午。"],["quote","有时候，走出去本身就是答案。"],["p","回去的路上买了一袋栗子。暖意从纸袋里透出来，秋天就变得具体了。"]]},{"slug":"first-leaf","title":"第一片叶子","date":"2025-04-16","category":"随笔","summary":"在这里种下一点文字。从今天起，给想法一个慢慢生长的地方。","body":[["p","这是这个小小园地的第一篇记录。没有特别宏大的计划，只想留下读过的书、走过的路和偶尔冒出来的念头。"],["p","希望很久以后再打开这里，仍然能认出今天的自己。"],["quote","先种下，再等风来。"]]}]</script>
-<script>(function prototypeApp(){
+<script>window.createLivingTree=function createLivingTree(THREE, api) {
+  const mobile = matchMedia("(max-width:600px)").matches;
+  const reduced = matchMedia("(prefers-reduced-motion:reduce)");
+  const host = document.getElementById("scene");
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "low-power" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.25 : 1.5));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0xe6eadc);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.shadowMap.enabled = !mobile;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
+  host.append(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xe6eadc, 0.012);
+  const camera = new THREE.PerspectiveCamera(39, innerWidth / innerHeight, 0.1, 220);
+  const tree = new THREE.Group(); scene.add(tree);
+  scene.add(new THREE.HemisphereLight(0xf4f4d9, 0x5c6e4e, 2.05));
+  const sunlight = new THREE.DirectionalLight(0xffe3aa, 3.3);
+  sunlight.position.set(-20, 42, 22); sunlight.target.position.set(0, 20, 0);
+  sunlight.castShadow = !mobile;
+  sunlight.shadow.mapSize.set(1024, 1024);
+  Object.assign(sunlight.shadow.camera, { left: -18, right: 18, top: 20, bottom: -20, near: 1, far: 100 });
+  sunlight.shadow.normalBias = 0.055; sunlight.shadow.bias = -0.0002;
+  scene.add(sunlight, sunlight.target);
+  const rim = new THREE.DirectionalLight(0xdce9bf, 1.5); rim.position.set(15, 28, -15); scene.add(rim);
+
+  let seed = 317;
+  const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const range = (a, b) => a + (b - a) * random();
+  const v = (x, y, z) => new THREE.Vector3(x, y, z);
+  const barkCanvas = document.createElement("canvas"); barkCanvas.width = 256; barkCanvas.height = 512;
+  const bc = barkCanvas.getContext("2d");
+  bc.fillStyle = "#6b6451"; bc.fillRect(0, 0, 256, 512);
+  for (let i = 0; i < 1500; i++) {
+    const x = range(0, 256), y = range(-60, 512), length = range(8, 150);
+    bc.strokeStyle = random() > .5 ? `rgba(36,35,25,${range(.15, .5)})` : `rgba(176,168,127,${range(.08,.3)})`;
+    bc.lineWidth = range(.4, 3.2); bc.beginPath(); bc.moveTo(x, y);
+    bc.bezierCurveTo(x + range(-6, 6), y + length * .3, x + range(-4, 4), y + length * .7, x + range(-3, 3), y + length); bc.stroke();
+  }
+  for (let i = 0; i < 30; i++) {
+    const x = range(0,256), y = range(0,512);
+    bc.strokeStyle = "#46463770"; bc.lineWidth = 1;
+    bc.beginPath(); bc.ellipse(x,y,range(2,5),range(6,17),range(-.2,.2),0,Math.PI*2); bc.stroke();
+  }
+  const bark = new THREE.CanvasTexture(barkCanvas); bark.wrapS = bark.wrapT = THREE.RepeatWrapping; bark.colorSpace = THREE.SRGBColorSpace;
+  const barkMaterial = new THREE.MeshStandardMaterial({ map: bark, bumpMap: bark, bumpScale: .12, roughness: .97, color: 0xaaa58b });
+  const positions = [], normals = [], uv = [], indices = [];
+  function tube(points, startRadius, endRadius, steps = 15, sides = 8) {
+    const curve = new THREE.CatmullRomCurve3(points);
+    const frames = curve.computeFrenetFrames(steps, false);
+    const offset = positions.length / 3, length = curve.getLength();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps, point = curve.getPointAt(t);
+      const radius = endRadius + (startRadius - endRadius) * Math.pow(1 - t, 1.18);
+      for (let j = 0; j <= sides; j++) {
+        const a = j / sides * Math.PI * 2;
+        const normal = frames.normals[i].clone().multiplyScalar(Math.cos(a)).addScaledVector(frames.binormals[i], Math.sin(a));
+        const ridges = 1 + .08 * Math.sin(j * 4.1 + t * 8) + .055 * Math.cos(j * 2.3 - t * 12);
+        const p = point.clone().addScaledVector(normal, radius * ridges);
+        positions.push(p.x,p.y,p.z); normals.push(normal.x,normal.y,normal.z); uv.push(j / sides * 1.8, t * length / 3);
+      }
+    }
+    for (let i = 0; i < steps; i++) for (let j = 0; j < sides; j++) {
+      const a = offset + i * (sides + 1) + j, b = a + sides + 1;
+      indices.push(a,b,a+1,b,b+1,a+1);
+    }
+    return curve;
+  }
+  tube([v(0,-.3,0),v(.4,4,-.25),v(-.35,10,.1),v(.25,16,-.2),v(-.3,22,.4),v(.5,27,-.2),v(.8,32,-.5)],1.08,.045,65,14);
+  for (let i = 0; i < 9; i++) {
+    const a = i / 9 * Math.PI * 2;
+    tube([v(.1,1,0),v(Math.cos(a)*1.3,.25,Math.sin(a)*1.3),v(Math.cos(a)*3.6,-.2,Math.sin(a)*3.6)],.48,.035,13,8);
+  }
+  const leafClusters = [];
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.39996 + range(-.35,.35), y = 16.5 + i * .65 + range(-.35,.35), reach = range(8.5,11.5) - Math.max(0, i - 8) * .3;
+    const start = v(Math.sin(y)*.15,y,Math.cos(y)*.12);
+    const mid = v(Math.cos(a+.18)*reach*.32,y+3.4,Math.sin(a+.18)*reach*.32);
+    const tip = v(Math.cos(a)*reach,y+4.8+range(-.6,.7),Math.sin(a)*reach);
+    const shoulder=v(Math.cos(a-.12)*reach*.73,y+4.1,Math.sin(a-.12)*reach*.73);
+    const primary = tube([start, mid, shoulder, tip], .48 - i*.015, .045, 26, 10);
+    for (let j=0;j<4;j++) {
+      const t = .37 + j*.19, origin = primary.getPointAt(t);
+      const turn = a + (j%2 ? .65 : -.65);
+      const end = origin.clone().add(v(Math.cos(turn)*range(2,3.8),range(2.0,3.9),Math.sin(turn)*range(2,3.8)));
+      const secondary = tube([origin,origin.clone().lerp(end,.55).add(v(range(-.4,.4),.4,range(-.4,.4))),end],.12*(1-t)+.075,.018,12,7);
+      for(let k=0;k<2;k++){
+        const twigStart=secondary.getPointAt(.5+k*.36);
+        const twigEnd=twigStart.clone().add(v(Math.cos(turn+(k?-.9:.8))*range(1,2),range(.8,1.8),Math.sin(turn+(k?-.9:.8))*range(1,2)));
+        tube([twigStart,twigStart.clone().lerp(twigEnd,.5),twigEnd],.035,.006,6,5);
+        leafClusters.push({point:twigEnd,r:range(1.25,1.85)});
+      }
+      leafClusters.push({point:end,r:range(1.4,2.0)});
+    }
+  }
+  const articleAnchors=[];
+  for(let i=0;i<8;i++){
+    const side=i%2===0?-1:1,y=17.2-i*1.75;
+    const end=v(side*range(3.2,4.5),y+1.4,range(.7,2));
+    tube([v(0,y,0),v(side*1.6,y+.5,.5),end],.19-i*.01,.015,13,8);
+    articleAnchors.push(end);
+    leafClusters.push({point:end,r:.8,count:mobile?10:16});
+  }
+  const woodGeometry=new THREE.BufferGeometry();
+  woodGeometry.setAttribute("position",new THREE.Float32BufferAttribute(positions,3));
+  woodGeometry.setAttribute("normal",new THREE.Float32BufferAttribute(normals,3));
+  woodGeometry.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
+  woodGeometry.setIndex(indices);woodGeometry.computeVertexNormals();
+  const wood=new THREE.Mesh(woodGeometry,barkMaterial);wood.castShadow=true;wood.receiveShadow=true;tree.add(wood);
+
+  const leafCanvas=document.createElement("canvas");leafCanvas.width=128;leafCanvas.height=256;
+  const lc=leafCanvas.getContext("2d");
+  const grad=lc.createLinearGradient(18,100,108,130);
+  grad.addColorStop(0,"#53642b");grad.addColorStop(.45,"#b1bb6b");grad.addColorStop(1,"#687b32");
+  lc.fillStyle=grad;lc.beginPath();lc.moveTo(64,245);
+  lc.bezierCurveTo(48,215,15,202,28,180);lc.bezierCurveTo(0,162,14,142,20,133);
+  lc.bezierCurveTo(1,110,22,93,31,91);lc.bezierCurveTo(21,68,43,55,47,54);
+  lc.bezierCurveTo(43,33,58,13,64,3);lc.bezierCurveTo(73,26,86,38,82,56);
+  lc.bezierCurveTo(109,63,111,83,100,97);lc.bezierCurveTo(123,110,123,132,108,144);
+  lc.bezierCurveTo(124,170,110,187,96,190);lc.bezierCurveTo(99,211,76,222,64,245);lc.fill();
+  lc.strokeStyle="#d6d79a85";lc.lineWidth=2;lc.beginPath();lc.moveTo(64,248);lc.quadraticCurveTo(60,116,64,12);lc.stroke();
+  for(let i=0;i<8;i++){const y=58+i*20;lc.lineWidth=.8;lc.beginPath();lc.moveTo(64,y+14);lc.quadraticCurveTo(45,y+4,28+(i<2?16:0),y-7);lc.moveTo(64,y+14);lc.quadraticCurveTo(83,y+4,101-(i<2?16:0),y-7);lc.stroke();}
+  const leafTexture=new THREE.CanvasTexture(leafCanvas);leafTexture.colorSpace=THREE.SRGBColorSpace;
+  const leafGeometry=new THREE.PlaneGeometry(.8,1.4,1,2);
+  const pa=leafGeometry.attributes.position;
+  for(let i=0;i<pa.count;i++){const x=pa.getX(i),y=pa.getY(i);pa.setZ(i,Math.abs(x)*.25+Math.sin((y+.7)*2)*.07);}
+  leafGeometry.computeVertexNormals();
+  const leafMaterial=new THREE.MeshLambertMaterial({map:leafTexture,alphaTest:.45,side:THREE.DoubleSide,color:0xb8c88e,emissive:0x162008,emissiveIntensity:.12});
+  const perCluster=mobile?42:66,count=leafClusters.reduce((sum,c)=>sum+(c.count||perCluster),0);
+  const leaves=new THREE.InstancedMesh(leafGeometry,leafMaterial,count);
+  leaves.castShadow=!mobile;leaves.receiveShadow=false;
+  const dummy=new THREE.Object3D(),color=new THREE.Color();
+  let li=0;
+  for(let i=0;i<perCluster;i++)for(const cluster of leafClusters){
+    if(i>=(cluster.count||perCluster))continue;
+    const a=range(0,Math.PI*2),b=range(-1,1),r=cluster.r*Math.cbrt(random());
+    dummy.position.copy(cluster.point).add(v(Math.cos(a)*Math.sqrt(1-b*b)*r,b*r*.7,Math.sin(a)*Math.sqrt(1-b*b)*r));
+    dummy.rotation.set(range(-1.2,1.2),range(-Math.PI,Math.PI),range(-1.1,1.1));
+    const size=range(.45,.88);dummy.scale.setScalar(size);
+    dummy.updateMatrix();leaves.setMatrixAt(li,dummy.matrix);
+    color.setHSL(range(.16,.24),range(.24,.48),range(.40,.72));leaves.setColorAt(li,color);li++;
+  }
+  leaves.instanceMatrix.needsUpdate=true;leaves.instanceColor.needsUpdate=true;leaves.computeBoundingSphere();tree.add(leaves);
+  let shaderRef;
+  leafMaterial.onBeforeCompile=shader=>{
+    shader.uniforms.uWind={value:0};
+    shader.vertexShader="uniform float uWind;\n"+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\n#ifdef USE_INSTANCING\ntransformed.x += sin(uWind + instanceMatrix[3].x * 1.9 + instanceMatrix[3].y)*0.045*(position.y+0.7);\ntransformed.z += cos(uWind*0.7 + instanceMatrix[3].z)*0.03*(position.y+0.7);\n#endif");
+    shaderRef=shader;
+  };
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(95,64),new THREE.MeshStandardMaterial({color:0xa8b399,roughness:1}));
+  ground.rotation.x=-Math.PI/2;ground.position.y=-.35;ground.receiveShadow=true;scene.add(ground);
+  const grassMaterial=new THREE.MeshStandardMaterial({color:0x81936b,side:THREE.DoubleSide,roughness:1});
+  const grass=new THREE.InstancedMesh(new THREE.PlaneGeometry(.08,.5),grassMaterial,500);
+  for(let i=0;i<500;i++){const a=range(0,Math.PI*2),r=range(1,14);dummy.position.set(Math.cos(a)*r,-.1,Math.sin(a)*r);dummy.rotation.set(range(-.1,.1),a,range(-.25,.25));dummy.scale.setScalar(range(.6,1.5));dummy.updateMatrix();grass.setMatrixAt(i,dummy.matrix);}
+  scene.add(grass);
+
+  // Distant trunks establish depth without downloading landscape imagery.
+  const distantMaterial=new THREE.MeshStandardMaterial({color:0x8d9e86,roughness:1});
+  const distant=new THREE.InstancedMesh(new THREE.CylinderGeometry(.22,1,1,5),distantMaterial,15);
+  for(let i=0;i<15;i++){
+    const h=range(24,48),x=range(-65,65),z=range(-85,-40);
+    dummy.position.set(x,h/2,z);dummy.rotation.set(0,0,range(-.08,.08));dummy.scale.set(range(.5,1.1),h,range(.5,1.1));dummy.updateMatrix();distant.setMatrixAt(i,dummy.matrix);
+  }
+  scene.add(distant);
+
+  const anchorPositions={
+    notes:v(-7,25,6), travel:v(8,23,5), making:v(7,30,-1), about:v(-5,31,-2), archive:v(11,27,-4),
+  };
+  const anchors=[...document.querySelectorAll(".anchor")];
+  const baseLook=v(-4,22,0),look=baseLook.clone();
+  const homePos=v(21,26,43);camera.position.copy(homePos);camera.lookAt(look);
+  let flight=null,selected=null,paused=reduced.matches,hidden=false,frame=0,lastFrame=0,dirty=true,lastScroll=-1,disposed=false;
+  let pointer={x:0,y:0};let lastMotion=performance.now();
+  let slowFrames=0,quality="full";
+  const projected=new THREE.Vector3();
+  function poseForHome(){
+    const progress=Math.max(0,Math.min(1,(scrollY-innerHeight*.28)/(document.documentElement.scrollHeight-innerHeight*.9)));
+    const small=innerWidth<=600;
+    if(progress<.01){
+      return small?{position:v(19,25,49),target:v(-1,24,0)}:{position:homePos.clone(),target:baseLook.clone()};
+    }
+    const y=22-progress*19;
+    return {position:v(small?10:13,y+2.4,small?31:32),target:v(small?-3:0,y,0)};
+  }
+  function fly(place, immediate=false){
+    selected=place||null;
+    let pose;
+    if(!place)pose=poseForHome();
+    else{
+      const point=anchorPositions[place]||anchorPositions.notes;
+      const small=innerWidth<=600;
+      const offset=small?v(7,3.5,17):v(10,3.5,20);
+      const target=point.clone().add(small?v(0,-2.3,0):v(3.2,0,0));
+      pose={position:point.clone().add(offset),target};
+    }
+    flight={start:performance.now(),duration:immediate||reduced.matches?0:1450,from:camera.position.clone(),to:pose.position,fromLook:look.clone(),toLook:pose.target};
+    dirty=true;lastMotion=performance.now();schedule();
+  }
+  function project(point){
+    projected.copy(point).project(camera);
+    return {x:(projected.x*.5+.5)*innerWidth,y:(-.5*projected.y+.5)*innerHeight,z:projected.z};
+  }
+  const lines=document.getElementById("tree-lines");
+  function updateLabels(){
+    const show=!selected&&scrollY<innerHeight*.48&&!document.body.classList.contains("lightweight");
+    document.getElementById("anchors").style.opacity=show?String(Math.max(0,1-scrollY/(innerHeight*.5))):"0";
+    document.getElementById("anchors").inert=!show;
+    const small=innerWidth<=600;
+    const placed=[];
+    for(const el of anchors){
+      const p=project(anchorPositions[el.dataset.place]);
+      let x=p.x,y=p.y-30;
+      // Resolve labels into a readable crown band on narrow screens.
+      if(small){
+        const layout={about:[.20,.37],archive:[.79,.38],notes:[.23,.50],travel:[.79,.55],making:[.53,.64]};
+        const [fx,fy]=layout[el.dataset.place];x=innerWidth*fx;y=innerHeight*fy;
+      }else{
+        x=Math.max(innerWidth*.39,Math.min(innerWidth-80,x));
+        y=Math.max(125,Math.min(innerHeight*.66,y));
+        for(const prev of placed)if(Math.abs(x-prev.x)<115&&Math.abs(y-prev.y)<62)y=prev.y+67;
+      }
+      placed.push({x,y});el.style.left=x+"px";el.style.top=y+"px";
+      el.style.visibility=p.z<1?"visible":"hidden";
+    }
+    if(selected){lines.innerHTML="";return;}
+    let paths="";
+    document.querySelectorAll(".entry").forEach((el,i)=>{
+      const rect=el.getBoundingClientRect();
+      if(rect.bottom<50||rect.top>innerHeight)return;
+      const p=project(articleAnchors[i]);
+      const x=small?rect.left:((i%2===0)?rect.right:rect.left),y=rect.top+45;
+      if(p.z>1||p.y<-200||p.y>innerHeight+200)return;
+      paths+=`<path d="M${p.x.toFixed(1)} ${p.y.toFixed(1)} C${((p.x+x)/2).toFixed(1)} ${p.y.toFixed(1)},${((p.x+x)/2).toFixed(1)} ${y.toFixed(1)},${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="#6a7f5180" stroke-width="1"/><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#e9efc3" stroke="#809960" stroke-width="1"/>`;
+    });
+    lines.innerHTML=paths;
+  }
+  function schedule(){if(!frame&&!disposed&&!hidden&&!document.body.classList.contains("lightweight"))frame=requestAnimationFrame(tick);}
+  function tick(now){
+    frame=0;
+    if(disposed||hidden||document.body.classList.contains("lightweight"))return;
+    const interval=mobile?1000/24:1000/30;
+    if(now-lastFrame<interval){schedule();return;}
+    const frameMs=lastFrame?now-lastFrame:0;
+    if(!paused&&frameMs>160)slowFrames++;else if(frameMs>0&&frameMs<80)slowFrames=Math.max(0,slowFrames-1);
+    if(quality==="full"&&slowFrames>=4){
+      quality="adaptive";renderer.setPixelRatio(Math.min(devicePixelRatio,.85));renderer.setSize(innerWidth,innerHeight);
+      leaves.count=Math.max(1800,Math.floor(count*.48));
+      dirty=true;api.onQualityChange?.("已为此设备降低叶片细节");
+    }
+    const dt=Math.min(.08,frameMs/1000||.016);lastFrame=now;
+    let moving=false;
+    if(flight){
+      const t=flight.duration?Math.min(1,(now-flight.start)/flight.duration):1;
+      const e=t*t*t*(t*(t*6-15)+10);
+      camera.position.lerpVectors(flight.from,flight.to,e);look.lerpVectors(flight.fromLook,flight.toLook,e);
+      moving=true;if(t===1){flight=null;api.onArrive?.();}
+    }else if(!selected){
+      const pose=poseForHome();
+      if(!paused){pose.position.x+=pointer.x*.35;pose.position.y+=pointer.y*.15;}
+      const factor=paused?1:1-Math.exp(-dt*5);
+      if(camera.position.distanceTo(pose.position)>.005||look.distanceTo(pose.target)>.005){
+        camera.position.lerp(pose.position,factor);look.lerp(pose.target,factor);moving=true;
+      }
+    }
+    if(shaderRef)shaderRef.uniforms.uWind.value=paused?0:now*.00065;
+    camera.lookAt(look);
+    if(moving||dirty){camera.updateMatrixWorld();updateLabels();}
+    if(moving||dirty||(!paused&&!selected)){renderer.render(scene,camera);dirty=false;}
+    api.onFrame?.({camera:camera.position.toArray(),target:look.toArray(),selected,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles});
+    if(moving||(!paused&&!selected))schedule();
+  }
+  function resize(){
+    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(devicePixelRatio,quality==="adaptive"?.85:(innerWidth<=600?1.25:1.5)));renderer.setSize(innerWidth,innerHeight);
+    dirty=true;if(selected)fly(selected,true);else schedule();
+  }
+  function scroll(){if(scrollY!==lastScroll){lastScroll=scrollY;dirty=true;schedule();}}
+  function move(e){if(e.pointerType==="mouse"&&!selected&&!paused){pointer={x:e.clientX/innerWidth-.5,y:.5-e.clientY/innerHeight};dirty=true;schedule();}}
+  function visibility(){hidden=document.hidden;if(hidden&&frame){cancelAnimationFrame(frame);frame=0;}else{dirty=true;schedule();}}
+  function preference(){paused=reduced.matches;api.onMotionPreference?.(paused);dirty=true;schedule();}
+  window.addEventListener("resize",resize);
+  window.addEventListener("scroll",scroll,{passive:true});
+  window.addEventListener("pointermove",move,{passive:true});
+  document.addEventListener("visibilitychange",visibility);
+  reduced.addEventListener("change",preference);
+  renderer.domElement.addEventListener("webglcontextlost",e=>{e.preventDefault();api.onFailure("三维场景已暂停，文章仍可正常阅读。");if(frame)cancelAnimationFrame(frame);frame=0;disposed=true;});
+  camera.position.copy(poseForHome().position);look.copy(poseForHome().target);
+  camera.lookAt(look);renderer.render(scene,camera);
+  document.body.classList.add("scene-ready");
+  host.dataset.ready="true";
+  api.onReady?.({leaves:count,branches:indices.length/3,revision:THREE.REVISION});
+  schedule();
+  return {
+    fly,
+    setPaused(value){paused=value;dirty=true;schedule();},
+    resume(){dirty=true;schedule();},
+    suspend(){if(frame)cancelAnimationFrame(frame);frame=0;},
+    snapshot(){return {camera:camera.position.toArray(),target:look.toArray(),selected,leaves:leaves.count,quality,triangles:renderer.info.render.triangles};},
+    dispose(){disposed=true;if(frame)cancelAnimationFrame(frame);window.removeEventListener("resize",resize);window.removeEventListener("scroll",scroll);window.removeEventListener("pointermove",move);document.removeEventListener("visibilitychange",visibility);reduced.removeEventListener("change",preference);scene.traverse(o=>{o.geometry?.dispose();});barkMaterial.dispose();leafMaterial.dispose();grassMaterial.dispose();distantMaterial.dispose();ground.material.dispose();bark.dispose();leafTexture.dispose();renderer.dispose();renderer.domElement.remove();}
+  };
+};
+(function livingBlogApp(){
 "use strict";
 const posts=JSON.parse(document.getElementById("post-data").textContent);
-const crown=document.getElementById("crown-template").innerHTML;
-const twig=document.getElementById("twig-template").innerHTML;
-const main=document.getElementById("main");
-const dialog=document.getElementById("search-dialog");
-const cats=["全部","随笔","行记","造物"];
-const escape=(v)=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const hrefHome=(category="全部",q="")=>"#/"+((category!=="全部"||q)?"?"+new URLSearchParams({category,q}).toString():"");
-const route=()=>{const raw=location.hash.slice(1)||"/";const [path,query=""]=raw.split("?");return {path,params:new URLSearchParams(query)};};
-const roots=`<svg class="roots" viewBox="0 0 170 70" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M85 0Q84 27 45 42L12 50M86 3Q91 34 127 43L155 53" stroke-width="3"/><path d="M85 6Q82 43 70 62M87 14Q101 45 110 63M46 42L40 57M122 42L139 37" stroke-width="1.3"/></g></svg>`;
-function currentHomeState(){return {hash:location.hash||"#/",scroll:window.scrollY,limit:history.state?.limit||6};}
-function saveScroll(){history.replaceState({...history.state,scroll:window.scrollY},"");}
-function navigate(hash,extra={}){
-  saveScroll();
-  history.pushState({scroll:0,...extra},"",hash);
-  render(true);
+const names={notes:"随笔",travel:"行记",making:"造物"};
+const phrases={notes:"生活里的片刻，在这里长成枝叶。",travel:"沿着走过的路，看看更远处的风景。",making:"一些想法，经过双手，变成具体的东西。"};
+const panel=document.getElementById("reading-panel");
+const content=document.getElementById("panel-content");
+const scroller=document.getElementById("panel-scroll");
+const sceneStatus=document.getElementById("scene-status");
+const reduced=matchMedia("(prefers-reduced-motion:reduce)");
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let engine=null,loading=false,loadFailed=false,homeScroll=0,activePlace=null,restoreFocus=null,routeId=0;
+let lightweight=false,paused=reduced.matches;
+try{lightweight=sessionStorage.getItem("cloudink-prototype-lightweight")==="true";}catch{}
+function route(){const raw=location.hash.slice(1)||"/";const q=raw.indexOf("?");return {path:q<0?raw:raw.slice(0,q),params:new URLSearchParams(q<0?"":raw.slice(q+1))};}
+const placeForPost=p=>Object.keys(names).find(k=>names[k]===p.category)||"notes";
+const item=p=>`<a class="panel-item" href="#/post/${p.slug}"><time datetime="${p.date}">${p.date.replaceAll("-"," · ")}</time><h3>${escape(p.title)}</h3><p>${escape(p.summary)}</p><div class="item-bottom"><span>${escape(p.category)}</span><span aria-hidden="true">沿此枝阅读 ↗</span></div></a>`;
+function save(){
+ const state={...history.state,homeScroll:panel.open?homeScroll:scrollY,panelScroll:scroller.scrollTop};
+ history.replaceState(state,"");
 }
-function articleCard(p){
-return `<article class="entry" id="entry-${p.slug}">${twig}<div class="meta"><time datetime="${p.date}">${p.date.replaceAll("-"," · ")}</time><span class="dot" aria-hidden="true"></span><span>${escape(p.category)}</span></div><h2><a href="#/post/${p.slug}">${escape(p.title)}</a></h2><p>${escape(p.summary)}</p><a class="read" href="#/post/${p.slug}" aria-label="阅读：${escape(p.title)}">沿此枝阅读 <span aria-hidden="true">↗</span></a></article>`;
+function go(hash,extra={}){
+ const prev=location.hash||"#/";
+ save();
+ history.pushState({app:true,homeScroll:panel.open?homeScroll:scrollY,returnTo:prev,returnScroll:scroller.scrollTop,...extra},"",hash);
+ render();
 }
-function home(params){
- const category=cats.includes(params.get("category"))?params.get("category"):"全部";
- const q=(params.get("q")||"").slice(0,100).trim();
- const filtered=posts.filter(p=>(category==="全部"||p.category===category)&&(!q||(p.title+" "+p.summary+" "+p.category).toLocaleLowerCase().includes(q.toLocaleLowerCase())));
- const limit=history.state?.limit||6;let year="";let cards="";
- for(const p of filtered.slice(0,limit)){if(year!==p.date.slice(0,4)){year=p.date.slice(0,4);cards+=`<div class="year">${year}</div>`;}cards+=articleCard(p);}
- document.title="云砚 · 字里生长";
- main.innerHTML=`<section class="crown" aria-label="树冠导航">${crown}<nav class="crown-pages" aria-label="页面导航"><a href="#/about">关于</a><a href="#/archive">归档</a><a href="#/search">寻文</a></nav><div class="inscription"><p class="eyebrow">A GARDEN OF WORDS</p><h1 tabindex="-1">字里生长</h1><p class="subtitle">以文字为叶，以时间为枝。<br>在这里，慢慢长成自己。</p></div><span class="margin-note" aria-hidden="true">一方纸上 · 四季常青</span><div role="group" aria-label="文章分类">${cats.map((c,i)=>`<button class="category cat-${i}" data-category="${c}" aria-pressed="${c===category}">${c}<small>${c==="全部"?posts.length:posts.filter(p=>p.category===c).length}</small></button>`).join("")}</div><span class="scroll-note" aria-hidden="true">循着年轮，向下阅读 ↓</span></section>
-<section class="journal" id="journal" aria-label="文章时间线"><svg class="trunk-bend" viewBox="0 0 390 72" preserveAspectRatio="none" aria-hidden="true"><path d="M190 0C185 25 35 27 22 72H32C38 35 201 37 200 0Z" fill="#56634d" opacity=".82"/><path d="M194 0C189 30 36 32 27 72" fill="none" stroke="#acb49b" stroke-width="1"/></svg><svg class="trunk" viewBox="0 0 38 1000" preserveAspectRatio="none" aria-hidden="true"><path d="M10 0C21 130 5 260 14 390S6 650 17 790L12 1000H27C21 850 31 720 25 580S31 250 25 0Z" fill="#56634d" opacity=".82"/><path d="M19 0C30 170 10 340 22 510S16 820 22 1000" fill="none" stroke="#acb49b" stroke-width="1.5"/><path d="M13 50C22 240 10 340 17 440M24 700L21 960" fill="none" stroke="#f6f3eb" opacity=".5"/></svg><div class="journal-top"><div><span class="filter-label">${q?"寻文 · "+escape(q):category==="全部"?"最近的枝叶":escape(category)+" · 枝叶"}</span>${category!=="全部"||q?'<button class="reset" id="reset-filter">查看全部</button>':""}</div><span id="result-count" role="status">${filtered.length} 篇文字 · 从新到旧</span></div><div id="entries">${cards||'<div class="empty"><p>这条枝上，还没有找到文字。</p><button class="reset" id="empty-reset">回到全部文章</button></div>'}</div><div class="end">${filtered.length>limit?'<button class="load-more" id="load-more">再往年轮深处走走 ↓</button>':'<span class="end-note">已至初芽，故事仍在生长。</span>'}</div></section>${roots}`;
- main.querySelectorAll("[data-category]").forEach(button=>button.addEventListener("click",()=>navigate(hrefHome(button.dataset.category,q))));
- for(const id of ["reset-filter","empty-reset"])document.getElementById(id)?.addEventListener("click",()=>navigate("#/"));
- document.getElementById("load-more")?.addEventListener("click",()=>{
-  const scroll=window.scrollY;
-  const firstNew=filtered[limit];
-  history.replaceState({...history.state,limit:limit+6,scroll},"");
-  home(params);
-  window.scrollTo(0,scroll);
-  if(firstNew)document.querySelector(`#entry-${firstNew.slug} h2 a`)?.focus({preventScroll:true});
+function goHome(){
+ save();history.pushState({app:true,homeScroll},"","#/");render();
+}
+function fallback(message){
+ loadFailed=true;document.body.classList.add("scene-fallback");
+ sceneStatus.textContent=message||"当前设备已切换为轻量阅读";
+ document.getElementById("scene").dataset.ready="fallback";
+ document.getElementById("mode-button").textContent="重试立体场景";
+ engine?.suspend();
+}
+function syncMotionButton(){const b=document.getElementById("motion-button");b.textContent=paused?"开启微风":"暂停微风";b.setAttribute("aria-pressed",String(paused));}
+async function startScene(){
+ if(loading||engine||lightweight)return;
+ loading=true;sceneStatus.textContent="枝叶与光影，正在苏醒";
+ try{
+   const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error("scene import timed out")),15000));
+   const THREE=await Promise.race([import("https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"),timeout]);
+   if(lightweight){loading=false;return;}
+   engine=window.createLivingTree(THREE,{
+     onReady(info){window.cloudinkSceneInfo=info;sceneStatus.textContent="点击树上入口，沿着枝条探索";},
+     onFailure:fallback,
+     onQualityChange(message){sceneStatus.textContent=message+" · 仍可探索树冠";},
+     onArrive(){document.body.dataset.cameraMoving="false";},
+     onMotionPreference(value){paused=value;syncMotionButton();},
+   });
+   window.cloudinkScene=engine;
+   if(paused)engine.setPaused(true);
+   if(activePlace)engine.fly(activePlace);
+   loadFailed=false;document.body.classList.remove("scene-fallback");
+ }catch(error){window.cloudinkSceneError=String(error);fallback("场景暂不可用，已为你保留全部文字");}
+ finally{loading=false;}
+}
+function setLightweight(value){
+ lightweight=value;
+ document.body.classList.toggle("lightweight",value);
+ document.getElementById("mode-button").textContent=value?"进入立体场景":"轻量阅读";
+ document.getElementById("mode-button").setAttribute("aria-pressed",String(value));
+ try{sessionStorage.setItem("cloudink-prototype-lightweight",String(value));}catch{}
+ if(value){engine?.suspend();sceneStatus.textContent="轻量阅读 · 所有文章都在这里";}
+ else if(engine){engine.resume();if(activePlace)engine.fly(activePlace);sceneStatus.textContent="点击树上入口，沿着枝条探索";}
+ else{document.body.classList.remove("scene-fallback");startScene();}
+}
+function tabs(selected){
+ return `<nav class="branch-tabs" aria-label="文章分类">${Object.entries(names).map(([id,name])=>`<a href="#/branch/${id}" aria-current="${id===selected}">${name}</a>`).join("")}</nav>`;
+}
+function render(){
+ const id=++routeId,{path,params}=route();
+ const base=path==="/"||path==="";
+ if(base){
+   activePlace=null;
+   const target=history.state?.homeScroll??homeScroll;
+   document.title="云砚 · 字里生长";
+   document.body.classList.remove("is-exploring");
+   if(panel.open){panel.classList.remove("visible");panel.close();}
+   document.body.style.overflow="";
+   window.scrollTo(0,target);homeScroll=target;
+   document.body.dataset.cameraMoving=String(!!engine&&!reduced.matches&&!lightweight);
+   engine?.fly(null);
+   if(restoreFocus?.isConnected)restoreFocus.focus({preventScroll:true});
+   return;
+ }
+ if(!panel.open){
+   homeScroll=history.state?.homeScroll??scrollY;
+   restoreFocus=document.activeElement;
+   document.body.style.overflow="hidden";
+   document.body.classList.add("is-exploring");
+   panel.showModal();
+   requestAnimationFrame(()=>panel.classList.add("visible"));
+ }
+ let place="notes",title="",body="",reading=false,crumb="树冠 / ";
+ const backTo=history.state?.returnTo;
+ const headerBack=document.getElementById("panel-back");
+ headerBack.hidden=!path.startsWith("/post/");
+ headerBack.textContent=backTo?.startsWith("#/branch/")?"← 回到这条枝":"← 回到树下";
+ if(path.startsWith("/branch/")){
+   place=path.slice(8);if(!names[place])place="notes";
+   title=names[place];const matches=posts.filter(p=>p.category===title);
+   crumb+=title;
+   body=`<p class="panel-eyebrow">A BRANCH OF ${place.toUpperCase()}</p><h2 id="panel-title" tabindex="-1">${title}</h2><p class="panel-subtitle">${phrases[place]}</p>${tabs(place)}<div class="panel-list">${matches.map(item).join("")}</div>`;
+ }else if(path.startsWith("/post/")){
+   const p=posts.find(p=>p.slug===path.slice(6));reading=true;
+   if(p){
+     place=placeForPost(p);title=p.title;crumb+=names[place]+" / 阅读";
+     body=`<article><header class="article-heading"><p class="panel-eyebrow">${p.date.replaceAll("-"," · ")} &nbsp; / &nbsp; ${escape(p.category)} &nbsp; / &nbsp; 示例文字</p><h2 id="panel-title" tabindex="-1">${escape(p.title)}</h2><p class="panel-subtitle">${escape(p.summary)}</p></header><div class="prose">${p.body.map(([tag,text])=>tag==="quote"?`<blockquote><p>${escape(text)}</p></blockquote>`:tag==="h2"?`<h3>${escape(text)}</h3>`:`<p>${escape(text)}</p>`).join("")}</div><div class="article-end"><button class="panel-back" data-back>← 回到来时的枝条</button><span>读到这里，歇一歇。</span></div></article>`;
+   }else{title="叶子暂未找到";body='<h2 id="panel-title" tabindex="-1">这片叶子暂未找到</h2><p class="panel-subtitle">回到树下，看看其他文字吧。</p>'; }
+ }else if(path==="/about"){
+   place="about";title="关于";crumb+="关于";
+   body=`<p class="panel-eyebrow">A LIVING JOURNAL</p><h2 id="panel-title" tabindex="-1">在文字里，<br>栽一棵树。</h2><p class="panel-subtitle">以文字为叶，以时间为枝。</p><div class="prose"><p>这里收藏生活中的片刻、路途上的风景，以及亲手做东西时冒出的想法。</p><p>从树冠选一条感兴趣的枝，或者顺着树干向下，读到更早以前的故事。</p><blockquote><p>愿每一次到访，都像在树下坐了一会儿。</p></blockquote></div><p class="mode-tip">CloudInk 三维博客交互原型。当前站点题字与文章均为示例内容。</p>`;
+ }else if(path==="/archive"){
+   place="archive";title="归档";crumb+="年轮";let year="";
+   body=`<p class="panel-eyebrow">THE RINGS OF TIME</p><h2 id="panel-title" tabindex="-1">岁月有痕</h2><p class="panel-subtitle">每一篇文字，都是时间留下的一圈年轮。</p>${posts.map(p=>{let h="";if(year!==p.date.slice(0,4)){year=p.date.slice(0,4);h=`<h3 class="archive-year">${year}</h3>`;}return h+item(p);}).join("")}`;
+ }else if(path==="/search"){
+   place="archive";title="寻文";crumb+="寻文";
+   const query=(params.get("q")||"").slice(0,100),matches=query?posts.filter(p=>(p.title+" "+p.summary+" "+p.category).toLowerCase().includes(query.toLowerCase())):[];
+   body=`<p class="panel-eyebrow">FIND A LITTLE SOMETHING</p><h2 id="panel-title" tabindex="-1">寻一篇文字</h2><form id="search-form" class="search-form"><label for="search-input">搜索标题、摘要或分类</label><div class="search-row"><input id="search-input" type="search" name="q" maxlength="100" autocomplete="off" value="${escape(query)}" placeholder="日子、山路、造物…"><button type="submit">寻找</button></div></form><div aria-live="polite">${query?`<p class="mode-tip">${matches.length} 篇相关文字</p>${matches.length?matches.map(item).join(""):'<p class="empty">这条枝上，还没有找到文字。<br>换一个词，再找找看。</p>'}`:'<p class="mode-tip">在这片园地里，找一段与你有关的文字。</p>'}</div>`;
+ }else{
+   title="小径暂未开放";body='<h2 id="panel-title" tabindex="-1">这条小径暂未开放</h2><p class="panel-subtitle">回到树冠，重新选择一条枝吧。</p>';
+ }
+ document.title=title+" · 云砚";
+ document.getElementById("breadcrumb").textContent=crumb;
+ panel.classList.toggle("reading",reading);
+ content.innerHTML=`<div class="panel-enter">${body}</div>`;
+ scroller.scrollTop=history.state?.panelScroll||0;
+ const oldPlace=activePlace;activePlace=place;
+ if(oldPlace!==place||reading){
+   document.body.dataset.cameraMoving=String(!!engine&&!reduced.matches&&!lightweight);
+   engine?.fly(place);
+ }
+ requestAnimationFrame(()=>{
+   if(id!==routeId)return;
+   document.getElementById("panel-title")?.focus({preventScroll:true});
+ });
+ document.getElementById("search-form")?.addEventListener("submit",event=>{
+   event.preventDefault();
+   const query=document.getElementById("search-input").value.trim();
+   go("#/search?q="+encodeURIComponent(query),{returnTo:"#/",panelScroll:0});
  });
 }
-function backLink(){return `<a class="back" data-return href="${escape(history.state?.origin?.hash||"#/")}">← 回到树下</a>`;}
-function reading(p){
- document.title=p.title+" · 云砚";
- main.innerHTML=`<section class="reading">${backLink()}<article><p class="eyebrow">${p.date.replaceAll("-"," · ")} &nbsp; / &nbsp; ${escape(p.category)} &nbsp; / &nbsp; 示例文章</p><h1 tabindex="-1">${escape(p.title)}</h1><p class="lead">${escape(p.summary)}</p><div class="prose">${p.body.map(([type,text])=>type==="quote"?`<blockquote><p>${escape(text)}</p></blockquote>`:`<${type}>${escape(text)}</${type}>`).join("")}</div><div class="article-end">${backLink()}<span>读到这里，歇一歇也好。</span></div></article></section>`;
-}
-function archive(){
- document.title="归档 · 云砚";let year="";
- main.innerHTML=`<section class="reading">${backLink()}<p class="eyebrow">THE RINGS OF TIME</p><h1 tabindex="-1">岁月有痕</h1><p class="lead">每一篇文字，都是时间留下的一圈年轮。</p>${posts.map(p=>{let heading="";if(year!==p.date.slice(0,4)){year=p.date.slice(0,4);heading=`<h2 class="archive-year">${year}</h2>`;}return heading+`<a class="archive-link" href="#/post/${p.slug}"><span>${escape(p.title)}</span><time datetime="${p.date}">${p.date.slice(5).replace("-"," / ")}</time></a>`;}).join("")}</section>`;
-}
-function about(){
- document.title="关于 · 云砚";
- main.innerHTML=`<section class="reading">${backLink()}<p class="eyebrow">A SMALL PLACE TO GROW</p><h1 tabindex="-1">在文字里，栽一棵树</h1><p class="lead">一处慢慢记录、慢慢生长的个人园地。</p><div class="prose"><p>这里收藏生活中的片刻、路途上的风景，以及亲手做东西时冒出的想法。</p><p>你可以从树冠挑选感兴趣的枝叶，也可以顺着树干，读到更早以前的故事。希望你找到一段值得停留的文字。</p><blockquote><p>愿每一次到访，都像在树下坐了一会儿。</p></blockquote><h2>关于这个示例</h2><p>这是 CloudInk「云砚」的树形阅读原型。文章、分类和站点题字均为演示内容，用于体验新的博客外观。</p></div></section>`;
-}
-function render(focus=false){
- const {path,params}=route();
- if(path==="/")home(params);
- else if(path==="/about")about();
- else if(path==="/archive")archive();
- else if(path.startsWith("/post/")){const p=posts.find(p=>p.slug===path.slice(6));if(p)reading(p);else main.innerHTML=`<section class="reading">${backLink()}<h1 tabindex="-1">这片叶子暂未找到</h1><p class="lead">回到树下，看看其他文字吧。</p></section>`;}
- else if(path==="/search"){home(params);openSearch();}
- else{main.innerHTML=`<section class="reading">${backLink()}<h1 tabindex="-1">这条小径暂未开放</h1></section>`;}
- const y=history.state?.scroll||0;
- requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  window.scrollTo(0,y);
-  if(focus&&!dialog.open)main.querySelector("h1")?.focus({preventScroll:true});
- }));
-}
-function openSearch(){
- document.getElementById("search-input").value=route().params.get("q")||"";
- if(!dialog.open)dialog.showModal();
- document.getElementById("search-input").focus();
+function goBack(){
+ const target=history.state?.returnTo;
+ if(target&&target!==(location.hash||"#/")){
+   const restore=history.state?.returnScroll||0;
+   go(target,{panelScroll:restore,homeScroll});
+ }else goHome();
 }
 document.addEventListener("click",event=>{
- const anchor=event.target.closest("a");
- if(!anchor||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||anchor.target==="_blank")return;
- const hash=anchor.getAttribute("href");
- if(hash==="#main"){event.preventDefault();main.focus({preventScroll:true});main.scrollIntoView({block:"start"});return;}
- if(!hash?.startsWith("#/"))return;
- event.preventDefault();
- if(hash==="#/search"){openSearch();return;}
- if(anchor.hasAttribute("data-return")&&history.state?.origin){
-  const origin=history.state.origin;
-  navigate(origin.hash,{scroll:origin.scroll,limit:origin.limit});
-  return;
+ const button=event.target.closest("[data-place],[data-home],[data-back]");
+ if(button){
+   if(button.hasAttribute("data-home"))goHome();
+   else if(button.hasAttribute("data-back"))goBack();
+   else{const place=button.dataset.place;go(names[place]?"#/branch/"+place:"#/"+place);}
+   return;
  }
- const origin=route().path==="/"?currentHomeState():history.state?.origin;
- navigate(hash,origin?{origin}:{});
+ const a=event.target.closest("a");
+ if(!a||event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+ const href=a.getAttribute("href");
+ if(href==="#main"){event.preventDefault();document.getElementById("main").focus({preventScroll:true});document.getElementById("journal").scrollIntoView();return;}
+ if(!href?.startsWith("#/"))return;
+ event.preventDefault();if(href==="#/")goHome();else go(href);
 });
-document.getElementById("open-search").addEventListener("click",openSearch);
-document.getElementById("close-search").addEventListener("click",()=>dialog.close());
-dialog.addEventListener("click",event=>{if(event.target===dialog){const b=dialog.getBoundingClientRect();if(event.clientX<b.left||event.clientX>b.right||event.clientY<b.top||event.clientY>b.bottom)dialog.close();}});
-document.getElementById("search-form").addEventListener("submit",event=>{
- event.preventDefault();const q=document.getElementById("search-input").value.trim();
- dialog.close();navigate(hrefHome("全部",q));
- requestAnimationFrame(()=>requestAnimationFrame(()=>document.getElementById("journal").scrollIntoView({block:"start"})));
+document.getElementById("panel-close").addEventListener("click",goHome);
+document.getElementById("panel-back").addEventListener("click",goBack);
+panel.addEventListener("cancel",event=>{event.preventDefault();goHome();});
+document.getElementById("mode-button").addEventListener("click",()=>{
+ if(loadFailed&&!lightweight){engine?.dispose();engine=null;loadFailed=false;startScene();return;}
+ setLightweight(!lightweight);
+});
+document.getElementById("motion-button").addEventListener("click",()=>{
+ paused=!paused;engine?.setPaused(paused);syncMotionButton();
+});
+document.getElementById("open-search").addEventListener("click",()=>go("#/search"));
+document.getElementById("return-crown").addEventListener("click",()=>{
+ homeScroll=0;if(panel.open)goHome();else window.scrollTo({top:0,behavior:reduced.matches?"auto":"smooth"});
 });
 history.scrollRestoration="manual";
-if(!history.state)history.replaceState({scroll:0,limit:6},"");
-window.addEventListener("popstate",()=>{if(dialog.open)dialog.close();render(true);});
-window.addEventListener("hashchange",()=>render(true));
-window.addEventListener("pagehide",saveScroll);
-render();
+if(!history.state)history.replaceState({app:true,homeScroll:0},"");
+window.addEventListener("popstate",render);
+window.addEventListener("hashchange",()=>{if(!history.state?.app)render();});
+window.addEventListener("pagehide",save);
+syncMotionButton();setLightweight(lightweight);render();
+window.cloudinkUI={go,goHome,getState:()=>({place:activePlace,lightweight,paused,homeScroll,panelOpen:panel.open})};
 })();</script>
 </body>
 </html>
