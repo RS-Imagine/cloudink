@@ -39,6 +39,8 @@ jobs:
       - name: Install Chromium
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium
+      - name: Verify growing tree prototype in Chromium
+        run: node prototypes/ink-tree/growth.browser.mjs
       - name: Verify onboarding and editor flows in Chromium
         run: |
           npm run test:web:browser
