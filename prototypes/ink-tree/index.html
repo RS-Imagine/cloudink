@@ -114,7 +114,8 @@ body.scene-fallback #anchors,body.lightweight #anchors,body.scene-fallback .tree
     const offset = positions.length / 3, length = curve.getLength();
     for (let i = 0; i <= steps; i++) {
       const t = i / steps, point = curve.getPointAt(t);
-      const radius = endRadius + (startRadius - endRadius) * Math.pow(1 - t, 1.18);
+      let radius = endRadius + (startRadius - endRadius) * Math.pow(1 - t, 1.18);
+      if(startRadius>1)radius*=1+.3*Math.exp(-Math.max(0,point.y)/1.8);
       for (let j = 0; j <= sides; j++) {
         const a = j / sides * Math.PI * 2;
         const normal = frames.normals[i].clone().multiplyScalar(Math.cos(a)).addScaledVector(frames.binormals[i], Math.sin(a));
@@ -226,8 +227,10 @@ body.scene-fallback #anchors,body.lightweight #anchors,body.scene-fallback .tree
   leafMaterial.onBeforeCompile=shader=>{
     shader.uniforms.uWind={value:0};
     shader.uniforms.uGrow=growthUniform;
-    shader.vertexShader="attribute float aLeafBirth;\nattribute float aLeafSeed;\nuniform float uGrow;\nuniform float uWind;\n"+shader.vertexShader;
-    shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nfloat inkLeafAge=clamp((uGrow-aLeafBirth)/.12,0.0,1.0);\nfloat inkLeafSize=inkLeafAge*inkLeafAge*(3.0-2.0*inkLeafAge);\ntransformed*=inkLeafSize;\nfloat inkCurl=(1.0-inkLeafAge)*(0.7+0.5*aLeafSeed);\nfloat inkX=transformed.x;\ntransformed.x=inkX*cos(inkCurl)-transformed.z*sin(inkCurl);\ntransformed.z=inkX*sin(inkCurl)+transformed.z*cos(inkCurl);\n#ifdef USE_INSTANCING\ntransformed.x += sin(uWind + instanceMatrix[3].x * 1.9 + instanceMatrix[3].y)*0.045*position.y*inkLeafAge;\ntransformed.z += cos(uWind*0.7 + instanceMatrix[3].z)*0.03*position.y*inkLeafAge;\n#endif");
+    shader.vertexShader="attribute float aLeafBirth;\nattribute float aLeafSeed;\nvarying float vLeafMaturity;\nuniform float uGrow;\nuniform float uWind;\n"+shader.vertexShader;
+    shader.fragmentShader="varying float vLeafMaturity;\n"+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace("#include <color_fragment>","#include <color_fragment>\ndiffuseColor.rgb=mix(diffuseColor.rgb*vec3(1.18,1.22,.75),diffuseColor.rgb,vLeafMaturity);\nif(!gl_FrontFacing)diffuseColor.rgb*=vec3(1.10,1.13,.94);");
+    shader.vertexShader=shader.vertexShader.replace("#include <begin_vertex>","#include <begin_vertex>\nfloat inkLeafAge=clamp((uGrow-aLeafBirth)/.12,0.0,1.0);\nvLeafMaturity=inkLeafAge;\nfloat inkLeafSize=inkLeafAge*inkLeafAge*(3.0-2.0*inkLeafAge);\ntransformed*=inkLeafSize;\nfloat inkCurl=(1.0-inkLeafAge)*(0.7+0.5*aLeafSeed);\nfloat inkX=transformed.x;\ntransformed.x=inkX*cos(inkCurl)-transformed.z*sin(inkCurl);\ntransformed.z=inkX*sin(inkCurl)+transformed.z*cos(inkCurl);\n#ifdef USE_INSTANCING\ntransformed.x += sin(uWind + instanceMatrix[3].x * 1.9 + instanceMatrix[3].y)*0.045*position.y*inkLeafAge;\ntransformed.z += cos(uWind*0.7 + instanceMatrix[3].z)*0.03*position.y*inkLeafAge;\n#endif");
     leafShaderRef=shader;
   };
   leafMaterial.customProgramCacheKey=()=>"cloudink-leaf-growth-v1";
