@@ -44,6 +44,21 @@ try {
   await expect.poll(() => page.evaluate(() => window.__inkTree?.stats().intro)).toBe(false);
   await context.close();
 
+  const navigating = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const navigationPage = await navigating.newPage();
+  await navigationPage.goto(url);
+  await expect(navigationPage.locator('#scene[data-ready="true"]')).toBeAttached({ timeout: 30000 });
+  const navigation = await navigationPage.evaluate(() => {
+    const before = window.__inkTree.stats();
+    window.cloudinkUI.go('#/branch/notes');
+    return { before, after: window.__inkTree.stats() };
+  });
+  expect(navigation.before.intro).toBe(true);
+  expect(navigation.after.grow).toBe(navigation.before.grow);
+  expect(navigation.after.selected).toBe('notes');
+  await expect.poll(() => navigationPage.evaluate(() => window.__inkTree.stats().grow)).toBe(1);
+  await navigating.close();
+
   const deep = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const deepPage = await deep.newPage();
   await deepPage.goto(url + '#/post/a-tree-of-words');
@@ -60,6 +75,12 @@ try {
   await expect.poll(() => mobilePage.evaluate(() => window.__inkTree?.stats().grow)).toBe(1);
   const mobileStats = await mobilePage.evaluate(() => window.__inkTree.stats());
   if (mobileStats.drawCalls > 10 || mobileStats.triangles > 35000) throw new Error(`Mobile scene budget exceeded: ${JSON.stringify(mobileStats)}`);
+  await expect.poll(() => mobilePage.evaluate(() =>
+    [...document.querySelectorAll('.anchor')].every((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 76 && rect.bottom <= innerHeight;
+    }),
+  )).toBe(true);
   await mobile.close();
 
   const reduced = await browser.newContext({ reducedMotion: 'reduce' });
