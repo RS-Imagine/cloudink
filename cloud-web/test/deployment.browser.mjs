@@ -128,7 +128,10 @@ try {
   await expect(live.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');
   assert.equal(await live.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await live.locator('#theme-toggle-btn').click();
-  await live.screenshot({ path: resolve('cloud-web/dist/article.mobile.dark.png'), fullPage: true });
+  await live.screenshot({
+    path: resolve('cloud-web/dist/article.mobile.dark.png'),
+    fullPage: true,
+  });
   await live.locator('#site-search-btn').click();
   await live.locator('#search-close').click();
   await expect(live.locator('#site-search-btn')).toBeFocused();
