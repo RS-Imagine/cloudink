@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
-      const swup = new Swup({
-        animationSelector: '[class*="transition-"]'
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const swup = typeof Swup === 'function' ? new Swup({
+        animationSelector: reducedMotion.matches ? false : '[class*="transition-"]'
+      }) : null;
+      reducedMotion.addEventListener('change', () => {
+        if (swup) swup.options.animationSelector = reducedMotion.matches ? false : '[class*="transition-"]';
       });
       window.swup = swup;
       let cleanupFunctions = [];
@@ -36,26 +40,50 @@ document.addEventListener('DOMContentLoaded', () => {
       if (searchBtn && searchModal) {
         const closeSearch = () => {
           searchModal.classList.remove('active');
-          searchInput.blur();
+          searchModal.setAttribute('aria-hidden', 'true');
+          searchModal.inert = true;
+          document.body.style.overflow = '';
+          searchBtn.focus();
         };
 
         const openSearch = async () => {
+          searchModal.inert = false;
+          searchModal.setAttribute('aria-hidden', 'false');
           searchModal.classList.add('active');
+          document.body.style.overflow = 'hidden';
           searchInput.focus();
           
           if (!searchIndex) {
             try {
               const res = await fetch('/search_index.json');
+              if (!res.ok) throw new Error('Search index unavailable');
               searchIndex = await res.json();
               // A reader may type before the first index download finishes.
               searchInput.dispatchEvent(new Event('input'));
             } catch (e) {
-              console.error('Failed to load search index:', e);
+              const notice = document.createElement('li');
+              notice.className = 'search-result-item';
+              notice.textContent = 'Search is temporarily unavailable. Please try again.';
+              searchResults.replaceChildren(notice);
             }
           }
         };
 
         searchBtn.addEventListener('click', openSearch);
+        searchResults.addEventListener('click', (event) => {
+          if (event.target.closest('a[href]')) closeSearch();
+        });
+        document.getElementById('search-close')?.addEventListener('click', closeSearch);
+        swup?.hooks.on('visit:start', () => {
+          if (searchModal.classList.contains('active')) closeSearch();
+        });
+        searchModal.addEventListener('keydown', (event) => {
+          if (event.key !== 'Tab') return;
+          const focusable = [...searchModal.querySelectorAll('input,button,a[href]')];
+          const first = focusable[0], last = focusable[focusable.length - 1];
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        });
         
         searchModal.addEventListener('click', (e) => {
           if (e.target === searchModal) closeSearch();
@@ -161,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
           clone.style.cursor = 'zoom-out';
           clone.style.opacity = '0';
           clone.style.transform = 'scale(0.92)';
-          clone.style.transition = 'opacity 0.3s ease, transform 0.3s cubic-bezier(0.4,0,0.2,1)';
+          clone.style.transition = reducedMotion.matches ? 'none' : 'opacity 0.2s ease, transform 0.2s ease';
           
           ov.appendChild(clone);
           document.body.appendChild(ov);
@@ -180,10 +208,13 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
               ov.remove();
               if (currentZoomedOverlay === ov) currentZoomedOverlay = null;
-            }, 300);
+            }, reducedMotion.matches ? 0 : 200);
           }
           
           ov.addEventListener('click', closeZoom);
+          const escapeZoom = (e) => { if (e.key === 'Escape') { closeZoom(); document.removeEventListener('keydown', escapeZoom); } };
+          document.addEventListener('keydown', escapeZoom);
+          cleanupFunctions.push(() => document.removeEventListener('keydown', escapeZoom));
         }
 
         images.forEach(img => {
@@ -197,7 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
         shareBtn.addEventListener('click', () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          const fontStack = "'Times New Roman', 'Noto Serif SC', 'Songti SC', serif";
+          const palette = getComputedStyle(document.documentElement);
+          const fontStack = palette.getPropertyValue('--font-body').trim();
           const segmenter = new Intl.Segmenter(navigator.language || 'zh-CN', { granularity: 'word' });
           
           function getLines(text, font, maxWidth) {
@@ -257,23 +289,14 @@ document.addEventListener('DOMContentLoaded', () => {
           canvas.style.height = height + 'px';
           ctx.scale(2, 2);
 
-          const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          ctx.fillStyle = isDark ? '#2C201A' : '#DDD6C1';
+          ctx.fillStyle = palette.getPropertyValue('--bg').trim();
           ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = palette.getPropertyValue('--accent').trim();
+          ctx.fillRect(64, 96, 3, height - 192);
 
-          ctx.fillStyle = isDark ? 'rgba(229, 160, 128, 0.09)' : 'rgba(128, 80, 48, 0.09)';
-          ctx.beginPath();
-          ctx.arc(0, 0, 300, 0, Math.PI * 2);
-          ctx.fill();
-          
-          ctx.fillStyle = isDark ? 'rgba(229, 160, 128, 0.06)' : 'rgba(128, 80, 48, 0.06)';
-          ctx.beginPath();
-          ctx.arc(width, 0, 400, 0, Math.PI * 2);
-          ctx.fill();
-          
           let drawY = 140;
           
-          ctx.fillStyle = isDark ? '#F0E6D8' : '#502010';
+          ctx.fillStyle = palette.getPropertyValue('--text').trim();
           ctx.font = titleFont;
           for (let line of titleLines) {
               ctx.fillText(line, 100, drawY);
@@ -282,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
           drawY += 20;
           
           if (descLines.length > 0) {
-              ctx.fillStyle = isDark ? '#E5A080' : '#805030';
+              ctx.fillStyle = palette.getPropertyValue('--accent').trim();
               ctx.font = descFont;
               for (let line of descLines) {
                   ctx.fillText(line, 100, drawY);
@@ -292,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           
           if (bodyLines.length > 0) {
-              ctx.fillStyle = isDark ? '#B8A89A' : '#807565';
+              ctx.fillStyle = palette.getPropertyValue('--muted').trim();
               ctx.font = bodyFont;
               for (let line of bodyLines) {
                   ctx.fillText(line, 100, drawY);
@@ -304,15 +327,15 @@ document.addEventListener('DOMContentLoaded', () => {
           const siteName = document.querySelector('.site-brand h1').innerText;
           const domain = window.location.host + window.location.pathname;
           
-          ctx.fillStyle = isDark ? '#5A453A' : '#C4BCA8';
+          ctx.fillStyle = palette.getPropertyValue('--border').trim();
           ctx.fillRect(100, height - 150, 600, 2);
 
           ctx.font = `bold 28px ${fontStack}`;
-          ctx.fillStyle = isDark ? '#F0E6D8' : '#502010';
+          ctx.fillStyle = palette.getPropertyValue('--text').trim();
           ctx.fillText(siteName, 100, height - 100);
           
           ctx.font = `italic 24px ${fontStack}`;
-          ctx.fillStyle = isDark ? '#B8A89A' : '#807565';
+          ctx.fillStyle = palette.getPropertyValue('--muted').trim();
           ctx.fillText(domain, 100, height - 60);
 
           const dataUrl = canvas.toDataURL('image/png');
@@ -359,6 +382,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (headings.length > 0) {
           const tocContainer = document.createElement('div');
           tocContainer.className = 'toc-container';
+          tocContainer.id = 'article-contents';
+          tocContainer.setAttribute('aria-label', 'Article contents');
           
           const tocTitle = document.createElement('div');
           tocTitle.className = 'toc-title';
@@ -386,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
           // Mobile TOC Button & Drawer Logic
           const mobileTocBtn = document.createElement('button');
           mobileTocBtn.className = 'mobile-toc-btn';
+          mobileTocBtn.setAttribute('aria-label', 'Article contents');
+          mobileTocBtn.setAttribute('aria-controls', 'article-contents');
+          mobileTocBtn.setAttribute('aria-expanded', 'false');
           mobileTocBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>';
           document.body.appendChild(mobileTocBtn);
           cleanupFunctions.push(() => mobileTocBtn.remove());
@@ -398,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           function closeTocDrawer() {
              tocContainer.classList.remove('drawer-open');
+             mobileTocBtn.setAttribute('aria-expanded', 'false');
              tocDrawerOverlay.classList.remove('active');
           }
 
@@ -406,6 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
               closeTocDrawer();
             } else {
               tocContainer.classList.add('drawer-open');
+              mobileTocBtn.setAttribute('aria-expanded', 'true');
               tocDrawerOverlay.classList.add('active');
             }
           });
@@ -489,5 +519,5 @@ document.addEventListener('DOMContentLoaded', () => {
       } // end initPageFeatures
 
       initPageFeatures();
-      swup.hooks.on('page:view', initPageFeatures);
+      swup?.hooks.on('page:view', initPageFeatures);
     });
