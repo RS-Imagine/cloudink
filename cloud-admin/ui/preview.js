@@ -1,5 +1,17 @@
 const frame = document.getElementById('preview-frame');
 const loading = document.getElementById('preview-loading');
+function applyPreviewTheme(page) {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  page.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  const highlight = page.getElementById('preview-highlight');
+  if (highlight)
+    highlight.href =
+      'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/' +
+      (dark ? 'github-dark.min.css' : 'github.min.css');
+}
+document.addEventListener('cloudink:theme', () => {
+  if (frame.contentDocument) applyPreviewTheme(frame.contentDocument);
+});
 const imageCache = new Map();
 let worker = null,
   nextId = 0,
@@ -134,13 +146,14 @@ async function pump() {
     const style = page.createElement('style');
     style.textContent =
       css +
-      '\nheader nav,footer,.share-container{display:none!important}body .site{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}img[data-r2-key]{display:block;min-height:60px;background:#e8e6dd}';
+      '\nheader,footer,.share-container,.article-back{display:none!important}.wrapper{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
     page.head.append(style);
+    page.querySelectorAll('#hljs-light,#hljs-dark').forEach((node) => node.remove());
     const highlight = page.createElement('link');
+    highlight.id = 'preview-highlight';
     highlight.rel = 'stylesheet';
-    highlight.href =
-      'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css';
     page.head.append(highlight);
+    applyPreviewTheme(page);
     page.querySelectorAll('img').forEach((image) => {
       const src = image.getAttribute('src') || '';
       let url;
@@ -167,6 +180,7 @@ async function pump() {
     // authenticated images after the text is visible, without reloading the frame.
     frame.onload = () => {
       if (job.version === generation) {
+        applyPreviewTheme(frame.contentDocument);
         loading.hidden = true;
         void hydrateImages(job.version);
       }

@@ -38,8 +38,11 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             format!(
                 r#"<article class="post-card">
   <div class="meta">{date}</div>
-  <h2><a href="/posts/{slug}/">{title}</a></h2>
-  <p>{description}</p>
+  <div class="post-summary">
+    <h2><a href="/posts/{slug}/">{title}</a></h2>
+    <p>{description}</p>
+  </div>
+  <span class="post-arrow" aria-hidden="true">&rarr;</span>
 </article>"#,
                 date = escape_html(&date_str),
                 slug = escape_html(post.slug()),
@@ -59,14 +62,20 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
   <span class="tag">{author}</span>
   <h1>{title}</h1>
   <p>{subtitle}</p>
+  {intro_link}
 </section>
-<section class="grid">
-  {cards}
+<section id="posts" aria-labelledby="posts-heading">
+  <div class="section-heading"><h2 id="posts-heading">Articles</h2><span>{count}</span></div>
+  <div class="grid">{cards}</div>
 </section>"#,
             author = escape_html(&config.author),
             title = escape_html(config.big_title.as_deref().unwrap_or(&config.title)),
             subtitle = escape_html(&config.subtitle),
-            cards = cards,
+            cards = if cards.is_empty() { "<p class=\"empty-state\">No articles yet.</p>".to_owned() } else { cards },
+            count = posts.iter().filter(|post| !post.draft()).count(),
+            intro_link = if config.about.as_deref().is_none_or(|text| !text.trim().is_empty()) {
+                "<a class=\"hero-action\" href=\"/about/\">About me <span aria-hidden=\"true\">&rarr;</span></a>"
+            } else { "" },
         ),
         "",
         css_hash,
@@ -88,10 +97,10 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
   <div class="meta">{date}</div>
   <h1>{title}</h1>
   <p class="meta">{description}</p>
-  <div>{body}</div>
-  <div class="share-container" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center;">
+  <div class="article-body">{body}</div>
+  <div class="share-container">
     <a class="back-link" href="/">&larr; Back to posts</a>
-    <button id="share-btn" style="background: var(--accent); color: var(--bg); border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+    <button id="share-btn" class="share-button">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5zm-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
       </svg>
@@ -131,7 +140,7 @@ pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> 
         r#"<section class="article-shell">
   <article>
   <h1>{title}</h1>
-  <div>{body}</div>
+  <div class="article-body">{body}</div>
 </article></section>"#,
         title = escape_html(&page_content.front_matter.title),
         body = page_content.body_html,
@@ -218,7 +227,8 @@ fn page(
   <script>
     (function() {{
       // 1. 优先读取用户手动设置的主题，否则跟随系统
-      var stored = localStorage.getItem('theme');
+      var stored;
+      try {{ stored = localStorage.getItem('theme'); }} catch {{ /* Storage may be disabled. */ }}
       var theme = (stored === 'dark' || stored === 'light')
         ? stored
         : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -261,12 +271,11 @@ fn page(
   <div class="wrapper">
     <header class="site-header">
       <div class="site-brand">
-        <h1>{site_title}</h1>
-        <p>{site_description}</p>
+        <h1><a href="/" title="{site_description}">{site_title}</a></h1>
       </div>
       <nav class="site-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <button id="site-search-btn" class="search-btn" aria-label="Search">Search</button>
+        <a href="/#posts">Articles</a>
+        <button id="site-search-btn" class="search-btn" aria-label="Search" aria-haspopup="dialog" aria-controls="search-modal">Search</button>
         {about_link}
         <button id="theme-toggle-btn" class="search-btn theme-btn" aria-label="Toggle Theme">
           <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -279,12 +288,13 @@ fn page(
     </main>
     <footer>{footer}</footer>
   </div>
-  <div id="search-modal" class="search-modal">
+  <div id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-label="Search articles" aria-hidden="true" inert>
     <div class="search-content">
       <div class="search-input-wrapper">
-        <input type="text" id="search-input" class="search-input" placeholder="Search posts..." autocomplete="off">
+        <input type="text" id="search-input" class="search-input" placeholder="Search posts..." aria-label="Search posts" autocomplete="off">
+        <button id="search-close" class="search-close" aria-label="Close search">&times;</button>
       </div>
-      <ul id="search-results" class="search-results"></ul>
+      <ul id="search-results" class="search-results" aria-live="polite"></ul>
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>

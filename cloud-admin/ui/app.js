@@ -172,6 +172,10 @@ function showLogin() {
   disposePreview();
 }
 function view(name) {
+  for (const id of ['images', 'settings']) {
+    if (id === name) $(id).setAttribute('aria-current', 'page');
+    else $(id).removeAttribute('aria-current');
+  }
   for (const id of ['home', 'editor', 'images', 'settings']) $(`${id}-view`).hidden = id !== name;
   $('workspace-title').textContent = {
     home: '文章管理',
