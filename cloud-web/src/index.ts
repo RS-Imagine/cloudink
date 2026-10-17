@@ -1,3 +1,4 @@
+import { readerHtml, readerEtag, discovery } from './reader';
 import admin from '../../cloud-admin/src/index';
 import { publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
@@ -38,7 +39,10 @@ async function staticAsset(
 ): Promise<Response> {
   const url = new URL(request.url);
   url.pathname = path;
-  let response = await env.ASSETS.fetch(new Request(url, request));
+  const assetRequest = new Request(url, request);
+  if (path === '/' || path.endsWith('/') || path.endsWith('.html'))
+    assetRequest.headers.delete('If-None-Match');
+  let response = await env.ASSETS.fetch(assetRequest);
   if (request.method !== 'HEAD' && response.headers.get('Content-Type')?.includes('text/html')) {
     response = new Response(await sanitizePublicHtml(await response.text()), {
       status,
@@ -46,7 +50,7 @@ async function staticAsset(
     });
   } else if (status !== 200)
     response = new Response(response.body, { status, headers: response.headers });
-  return protect(response, analytics);
+  return protect(await readerHtml(response, new URL(request.url)), analytics);
 }
 function publicPath(path: string): string | null {
   if (path === '/' || path === '/index.html') return 'index.html';
@@ -84,6 +88,8 @@ export default {
       const id = published?.id || null;
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
+      if (path === '/robots.txt' || path === '/sitemap.xml')
+        return discovery(request, env.STORAGE, id);
       if (path === '/analytics.js') {
         const script = analytics
           ? `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};const s=document.createElement('script');s.async=true;s.src="https://www.clarity.ms/tag/"+${JSON.stringify(clarityId)};document.head.append(s);`
@@ -101,20 +107,24 @@ export default {
         const object =
           request.method === 'HEAD' ? await env.STORAGE.head(`public/${id}/${key}`) : body;
         if (object) {
-          const headers = new Headers({ 'Content-Type': publicType(key), ETag: object.httpEtag });
+          const etag = key.endsWith('.html')
+            ? await readerEtag(object.httpEtag, url)
+            : object.httpEtag;
+          const headers = new Headers({ 'Content-Type': publicType(key), ETag: etag });
           if (
             request.headers
               .get('If-None-Match')
               ?.split(',')
-              .some(
-                (tag) => tag.trim().replace(/^W\//, '') === object.httpEtag || tag.trim() === '*',
-              )
+              .some((tag) => tag.trim().replace(/^W\//, '') === etag || tag.trim() === '*')
           ) {
             if (body) await body.body.cancel();
             return protect(new Response(null, { status: 304, headers }), analytics);
           }
           return protect(
-            new Response(body?.body || null, { status: key === '404.html' ? 404 : 200, headers }),
+            await readerHtml(
+              new Response(body?.body || null, { status: key === '404.html' ? 404 : 200, headers }),
+              url,
+            ),
             analytics,
           );
         }
@@ -123,10 +133,13 @@ export default {
         if (await env.STORAGE.head(`public/${id}/index.html`)) {
           const missing = await env.STORAGE.get(`public/${id}/404.html`);
           return protect(
-            new Response(request.method === 'HEAD' ? null : missing?.body || 'Not found', {
-              status: 404,
-              headers: { 'Content-Type': 'text/html; charset=utf-8' },
-            }),
+            await readerHtml(
+              new Response(request.method === 'HEAD' ? null : missing?.body || 'Not found', {
+                status: 404,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' },
+              }),
+              url,
+            ),
             analytics,
           );
         }

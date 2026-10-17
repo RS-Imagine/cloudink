@@ -440,3 +440,26 @@ html.is-animating .transition-fade {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0s !important; scroll-behavior: auto !important; }
   html.is-animating .transition-fade { opacity: 1; transform: none; }
 }
+
+/* Reading tools keep native keyboard and touch scrolling available. */
+.article-body img[role="button"] { cursor: zoom-in; }
+.article-body img[width][height] { object-fit: contain; }
+.article-body img:focus-visible, .article-body pre:focus-visible, .article-body table:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 4px;
+}
+.reader-dialog { max-width: 94vw; max-height: 94dvh; padding: 52px 20px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper-solid); color: var(--text); }
+.reader-dialog::backdrop { background: rgba(0,0,0,.75); }
+.reader-dialog img { display: block; max-width: 86vw; max-height: 75dvh; object-fit: contain; margin: auto; }
+.reader-dialog-close { position: absolute; right: 12px; top: 12px; padding: 8px 12px; cursor: pointer; color: var(--text); background: var(--paper-strong); border: 1px solid var(--border); border-radius: 6px; }
+.share-download { display: block; text-align: center; padding-top: 16px; }
+.code-block { position: relative; margin: 1.5em 0; padding-top: 36px; background: var(--pre-bg); border: 1px solid var(--pre-border); border-radius: 8px; }
+.article-shell article .code-block pre { margin: 0; border: 0; }
+.copy-code { position: absolute; top: 6px; right: 8px; padding: 4px 10px; background: var(--paper); color: var(--text); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.copy-status { display: block; padding: 0 16px; color: var(--muted); font-size: 12px; }
+.share-container { flex-wrap: wrap; gap: 12px; }
+#share-status { font-size: 12px; color: var(--muted); }
+
+.toc-close { display: none; }
+@media (max-width: 1300px) {
+  .toc-close { display: block; margin-top: 16px; padding: 8px 12px; border-radius: 6px; background: var(--paper-strong); color: var(--text); border: 1px solid var(--border); }
+}
