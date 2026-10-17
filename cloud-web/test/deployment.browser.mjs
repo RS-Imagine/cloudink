@@ -91,11 +91,13 @@ try {
   await live.locator('#theme-toggle-btn').click();
   await expect(live.locator('html')).toHaveAttribute('data-theme', 'dark');
   await live.locator('#site-search-btn').click();
+  await expect(live.locator('#search-input')).toBeFocused();
   await live.locator('#search-input').fill('mathematics');
   await expect(live.locator('#search-results a')).toHaveCount(1);
   await live.keyboard.press('Escape');
   await expect(live.locator('#site-search-btn')).toBeFocused();
   await live.locator('#site-search-btn').click();
+  await expect(live.locator('#search-input')).toBeFocused();
   await live.locator('#search-input').fill('mathematics');
   await expect(live.locator('#search-results a')).toHaveCount(1);
   await live.locator('#search-results a').click();
@@ -133,6 +135,7 @@ try {
     fullPage: true,
   });
   await live.locator('#site-search-btn').click();
+  await expect(live.locator('#search-input')).toBeFocused();
   await live.locator('#search-close').click();
   await expect(live.locator('#site-search-btn')).toBeFocused();
   // Fail one upload: the online pointer must remain the successful release.

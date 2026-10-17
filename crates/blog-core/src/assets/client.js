@@ -51,7 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
           searchModal.setAttribute('aria-hidden', 'false');
           searchModal.classList.add('active');
           document.body.style.overflow = 'hidden';
-          searchInput.focus();
+          requestAnimationFrame(() => {
+            if (searchModal.classList.contains('active')) searchInput.focus();
+          });
           
           if (!searchIndex) {
             try {
