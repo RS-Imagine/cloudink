@@ -168,62 +168,86 @@ document.addEventListener('DOMContentLoaded', () => {
         const swupContainer = document.getElementById('swup');
         if (!swupContainer) return;
 
-        const images = document.querySelectorAll('article img');
-        let currentZoomedOverlay = null;
-
-        function openZoom(img) {
-          if (currentZoomedOverlay) return;
-          const ov = document.createElement('div');
-          ov.className = 'zoom-overlay active';
-          ov.style.display = 'flex';
-          ov.style.alignItems = 'center';
-          ov.style.justifyContent = 'center';
-          ov.style.cursor = 'zoom-out';
-          
-          const clone = document.createElement('img');
-          clone.src = img.src;
-          clone.alt = img.alt;
-          clone.style.maxWidth = '90vw';
-          clone.style.maxHeight = '90vh';
-          clone.style.objectFit = 'contain';
-          clone.style.borderRadius = '12px';
-          clone.style.boxShadow = '0 32px 80px rgba(0,0,0,0.5)';
-          clone.style.cursor = 'zoom-out';
-          clone.style.opacity = '0';
-          clone.style.transform = 'scale(0.92)';
-          clone.style.transition = reducedMotion.matches ? 'none' : 'opacity 0.2s ease, transform 0.2s ease';
-          
-          ov.appendChild(clone);
-          document.body.appendChild(ov);
-          currentZoomedOverlay = ov;
-          cleanupFunctions.push(() => { if (currentZoomedOverlay) { currentZoomedOverlay.remove(); currentZoomedOverlay = null; } });
-          
-          // Animate in
-          requestAnimationFrame(() => {
-            clone.style.opacity = '1';
-            clone.style.transform = 'scale(1)';
-          });
-          
-          function closeZoom() {
-            clone.style.opacity = '0';
-            clone.style.transform = 'scale(0.92)';
-            setTimeout(() => {
-              ov.remove();
-              if (currentZoomedOverlay === ov) currentZoomedOverlay = null;
-            }, reducedMotion.matches ? 0 : 200);
-          }
-          
-          ov.addEventListener('click', closeZoom);
-          const escapeZoom = (e) => { if (e.key === 'Escape') { closeZoom(); document.removeEventListener('keydown', escapeZoom); } };
-          document.addEventListener('keydown', escapeZoom);
-          cleanupFunctions.push(() => document.removeEventListener('keydown', escapeZoom));
-        }
-
+        const images = document.querySelectorAll('.article-body img');
+        const showDialog = (content, label, trigger) => {
+          const dialog = document.createElement('dialog');
+          dialog.className = 'reader-dialog';
+          dialog.setAttribute('aria-label', label);
+          const close = document.createElement('button');
+          close.className = 'reader-dialog-close';
+          close.textContent = 'Close / 关闭';
+          close.setAttribute('aria-label', 'Close image / 关闭图片');
+          dialog.append(close, content);
+          document.body.append(dialog);
+          const overflow = document.body.style.overflow;
+          const finish = () => {
+            document.body.style.overflow = overflow;
+            dialog.remove();
+            if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+          };
+          dialog.addEventListener('close', finish, { once: true });
+          close.addEventListener('click', () => dialog.close());
+          dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+          document.body.style.overflow = 'hidden';
+          dialog.showModal();
+          close.focus();
+          cleanupFunctions.push(() => { if (dialog.open) dialog.close(); });
+        };
         images.forEach(img => {
-          img.style.cursor = 'zoom-in';
-          img.addEventListener('click', () => openZoom(img));
+          // Linked images retain their author's link action.
+          if (img.closest('a,button')) return;
+          img.tabIndex = 0;
+          img.setAttribute('role', 'button');
+          img.setAttribute('aria-label', 'Enlarge image / 放大图片' + (img.alt ? ': ' + img.alt : ''));
+          const open = () => {
+            const clone = document.createElement('img');
+            clone.src = img.currentSrc || img.src;
+            clone.alt = img.alt;
+            showDialog(clone, img.alt || 'Image preview / 图片预览', img);
+          };
+          img.addEventListener('click', open);
+          img.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+          });
+          cleanupFunctions.push(() => img.removeEventListener('click', open));
         });
-
+        document.querySelectorAll('.article-body pre').forEach(pre => {
+          pre.tabIndex = 0;
+          pre.setAttribute('aria-label', 'Code block, scroll horizontally / 代码块，可横向滚动');
+          if (pre.parentElement.classList.contains('code-block')) return;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'code-block';
+          pre.before(wrapper);
+          wrapper.append(pre);
+          const button = document.createElement('button');
+          button.className = 'copy-code';
+          button.textContent = 'Copy / 复制';
+          const feedback = document.createElement('span');
+          feedback.className = 'copy-status';
+          feedback.setAttribute('role', 'status');
+          wrapper.prepend(button, feedback);
+          button.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(pre.querySelector('code')?.textContent || pre.textContent);
+              feedback.textContent = 'Copied / 已复制';
+            } catch {
+              feedback.textContent = 'Select code to copy / 请选中代码复制';
+            }
+          });
+        });
+        document.querySelectorAll('.article-body table').forEach(table => {
+          table.tabIndex = 0;
+          table.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
+        });
+        const copyLink = document.getElementById('copy-link');
+        copyLink?.addEventListener('click', async () => {
+          const status = document.getElementById('share-status');
+          try {
+            const url = new URL(location.pathname, location.origin).href;
+            await navigator.clipboard.writeText(url);
+            status.textContent = 'Link copied / 链接已复制';
+          } catch { status.textContent = 'Copy the address from your browser / 请复制浏览器地址栏链接'; }
+        });
       
       const shareBtn = document.getElementById('share-btn');
       if (shareBtn) {
@@ -342,39 +366,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
           const dataUrl = canvas.toDataURL('image/png');
           
-          const cardOverlay = document.createElement('div');
-          cardOverlay.className = 'zoom-overlay active';
-          cardOverlay.style.display = 'flex';
-          cardOverlay.style.flexDirection = 'column';
-          cardOverlay.style.alignItems = 'center';
-          cardOverlay.style.justifyContent = 'center';
-          
+          const content = document.createElement('div');
           const imgElement = document.createElement('img');
           imgElement.src = dataUrl;
-          imgElement.style.maxWidth = '85%';
-          imgElement.style.maxHeight = '75vh';
-          imgElement.style.borderRadius = '16px';
-          imgElement.style.boxShadow = 'var(--shadow-strong)';
-          
-          const tip = document.createElement('p');
-          tip.innerText = '长按或右键保存图片 (Long press or right click to save)';
-          tip.style.color = 'var(--text)';
-          tip.style.marginTop = '20px';
-          tip.style.background = 'var(--paper)';
-          tip.style.padding = '8px 16px';
-          tip.style.borderRadius = '8px';
-          tip.style.fontSize = '0.9rem';
-          
-          cardOverlay.appendChild(imgElement);
-          cardOverlay.appendChild(tip);
-          document.body.appendChild(cardOverlay);
-          cleanupFunctions.push(() => cardOverlay.remove());
-          
-          cardOverlay.addEventListener('click', (e) => {
-              if(e.target === cardOverlay) {
-                  cardOverlay.remove();
-              }
-          });
+          imgElement.alt = title + ' — share card';
+          const download = document.createElement('a');
+          download.href = dataUrl;
+          download.download = 'cloudink-share.png';
+          download.className = 'share-download';
+          download.textContent = 'Download image / 下载分享图片';
+          content.append(imgElement, download);
+          showDialog(content, 'Share card / 分享卡片', shareBtn);
         });
       }
       
@@ -397,11 +399,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!id) {
                 id = heading.innerText.replace(/[\s]+/g, '-').replace(/[^\w\u4e00-\u9fa5\-]+/g, '').toLowerCase();
                 if (!id) id = 'heading-' + index;
+                const base = id;
+                let suffix = 2;
+                while (document.getElementById(id)) id = base + '-' + suffix++;
                 heading.id = id;
             }
             
             const link = document.createElement('a');
-            link.href = '#' + id;
+            link.href = '#' + encodeURIComponent(id);
             link.className = 'toc-link toc-level-' + heading.tagName.charAt(1);
             link.innerText = heading.innerText;
             tocContainer.appendChild(link);
@@ -426,23 +431,58 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.appendChild(tocDrawerOverlay);
           cleanupFunctions.push(() => tocDrawerOverlay.remove());
 
+          const narrowToc = matchMedia('(max-width: 1300px)');
+          let tocOverflow = null;
+          const tocClose = document.createElement('button');
+          tocClose.className = 'toc-close';
+          tocClose.textContent = 'Close / 关闭目录';
+          tocContainer.append(tocClose);
+          const syncToc = () => { tocContainer.inert = narrowToc.matches && !tocContainer.classList.contains('drawer-open'); };
+          syncToc();
+          const resizeToc = () => { closeTocDrawer(); syncToc(); };
+          narrowToc.addEventListener('change', resizeToc);
+          cleanupFunctions.push(() => {
+            narrowToc.removeEventListener('change', resizeToc);
+            if (tocOverflow !== null) document.body.style.overflow = tocOverflow;
+          });
+          tocClose.addEventListener('click', () => { closeTocDrawer(); mobileTocBtn.focus(); });
           function closeTocDrawer() {
+             if (tocOverflow !== null) document.body.style.overflow = tocOverflow;
+             tocOverflow = null;
              tocContainer.classList.remove('drawer-open');
              mobileTocBtn.setAttribute('aria-expanded', 'false');
              tocDrawerOverlay.classList.remove('active');
+             syncToc();
           }
 
           mobileTocBtn.addEventListener('click', () => {
             if (tocContainer.classList.contains('drawer-open')) {
               closeTocDrawer();
             } else {
+              tocOverflow = document.body.style.overflow;
+              document.body.style.overflow = 'hidden';
               tocContainer.classList.add('drawer-open');
+              syncToc();
               mobileTocBtn.setAttribute('aria-expanded', 'true');
               tocDrawerOverlay.classList.add('active');
+              tocContainer.querySelector('a')?.focus({ preventScroll: true });
             }
           });
 
           tocDrawerOverlay.addEventListener('click', closeTocDrawer);
+          const tocKeyboard = e => {
+            if (e.key === 'Tab' && tocContainer.classList.contains('drawer-open')) {
+              const first = tocContainer.querySelector('a'), last = tocClose;
+              if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+              else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+            if (e.key === 'Escape' && tocContainer.classList.contains('drawer-open')) {
+              closeTocDrawer();
+              mobileTocBtn.focus();
+            }
+          };
+          document.addEventListener('keydown', tocKeyboard);
+          cleanupFunctions.push(() => document.removeEventListener('keydown', tocKeyboard));
 
           // Highlight active TOC entry on scroll
           const tocLinks = tocContainer.querySelectorAll('.toc-link');
@@ -451,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           function setActive(id) {
             tocLinks.forEach(l => {
-              if (l.getAttribute('href') === '#' + id) {
+              if (l.getAttribute('href') === '#' + encodeURIComponent(id)) {
                 l.classList.add('toc-active');
                 // Scroll the TOC so the active item stays visible
                 const containerRect = tocContainer.getBoundingClientRect();
