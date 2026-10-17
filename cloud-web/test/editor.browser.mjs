@@ -213,6 +213,15 @@ try {
     }),
   );
 
+  const themeContext = await browser.newContext({ colorScheme: 'dark' });
+  const loginPage = await themeContext.newPage();
+  await loginPage.goto('http://localhost:8788/admin');
+  await expect(loginPage.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await loginPage.locator('#login-view [data-theme-toggle]').click();
+  await loginPage.reload();
+  await expect(loginPage.locator('html')).toHaveAttribute('data-theme', 'light');
+  await themeContext.close();
+
   const publicPage = await browser.newPage();
   const client = await readFile(resolve('crates/blog-core/src/assets/client.js'), 'utf8');
   await publicPage.route('https://reader-public.example.net/', (route) =>
