@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>写作后台 · CloudInk 云砚</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script src="/admin-theme.js"></script>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <div id="notice" role="status" aria-live="polite"></div>
     <section id="login-view" class="login-view">
       <div class="login-card">
-        <span class="eyebrow">CloudInk · 云砚</span>
+        <div class="appearance-row">
+          <span class="eyebrow">CloudInk · 云砚</span>
+          <button type="button" class="theme-toggle" data-theme-toggle>深色模式</button>
+        </div>
         <h1 id="login-title">回到你的写作空间</h1>
         <p id="login-description">写下所想，慢慢整理，再与世界分享。</p>
         <form id="login-form">
@@ -33,6 +37,7 @@
         <a class="setup-brand" href="/"
           ><img src="/favicon.svg" width="40" height="40" alt="" /><span>CloudInk · 云砚</span></a
         >
+        <button type="button" class="theme-toggle" data-theme-toggle>深色模式</button>
         <h1>让你的博客从这里开始</h1>
         <p class="muted">只需完成这次设置，之后就可以在这里写作和管理网站。</p>
         <ol class="setup-progress" aria-label="设置进度">
@@ -129,7 +134,10 @@
             <span class="eyebrow">写下值得留下的事</span>
             <h2 id="workspace-title">文章管理</h2>
           </div>
-          <span id="account-email" class="muted"></span>
+          <div class="workspace-actions">
+            <span id="account-email" class="muted"></span>
+            <button type="button" class="theme-toggle" data-theme-toggle>深色模式</button>
+          </div>
         </header>
         <div id="navigation-status" class="navigation-status" role="status" hidden></div>
         <div id="publish-banner" class="publish-banner" hidden role="status"></div>

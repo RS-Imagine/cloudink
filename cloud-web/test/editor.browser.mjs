@@ -98,6 +98,25 @@ try {
     ),
     false,
   );
+  // Theme changes preserve the draft and update the script-free preview in place.
+  const themeToggle = page.locator('.workspace-header [data-theme-toggle]');
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
+    'data-theme',
+    'dark',
+  );
+  await expect(page.frameLocator('#preview-frame').locator('#preview-highlight')).toHaveAttribute(
+    'href',
+    /github-dark.min.css$/,
+  );
+  await expect(page.locator('#title')).toHaveValue('alpha');
+  await page.screenshot({
+    path: resolve('cloud-web/dist/editor-dark.browser.png'),
+    fullPage: true,
+  });
+  await themeToggle.click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   const initialLists = counts.list;
   delaySave = 500;
   delayList = 1500;
@@ -143,6 +162,28 @@ try {
     ),
   });
   await expect(page.locator('#notice')).toContainText('已导入 1 篇');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('#search')).toBeVisible();
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    true,
+    'Mobile editor must fit the viewport',
+  );
+  await page.locator('#show-preview').click();
+  await expect(page.locator('#preview-frame')).toBeVisible();
+  await themeToggle.click();
+  await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
+    'data-theme',
+    'dark',
+  );
+  await page.screenshot({
+    path: resolve('cloud-web/dist/editor-mobile.browser.png'),
+    fullPage: true,
+  });
+  await themeToggle.click();
+  await page.locator('#show-writing').click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   // A failed save must retain text and offer a visible error; never navigate away.
   await page.route('**/api/posts/beta', async (route) => {
     if (route.request().method() === 'PUT')
