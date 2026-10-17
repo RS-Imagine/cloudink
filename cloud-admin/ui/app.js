@@ -805,12 +805,16 @@ async function upload(file) {
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
   let dimensions = {};
+  const localURL = URL.createObjectURL(file);
   try {
-    const bitmap = await createImageBitmap(file);
-    dimensions = { width: bitmap.width, height: bitmap.height };
-    bitmap.close();
+    const image = new Image();
+    image.src = localURL;
+    await image.decode();
+    dimensions = { width: image.naturalWidth, height: image.naturalHeight };
   } catch {
     // Unsupported image formats still upload and remain readable.
+  } finally {
+    URL.revokeObjectURL(localURL);
   }
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
   insertImage({ url: result.url, name: file.name, ...dimensions });
