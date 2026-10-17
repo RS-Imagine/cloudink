@@ -349,6 +349,7 @@ article img {
 .search-modal.active {
   opacity: 1;
   visibility: visible;
+  transition: opacity 0.2s, visibility 0s;
 }
 .search-content {
   background: var(--paper-solid);
