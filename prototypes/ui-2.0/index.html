@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light dark">
+  <title>CloudInk 2.0 · 交互设计原型</title>
+  <link rel="icon" href="../../assets/cloudink.svg" type="image/svg+xml">
+  <script>
+    (() => {
+      let theme = new URLSearchParams(location.search).get('theme');
+      try { theme ||= localStorage.getItem('cloudink-prototype-theme'); } catch {}
+      document.documentElement.dataset.theme = theme === 'dark' || theme === 'light' ? theme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.palette = new URLSearchParams(location.search).get('palette') === 'neutral' ? 'neutral' : 'ink';
+      if (new URLSearchParams(location.search).has('capture')) document.documentElement.dataset.capture = '';
+    })();
+  </script>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">跳至主要内容</a>
+  <div id="app"></div>
+  <nav class="study-dock" aria-label="原型页面与设计选项">
+    <span class="study-label">2.0 <span>DESIGN STUDY</span></span>
+    <a href="#home" data-view="home">首页</a>
+    <a href="#article" data-view="article">文章</a>
+    <a href="#dashboard" data-view="dashboard">工作台</a>
+    <a href="#editor" data-view="editor">编辑器</a>
+    <span class="dock-divider" aria-hidden="true"></span>
+    <button id="palette" aria-pressed="false" title="比较墨绿与中性配色">墨绿</button>
+  </nav>
+  <dialog id="search-dialog" class="dialog">
+    <form method="dialog" class="dialog-top"><h2>搜索文章</h2><button class="icon-button" aria-label="关闭搜索" value="close">×</button></form>
+    <label class="search-field"><span>关键词</span><input id="search-input" type="search" placeholder="搜索文字、生活与灵感…" autocomplete="off"></label>
+    <div id="search-results" class="search-results" aria-live="polite"></div>
+    <p class="dialog-hint">Esc 关闭 · 原型使用演示文章</p>
+  </dialog>
+  <dialog id="library-dialog" class="dialog">
+    <form method="dialog" class="dialog-top"><h2>图片库</h2><button class="icon-button" aria-label="关闭图片库">×</button></form>
+    <p class="muted">选择一张演示图片，查看轻量的预览与插入入口。</p>
+    <div class="library-grid"><button data-demo="已选择演示图片" class="art art-one" aria-label="选择山间来信图片"></button><button data-demo="已选择演示图片" class="art art-two" aria-label="选择留白图片"></button><button data-demo="已选择演示图片" class="art art-three" aria-label="选择光影图片"></button></div>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><main class="no-script"><h1>CloudInk 2.0 设计原型</h1><p>这个独立交互原型需要 JavaScript。正式博客继续支持无脚本阅读与导航；设计规范见同目录 README。</p></main></noscript>
+</body>
+</html>
