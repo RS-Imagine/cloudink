@@ -135,33 +135,81 @@ try {
   await admin.locator('#login-form input[name=password]').fill(password);
   await admin.locator('#login-submit').click();
   await expect(admin.locator('#home-view')).toBeVisible();
+  // Generate a generic local image; no external or production media is used.
+  const imageData = await admin.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 640;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#d9e5d9';
+    context.fillRect(0, 0, 1080, 640);
+    context.fillStyle = '#f6f6e9';
+    context.beginPath(); context.arc(800, 140, 60, 0, Math.PI * 2); context.fill();
+    for (const [color, y, offset] of [['#8ea58c', 340, 0], ['#60816c', 440, 150], ['#31594d', 570, -100]]) {
+      context.fillStyle = color;
+      context.beginPath(); context.moveTo(0, 640); context.lineTo(0, y);
+      context.bezierCurveTo(280 + offset, y - 250, 650 + offset, y + 100, 1080, y - 120);
+      context.lineTo(1080, 640); context.closePath(); context.fill();
+    }
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
   // Generate real Rust/WASM pages through the local publication UI.
   for (const post of demoPosts.slice(0, 3)) {
     await admin.locator('.post-item').filter({ hasText: post.title }).click();
     await expect(admin.locator('#title')).toHaveValue(post.title);
+    if (post.slug === 'slow-days') {
+      await admin.locator('#image-files').setInputFiles({ name: '山间来信.png', mimeType: 'image/png', buffer: Buffer.from(imageData, 'base64') });
+      await expect(admin.locator('#notice')).toContainText('图片已上传');
+    }
     await admin.locator('#publish-post').click();
     await expect(admin.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
     await expect(admin.locator('#publish-banner')).toContainText('已上线');
   }
   for (const width of widths) for (const theme of themes) {
-    await context.addInitScript((value) => localStorage.setItem('theme', value), theme);
     await context.setDefaultTimeout(15000);
     const page = await context.newPage();
     await page.setViewportSize({ width, height: width > 759 ? 1000 : 844 });
+    await page.addInitScript((value) => localStorage.setItem('theme', value), theme);
     await page.emulateMedia({ colorScheme: theme });
     for (const screen of screens) {
       await page.goto(screen === 'home' ? origin + '/' : screen === 'article' ? origin + '/posts/slow-days/' : origin + '/admin');
       if (screen === 'editor') {
         await expect(page.locator('#home-view')).toBeVisible();
         await page.locator('.post-item').filter({ hasText: demoPosts[0].title }).click();
-        await page.frameLocator('#preview-frame').locator('h1').waitFor();
+        await page.frameLocator('#preview-frame').locator('h1').waitFor({ state: 'attached' });
       } else await expect(page.locator(ready[screen])).toBeVisible();
       await capture(page, 'before', screen, theme, width);
+      if (screen === 'article' && width !== 360) {
+        await page.locator('#site-search-btn').click();
+        await page.locator('#search-input').fill('生活');
+        await expect(page.locator('#search-results a')).toHaveCount(1);
+        await capture(page, 'before', 'search', theme, width);
+        await page.keyboard.press('Escape');
+        await page.locator('#share-btn').click();
+        await expect(page.locator('.reader-dialog')).toBeVisible();
+        await capture(page, 'before', 'share', theme, width);
+        await page.keyboard.press('Escape');
+        await page.locator('.article-body img').first().click();
+        await expect(page.locator('.reader-dialog')).toBeVisible();
+        await capture(page, 'before', 'image-preview', theme, width);
+        await page.keyboard.press('Escape');
+        if (width < 760) {
+          await page.locator('.mobile-toc-btn').click();
+          await expect(page.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'true');
+          await capture(page, 'before', 'toc', theme, width);
+          await page.keyboard.press('Escape');
+        }
+      }
     }
     // Inventory supplemental workflow surfaces using the real authenticated UI.
     if (width !== 360) for (const [screen, button, selector] of [['images', '#images', '#images-view'], ['settings', '#settings', '#settings-view']]) {
       await page.locator(button).click();
       await expect(page.locator(selector)).toBeVisible();
+      await capture(page, 'before', screen, theme, width);
+    }
+    if (width !== 360) for (const [screen, path] of [['about', '/about/'], ['not-found', '/missing-design-page/']]) {
+      await page.goto(origin + path);
+      await expect(page.locator('h1').last()).toBeVisible();
       await capture(page, 'before', screen, theme, width);
     }
     await page.close();
@@ -187,6 +235,10 @@ try {
     await setupPage.goto(origin + '/admin');
     await expect(setupPage.locator('#setup-view')).toBeVisible();
     await capture(setupPage, 'before', 'setup', theme, width);
+    for (const [name, value] of Object.entries({ token: setupToken, email: owner, password, confirm: password })) await setupPage.locator('#setup-form input[name=' + name + ']').fill(value);
+    await setupPage.locator('#setup-next').click();
+    await expect(setupPage.locator('#setup-site-step')).toBeVisible();
+    await capture(setupPage, 'before', 'setup-site', theme, width);
     await loginContext.close();
   }
   await browser.close();
@@ -283,7 +335,7 @@ try {
     const file = [sample.version, sample.screen, sample.width, sample.theme, sample.engine].join('-') + '.png';
     return '<figure><figcaption>' + (sample.version === 'before' ? '现有界面' : '2.0 原型') + '</figcaption><a href="' + file + '"><img loading="lazy" src="' + file + '" alt="' + file + '"></a></figure>';
   }).join('') + '</div></section>').join('');
-  await writeFile(resolve(output, 'index.html'), '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 设计审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开四页交互原型</a> · <a href="report.json">实验性能与资源报告</a></p><p>原型不会访问账号、生产数据或发布内容。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>已有界面溢出记录：' + report.existingLayoutIssues.length + '；详见 report.json。</p></header>' + cards + '</main><script>document.querySelectorAll("select").forEach(select=>select.addEventListener("change",()=>{document.querySelectorAll("section").forEach(section=>{section.hidden=(width.value&&section.dataset.width!==width.value)||(theme.value&&section.dataset.theme!==theme.value)})}));</script></html>');
+  await writeFile(resolve(output, 'index.html'), '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 设计审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开四页交互原型</a> · <a href="report.json">实验性能与资源报告</a></p><p>原型不会访问账号、生产数据或发布内容。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>已有界面溢出记录：' + report.existingLayoutIssues.length + '；详见 report.json。</p></header>' + cards + '</main><script>document.querySelectorAll("select").forEach(select=>select.addEventListener("change",()=>{document.querySelectorAll("section").forEach(section=>{const w=document.getElementById("width").value,t=document.getElementById("theme").value;section.hidden=!!((w&&section.dataset.width!==w)||(t&&section.dataset.theme!==t))})}));</script></html>');
   console.log(JSON.stringify({ browsers: report.browsers, screenshots: report.samples.length, assets: report.assets, existingLayoutIssues: report.existingLayoutIssues, checks: report.checks }));
 } finally {
   await browser?.close();

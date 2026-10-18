@@ -69,7 +69,7 @@ scripts/ui-audit.mjs：
 - Chromium 捕获四个主要画面 × 1440/390/360px × Light/Dark：
   每版本 24 张，before 和 prototype 共 48 张主要截图。
 - 另捕获 1440/390px 的登录、初始化、图片库与设置；初始化只模拟 initialized=false，
-  其余使用实际后台状态；图片库空状态也是审计对象。
+  其余使用实际后台状态；补关于/404、搜索、目录、分享、图片预览与设置第二步。
 - Firefox/WebKit 补原型 390px 明暗截图和关键交互；Chromium/WebKit 触屏模拟。
   当前正式后台业务回归仍由既有 Chromium 套件负责。
 - 检查原型溢出、主要 Token 对比、搜索/图片弹窗 Esc 与返回焦点、

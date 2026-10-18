@@ -87,6 +87,7 @@ function editor() {
 }
 const views = { home, article, dashboard, editor };
 function route() {
+  clearTimeout(saveTimer);
   const id = location.hash.slice(1);
   if (!views[id] && current === 'article' && document.getElementById(id)) return;
   const view = views[id] ? id : 'home';
