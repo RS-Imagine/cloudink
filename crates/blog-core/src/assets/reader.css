@@ -119,10 +119,10 @@
 .code-block {
   border-radius: var(--ci-radius-md);
   background: var(--ci-container);
-  padding-top: 48px;
+  padding-top: 52px;
 }
 .copy-code {
-  min-height: 36px;
+  min-height: 44px;
   top: 6px;
   right: 8px;
   padding: 6px 12px;

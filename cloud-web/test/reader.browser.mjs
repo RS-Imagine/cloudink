@@ -40,6 +40,7 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.article-body h2').first()).toBeFocused();
   await expect(page.locator('.toc-link[aria-current="location"]')).toHaveCount(1);
   await page.goto(origin + '/posts/slow-days/#' + encodeURIComponent(ids[0]));
+  await page.reload();
   await expect
     .poll(() =>
       page
