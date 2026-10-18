@@ -334,9 +334,9 @@ function editor() {
 }
 const views = { home, article, dashboard, editor };
 function route() {
-  clearTimeout(saveTimer);
   const id = location.hash.slice(1);
   if (!views[id] && current && document.getElementById(id)) return;
+  clearTimeout(saveTimer);
   const view = views[id] ? id : 'home';
   const from = current;
   current = view;

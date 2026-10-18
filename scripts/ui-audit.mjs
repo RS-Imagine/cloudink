@@ -302,12 +302,19 @@ try {
         if (screen === 'editor') {
           await expect(page.locator('#home-view')).toBeVisible();
           await page.locator('.post-item').filter({ hasText: demoPosts[0].title }).click();
-          await page
-            .frameLocator('#preview-frame')
-            .locator('article h1')
-            .waitFor({ state: 'attached' });
+          if (width >= 1100)
+            await page
+              .frameLocator('#preview-frame')
+              .locator('article h1')
+              .waitFor({ state: 'attached' });
+          else await expect(page.locator('#body')).toBeVisible();
         } else await expect(page.locator(ready[screen])).toBeVisible();
         await capture(page, 'before', screen, theme, width);
+        if (screen === 'editor' && width < 1100) {
+          await page.locator('#show-preview').click();
+          await page.frameLocator('#preview-frame').locator('article h1').waitFor();
+          await capture(page, 'before', 'editor-preview', theme, width);
+        }
         if (screen === 'article' && width !== 360) {
           await page.locator('#site-search-btn').click();
           await page.locator('#search-input').fill('生活');
@@ -414,6 +421,7 @@ try {
           await page.goto(
             studyOrigin + '/prototypes/ui-2.0/index.html?capture&theme=' + theme + '#' + screen,
           );
+          await page.reload();
           await expect(page.locator('#content')).toBeVisible();
           await capture(page, 'prototype', screen, theme, width, engine);
           assert.equal(
@@ -475,8 +483,10 @@ try {
     const page = await motionContext.newPage();
     await page.goto(studyOrigin + '/prototypes/ui-2.0/index.html#editor');
     await page.locator('#demo-body').fill('Retain this demo text');
+    await page.locator('#demo-save').click();
     await page.locator('.skip-link').focus();
     await page.keyboard.press('Enter');
+    await expect(page.locator('#demo-save')).not.toHaveAttribute('aria-busy', 'true');
     await expect(page.locator('#demo-body')).toHaveValue('Retain this demo text');
     await page.evaluate(async () => {
       for (const name of ['dashboard', 'home', 'article', 'editor']) {
