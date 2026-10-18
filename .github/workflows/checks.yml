@@ -74,7 +74,7 @@ jobs:
       - name: Install three browser engines
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium firefox webkit
-      - name: Capture baselines and verify UI study
+      - name: Capture production themes and approved design reference
         run: npm run test:ui:audit
       - name: Save UI review, screenshots and measurements
         if: always()

@@ -11,7 +11,11 @@ use crate::utils::escape_html;
 /// time via [`include_str!`], so editing it does NOT require touching any Rust
 /// code.  The returned `&'static str` is zero-copy.
 pub fn stylesheet() -> &'static str {
-    include_str!("assets/styles.css")
+    concat!(
+        include_str!("../../../assets/design-tokens.css"), "\n",
+        include_str!("assets/styles.css"), "\n",
+        include_str!("../../../assets/design-foundation.css")
+    )
 }
 
 /// Returns the shared CloudInk SVG icon source.
@@ -209,11 +213,12 @@ fn page(
     // Build the document in segments to avoid a 500-line format! string with
     // escaped braces.  Each segment is a distinct format! call or a raw push.
     let mut html = String::with_capacity(16_384);
+    let palette = if config.theme_palette.as_deref() == Some("neutral") { "neutral" } else { "ink" };
 
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(
         r#"<!doctype html>
-<html lang="en">
+<html lang="en" data-palette="{palette}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -227,26 +232,10 @@ fn page(
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="none" id="hljs-light">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" media="none" id="hljs-dark">
   {extra_head}
-  <script>
-    (function() {{
-      // 1. 优先读取用户手动设置的主题，否则跟随系统
-      var stored;
-      try {{ stored = localStorage.getItem('theme'); }} catch {{ /* Storage may be disabled. */ }}
-      var theme = (stored === 'dark' || stored === 'light')
-        ? stored
-        : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      // 2. 在任何渲染发生前设置 data-theme，彻底消除背景色 FOUC
-      document.documentElement.setAttribute('data-theme', theme);
-      // 3. 同步激活正确的 highlight.js 主题
-      var hljsLight = document.getElementById('hljs-light');
-      var hljsDark  = document.getElementById('hljs-dark');
-      if (hljsLight && hljsDark) {{
-        hljsLight.media = theme === 'dark' ? 'none' : 'all';
-        hljsDark.media  = theme === 'dark' ? 'all'  : 'none';
-      }}
-    }})();
-  </script>
+  <script>{theme_bootstrap}</script>
 "#,
+        palette = palette,
+        theme_bootstrap = include_str!("../../../assets/theme.js"),
         description = escape_html(description),
         author = escape_html(&config.author),
         title = escape_html(title),
@@ -287,10 +276,10 @@ fn page(
         </button>
       </nav>
     </header>
-    <main id="swup" class="transition-fade">
+    <main id="swup" class="transition-fade" data-palette="{palette}">
       {body}
     </main>
-    <footer>{footer}</footer>
+    <footer>{footer}<br><label class="theme-mode">Appearance / 外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">System / 跟随系统</option><option value="light">Light / 浅色</option><option value="dark">Dark / 深色</option></select></label></footer>
   </div>
   <div id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-label="Search articles" aria-hidden="true" inert>
     <div class="search-content">
@@ -305,6 +294,7 @@ fn page(
   <script src="https://unpkg.com/swup@4"></script>
   <script src="/client.js?v={client_hash}"></script>
 "#,
+        palette = palette,
         site_title = escape_html(site_title),
         site_description = escape_html(site_description),
         body = body,

@@ -9,28 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
       window.swup = swup;
       let cleanupFunctions = [];
       
-      const themeToggleBtn = document.getElementById('theme-toggle-btn');
-      if (themeToggleBtn) {
-        const updateHljsTheme = (theme) => {
-          const hljsLight = document.getElementById('hljs-light');
-          const hljsDark  = document.getElementById('hljs-dark');
-          if (hljsLight && hljsDark) {
-            hljsLight.media = theme === 'dark' ? 'none' : 'all';
-            hljsDark.media  = theme === 'dark' ? 'all'  : 'none';
-          }
-        };
-
-        // hljs initial sync is handled by the blocking head script
-
-        themeToggleBtn.addEventListener('click', () => {
-          const currentTheme = document.documentElement.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', newTheme);
-          try { localStorage.setItem('theme', newTheme); } catch { /* Storage may be disabled. */ }
-          updateHljsTheme(newTheme);
-        });
-      }
-
       const searchBtn = document.getElementById('site-search-btn');
       const searchModal = document.getElementById('search-modal');
       const searchInput = document.getElementById('search-input');
@@ -167,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof hljs !== 'undefined') { hljs.highlightAll(); }
         const swupContainer = document.getElementById('swup');
         if (!swupContainer) return;
+        window.CloudInkTheme?.setPalette(swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink');
 
         const images = document.querySelectorAll('.article-body img');
         const dialogs = new Set();

@@ -37,9 +37,17 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 正式前台的 HTML 在 `crates/blog-core/src/render.rs`，共享样式和交互在同目录的 `assets/styles.css` 与 `assets/client.js`。原生构建和浏览器 WASM 发布使用相同模板；后台文章预览也使用这份样式。
 
-前台采用暖纸色、衬线标题、系统无衬线正文、单列文章行和窄栏阅读。深浅主题、搜索面板与分享卡片共用颜色变量。主题变化约 300 毫秒，页面与悬停过渡约 180–200 毫秒；系统启用减少动态效果时关闭页面位移和顺滑滚动。文章在 JavaScript 不可用时仍可阅读。
+前后台与预览共享 `assets/design-tokens.css` 的明暗主题与墨绿/中性灰蓝主题色，
+`assets/design-foundation.css` 提供按钮、输入、焦点与表面规则。
+Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复制颜色表。
+旧页面的布局保持可用，CloudInk 2.0 的导航与页面重设计按 [阶段计划](design/UI-2.0-PLAN.md)推进。
 
-后台 `cloud-admin/ui/style.css` 使用同一视觉语言，登录、初始化、图片库和设置均支持深浅主题。`admin-theme.js` 在样式加载前恢复同源前台共用的 `theme` 偏好；没有偏好时跟随系统。文章预览复用公开页面的字体与样式，主题变化直接同步到禁用脚本的 iframe，无需重新渲染草稿。手机保留搜索入口，编辑与预览按标签切换，减少动态效果设置同时应用于后台。
+唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
+后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
+作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral）。
+保存影响后台与预览，发布后应用到所有公开页；SSR 直接输出配色，Swup 同步后续页面配色。
+后台缓存不覆盖公开页面。文章预览同步明暗与主题色到禁用脚本的 iframe，沿用公开字体与样式。
+CSS 提供无脚本系统主题、普通圆角与不支持 color-mix 的回退，减少动态效果关闭过渡。
 
 更新模板后，需要在后台重新发布内容才能生成使用新模板的公开页面；仅更新 Worker 不会覆盖桶中已发布的 HTML。无需新增配置项或迁移存储。浏览器检查覆盖搜索退出与焦点、主题、文章导航、移动目录、减少动态效果和窄屏溢出；CI 保存截图供视觉审查。
 

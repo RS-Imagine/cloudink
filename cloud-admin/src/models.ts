@@ -29,6 +29,7 @@ export interface SiteConfig {
   footer?: string;
   clarityId?: string;
   about?: string;
+  themePalette?: 'ink' | 'neutral';
 }
 export interface Release {
   schema_version: 1;
@@ -111,12 +112,17 @@ export function serializeDraft(draft: Draft): string {
 export function validateSite(input: unknown): SiteConfig {
   if (!input || typeof input !== 'object') throw new HttpError(400, '网站信息格式不正确。');
   const v = input as Record<string, unknown>;
-  const appearance: Pick<SiteConfig, 'footer' | 'clarityId'> = {};
+  const appearance: Pick<SiteConfig, 'footer' | 'clarityId' | 'themePalette'> = {};
   if (v.footer !== undefined) appearance.footer = text(v.footer, '页脚', 2000, false);
   if (v.clarityId !== undefined) {
     appearance.clarityId = text(v.clarityId, '统计项目', 64, false);
     if (appearance.clarityId && !/^[A-Za-z0-9]+$/.test(appearance.clarityId))
       throw new HttpError(400, '统计项目格式不正确。');
+  }
+  if (v.themePalette !== undefined) {
+    if (v.themePalette !== 'ink' && v.themePalette !== 'neutral')
+      throw new HttpError(400, '请选择支持的主题色。');
+    appearance.themePalette = v.themePalette;
   }
   return {
     title: text(v.title, '网站标题', 300),

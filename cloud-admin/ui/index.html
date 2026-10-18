@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-cloudink-admin>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -283,6 +283,26 @@
             ><label
               >网站描述<textarea name="description" maxlength="2000" rows="3"></textarea>
             </label>
+            <fieldset class="appearance-settings">
+              <legend>外观</legend>
+              <label
+                >主题色<select name="themePalette" aria-describedby="palette-help">
+                  <option value="ink">墨绿</option>
+                  <option value="neutral">中性灰蓝</option>
+                </select></label
+              >
+              <p id="palette-help">
+                保存后应用到后台和预览；发布网站信息后，公开网页统一更新主题色。
+              </p>
+              <label
+                >本机明暗模式<select data-theme-mode>
+                  <option value="auto">跟随系统</option>
+                  <option value="light">浅色</option>
+                  <option value="dark">深色</option>
+                </select></label
+              >
+              <p>明暗模式只影响当前浏览器。读者可以自行选择，不会强制跟随后台。</p>
+            </fieldset>
             <details class="settings-details">
               <summary>外观与关于页面</summary>
               <label
@@ -313,7 +333,7 @@
               /></label>
             </details>
             <div class="form-actions">
-              <button>保存网站信息</button
+              <button type="submit">保存网站信息</button
               ><button type="button" id="publish-settings" class="primary">发布网站信息</button>
             </div>
           </form>
