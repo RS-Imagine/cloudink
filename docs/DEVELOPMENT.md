@@ -170,3 +170,5 @@ PR-04 的正文与阅读工具样式在 blog-core 的 reader.css，随 Rust/WASM
 三引擎审计包含登录错误与重试、初始化两步焦点、全部/草稿/已发布筛选、
 空结果、主导航、菜单 Esc/焦点、窄屏触控入口及跨视图草稿保存。
 所有截图仍来自临时 Miniflare；后台壳 CSS 单独压缩预算为 4 KiB。
+审计使用本地 HTTPS 测试证书，浏览器仅在测试上下文接受该证书，
+以便 WebKit 也能验证真实的 Secure/HttpOnly 会话；不修改生产 Cookie 或认证规则。

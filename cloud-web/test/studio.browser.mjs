@@ -33,6 +33,10 @@ export async function verifyStudio(browser, origin, output, engine) {
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'home');
+  const sessionCookie = (await context.cookies()).find(
+    (cookie) => cookie.name === '__Host-cloudink_session',
+  );
+  assert.ok(sessionCookie?.secure && sessionCookie.httpOnly, engine + ' keeps a secure session');
   await expect(page.locator('.studio-nav [aria-current]')).toHaveAttribute('id', 'dashboard-nav');
   const initialCount = await page.locator('.article-card').count();
   assert.equal(initialCount, 4);

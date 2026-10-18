@@ -24,7 +24,7 @@ import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
 import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
 
 const output = resolve('build-work/ui-audit');
-const origin = 'http://127.0.0.1:8795';
+const origin = 'https://127.0.0.1:8795';
 const studyOrigin = 'http://127.0.0.1:8796';
 const widths = [1440, 390, 360];
 const themes = ['light', 'dark'];
@@ -34,7 +34,7 @@ const report = {
   upstream: 'b7e656aeb4aaa806982fd7aeac5e497077d02a83',
   revision: process.env.GITHUB_SHA || 'local',
   method:
-    'Local Miniflare, ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
+    'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
   browsers: {},
   assets: {},
   samples: [],
@@ -76,7 +76,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise((done) => server.listen(8796, '127.0.0.1', done));
 const mf = new Miniflare(
-  convertV4MiniflareOptions({ ...workerOptions(), host: '127.0.0.1', port: 8795 }),
+  convertV4MiniflareOptions({ ...workerOptions(), host: '127.0.0.1', port: 8795, https: true }),
 );
 let browser;
 const errors = [];
@@ -244,6 +244,7 @@ try {
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   report.browsers.chromium = browser.version();
   const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 },
     colorScheme: 'light',
   });
@@ -380,6 +381,7 @@ try {
   for (const width of [1440, 390])
     for (const theme of themes) {
       const loginContext = await browser.newContext({
+        ignoreHTTPSErrors: true,
         viewport: { width, height: width === 1440 ? 1000 : 844 },
         colorScheme: theme,
       });
@@ -420,11 +422,16 @@ try {
       ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
     });
     report.browsers[engine] = browser.version();
-    await verifyStudio(browser, origin, output, engine);
-    await verifyHome(browser, origin, output, engine);
-    await verifyReader(browser, origin, output, engine);
-    await verifyThemes(browser, origin, output, engine);
-    await verifyMotion(browser, origin, output, engine);
+    // Accept only the local fixture certificate; keep Secure/HttpOnly cookies intact.
+    const currentBrowser = browser;
+    const localBrowser = {
+      newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
+    };
+    await verifyStudio(localBrowser, origin, output, engine);
+    await verifyHome(localBrowser, origin, output, engine);
+    await verifyReader(localBrowser, origin, output, engine);
+    await verifyThemes(localBrowser, origin, output, engine);
+    await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
       for (const theme of themes) {
         const context = await browser.newContext({
