@@ -492,7 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tocContainer.appendChild(link);
           });
           
-          (article.parentElement.querySelector('.reader-toc-slot') || article.parentElement).appendChild(tocContainer);
+          const tocHost = article.parentElement.querySelector('.reader-toc-slot') || article.parentElement;
+          tocHost.appendChild(tocContainer);
           cleanupFunctions.push(() => tocContainer.remove());
 
           // Mobile TOC Button & Drawer Logic
@@ -506,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
           cleanupFunctions.push(() => mobileTocBtn.remove());
 
           const tocDrawerOverlay = document.createElement('div');
-          tocDrawerOverlay.className = 'zoom-overlay';
+          tocDrawerOverlay.className = 'zoom-overlay reader-toc-overlay';
           tocDrawerOverlay.style.zIndex = '998';
           document.body.appendChild(tocDrawerOverlay);
           cleanupFunctions.push(() => tocDrawerOverlay.remove());
@@ -514,11 +515,16 @@ document.addEventListener('DOMContentLoaded', () => {
           const narrowToc = matchMedia('(max-width: 1099px)');
           let tocOverflow = null;
           let tocBackground = [];
+          let tocDisposed = false;
           const tocClose = document.createElement('button');
           tocClose.className = 'toc-close';
           tocClose.textContent = 'Close / 关闭目录';
           tocContainer.append(tocClose);
           const syncToc = () => {
+            if (tocDisposed) return;
+            // Fixed drawers must live outside Swup's transformed content container.
+            const host = narrowToc.matches ? document.body : tocHost;
+            if (tocContainer.parentElement !== host) host.appendChild(tocContainer);
             const modal = narrowToc.matches && tocContainer.classList.contains('drawer-open');
             tocContainer.inert = narrowToc.matches && !modal;
             if (modal) {
@@ -533,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const resizeToc = () => { closeTocDrawer(); syncToc(); };
           narrowToc.addEventListener('change', resizeToc);
           cleanupFunctions.push(() => {
+            tocDisposed = true;
             narrowToc.removeEventListener('change', resizeToc);
             closeTocDrawer();
             closeArticleContents = null;
