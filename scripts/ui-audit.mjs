@@ -1,4 +1,4 @@
-// Isolated UI baseline and PR-00 prototype review. Never uses Wrangler remote mode.
+// Isolated production theme and approved prototype review. Never uses Wrangler remote mode.
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, copyFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
@@ -16,6 +16,8 @@ import {
 } from '../cloud-admin/node_modules/miniflare/dist/src/index.js';
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
+import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
+
 const output = resolve('build-work/ui-audit');
 const origin = 'http://127.0.0.1:8795';
 const studyOrigin = 'http://127.0.0.1:8796';
@@ -23,7 +25,8 @@ const widths = [1440, 390, 360];
 const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
-  base: '7a155d59c3dceda9253caba61a6f02044d973c5b',
+  baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
+  upstream: 'ab8ad6c4bcee840c05d272c8e1187de3931521b2',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local Miniflare, ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
@@ -36,7 +39,7 @@ await mkdir(output, { recursive: true });
 const allowed = new Set(
   ['tokens.css', 'style.css', 'app.js', 'index.html']
     .map((p) => '/prototypes/ui-2.0/' + p)
-    .concat('/assets/cloudink.svg'),
+    .concat('/assets/cloudink.svg', '/assets/design-tokens.css'),
 );
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, studyOrigin).pathname;
@@ -144,9 +147,9 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
   report.samples.push({ version: name, screen, theme, width, engine, ...data });
   console.log(JSON.stringify({ capture: name, screen, theme, width, engine }));
   const overflow = data.scrollWidth > width + 1;
-  if (name === 'before' && overflow)
+  if (name === 'production' && overflow)
     report.existingLayoutIssues.push({ screen, width, theme, scrollWidth: data.scrollWidth });
-  else assert.equal(overflow, false, name + '/' + screen + '/' + width + ' must fit viewport');
+  assert.equal(overflow, false, name + '/' + screen + '/' + width + ' must fit viewport');
   await page.screenshot({
     path: resolve(output, name + '-' + screen + '-' + width + '-' + theme + '-' + engine + '.png'),
     fullPage: true,
@@ -310,30 +313,30 @@ try {
               .waitFor({ state: 'attached' });
           else await expect(page.locator('#body')).toBeVisible();
         } else await expect(page.locator(ready[screen])).toBeVisible();
-        await capture(page, 'before', screen, theme, width);
+        await capture(page, 'production', screen, theme, width);
         if (screen === 'editor' && width < 1100) {
           await page.locator('#show-preview').click();
           await page.frameLocator('#preview-frame').locator('article h1').waitFor();
-          await capture(page, 'before', 'editor-preview', theme, width);
+          await capture(page, 'production', 'editor-preview', theme, width);
         }
         if (screen === 'article' && width !== 360) {
           await page.locator('#site-search-btn').click();
           await page.locator('#search-input').fill('生活');
           await expect(page.locator('#search-results a')).toHaveCount(2);
-          await capture(page, 'before', 'search', theme, width);
+          await capture(page, 'production', 'search', theme, width);
           await page.keyboard.press('Escape');
           await page.locator('#share-btn').click();
           await expect(page.locator('.reader-dialog')).toBeVisible();
-          await capture(page, 'before', 'share', theme, width);
+          await capture(page, 'production', 'share', theme, width);
           await page.keyboard.press('Escape');
           await page.locator('.article-body img').first().click();
           await expect(page.locator('.reader-dialog')).toBeVisible();
-          await capture(page, 'before', 'image-preview', theme, width);
+          await capture(page, 'production', 'image-preview', theme, width);
           await page.keyboard.press('Escape');
           if (width < 760) {
             await page.locator('.mobile-toc-btn').click();
             await expect(page.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'true');
-            await capture(page, 'before', 'toc', theme, width);
+            await capture(page, 'production', 'toc', theme, width);
             await page.keyboard.press('Escape');
           }
         }
@@ -346,7 +349,7 @@ try {
         ]) {
           await page.locator(button).click();
           await expect(page.locator(selector)).toBeVisible();
-          await capture(page, 'before', screen, theme, width);
+          await capture(page, 'production', screen, theme, width);
         }
       if (width !== 360)
         for (const [screen, path] of [
@@ -355,7 +358,7 @@ try {
         ]) {
           await page.goto(origin + path);
           await expect(page.locator('h1').last()).toBeVisible();
-          await capture(page, 'before', screen, theme, width);
+          await capture(page, 'production', screen, theme, width);
         }
       await page.close();
     }
@@ -371,7 +374,7 @@ try {
       const page = await loginContext.newPage();
       await page.goto(origin + '/admin');
       await expect(page.locator('#login-view')).toBeVisible();
-      await capture(page, 'before', 'login', theme, width);
+      await capture(page, 'production', 'login', theme, width);
       await page.close();
       // Setup is captured from the same shipped DOM, with only initialization status mocked.
       await loginContext.route('**/api/config', async (route) => {
@@ -383,7 +386,7 @@ try {
       const setupPage = await loginContext.newPage();
       await setupPage.goto(origin + '/admin');
       await expect(setupPage.locator('#setup-view')).toBeVisible();
-      await capture(setupPage, 'before', 'setup', theme, width);
+      await capture(setupPage, 'production', 'setup', theme, width);
       for (const [name, value] of Object.entries({
         token: setupToken,
         email: owner,
@@ -393,7 +396,7 @@ try {
         await setupPage.locator('#setup-form input[name=' + name + ']').fill(value);
       await setupPage.locator('#setup-next').click();
       await expect(setupPage.locator('#setup-site-step')).toBeVisible();
-      await capture(setupPage, 'before', 'setup-site', theme, width);
+      await capture(setupPage, 'production', 'setup-site', theme, width);
       await loginContext.close();
     }
   await browser.close();
@@ -404,6 +407,7 @@ try {
       ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
     });
     report.browsers[engine] = browser.version();
+    await verifyThemes(browser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
       for (const theme of themes) {
         const context = await browser.newContext({
@@ -507,6 +511,9 @@ try {
     'cloud-admin/ui/style.css',
     'cloud-admin/ui/preview.worker.generated.js',
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm',
+    'assets/design-tokens.css',
+    'assets/design-foundation.css',
+    'assets/theme.js',
     'prototypes/ui-2.0/index.html',
     'prototypes/ui-2.0/tokens.css',
     'prototypes/ui-2.0/style.css',
@@ -519,13 +526,20 @@ try {
       brotli: brotliCompressSync(bytes).length,
     };
   }
+  const tokens = await readFile('assets/design-tokens.css', 'utf8');
+  const foundations = await readFile('assets/design-foundation.css', 'utf8');
+  const readerCSS = await readFile('build-work/web-public/styles.css', 'utf8');
+  const adminCSS = await (await mf.dispatchFetch(origin + '/style.css')).text();
+  assert.ok(readerCSS.includes(tokens) && adminCSS.includes(tokens), 'Both surfaces must embed the same tokens');
+  assert.ok(readerCSS.includes(foundations) && adminCSS.includes(foundations), 'Both surfaces must embed the same foundations');
+  assert.ok(gzipSync(tokens).length + gzipSync(foundations).length <= 4096, 'Shared CSS gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
-    '24 before + 24 prototype main screenshots in Chromium',
+    '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
     'supplemental login/setup/settings/images inventory',
-    'Firefox and WebKit prototype smoke',
+    'Chromium, Firefox and WebKit production theme + prototype smoke',
     'touch emulation (Chromium/WebKit)',
-    '360px overflow guard on prototype',
+    '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
     'reduced motion',
     'search and library Escape/focus return',
@@ -543,6 +557,7 @@ try {
       resolve(output, 'preview/prototypes/ui-2.0', name),
     );
   await copyFile(resolve('assets/cloudink.svg'), resolve(output, 'preview/assets/cloudink.svg'));
+  await copyFile(resolve('assets/design-tokens.css'), resolve(output, 'preview/assets/design-tokens.css'));
   const pairs = new Map();
   for (const sample of report.samples) {
     const key = [sample.screen, sample.width, sample.theme, sample.engine].join('-');
@@ -566,7 +581,7 @@ try {
               '.png';
             return (
               '<figure><figcaption>' +
-              (sample.version === 'before' ? '现有界面' : '2.0 原型') +
+              (sample.version === 'production' ? '正式界面（当前提交）' : '已确认的设计参考') +
               '</figcaption><a href="' +
               file +
               '"><img loading="lazy" src="' +
@@ -582,7 +597,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 设计审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开四页交互原型</a> · <a href="report.json">实验性能与资源报告</a></p><p>原型不会访问账号、生产数据或发布内容。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>已有界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 共享主题审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +

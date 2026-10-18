@@ -47,6 +47,11 @@ const configReady = api('/api/config').then((config) => {
 void configReady.catch((error) => {
   $('login-error').textContent = error.message;
 });
+function applySiteAppearance(config) {
+  const palette = config?.themePalette === 'neutral' ? 'neutral' : 'ink';
+  if (site) site.themePalette = palette;
+  window.CloudInkTheme?.setPalette(palette);
+}
 function notice(message, tone = 'info') {
   $('notice').dataset.tone = tone;
   $('notice').textContent = message;
@@ -347,6 +352,7 @@ async function refresh() {
   posts = data.posts;
   $('publish-welcome').hidden = data.publicInitialized;
   site = data.site;
+  applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
@@ -949,6 +955,8 @@ $('settings').addEventListener('click', async () => {
     const data = await api('/api/settings');
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
+    $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
+    applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
     for (const key of ['bigTitle', 'footer', 'clarityId', 'about'])
@@ -970,6 +978,7 @@ $('site-form').addEventListener('submit', async (e) => {
       body: { site: values, etag: settingsEtag },
     });
     settingsEtag = data.etag;
+    applySiteAppearance(data.site);
     notice('网站信息已保存，点击发布后上线。');
   } catch (error) {
     notice(error.message);
@@ -983,6 +992,7 @@ $('publish-settings').addEventListener('click', () =>
       body: { site: values, etag: settingsEtag },
     });
     settingsEtag = saved.etag;
+    applySiteAppearance(saved.site);
     await startPublish({ settings: true });
   }),
 );
@@ -1034,7 +1044,9 @@ configureBackup({
   getSettingsEtag: () => settingsEtag,
   restored: (result) => {
     settingsEtag = result.etag;
-    for (const input of $('site-form').querySelectorAll('input,textarea')) input.value = '';
+    for (const input of $('site-form').querySelectorAll('input,textarea,select[name]')) input.value = '';
+    $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
+    applySiteAppearance(result.site);
     for (const [key, value] of Object.entries(result.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
   },

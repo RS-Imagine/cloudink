@@ -16,6 +16,7 @@ import {
   validateDraft,
   validateSite,
   type Draft,
+  type SiteConfig,
 } from './models';
 
 import { backupRoute } from './backup';
@@ -96,7 +97,11 @@ async function apiRoute(
   }
   if (path === '/api/posts' && request.method === 'GET') {
     const publishing = await publishStatus(env);
-    const [release, drafts] = await Promise.all([currentRelease(env), listDrafts(env.STORAGE)]);
+    const [release, drafts, savedSite] = await Promise.all([
+      currentRelease(env),
+      listDrafts(env.STORAGE),
+      readJson<SiteConfig>(env.STORAGE, 'draft-site.json'),
+    ]);
     const published = new Map<string, { draft: Draft; digest: string }>();
     for (const [slug, source] of Object.entries(release.markdown_posts)) {
       const draft = parseSource(source);
@@ -128,6 +133,7 @@ async function apiRoute(
     return json({
       posts: [...posts.values()],
       site: release.site,
+      appearance: { themePalette: savedSite?.themePalette || release.site.themePalette || 'ink' },
       publishing,
       email: session.email,
       csrf: session.csrf,

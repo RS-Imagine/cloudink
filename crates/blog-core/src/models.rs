@@ -21,6 +21,9 @@ pub struct SiteConfig {
     /// About page Markdown; an empty value disables its navigation entry.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
+    /// Optional author palette; absent or unsupported values use the Ink default.
+    #[serde(rename = "themePalette", default, skip_serializing_if = "Option::is_none")]
+    pub theme_palette: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -34,6 +37,7 @@ impl Default for SiteConfig {
             footer: None,
             clarity_id: None,
             about: None,
+            theme_palette: None,
         }
     }
 }

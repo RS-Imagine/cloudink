@@ -1,0 +1,224 @@
+/* Single source for public pages, the admin, and Rust/WASM previews. */
+:root {
+  color-scheme: light;
+  --ci-light-bg: #f3f5f1;
+  --ci-dark-bg: #141b17;
+  --ci-light-surface: #fbfcf9;
+  --ci-dark-surface: #1c2520;
+  --ci-light-elevated: #ffffff;
+  --ci-dark-elevated: #253029;
+  --ci-light-container: #eaeee8;
+  --ci-dark-container: #2c3830;
+  --ci-light-text: #202a25;
+  --ci-dark-text: #e7eee5;
+  --ci-light-muted: #59665e;
+  --ci-dark-muted: #b2c1b4;
+  --ci-light-outline: #818d83;
+  --ci-dark-outline: #88998b;
+  --ci-light-divider: #dce3da;
+  --ci-dark-divider: #3b4a3e;
+  --ci-light-primary: #24594f;
+  --ci-dark-primary: #a4d3be;
+  --ci-light-on-primary: #ffffff;
+  --ci-dark-on-primary: #123c30;
+  --ci-light-primary-strong: #1b4b42;
+  --ci-dark-primary-strong: #badfce;
+  --ci-light-primary-container: #dfede6;
+  --ci-dark-primary-container: #263f33;
+  --ci-light-on-primary-container: #1c483e;
+  --ci-dark-on-primary-container: #c8e9d5;
+  --ci-light-error: #a22e30;
+  --ci-dark-error: #ffb4b1;
+  --ci-light-error-container: #fbe9e8;
+  --ci-dark-error-container: #4c2627;
+  --ci-light-success: #29623e;
+  --ci-dark-success: #a1d4ac;
+  --ci-light-warning: #79501c;
+  --ci-dark-warning: #eac28e;
+  --ci-light-hover: #e4eae2;
+  --ci-dark-hover: #334337;
+  --ci-light-pressed: #d9e2d8;
+  --ci-dark-pressed: #3a4a40;
+  --ci-light-overlay: #14211c66;
+  --ci-dark-overlay: #060b08a6;
+  --ci-light-shadow-soft: 0 4px 20px #172f2010;
+  --ci-dark-shadow-soft: 0 4px 20px #00000014;
+  --ci-light-shadow-floating: 0 12px 36px #172f201c, 0 2px 5px #172f2008;
+  --ci-dark-shadow-floating: 0 12px 36px #00000030;
+  --ci-light-shadow-overlay: 0 24px 80px #0c181f30;
+  --ci-dark-shadow-overlay: 0 24px 80px #00000066;
+  --ci-bg: var(--ci-light-bg);
+  --ci-surface: var(--ci-light-surface);
+  --ci-elevated: var(--ci-light-elevated);
+  --ci-container: var(--ci-light-container);
+  --ci-text: var(--ci-light-text);
+  --ci-muted: var(--ci-light-muted);
+  --ci-outline: var(--ci-light-outline);
+  --ci-divider: var(--ci-light-divider);
+  --ci-primary: var(--ci-light-primary);
+  --ci-on-primary: var(--ci-light-on-primary);
+  --ci-primary-strong: var(--ci-light-primary-strong);
+  --ci-primary-container: var(--ci-light-primary-container);
+  --ci-on-primary-container: var(--ci-light-on-primary-container);
+  --ci-error: var(--ci-light-error);
+  --ci-error-container: var(--ci-light-error-container);
+  --ci-success: var(--ci-light-success);
+  --ci-warning: var(--ci-light-warning);
+  --ci-hover: var(--ci-light-hover);
+  --ci-pressed: var(--ci-light-pressed);
+  --ci-overlay: var(--ci-light-overlay);
+  --ci-shadow-soft: var(--ci-light-shadow-soft);
+  --ci-shadow-floating: var(--ci-light-shadow-floating);
+  --ci-shadow-overlay: var(--ci-light-shadow-overlay);
+  --ci-font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --ci-font-reading: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'Noto Serif CJK SC', serif;
+  --ci-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  --ci-type-display: clamp(2.5rem, 5.1vw, 4.5rem);
+  --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);
+  --ci-type-body: 1rem;
+  --ci-type-caption: .8125rem;
+  --ci-radius-sm: 8px;
+  --ci-radius-md: 14px;
+  --ci-radius-lg: 22px;
+  --ci-radius-xl: 32px;
+  --ci-space-1: 4px;
+  --ci-space-2: 8px;
+  --ci-space-3: 12px;
+  --ci-space-4: 16px;
+  --ci-space-5: 20px;
+  --ci-space-6: 24px;
+  --ci-space-7: 28px;
+  --ci-space-8: 32px;
+  --ci-space-9: 36px;
+  --ci-space-10: 40px;
+  --ci-space-11: 44px;
+  --ci-space-12: 48px;
+  --ci-motion-fast: 150ms;
+  --ci-motion-standard: 250ms;
+  --ci-motion-emphasized: 380ms;
+  --ci-ease: cubic-bezier(.2, .7, .2, 1);
+  --ci-layer-base: 0;
+  --ci-layer-navigation: 20;
+  --ci-layer-modal: 60;
+  --ci-layer-toast: 80;
+  --ci-state-hover: var(--ci-hover);
+  --ci-state-pressed: var(--ci-pressed);
+  --ci-state-selected: var(--ci-primary-container);
+  --ci-state-disabled-opacity: .5;
+
+  /* Transitional aliases keep existing layouts on the same semantic palette. */
+  --bg: var(--ci-bg);
+  --bg-top: var(--ci-bg);
+  --paper: var(--ci-surface);
+  --paper-solid: var(--ci-elevated);
+  --paper-strong: var(--ci-container);
+  --pale: var(--ci-container);
+  --text: var(--ci-text);
+  --ink: var(--ci-text);
+  --muted: var(--ci-muted);
+  --accent: var(--ci-primary);
+  --accent-strong: var(--ci-primary-strong);
+  --on-accent: var(--ci-on-primary);
+  --accent-soft: var(--ci-primary-container);
+  --accent-alpha-1: var(--ci-primary-container);
+  --accent-alpha-2: var(--ci-primary-container);
+  --accent-alpha-3: var(--ci-primary-container);
+  --accent-alpha-4: var(--ci-primary-container);
+  --border: var(--ci-divider);
+  --border-soft: var(--ci-divider);
+  --line: var(--ci-divider);
+  --danger: var(--ci-error);
+  --danger-soft: var(--ci-error-container);
+  --code-bg: var(--ci-container);
+  --pre-bg: var(--ci-container);
+  --pre-text: var(--ci-text);
+  --pre-border: var(--ci-divider);
+  --kbd-bg: var(--ci-container);
+  --shadow: var(--ci-shadow-soft);
+  --shadow-strong: var(--ci-shadow-overlay);
+  --font-body: var(--ci-font-ui);
+  --font-heading: var(--ci-font-ui);
+  --ease: var(--ci-ease);
+}
+:root[data-palette="neutral"] {
+  --ci-light-primary: #40536b;
+  --ci-light-on-primary: #ffffff;
+  --ci-light-primary-strong: #31445d;
+  --ci-light-primary-container: #e0e7f0;
+  --ci-light-on-primary-container: #2b3f57;
+  --ci-dark-primary: #b8cce7;
+  --ci-dark-on-primary: #203449;
+  --ci-dark-primary-strong: #d0def3;
+  --ci-dark-primary-container: #2e4057;
+  --ci-dark-on-primary-container: #d6e3f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ci-bg: var(--ci-dark-bg);
+    --ci-surface: var(--ci-dark-surface);
+    --ci-elevated: var(--ci-dark-elevated);
+    --ci-container: var(--ci-dark-container);
+    --ci-text: var(--ci-dark-text);
+    --ci-muted: var(--ci-dark-muted);
+    --ci-outline: var(--ci-dark-outline);
+    --ci-divider: var(--ci-dark-divider);
+    --ci-primary: var(--ci-dark-primary);
+    --ci-on-primary: var(--ci-dark-on-primary);
+    --ci-primary-strong: var(--ci-dark-primary-strong);
+    --ci-primary-container: var(--ci-dark-primary-container);
+    --ci-on-primary-container: var(--ci-dark-on-primary-container);
+    --ci-error: var(--ci-dark-error);
+    --ci-error-container: var(--ci-dark-error-container);
+    --ci-success: var(--ci-dark-success);
+    --ci-warning: var(--ci-dark-warning);
+    --ci-hover: var(--ci-dark-hover);
+    --ci-pressed: var(--ci-dark-pressed);
+    --ci-overlay: var(--ci-dark-overlay);
+    --ci-shadow-soft: var(--ci-dark-shadow-soft);
+    --ci-shadow-floating: var(--ci-dark-shadow-floating);
+    --ci-shadow-overlay: var(--ci-dark-shadow-overlay);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ci-bg: var(--ci-dark-bg);
+  --ci-surface: var(--ci-dark-surface);
+  --ci-elevated: var(--ci-dark-elevated);
+  --ci-container: var(--ci-dark-container);
+  --ci-text: var(--ci-dark-text);
+  --ci-muted: var(--ci-dark-muted);
+  --ci-outline: var(--ci-dark-outline);
+  --ci-divider: var(--ci-dark-divider);
+  --ci-primary: var(--ci-dark-primary);
+  --ci-on-primary: var(--ci-dark-on-primary);
+  --ci-primary-strong: var(--ci-dark-primary-strong);
+  --ci-primary-container: var(--ci-dark-primary-container);
+  --ci-on-primary-container: var(--ci-dark-on-primary-container);
+  --ci-error: var(--ci-dark-error);
+  --ci-error-container: var(--ci-dark-error-container);
+  --ci-success: var(--ci-dark-success);
+  --ci-warning: var(--ci-dark-warning);
+  --ci-hover: var(--ci-dark-hover);
+  --ci-pressed: var(--ci-dark-pressed);
+  --ci-overlay: var(--ci-dark-overlay);
+  --ci-shadow-soft: var(--ci-dark-shadow-soft);
+  --ci-shadow-floating: var(--ci-dark-shadow-floating);
+  --ci-shadow-overlay: var(--ci-dark-shadow-overlay);
+}
+@supports (color: color-mix(in srgb, black, transparent)) {
+  :root {
+    --accent-soft: color-mix(in srgb, var(--ci-primary) 8%, transparent);
+    --accent-alpha-1: color-mix(in srgb, var(--ci-primary) 6%, transparent);
+    --accent-alpha-2: color-mix(in srgb, var(--ci-primary) 4%, transparent);
+    --accent-alpha-3: color-mix(in srgb, var(--ci-primary) 18%, transparent);
+    --accent-alpha-4: color-mix(in srgb, var(--ci-primary) 30%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ci-motion-fast: 0ms;
+    --ci-motion-standard: 0ms;
+    --ci-motion-emphasized: 0ms;
+  }
+}

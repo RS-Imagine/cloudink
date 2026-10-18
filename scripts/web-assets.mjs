@@ -14,5 +14,5 @@ if (process.argv[2] === 'seed') {
 } else if (process.argv[2] === 'bundle') {
   const source = await readFile(resolve(root, 'crates/blog-core/src/assets/client.js'), 'utf8');
   await build({ stdin: { contents: `import Swup from 'swup';\nimport hljs from './cloud-admin/node_modules/highlight.js/lib/common';\nwindow.Swup = Swup; window.hljs = hljs;\n${source}`, resolveDir: root, sourcefile: 'public-client.js' }, outfile: resolve(output, 'client.js'), bundle: true, format: 'iife', target: 'es2022', minify: true });
-  await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'cloud-web/theme.js')));
+  await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'assets/theme.js')));
 } else throw new Error('Expected seed or bundle.');

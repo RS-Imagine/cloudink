@@ -1,8 +1,8 @@
-# CloudInk 2.0 设计规范 · PR-00 提案
+# CloudInk 2.0 设计规范
 
-状态：等待第一轮人工视觉确认。实现规范将随每个阶段的实测更新。
+状态：PR-00 视觉方向已由项目作者确认，进入 PR-01。实现规范随每阶段实测更新。
 [四页原型](../../prototypes/ui-2.0/README.md)展示拟采用的比例、层次与交互。
-原型与当前正式 UI 并存，未改变正式网站或后台。
+原型保留为已确认的设计参考；PR-01 只接入共享设计基础，布局按后续阶段逐步迁移。
 
 ## 视觉方向
 
@@ -38,13 +38,26 @@
 
 ## Token 单一来源方案
 
-本阶段候选值仅定义在 [tokens.css](../../prototypes/ui-2.0/tokens.css)，
-供四个原型页面共享。没有将它复制进正式前后台。
-PR-01 将确定后的 Token 移到仓库共享的 CSS 源，
-Rust render.rs 通过 include_str! 引入该源，后台 build-ui.mjs 拼接同一份源；
-公开样式哈希应包含 Token 内容，预览沿用同一套公开样式。
-纯 CSS 引用不需要 Node 生成 Rust 文件，也不新增运行时配置。
-正式颜色、系统跟随和显式主题覆盖均从这一个源生成/引用，禁止维护两套颜色表。
+正式 Token 唯一来源为 [assets/design-tokens.css](../../assets/design-tokens.css)，
+基础控件规则为 [assets/design-foundation.css](../../assets/design-foundation.css)。
+Rust `render::stylesheet()` 在编译期嵌入这两份源；后台 `build-ui.mjs`
+在构建期拼接同一份源。原型的 tokens.css 通过相对 @import 引用共享 Token。
+预览沿用 Rust 样式，公开样式哈希包含 Token 内容；不增加 CSS 请求或远程字体。
+
+[assets/theme.js](../../assets/theme.js) 是唯一正式主题控制器，分别以公开 /theme.js、
+后台 /admin-theme.js 的现有资源 URL 提供，且在样式前执行。
+原生 Rust 输出内联同一源；Worker 发布清洗器改用同源外部脚本。
+已选浅/深或系统主题在首次绘制前恢复，CSS 在无脚本时仍跟随系统。
+
+主题色由作者设置 `themePalette`：`ink`（默认墨绿）或 `neutral`（中性灰蓝）。
+缺少该可选字段的已有配置与备份保持可用；不新增资源、环境变量或设置文件。
+后台保存后同步后台与预览，发布后由 Rust 在所有公开页 HTML 输出 data-palette；
+Swup 导航从新页面同步配色，无需先请求配置接口。保存不会提前改变公开站点。
+后台本机缓存仅减少刷新闪烁，登录后的已保存设置覆盖它，公开页不读取该缓存。
+
+明暗模式属于浏览器：沿用 localStorage.theme，值为 auto/light/dark，跟随系统可重新启用；
+两个窗口同步同一浏览器偏好。禁用存储时仍可切换，刷新回到系统模式。
+作者发布不能覆盖读者选择的明暗模式；预览跟随后台的配色与明暗。
 
 命名采用 --ci-*；逻辑映射如下：
 
@@ -64,7 +77,7 @@ Rust render.rs 通过 include_str! 引入该源，后台 build-ui.mjs 拼接同�
 | layer.base / navigation / modal / toast     | --ci-layer-*                                       | 0 / 20 / 60 / 80；原生 dialog 在 top layer         |
 | state.hover / pressed / selected / disabled | --ci-hover + 对应组件状态                          | Hover 色层、按压缩放、选中容器；禁用文字与语义明确 |
 
-PR-01 应补齐统一的 pressed/selected/disabled 状态 Token，而不是继续在组件中散落数值。
+PR-01 已提供 --ci-state-hover/pressed/selected/disabled-opacity，旧布局颜色别名均映射到统一语义色。
 圆角先使用 border-radius，再在 @supports (corner-shape: squircle) 内增强；
 不支持的浏览器保持普通圆角。原型不会使用 SVG 裁切改变控件命中区域。
 
@@ -124,7 +137,7 @@ PR-08 再评估玻璃：先比不透明与轻量 backdrop-filter，再决定有�
 不能把 44px 写成 AA 强制门槛。焦点不被浮动导航遮挡，200% 缩放与长文本需人工复核。
 dialog 的关闭/结果焦点回归需桌面与触屏验证；不制造焦点陷阱。
 
-当前 PR 正式包字节必须不变，因为未接入生产构建。原型资源单列报告。
+PR-00 升级前资源见基线报告；PR-01 的正式包变化与原型资源分别记录在 CI 报告。
 PR-01/02 的起始预算：共享 Token gzip ≤4KiB，动效工具 gzip ≤4KiB，无新增运行时依赖；
 最终数值以构建报告和当前功能对比为准。禁止持续空闲 rAF，
 玻璃/弹簧的帧耗时、耗电、软键盘及真机滚动在对应阶段验收。
@@ -142,4 +155,4 @@ PR-01/02 的起始预算：共享 Token gzip ≤4KiB，动效工具 gzip ≤4KiB
 查看四页的明暗主题与手机截图，比较墨绿/中性。需要确认：
 整体色彩与圆角是否合适；前台阅读密度是否舒适；后台工具区是否清晰；
 编辑器分栏与手机单栏是否可接受。确认后才将 Token 与布局接入正式产品。
-此项应由项目作者明确完成，CI 不会自动勾选。
+项目作者已明确确认 PR-00 截图与视觉方向。后续每个 PR 的人工视觉审查仍独立进行，CI 不代替审美验收。

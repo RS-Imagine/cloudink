@@ -1,7 +1,7 @@
 # CloudInk 2.0 · PR-00 交互设计原型
 
 四个画面：首页、文章页、后台工作台、编辑器。
-共用 tokens.css；Light/Dark 与墨绿/中性方案可即时比较。
+共用 assets/design-tokens.css（tokens.css 引用）；Light/Dark 与墨绿/中性方案可即时比较。
 原型不接入正式构建、账号、存储、发布或线上站点。
 姓名、文章和状态均为通用演示内容，未使用生产数据。
 
@@ -41,7 +41,7 @@ SVG 标志不变；装饰由原创 CSS 生成，无外部字体、图片或运�
 - [执行计划](../../docs/design/UI-2.0-PLAN.md)
 - [设计规范](../../docs/design/UI-2.0-SYSTEM.md)
 - [审计及基线](../../docs/design/UI-2.0-AUDIT.md)
-- npm run test:ui:audit：生成旧版/原型截图和报告；
+- npm run test:ui:audit：生成当前正式界面/已确认原型截图和报告；
   需项目构建与三个 Playwright 浏览器，详见审计文档。
 
-视觉方向由项目作者确认后，进入 PR-01。
+PR-00 视觉方向已由项目作者确认并合并；原型继续作为后续各阶段的设计参考。

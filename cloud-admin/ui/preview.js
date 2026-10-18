@@ -3,6 +3,7 @@ const loading = document.getElementById('preview-loading');
 function applyPreviewTheme(page) {
   const dark = document.documentElement.dataset.theme === 'dark';
   page.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  page.documentElement.dataset.palette = document.documentElement.dataset.palette || 'ink';
   const highlight = page.getElementById('preview-highlight');
   if (highlight)
     highlight.href =

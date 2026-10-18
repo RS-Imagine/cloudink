@@ -1,0 +1,68 @@
+/* Shared foundations; layout migrations remain in their own UI milestones. */
+body { font-family: var(--ci-font-ui); }
+button, input, textarea, select { font: inherit; }
+button, a, summary { touch-action: manipulation; }
+button, input, textarea, select { color: var(--ci-text); }
+button { min-height: 44px; border-radius: var(--ci-radius-md); }
+button:not(:disabled):hover { background-color: var(--ci-state-hover); }
+button:not(:disabled):active { background-color: var(--ci-state-pressed); }
+button.primary { background: var(--ci-primary); border-color: transparent; color: var(--ci-on-primary); }
+button.primary:not(:disabled):hover,
+button.primary:not(:disabled):active { background: var(--ci-primary-strong); }
+button:disabled { opacity: var(--ci-state-disabled-opacity); cursor: not-allowed; }
+button[aria-busy="true"] { cursor: progress; }
+input:not([type="checkbox"]):not([type="radio"]), textarea, select {
+  border-color: var(--ci-outline);
+  border-radius: var(--ci-radius-md);
+  background: var(--ci-surface);
+  color: var(--ci-text);
+}
+select { min-height: 44px; border: 1px solid var(--ci-outline); padding: 8px 12px; max-width: 100%; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--ci-primary); }
+:is(button, a, input, textarea, select, summary):focus-visible,
+.title-input:focus-visible, .description-input:focus-visible, .markdown-input:focus-visible {
+  outline: 3px solid var(--ci-primary);
+  outline-offset: 3px;
+}
+input::placeholder, textarea::placeholder { color: var(--ci-muted); opacity: 1; }
+.ci-card, .login-card, .setup-card, .settings-card, .image-card {
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-lg);
+  background: var(--ci-surface);
+  box-shadow: var(--ci-shadow-soft);
+}
+dialog, .search-content { border-radius: var(--ci-radius-xl); background: var(--ci-elevated); color: var(--ci-text); box-shadow: var(--ci-shadow-overlay); }
+dialog::backdrop { background: var(--ci-overlay); }
+.badge, .tag { color: var(--ci-on-primary-container); background: var(--ci-primary-container); }
+.error, .danger { color: var(--ci-error); }
+#notice[data-tone="error"] { background: var(--ci-error-container); color: var(--ci-error); }
+.article-body { font-family: var(--ci-font-reading); }
+.article-body :is(h1, h2, h3, h4, h5, h6) { font-family: var(--ci-font-ui); }
+.article-body code, .article-body pre, .markdown-input { font-family: var(--ci-font-mono); }
+.theme-mode { display: inline-flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; font: 13px/1.5 var(--ci-font-ui); color: var(--ci-muted); }
+.theme-mode select { width: auto; font-size: 13px; margin: 0; }
+.appearance-settings { display: grid; gap: 16px; padding: 20px; margin: 24px 0; border: 1px solid var(--ci-divider); border-radius: var(--ci-radius-lg); background: var(--ci-surface); }
+.appearance-settings legend { padding: 0 8px; font-weight: 600; }
+.appearance-settings label { margin: 0; }
+.appearance-settings select { width: 100%; margin-top: 6px; }
+.appearance-settings p { margin: 0; color: var(--ci-muted); font-size: 13px; }
+@supports (corner-shape: squircle) {
+  .ci-card, .login-card, .setup-card, .settings-card, .image-card, dialog, .search-content,
+  button, input, textarea, select, .appearance-settings { corner-shape: squircle; }
+}
+@media (max-width: 759px) {
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+}
+
+/* Accommodate existing compact controls while their layouts are migrated. */
+.code-block { padding-top: 56px; }
+.reader-dialog { padding-top: 64px; }
+.theme-btn, .theme-toggle { min-width: 44px; }
+
+input:disabled, textarea:disabled, select:disabled { opacity: var(--ci-state-disabled-opacity); cursor: not-allowed; }
+[aria-invalid="true"] { border-color: var(--ci-error); }
+button.danger:not(:disabled):hover { background: var(--ci-error-container); }
+@media (max-width: 759px) { .theme-mode select { font-size: 16px; } }
