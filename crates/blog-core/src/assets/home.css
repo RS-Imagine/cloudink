@@ -160,6 +160,7 @@
 }
 .home-intro {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .home-eyebrow {
   display: flex;

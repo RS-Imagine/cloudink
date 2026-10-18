@@ -586,5 +586,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } // end initPageFeatures
 
       initPageFeatures();
+      const initialHome = document.querySelector('.home-layout');
+      if (initialHome) motion?.enter(initialHome, { kind: 'content' });
       swup?.hooks.on('page:view', initPageFeatures);
     });
