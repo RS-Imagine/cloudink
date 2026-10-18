@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CloudInk · 动效审阅</title>
+  <link rel="stylesheet" href="../../assets/design-tokens.css" />
+  <link rel="stylesheet" href="../../assets/design-foundation.css" />
+  <link rel="stylesheet" href="../../assets/motion.css" />
+  <style>
+    body {
+      margin: 0;
+      background: var(--ci-bg);
+      color: var(--ci-text);
+      padding: 32px 20px;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 760px;
+      margin: auto;
+    }
+    h1 {
+      font-size: clamp(28px, 5vw, 44px);
+      letter-spacing: -0.03em;
+      margin: 20px 0;
+    }
+    p {
+      color: var(--ci-muted);
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 28px 0;
+    }
+    button {
+      padding: 10px 18px;
+      border: 1px solid var(--ci-outline);
+      background: var(--ci-surface);
+      cursor: pointer;
+    }
+    .sample {
+      padding: 28px;
+      background: var(--ci-surface);
+      border: 1px solid var(--ci-divider);
+      border-radius: var(--ci-radius-lg);
+      margin: 20px 0;
+    }
+    a {
+      color: var(--ci-primary);
+    }
+    dialog {
+      border: 1px solid var(--ci-divider);
+      padding: 28px;
+      max-width: min(480px, 85vw);
+    }
+    #status {
+      min-height: 2em;
+    }
+  </style>
+  <main>
+    <a href="index.html">← 返回设计参考</a>
+    <h1>恰到好处的反馈。</h1>
+    <p>这是 PR-02 的交互审阅工具，直接使用正式前后台共用的动效代码。不是新增博客功能。</p>
+    <div class="controls">
+      <button id="toggle" class="primary">切换内容</button>
+      <button id="replay">重播入场</button>
+      <button id="open">打开弹窗</button>
+      <button id="theme">切换明暗</button>
+      <button disabled>不可用</button>
+    </div>
+    <section id="sample" class="sample">
+      <h2>自然，来自连续。</h2>
+      <p>按住按钮观察轻微缩放，松开后自然回弹。快速切换内容时，动画从当前状态继续。</p>
+      <label
+        >输入不会被动画拦截<input aria-label="演示输入" placeholder="试着输入一些文字"
+      /></label>
+    </section>
+    <p id="status" role="status"></p>
+    <p>支持鼠标、键盘与触屏。系统开启减少动态效果时直接切换状态；动画结束后停止逐帧更新。</p>
+  </main>
+  <dialog id="dialog" aria-labelledby="dialog-title">
+    <h2 id="dialog-title">保持写作的节奏</h2>
+    <p>弹窗保留原生焦点与 Escape 操作。关闭后回到打开它的按钮。</p>
+    <button id="close" class="primary">继续</button>
+  </dialog>
+  <script src="../../assets/motion.js"></script>
+  <script src="motion.js"></script>
+</html>

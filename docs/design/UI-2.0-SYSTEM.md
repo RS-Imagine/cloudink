@@ -1,6 +1,6 @@
 # CloudInk 2.0 设计规范
 
-状态：PR-00 视觉方向已由项目作者确认，进入 PR-01。实现规范随每阶段实测更新。
+状态：PR-00 视觉方向已由项目作者确认，PR-01 已合并，进入 PR-02。实现规范随每阶段实测更新。
 [四页原型](../../prototypes/ui-2.0/README.md)展示拟采用的比例、层次与交互。
 原型保留为已确认的设计参考；PR-01 只接入共享设计基础，布局按后续阶段逐步迁移。
 
@@ -114,9 +114,18 @@ Disabled（真实 disabled/aria-disabled 与事件保护）、Loading、Success�
 | Empty State          | 简洁图标/短句/下一步                | 区分无内容、筛选无结果、失败与无权限，不伪造空数据       |
 | Feedback             | 图标、文字、语义色                  | 409 冲突保留输入，发布失败保留上次成功版本与重试入口     |
 
-## 动效契约（正式实现属 PR-02）
+## 动效契约（PR-02）
 
-固定过渡用于颜色/淡入/非手势位移；prototype 的短 CSS 按压反馈仅展示意图。
+正式工具为 [assets/motion.js](../../assets/motion.js) 与 [motion.css](../../assets/motion.css)。
+Rust 的原生 client_script() 与浏览器构建嵌入同一源，后台通过 esbuild 打包同一源，
+不新增脚本请求或运行时依赖。原型的短 CSS 按压反馈仅展示意图；
+[独立动效演示](../../prototypes/ui-2.0/motion.html)使用正式工具，解压审阅包即可操作。
+
+固定过渡用于颜色、淡入和非手势位移。按钮使用质量 1、刚度 420、阻尼 34 的真实弹簧，
+目标缩放 0.965，松开后回到 1；重定向保留当前速度，显式释放速度可由后续手势提供。
+当前未实现拖拽手势，其速度采样属于 PR-07。
+后台内容切换仅做轻微淡入，不移动输入框或替换编辑 DOM；Toast 与原生 Dialog 使用可取消的进出过渡。
+公开搜索的 CSS 过渡与 Swup 页面过渡使用统一 Token。
 真实弹簧需要状态 x、速度 v、目标 target、质量 m、刚度 k、阻尼 c：
 m*x'' + c*x' + k*(x-target)=0。
 换目标时保留 x/v；pointer release 提供采样初速度；按 dt 求解，长时间间隔要限步。
@@ -125,6 +134,15 @@ m*x'' + c*x' + k*(x-target)=0。
 退出与进入可取消/反向；完成回调不能覆盖更晚的状态，统一取消句柄。
 系统减少动态效果时直接落终态，关闭大位移与交错，保留状态和操作反馈。
 前台 Swup 导航、浏览器返回/滚动恢复使用同一清理/取消周期，避免重复监听与弹层残留。
+
+正式 API：CloudInkMotion.mount() 安装一次委托监听，spring({ from, mass, stiffness, damping, onUpdate, onComplete })
+返回 to(target, velocity?)、jump(value)、stop()；解析解覆盖欠阻尼、临界与过阻尼。
+enter/exit(element, { kind, signal, onFinish }) 返回 finished（完成 true、取消 false）与 cancel()；
+重定向从当前视觉状态继续，旧回调不能覆盖新状态。openDialog/closeDialog 保留原生焦点、Esc 和 close 事件。
+cancelWithin(root) 清理组件范围的过渡与按压；独立创建的业务 spring 由调用者 stop()。
+visibilitychange 暂停时间，页面离开与 Swup 导航清理动效；一个 rAF 仅在弹簧活动时运行。
+动画每帧不测量布局；WAAPI 重定向只在交互触发时读取当前合成样式。
+不支持 WAAPI 时立即完成过渡，不支持 individual scale 时保留原生按钮行为。
 
 PR-08 再评估玻璃：先比不透明与轻量 backdrop-filter，再决定有无必要使用 Shader。
 原型当前使用不透明表面；未实现手势弹簧、真实折射或生产导航过渡。

@@ -1184,22 +1184,6 @@ dialog {
   background: var(--danger-soft);
   color: var(--danger);
 }
-.workspace > section:not([hidden]),
-.login-card,
-.setup-card,
-dialog[open] {
-  animation: enter-view 0.2s ease-out both;
-}
-@keyframes enter-view {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 @media (max-width: 650px) {
   .search {
     display: block;

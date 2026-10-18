@@ -14,7 +14,8 @@ pub fn stylesheet() -> &'static str {
     concat!(
         include_str!("../../../assets/design-tokens.css"), "\n",
         include_str!("assets/styles.css"), "\n",
-        include_str!("../../../assets/design-foundation.css")
+        include_str!("../../../assets/design-foundation.css"), "\n",
+        include_str!("../../../assets/motion.css")
     )
 }
 
@@ -23,7 +24,9 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
-pub fn client_script() -> &'static str { include_str!("assets/client.js") }
+pub fn client_script() -> &'static str {
+    concat!(include_str!("../../../assets/motion.js"), "\n", include_str!("assets/client.js"))
+}
 
 // ---------------------------------------------------------------------------
 // Public page renderers
