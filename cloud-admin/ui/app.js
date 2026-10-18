@@ -173,6 +173,8 @@ async function api(path, options = {}) {
   return data;
 }
 function showLogin() {
+  motion.cancelWithin($('app-view'));
+  if ($('image-preview-dialog').open) $('image-preview-dialog').close();
   clearTimeout(autosaveTimer);
   $('app-view').hidden = true;
   const wizard = appConfig && !appConfig.initialized;

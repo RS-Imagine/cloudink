@@ -1,22 +1,60 @@
 /* Durations come from the shared tokens; idle pages have no motion loop. */
-body { transition: background-color var(--ci-motion-standard), color var(--ci-motion-standard); }
-button, input, textarea, select, a {
-  transition: background-color var(--ci-motion-fast), border-color var(--ci-motion-fast),
-    color var(--ci-motion-fast), box-shadow var(--ci-motion-fast);
+body {
+  transition:
+    background-color var(--ci-motion-standard),
+    color var(--ci-motion-standard);
 }
-:root[data-ci-motion] button:active { transform: none; }
-.site-nav a, .site-nav .search-btn, .hero-action, .share-button, .post-arrow, .toc-link {
+button,
+input,
+textarea,
+select,
+a {
+  transition:
+    background-color var(--ci-motion-fast),
+    border-color var(--ci-motion-fast),
+    color var(--ci-motion-fast),
+    box-shadow var(--ci-motion-fast);
+}
+:root[data-ci-motion] button:active {
+  transform: none;
+}
+.site-nav a,
+.site-nav .search-btn,
+.hero-action,
+.share-button,
+.post-arrow,
+.toc-link {
   transition-duration: var(--ci-motion-fast);
   transition-timing-function: var(--ci-ease);
 }
 .transition-fade {
-  transition: opacity var(--ci-motion-emphasized) var(--ci-ease),
+  transition:
+    opacity var(--ci-motion-emphasized) var(--ci-ease),
     transform var(--ci-motion-emphasized) var(--ci-ease);
 }
-.search-modal { transition: opacity var(--ci-motion-fast), visibility 0s linear var(--ci-motion-fast); }
-.search-modal.active { transition: opacity var(--ci-motion-standard), visibility 0s; }
-.search-content { transition: transform var(--ci-motion-standard) var(--ci-ease); }
+.search-modal {
+  transition:
+    opacity var(--ci-motion-fast),
+    visibility 0s linear var(--ci-motion-fast);
+}
+.search-modal.active {
+  transition:
+    opacity var(--ci-motion-standard),
+    visibility 0s;
+}
+.search-content {
+  transition: transform var(--ci-motion-standard) var(--ci-ease);
+}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  html.is-animating .transition-fade { opacity: 1; transform: none; }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  html.is-animating .transition-fade {
+    opacity: 1;
+    transform: none;
+  }
 }

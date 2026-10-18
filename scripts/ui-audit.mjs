@@ -41,7 +41,13 @@ await mkdir(output, { recursive: true });
 const allowed = new Set(
   ['tokens.css', 'style.css', 'app.js', 'index.html', 'motion.html', 'motion.js']
     .map((p) => '/prototypes/ui-2.0/' + p)
-    .concat('/assets/cloudink.svg', '/assets/design-tokens.css', '/assets/design-foundation.css', '/assets/motion.css', '/assets/motion.js'),
+    .concat(
+      '/assets/cloudink.svg',
+      '/assets/design-tokens.css',
+      '/assets/design-foundation.css',
+      '/assets/motion.css',
+      '/assets/motion.js',
+    ),
 );
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, studyOrigin).pathname;
@@ -552,9 +558,14 @@ try {
     gzipSync(tokens).length + gzipSync(foundations).length <= 4096,
     'Shared CSS gzip budget',
   );
-  const motionJS = (await transform(await readFile('assets/motion.js', 'utf8'), { minify: true })).code;
-  const motionCSS = (await transform(await readFile('assets/motion.css', 'utf8'), { minify: true, loader: 'css' })).code;
-  report.assets['shared/motion.min.js+css'] = { gzip: gzipSync(motionJS).length + gzipSync(motionCSS).length };
+  const motionJS = (await transform(await readFile('assets/motion.js', 'utf8'), { minify: true }))
+    .code;
+  const motionCSS = (
+    await transform(await readFile('assets/motion.css', 'utf8'), { minify: true, loader: 'css' })
+  ).code;
+  report.assets['shared/motion.min.js+css'] = {
+    gzip: gzipSync(motionJS).length + gzipSync(motionCSS).length,
+  };
   assert.ok(report.assets['shared/motion.min.js+css'].gzip <= 4096, 'Motion runtime gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
@@ -575,7 +586,15 @@ try {
   // Artifact includes a self-contained folder hierarchy: open index.html after extracting.
   await mkdir(resolve(output, 'preview/prototypes/ui-2.0'), { recursive: true });
   await mkdir(resolve(output, 'preview/assets'), { recursive: true });
-  for (const name of ['index.html', 'tokens.css', 'style.css', 'app.js', 'README.md', 'motion.html', 'motion.js'])
+  for (const name of [
+    'index.html',
+    'tokens.css',
+    'style.css',
+    'app.js',
+    'README.md',
+    'motion.html',
+    'motion.js',
+  ])
     await copyFile(
       resolve('prototypes/ui-2.0', name),
       resolve(output, 'preview/prototypes/ui-2.0', name),

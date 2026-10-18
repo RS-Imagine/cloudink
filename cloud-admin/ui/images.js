@@ -203,7 +203,9 @@ export function configureImages({
   $('image-library-search').addEventListener('input', render);
   $('image-library-unused').addEventListener('change', render);
   $('image-library-back').addEventListener('click', () => open(true));
-  $('image-preview-close').addEventListener('click', () => window.CloudInkMotion.closeDialog($('image-preview-dialog')));
+  $('image-preview-close').addEventListener('click', () =>
+    window.CloudInkMotion.closeDialog($('image-preview-dialog')),
+  );
   $('image-preview-dialog').addEventListener('close', () => {
     if (!$('image-preview-dialog').open) $('image-preview-full').removeAttribute('src');
   });
