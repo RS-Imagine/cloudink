@@ -17,18 +17,18 @@
 
 ## 独立 PR 与上游
 
-| 阶段 | 分支 | 范围 | 验收及依赖 |
-| --- | --- | --- | --- |
-| PR-00 | design/ui-audit-and-foundation | 现状审计、前后台截图、资源/性能基线、设计规范、四页交互原型 | 人工确认视觉方向后进入 PR-01 |
-| PR-01 | feat/design-system | 单一 Token 来源、明暗主题、基础控件、圆角回退、无闪烁主题 | 基于已合并 PR-00；旧页面仍可用 |
-| PR-02 | feat/motion-system | CSS/JS 动效工具、物理弹簧、速度衔接、中断/取消、减少动态效果 | 基于 PR-01；快速操作状态一致 |
-| PR-03 | feat/reader-home-redesign | Header、首页、文章卡片、页脚、响应式与无脚本导航 | 基于 PR-02；原有 URL/SEO 保留 |
-| PR-04 | feat/reader-experience | 阅读、目录、代码/表格/图片、搜索、分享、Swup 及滚动恢复 | 基于 PR-03；Markdown/数学/高亮回归通过 |
-| PR-05 | feat/admin-shell-redesign | 后台壳、侧边导航、首页、登录和初始化 | 基于 PR-02；业务事件与状态逻辑保留 |
-| PR-06 | feat/admin-workflows-redesign | 编辑器、保存/发布反馈、图片库、设置/账号/备份 | 基于 PR-05；关键工作流通过 |
-| PR-07 | feat/mobile-interactions | 手机导航、Bottom Sheet、拖拽/停靠/回弹、安全区与软键盘 | PR-04 与 PR-06 合并后；手势有点击/键盘替代 |
-| PR-08 | feat/expressive-surfaces | 有限区域玻璃/光影、性能对比与不透明降级 | 基于 PR-07；Shader 仅在有实测收益时采用 |
-| PR-09 | chore/ui-release-hardening | 全面回归、性能对比、CSS 清理、文档、前后对比与发布说明 | 全部上游合并；人工视觉与兼容性验收 |
+| 阶段  | 分支                           | 范围                                                         | 验收及依赖                                 |
+| ----- | ------------------------------ | ------------------------------------------------------------ | ------------------------------------------ |
+| PR-00 | design/ui-audit-and-foundation | 现状审计、前后台截图、资源/性能基线、设计规范、四页交互原型  | 人工确认视觉方向后进入 PR-01               |
+| PR-01 | feat/design-system             | 单一 Token 来源、明暗主题、基础控件、圆角回退、无闪烁主题    | 基于已合并 PR-00；旧页面仍可用             |
+| PR-02 | feat/motion-system             | CSS/JS 动效工具、物理弹簧、速度衔接、中断/取消、减少动态效果 | 基于 PR-01；快速操作状态一致               |
+| PR-03 | feat/reader-home-redesign      | Header、首页、文章卡片、页脚、响应式与无脚本导航             | 基于 PR-02；原有 URL/SEO 保留              |
+| PR-04 | feat/reader-experience         | 阅读、目录、代码/表格/图片、搜索、分享、Swup 及滚动恢复      | 基于 PR-03；Markdown/数学/高亮回归通过     |
+| PR-05 | feat/admin-shell-redesign      | 后台壳、侧边导航、首页、登录和初始化                         | 基于 PR-02；业务事件与状态逻辑保留         |
+| PR-06 | feat/admin-workflows-redesign  | 编辑器、保存/发布反馈、图片库、设置/账号/备份                | 基于 PR-05；关键工作流通过                 |
+| PR-07 | feat/mobile-interactions       | 手机导航、Bottom Sheet、拖拽/停靠/回弹、安全区与软键盘       | PR-04 与 PR-06 合并后；手势有点击/键盘替代 |
+| PR-08 | feat/expressive-surfaces       | 有限区域玻璃/光影、性能对比与不透明降级                      | 基于 PR-07；Shader 仅在有实测收益时采用    |
+| PR-09 | chore/ui-release-hardening     | 全面回归、性能对比、CSS 清理、文档、前后对比与发布说明       | 全部上游合并；人工视觉与兼容性验收         |
 
 PR-03、PR-05 可在共同上游稳定后分别进行；每个 PR 写明确切上游 SHA。
 不在一个 PR 提前实现后续阶段。M1=PR-00，M2=PR-01/02，
@@ -39,7 +39,7 @@ M3=PR-03/04，M4=PR-05/06，M5=PR-07/08，M6=PR-09。
 
 适用检查：
 
-~~~sh
+```sh
 npm run format:check
 npm run build
 npm run check
@@ -48,7 +48,7 @@ npm test
 cargo test --workspace --locked
 npm run test:web:browser
 npm run test:ui:audit
-~~~
+```
 
 最后一项是 PR-00 增加的隔离设计检查，需事先安装 Chromium、Firefox、WebKit。
 真实 Safari/iOS 与真机触屏还需在对应阶段手动验证；Playwright WebKit 不等于真实 Safari。

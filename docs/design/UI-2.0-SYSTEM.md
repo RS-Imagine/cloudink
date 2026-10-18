@@ -19,11 +19,11 @@
 
 ## 信息架构与断点
 
-| 宽度 | 公开网站 | 后台 |
-| --- | --- | --- |
-| 0–759px | 18–20px 页边距、单列、直接搜索/主题入口，目录收束 | 单列工作区、底部主要入口、写作/预览切换 |
-| 760–1099px | 28px 页边距；阅读内容优先，空间足够时显示目录 | 88px 图标导航轨、完整可访问名称，工具栏可换行 |
-| ≥1100px | 1160px 内容容器；文章正文上限约 720px、独立目录 | 224px 侧栏；分栏编辑器、稳定顶部操作区 |
+| 宽度       | 公开网站                                          | 后台                                          |
+| ---------- | ------------------------------------------------- | --------------------------------------------- |
+| 0–759px    | 18–20px 页边距、单列、直接搜索/主题入口，目录收束 | 单列工作区、底部主要入口、写作/预览切换       |
+| 760–1099px | 28px 页边距；阅读内容优先，空间足够时显示目录     | 88px 图标导航轨、完整可访问名称，工具栏可换行 |
+| ≥1100px    | 1160px 内容容器；文章正文上限约 720px、独立目录   | 224px 侧栏；分栏编辑器、稳定顶部操作区        |
 
 断点使用布局可用空间，不按设备品牌判断。实际迁移时以长标题、200% 缩放和
 虚拟键盘验证，不将原型的 759/1099 硬编码为不可更改的产品规则。
@@ -48,21 +48,21 @@ Rust render.rs 通过 include_str! 引入该源，后台 build-ui.mjs 拼接同�
 
 命名采用 --ci-*；逻辑映射如下：
 
-| 逻辑角色 | CSS 名称 | 起始值/规则 |
-| --- | --- | --- |
-| color.primary / onPrimary | --ci-primary / --ci-on-primary | Light #24594f / #fff；Dark #a4d3be / #123c30 |
-| color.primaryContainer / onContainer | --ci-primary-container / --ci-on-primary-container | 选中/轻操作，保持文本对比 |
-| surface / surface.elevated / container | --ci-surface / --ci-elevated / --ci-container | 基础、浮层、嵌套区域 |
-| text / text.secondary / outline | --ci-text / --ci-muted / --ci-outline | 正文、次级信息、可交互边界 |
-| error / success / warning | --ci-error / --ci-success / --ci-warning | 图标/文字同时解释，不仅靠颜色 |
-| type.display / title / body / caption | --ci-type-* | 40–72 / 28–44 / 16 / 13px；正文阅读 17–18px |
-| font.ui / reading / mono | --ci-font-* | 系统 UI、系统衬线阅读、系统等宽；不新增远程字体 |
-| radius.sm / md / lg / xl | --ci-radius-* | 8 / 14 / 22 / 32px |
-| spacing.1…12 | --ci-space-1…12 | 4px 基础栅格，4–48px |
-| shadow.soft / floating / overlay | --ci-shadow-* | 卡片、浮动入口、模态；暗色减弱边缘阴影 |
-| motion.fast / standard / emphasized | --ci-motion-* | 150 / 250 / 380ms；减少动态效果时归零 |
-| layer.base / navigation / modal / toast | --ci-layer-* | 0 / 20 / 60 / 80；原生 dialog 在 top layer |
-| state.hover / pressed / selected / disabled | --ci-hover + 对应组件状态 | Hover 色层、按压缩放、选中容器；禁用文字与语义明确 |
+| 逻辑角色                                    | CSS 名称                                           | 起始值/规则                                        |
+| ------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| color.primary / onPrimary                   | --ci-primary / --ci-on-primary                     | Light #24594f / #fff；Dark #a4d3be / #123c30       |
+| color.primaryContainer / onContainer        | --ci-primary-container / --ci-on-primary-container | 选中/轻操作，保持文本对比                          |
+| surface / surface.elevated / container      | --ci-surface / --ci-elevated / --ci-container      | 基础、浮层、嵌套区域                               |
+| text / text.secondary / outline             | --ci-text / --ci-muted / --ci-outline              | 正文、次级信息、可交互边界                         |
+| error / success / warning                   | --ci-error / --ci-success / --ci-warning           | 图标/文字同时解释，不仅靠颜色                      |
+| type.display / title / body / caption       | --ci-type-*                                        | 40–72 / 28–44 / 16 / 13px；正文阅读 17–18px        |
+| font.ui / reading / mono                    | --ci-font-*                                        | 系统 UI、系统衬线阅读、系统等宽；不新增远程字体    |
+| radius.sm / md / lg / xl                    | --ci-radius-*                                      | 8 / 14 / 22 / 32px                                 |
+| spacing.1…12                                | --ci-space-1…12                                    | 4px 基础栅格，4–48px                               |
+| shadow.soft / floating / overlay            | --ci-shadow-*                                      | 卡片、浮动入口、模态；暗色减弱边缘阴影             |
+| motion.fast / standard / emphasized         | --ci-motion-*                                      | 150 / 250 / 380ms；减少动态效果时归零              |
+| layer.base / navigation / modal / toast     | --ci-layer-*                                       | 0 / 20 / 60 / 80；原生 dialog 在 top layer         |
+| state.hover / pressed / selected / disabled | --ci-hover + 对应组件状态                          | Hover 色层、按压缩放、选中容器；禁用文字与语义明确 |
 
 PR-01 应补齐统一的 pressed/selected/disabled 状态 Token，而不是继续在组件中散落数值。
 圆角先使用 border-radius，再在 @supports (corner-shape: squircle) 内增强；
@@ -82,24 +82,24 @@ UI 默认 15–16px，次级说明 12–13px，不将关键状态缩成装饰文
 Disabled（真实 disabled/aria-disabled 与事件保护）、Loading、Success、Error。
 所有提交按钮 loading 时保留尺寸、可理解名称和 aria-busy；结果有就近文字/状态区。
 
-| 组件 | 外观/尺寸 | 行为与可访问性要求 |
-| --- | --- | --- |
-| Button | 44px 高、14px 圆角，主/轻/中性/危险 | 明确主操作，等待时防重复提交；按压不移动布局 |
-| IconButton | 44×44px，20px 线性图标 | aria-label；不只依赖 title；键盘触发 |
-| Card | 22–32px 圆角、柔和边框 | 可点击整体卡片使用单一链接，避免嵌套交互控件 |
-| Input / Textarea | 持续可见标签、14px 圆角 | 错误描述关联 aria-describedby，不以 placeholder 代替标签 |
-| Switch | 拨杆配明确名称与状态 | 原生 checkbox 或 role=switch，Space 操作，禁用不提交 |
-| Select | 同输入高度、可见当前值 | 优先原生 select；不为外观损失键盘和手机选择能力 |
-| Navigation / Sidebar | 选中容器与图标、稳定位移 | aria-current；图标轨有名称；所有入口可达 |
-| Tabs / Segment | 40–44px 命中区域 | 真 tab 用 tablist/方向键；筛选用按钮组与 aria-pressed |
-| Dialog | 32px 圆角，明确标题与关闭 | 原生 dialog 优先，Esc、焦点约束、返回触发点、背景锁定 |
-| Sheet | 顶部抓手但不作为唯一入口 | PR-07 实现停靠/拖拽；关闭按钮与键盘替代；避免滚动争抢 |
-| Dropdown | 表面浮层，8–12px 项间距 | 展开状态/方向键/Esc；菜单外点击；焦点恢复 |
-| Toast | 紧凑状态面，不遮挡主操作 | role=status；错误就近保留，不靠短时 Toast 承载唯一信息 |
-| Tooltip | 简短辅助解释 | Hover 与焦点都可出现；触屏有可理解名称，不承载必需步骤 |
-| Loading | 稳定占位、文字说明 | 不因骨架插入改变正文宽度；减少动态效果时静态 |
-| Empty State | 简洁图标/短句/下一步 | 区分无内容、筛选无结果、失败与无权限，不伪造空数据 |
-| Feedback | 图标、文字、语义色 | 409 冲突保留输入，发布失败保留上次成功版本与重试入口 |
+| 组件                 | 外观/尺寸                           | 行为与可访问性要求                                       |
+| -------------------- | ----------------------------------- | -------------------------------------------------------- |
+| Button               | 44px 高、14px 圆角，主/轻/中性/危险 | 明确主操作，等待时防重复提交；按压不移动布局             |
+| IconButton           | 44×44px，20px 线性图标              | aria-label；不只依赖 title；键盘触发                     |
+| Card                 | 22–32px 圆角、柔和边框              | 可点击整体卡片使用单一链接，避免嵌套交互控件             |
+| Input / Textarea     | 持续可见标签、14px 圆角             | 错误描述关联 aria-describedby，不以 placeholder 代替标签 |
+| Switch               | 拨杆配明确名称与状态                | 原生 checkbox 或 role=switch，Space 操作，禁用不提交     |
+| Select               | 同输入高度、可见当前值              | 优先原生 select；不为外观损失键盘和手机选择能力          |
+| Navigation / Sidebar | 选中容器与图标、稳定位移            | aria-current；图标轨有名称；所有入口可达                 |
+| Tabs / Segment       | 40–44px 命中区域                    | 真 tab 用 tablist/方向键；筛选用按钮组与 aria-pressed    |
+| Dialog               | 32px 圆角，明确标题与关闭           | 原生 dialog 优先，Esc、焦点约束、返回触发点、背景锁定    |
+| Sheet                | 顶部抓手但不作为唯一入口            | PR-07 实现停靠/拖拽；关闭按钮与键盘替代；避免滚动争抢    |
+| Dropdown             | 表面浮层，8–12px 项间距             | 展开状态/方向键/Esc；菜单外点击；焦点恢复                |
+| Toast                | 紧凑状态面，不遮挡主操作            | role=status；错误就近保留，不靠短时 Toast 承载唯一信息   |
+| Tooltip              | 简短辅助解释                        | Hover 与焦点都可出现；触屏有可理解名称，不承载必需步骤   |
+| Loading              | 稳定占位、文字说明                  | 不因骨架插入改变正文宽度；减少动态效果时静态             |
+| Empty State          | 简洁图标/短句/下一步                | 区分无内容、筛选无结果、失败与无权限，不伪造空数据       |
+| Feedback             | 图标、文字、语义色                  | 409 冲突保留输入，发布失败保留上次成功版本与重试入口     |
 
 ## 动效契约（正式实现属 PR-02）
 

@@ -176,7 +176,7 @@ try {
       if (screen === 'editor') {
         await expect(page.locator('#home-view')).toBeVisible();
         await page.locator('.post-item').filter({ hasText: demoPosts[0].title }).click();
-        await page.frameLocator('#preview-frame').locator('h1').waitFor({ state: 'attached' });
+        await page.frameLocator('#preview-frame').locator('article h1').waitFor({ state: 'attached' });
       } else await expect(page.locator(ready[screen])).toBeVisible();
       await capture(page, 'before', screen, theme, width);
       if (screen === 'article' && width !== 360) {

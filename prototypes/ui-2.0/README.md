@@ -13,9 +13,9 @@
 
 开发者也可以在仓库根目录启动静态服务：
 
-~~~sh
+```sh
 python3 -m http.server 4173 --bind 127.0.0.1
-~~~
+```
 
 打开 http://127.0.0.1:4173/prototypes/ui-2.0/。
 导航使用 #home、#article、#dashboard、#editor；浏览器前进/后退可用。
