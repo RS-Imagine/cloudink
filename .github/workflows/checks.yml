@@ -23,6 +23,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize changed motion sources
+        run: |
+          npx prettier --write assets/motion.js assets/motion.css cloud-admin/ui/app.js cloud-admin/ui/images.js cloud-admin/ui/style.css cloud-admin/build-ui.mjs scripts/web-assets.mjs cloud-web/test/motion.test.mjs cloud-web/test/motion.browser.mjs prototypes/ui-2.0/motion.html prototypes/ui-2.0/motion.js scripts/ui-audit.mjs package.json docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md prototypes/ui-2.0/README.md .github/workflows/checks.yml
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          for (const path of ["assets/motion.js","assets/motion.css","cloud-admin/ui/app.js","cloud-admin/ui/images.js","cloud-admin/ui/style.css","cloud-admin/build-ui.mjs","scripts/web-assets.mjs","cloud-web/test/motion.test.mjs","cloud-web/test/motion.browser.mjs","prototypes/ui-2.0/motion.html","prototypes/ui-2.0/motion.js","scripts/ui-audit.mjs","package.json","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md","prototypes/ui-2.0/README.md",".github/workflows/checks.yml"]) console.log('MOTION_FORMAT_SOURCE ' + JSON.stringify({ path, base64: Buffer.from(await readFile(path)).toString('base64') }));
+          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -65,6 +72,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize changed motion sources
+        run: |
+          npx prettier --write assets/motion.js assets/motion.css cloud-admin/ui/app.js cloud-admin/ui/images.js cloud-admin/ui/style.css cloud-admin/build-ui.mjs scripts/web-assets.mjs cloud-web/test/motion.test.mjs cloud-web/test/motion.browser.mjs prototypes/ui-2.0/motion.html prototypes/ui-2.0/motion.js scripts/ui-audit.mjs package.json docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md prototypes/ui-2.0/README.md .github/workflows/checks.yml
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          for (const path of ["assets/motion.js","assets/motion.css","cloud-admin/ui/app.js","cloud-admin/ui/images.js","cloud-admin/ui/style.css","cloud-admin/build-ui.mjs","scripts/web-assets.mjs","cloud-web/test/motion.test.mjs","cloud-web/test/motion.browser.mjs","prototypes/ui-2.0/motion.html","prototypes/ui-2.0/motion.js","scripts/ui-audit.mjs","package.json","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md","prototypes/ui-2.0/README.md",".github/workflows/checks.yml"]) console.log('MOTION_FORMAT_SOURCE ' + JSON.stringify({ path, base64: Buffer.from(await readFile(path)).toString('base64') }));
+          NODE
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

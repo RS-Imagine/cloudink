@@ -1,3 +1,4 @@
+import '../../assets/motion.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
@@ -8,6 +9,9 @@ import {
   disposePreview,
   configurePreview,
 } from './preview.js';
+
+const motion = window.CloudInkMotion;
+motion.mount();
 
 const $ = (id) => document.getElementById(id);
 const fields = ['title', 'description', 'date', 'slug', 'body'];
@@ -56,8 +60,11 @@ function notice(message, tone = 'info') {
   $('notice').dataset.tone = tone;
   $('notice').textContent = message;
   $('notice').classList.add('visible');
+  motion.enter($('notice'), { kind: 'toast' });
   clearTimeout(noticeTimer);
-  noticeTimer = setTimeout(() => $('notice').classList.remove('visible'), 6500);
+  noticeTimer = setTimeout(() => {
+    motion.exit($('notice'), { onFinish: () => $('notice').classList.remove('visible') });
+  }, 6500);
 }
 
 async function action(id, label, work, success = '') {
@@ -181,7 +188,12 @@ function view(name) {
     if (id === name) $(id).setAttribute('aria-current', 'page');
     else $(id).removeAttribute('aria-current');
   }
-  for (const id of ['home', 'editor', 'images', 'settings']) $(`${id}-view`).hidden = id !== name;
+  for (const id of ['home', 'editor', 'images', 'settings']) {
+    const section = $(`${id}-view`);
+    if (id !== name) motion.cancelWithin(section);
+    section.hidden = id !== name;
+  }
+  motion.enter($(`${name}-view`), { kind: 'content' });
   $('workspace-title').textContent = {
     home: '文章管理',
     editor: '写作与预览',

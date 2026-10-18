@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+      const motion = window.CloudInkMotion;
+      motion?.mount();
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const swup = typeof Swup === 'function' ? new Swup({
         animationSelector: reducedMotion.matches ? false : '[class*="transition-"]'
@@ -55,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('search-close')?.addEventListener('click', closeSearch);
         swup?.hooks.on('visit:start', () => {
+          motion?.cancelWithin(document.body);
+          document.querySelectorAll('.reader-dialog[open]').forEach(dialog => dialog.close());
           if (searchModal.classList.contains('active')) closeSearch();
         });
         searchModal.addEventListener('keydown', (event) => {
@@ -170,10 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (trigger?.isConnected) trigger.focus({ preventScroll: true });
           };
           dialog.addEventListener('close', finish, { once: true });
-          close.addEventListener('click', () => dialog.close());
-          dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+          const requestClose = () => motion ? motion.closeDialog(dialog) : dialog.close();
+          close.addEventListener('click', requestClose);
+          dialog.addEventListener('click', e => { if (e.target === dialog) requestClose(); });
           document.body.style.overflow = 'hidden';
-          dialog.showModal();
+          if (motion) motion.openDialog(dialog);
+          else dialog.showModal();
           close.focus();
           dialogs.add(dialog);
         };

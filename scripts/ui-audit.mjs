@@ -16,6 +16,8 @@ import {
 } from '../cloud-admin/node_modules/miniflare/dist/src/index.js';
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
+import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
+import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
 import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
 
 const output = resolve('build-work/ui-audit');
@@ -26,7 +28,7 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: 'ab8ad6c4bcee840c05d272c8e1187de3931521b2',
+  upstream: '449aff147172299e7d16f6dfc22873ce8f29c601',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local Miniflare, ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
@@ -37,9 +39,9 @@ const report = {
 };
 await mkdir(output, { recursive: true });
 const allowed = new Set(
-  ['tokens.css', 'style.css', 'app.js', 'index.html']
+  ['tokens.css', 'style.css', 'app.js', 'index.html', 'motion.html', 'motion.js']
     .map((p) => '/prototypes/ui-2.0/' + p)
-    .concat('/assets/cloudink.svg', '/assets/design-tokens.css'),
+    .concat('/assets/cloudink.svg', '/assets/design-tokens.css', '/assets/design-foundation.css', '/assets/motion.css', '/assets/motion.js'),
 );
 const server = createServer(async (request, response) => {
   const path = new URL(request.url, studyOrigin).pathname;
@@ -408,6 +410,7 @@ try {
     });
     report.browsers[engine] = browser.version();
     await verifyThemes(browser, origin, output, engine);
+    await verifyMotion(browser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
       for (const theme of themes) {
         const context = await browser.newContext({
@@ -514,6 +517,8 @@ try {
     'assets/design-tokens.css',
     'assets/design-foundation.css',
     'assets/theme.js',
+    'assets/motion.js',
+    'assets/motion.css',
     'prototypes/ui-2.0/index.html',
     'prototypes/ui-2.0/tokens.css',
     'prototypes/ui-2.0/style.css',
@@ -547,6 +552,10 @@ try {
     gzipSync(tokens).length + gzipSync(foundations).length <= 4096,
     'Shared CSS gzip budget',
   );
+  const motionJS = (await transform(await readFile('assets/motion.js', 'utf8'), { minify: true })).code;
+  const motionCSS = (await transform(await readFile('assets/motion.css', 'utf8'), { minify: true, loader: 'css' })).code;
+  report.assets['shared/motion.min.js+css'] = { gzip: gzipSync(motionJS).length + gzipSync(motionCSS).length };
+  assert.ok(report.assets['shared/motion.min.js+css'].gzip <= 4096, 'Motion runtime gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -556,6 +565,7 @@ try {
     '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
     'reduced motion',
+    'three-engine spring press, cancellation, dialog reversal, keyboard, reduced motion and WAAPI fallback',
     'search and library Escape/focus return',
     'editor view/state retention',
     'demo loading feedback',
@@ -565,7 +575,7 @@ try {
   // Artifact includes a self-contained folder hierarchy: open index.html after extracting.
   await mkdir(resolve(output, 'preview/prototypes/ui-2.0'), { recursive: true });
   await mkdir(resolve(output, 'preview/assets'), { recursive: true });
-  for (const name of ['index.html', 'tokens.css', 'style.css', 'app.js', 'README.md'])
+  for (const name of ['index.html', 'tokens.css', 'style.css', 'app.js', 'README.md', 'motion.html', 'motion.js'])
     await copyFile(
       resolve('prototypes/ui-2.0', name),
       resolve(output, 'preview/prototypes/ui-2.0', name),
@@ -575,6 +585,8 @@ try {
     resolve('assets/design-tokens.css'),
     resolve(output, 'preview/assets/design-tokens.css'),
   );
+  for (const name of ['design-foundation.css', 'motion.css', 'motion.js'])
+    await copyFile(resolve('assets', name), resolve(output, 'preview/assets', name));
   const pairs = new Map();
   for (const sample of report.samples) {
     const key = [sample.screen, sample.width, sample.theme, sample.engine].join('-');
@@ -614,7 +626,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 共享主题审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 共享动效审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +

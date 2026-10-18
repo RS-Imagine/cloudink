@@ -57,7 +57,7 @@ export function configureImages({
       preview.addEventListener('click', () => {
         $('image-preview-title').textContent = image.name;
         $('image-preview-full').src = thumbnail.src;
-        $('image-preview-dialog').showModal();
+        window.CloudInkMotion.openDialog($('image-preview-dialog'));
       });
       const body = document.createElement('div');
       body.className = 'image-card-body';
@@ -203,10 +203,10 @@ export function configureImages({
   $('image-library-search').addEventListener('input', render);
   $('image-library-unused').addEventListener('change', render);
   $('image-library-back').addEventListener('click', () => open(true));
-  $('image-preview-close').addEventListener('click', () => $('image-preview-dialog').close());
-  $('image-preview-dialog').addEventListener('close', () =>
-    $('image-preview-full').removeAttribute('src'),
-  );
+  $('image-preview-close').addEventListener('click', () => window.CloudInkMotion.closeDialog($('image-preview-dialog')));
+  $('image-preview-dialog').addEventListener('close', () => {
+    if (!$('image-preview-dialog').open) $('image-preview-full').removeAttribute('src');
+  });
   $('image-library-upload').addEventListener('click', () => $('image-library-files').click());
   $('image-library-files').addEventListener('change', async (event) => {
     const files = [...event.target.files];
