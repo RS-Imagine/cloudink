@@ -447,7 +447,7 @@ html.is-animating .transition-fade {
 .article-body img:focus-visible, .article-body pre:focus-visible, .article-body table:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 4px;
 }
-.reader-dialog { max-width: 94vw; max-height: 94dvh; padding: 52px 20px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper-solid); color: var(--text); }
+.reader-dialog { min-width: min(240px, 94vw); max-width: 94vw; max-height: 94dvh; padding: 52px 20px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--paper-solid); color: var(--text); }
 .reader-dialog::backdrop { background: rgba(0,0,0,.75); }
 .reader-dialog img { display: block; max-width: 86vw; max-height: 75dvh; object-fit: contain; margin: auto; }
 .reader-dialog-close { position: absolute; right: 12px; top: 12px; padding: 8px 12px; cursor: pointer; color: var(--text); background: var(--paper-strong); border: 1px solid var(--border); border-radius: 6px; }
