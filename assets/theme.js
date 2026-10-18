@@ -25,7 +25,7 @@
     });
     document.querySelectorAll('[data-theme-toggle],#theme-toggle-btn').forEach((button) => {
       const label = dark ? '切换到浅色模式' : '切换到深色模式';
-      if (button.hasAttribute('data-theme-toggle'))
+      if (button.hasAttribute('data-theme-toggle') && !button.hasAttribute('data-icon-only'))
         button.textContent = dark ? '浅色模式' : '深色模式';
       button.setAttribute('aria-label', label);
     });

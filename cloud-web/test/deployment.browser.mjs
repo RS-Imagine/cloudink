@@ -277,6 +277,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: resolve('cloud-web/dist/settings.mobile.png'), fullPage: true });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.locator('#studio-tools summary').click();
   await page.locator('#logout').click();
   await expect(page.locator('#login-view')).toBeVisible();
   await expect(page.locator('#setup-view')).toBeHidden();

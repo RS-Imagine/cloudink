@@ -17,23 +17,24 @@ import {
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
 import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
+import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
 import { verifyHome } from '../cloud-web/test/home.browser.mjs';
 import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
 import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
 
 const output = resolve('build-work/ui-audit');
-const origin = 'http://127.0.0.1:8795';
+const origin = 'https://127.0.0.1:8795';
 const studyOrigin = 'http://127.0.0.1:8796';
 const widths = [1440, 390, 360];
 const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: 'd85f04ba0f7eba40b6ad857d6a657bbd5b47a629',
+  upstream: 'b7e656aeb4aaa806982fd7aeac5e497077d02a83',
   revision: process.env.GITHUB_SHA || 'local',
   method:
-    'Local Miniflare, ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
+    'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
   browsers: {},
   assets: {},
   samples: [],
@@ -75,7 +76,7 @@ const server = createServer(async (request, response) => {
 });
 await new Promise((done) => server.listen(8796, '127.0.0.1', done));
 const mf = new Miniflare(
-  convertV4MiniflareOptions({ ...workerOptions(), host: '127.0.0.1', port: 8795 }),
+  convertV4MiniflareOptions({ ...workerOptions(), host: '127.0.0.1', port: 8795, https: true }),
 );
 let browser;
 const errors = [];
@@ -243,6 +244,7 @@ try {
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
   report.browsers.chromium = browser.version();
   const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 },
     colorScheme: 'light',
   });
@@ -284,6 +286,7 @@ try {
   });
   // Generate real Rust/WASM pages through the local publication UI.
   for (const post of demoPosts.slice(0, 3)) {
+    await openPostSwitcher(admin);
     await admin.locator('.post-item').filter({ hasText: post.title }).click();
     await expect(admin.locator('#title')).toHaveValue(post.title);
     if (post.slug === 'slow-days') {
@@ -315,6 +318,7 @@ try {
         );
         if (screen === 'editor') {
           await expect(page.locator('#home-view')).toBeVisible();
+          await openPostSwitcher(page);
           await page.locator('.post-item').filter({ hasText: demoPosts[0].title }).click();
           if (width >= 1100)
             await page
@@ -377,6 +381,7 @@ try {
   for (const width of [1440, 390])
     for (const theme of themes) {
       const loginContext = await browser.newContext({
+        ignoreHTTPSErrors: true,
         viewport: { width, height: width === 1440 ? 1000 : 844 },
         colorScheme: theme,
       });
@@ -417,10 +422,16 @@ try {
       ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
     });
     report.browsers[engine] = browser.version();
-    await verifyHome(browser, origin, output, engine);
-    await verifyReader(browser, origin, output, engine);
-    await verifyThemes(browser, origin, output, engine);
-    await verifyMotion(browser, origin, output, engine);
+    // Accept only the local fixture certificate; keep Secure/HttpOnly cookies intact.
+    const currentBrowser = browser;
+    const localBrowser = {
+      newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
+    };
+    await verifyStudio(localBrowser, origin, output, engine);
+    await verifyHome(localBrowser, origin, output, engine);
+    await verifyReader(localBrowser, origin, output, engine);
+    await verifyThemes(localBrowser, origin, output, engine);
+    await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
       for (const theme of themes) {
         const context = await browser.newContext({
@@ -522,6 +533,7 @@ try {
     'build-work/web-public/styles.css',
     'cloud-admin/ui/app.generated.js',
     'cloud-admin/ui/style.css',
+    'cloud-admin/ui/studio.css',
     'cloud-admin/ui/preview.worker.generated.js',
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm',
     'assets/design-tokens.css',
@@ -589,6 +601,14 @@ try {
   ).code;
   report.assets['reader/reading.min.css'] = { gzip: gzipSync(readerCSSMin).length };
   assert.ok(report.assets['reader/reading.min.css'].gzip <= 4096, 'Reading CSS gzip budget');
+  const studioCSS = (
+    await transform(await readFile('cloud-admin/ui/studio.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
+  ).code;
+  report.assets['admin/studio.min.css'] = { gzip: gzipSync(studioCSS).length };
+  assert.ok(report.assets['admin/studio.min.css'].gzip <= 4096, 'Studio shell CSS gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -598,6 +618,7 @@ try {
     '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
     'reduced motion',
+    'three-engine studio shell, filters, native disclosures, guarded draft navigation, login and setup steps',
     'three-engine reader layout, TOC focus/anchors, search keyboard/loading/retry, history and no-script article',
     'three-engine reader home, native mobile menu, aria-current, skip link, long text and no-script navigation',
     'three-engine spring press, cancellation, dialog reversal, keyboard, reduced motion and WAAPI fallback',
@@ -669,7 +690,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 阅读与搜索审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 后台布局审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +

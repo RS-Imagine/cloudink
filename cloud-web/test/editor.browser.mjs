@@ -1,3 +1,4 @@
+import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
 import {
   Miniflare,
@@ -87,6 +88,7 @@ try {
   await page.locator('#home-view').waitFor({ state: 'visible' });
   await expect(page.locator('#site-link')).toHaveAttribute('href', 'http://localhost:8788');
   await expect(page.locator('#site-brand-title')).toHaveText('Test blog');
+  await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#title')).toHaveValue('alpha');
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
@@ -127,12 +129,14 @@ try {
   await expect(page.locator('#notice')).toContainText('草稿已保存');
   assert.equal(counts.list, initialLists, 'Saving must not refetch the entire article list');
   await page.locator('#body').fill('Latest alpha content');
+  await openPostSwitcher(page);
   const start = Date.now();
   await page.locator('.post-item').filter({ hasText: 'beta' }).click();
   await expect(page.locator('#navigation-status')).toBeVisible();
   await expect(page.locator('#title')).toHaveValue('beta');
   const uncachedMs = Date.now() - start;
   assert.ok(uncachedMs < 1600, `save/fetch should overlap: ${uncachedMs}ms`);
+  await openPostSwitcher(page);
   const cachedStart = Date.now();
   await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#title')).toHaveValue('alpha');
@@ -140,7 +144,9 @@ try {
   assert.ok(cachedMs < 600, `cached switch should not wait for network: ${cachedMs}ms`);
   await expect(page.locator('#body')).toHaveValue('Latest alpha content');
   // Rapid selection must leave the last selected article visible.
+  await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'gamma' }).click();
+  await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'beta' }).click();
   await expect(page.locator('#title')).toHaveValue('beta');
   await sleep(900);
@@ -198,9 +204,14 @@ try {
   await page.locator('#save-post').click();
   await expect(page.locator('#notice')).toContainText('另一个窗口');
   await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
+  await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#notice')).toContainText('云端冲突');
   await expect(page.locator('#title')).toHaveValue('beta');
+  await page.locator('#dashboard-nav').click();
+  await expect(page.locator('#editor-view')).toBeVisible();
+  await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
+  await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
   await page.screenshot({ path: resolve('cloud-web/dist/editor.browser.png'), fullPage: true });
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(

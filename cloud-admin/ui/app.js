@@ -1,4 +1,5 @@
 import '../../assets/motion.js';
+import { mountStudioShell } from './shell.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
@@ -12,6 +13,8 @@ import {
 
 const motion = window.CloudInkMotion;
 motion.mount();
+const shell = mountStudioShell();
+let postFilter = 'all';
 
 const $ = (id) => document.getElementById(id);
 const fields = ['title', 'description', 'date', 'slug', 'body'];
@@ -173,6 +176,8 @@ async function api(path, options = {}) {
   return data;
 }
 function showLogin() {
+  shell.close();
+  $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
   if ($('image-preview-dialog').open) $('image-preview-dialog').close();
   clearTimeout(autosaveTimer);
@@ -186,22 +191,35 @@ function showLogin() {
   disposePreview();
 }
 function view(name) {
-  for (const id of ['images', 'settings']) {
-    if (id === name) $(id).setAttribute('aria-current', 'page');
-    else $(id).removeAttribute('aria-current');
+  const sectionName = name === 'posts' ? 'home' : name;
+  const fromNavigation = document.activeElement?.closest(
+    '.studio-nav,#post-list,[data-studio-shortcut]',
+  );
+  shell.close();
+  $('app-view').dataset.view = name;
+  for (const button of document.querySelectorAll('[data-studio-nav]')) {
+    const selected =
+      button.dataset.studioNav === (name === 'editor' || name === 'posts' ? 'articles' : name);
+    if (selected) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
   }
   for (const id of ['home', 'editor', 'images', 'settings']) {
-    const section = $(`${id}-view`);
-    if (id !== name) motion.cancelWithin(section);
-    section.hidden = id !== name;
+    const section = $(id + '-view');
+    if (id !== sectionName) motion.cancelWithin(section);
+    section.hidden = id !== sectionName;
+    section.tabIndex = -1;
   }
-  motion.enter($(`${name}-view`), { kind: 'content' });
+  $('article-browser').hidden = !['home', 'posts', 'editor'].includes(name);
+  $('posts-title').hidden = name !== 'posts';
+  motion.enter($(sectionName + '-view'), { kind: 'content' });
   $('workspace-title').textContent = {
-    home: '文章管理',
-    editor: '写作与预览',
+    home: '工作台',
+    posts: '所有文章',
+    editor: '文章编辑',
     settings: '网站设置',
     images: '图片库',
   }[name];
+  if (fromNavigation) $(sectionName + '-view').focus({ preventScroll: true });
 }
 async function signedIn(session) {
   await configReady;
@@ -210,6 +228,7 @@ async function signedIn(session) {
   $('setup-view').hidden = true;
   $('login-view').hidden = true;
   $('app-view').hidden = false;
+  $('studio-skip').hidden = false;
   $('account-email').textContent = session.email;
   $('account-form').elements.email.value = session.email;
   await refresh();
@@ -223,6 +242,8 @@ $('login-form').addEventListener('submit', async (e) => {
   const form = e.currentTarget;
   $('login-error').textContent = '';
   $('login-submit').disabled = true;
+  $('login-submit').setAttribute('aria-busy', 'true');
+  $('login-submit').textContent = '正在登录…';
   try {
     await signedIn(
       await api('/api/login', {
@@ -235,6 +256,8 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-error').textContent = error.message;
   } finally {
     $('login-submit').disabled = false;
+    $('login-submit').removeAttribute('aria-busy');
+    $('login-submit').textContent = '登录';
   }
 });
 api('/api/session')
@@ -250,6 +273,7 @@ function setupStep(siteStep) {
   if (siteStep) $('setup-progress-site').setAttribute('aria-current', 'step');
   else $('setup-progress-account').setAttribute('aria-current', 'step');
   $('setup-error').textContent = '';
+  motion.enter($(siteStep ? 'setup-site-step' : 'setup-account-step'), { kind: 'content' });
   $('setup-form').elements[siteStep ? 'title' : 'token'].focus();
 }
 $('setup-next').addEventListener('click', () => {
@@ -315,6 +339,10 @@ function renderLists() {
   const query = $('search').value.trim().toLowerCase();
   const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
   $('post-count').textContent = posts.length;
+  document.querySelector('[data-post-count]').textContent = posts.length;
+  for (const button of document.querySelectorAll('[data-post-filter]'))
+    button.setAttribute('aria-pressed', String(button.dataset.postFilter === postFilter));
+  let shown = 0;
   $('summary').textContent =
     `${posts.filter((p) => p.published).length} 篇已发布 · ${posts.filter((p) => !p.published).length} 篇草稿`;
   $('post-list').replaceChildren();
@@ -335,6 +363,12 @@ function renderLists() {
       openPost(post.slug).catch((error) => notice(error.message)),
     );
     $('post-list').append(button);
+    if (
+      (postFilter === 'published' && !post.published) ||
+      (postFilter === 'draft' && post.published)
+    )
+      continue;
+    shown++;
     const card = document.createElement('button');
     card.className = 'article-card';
     const tag = document.createElement('span');
@@ -346,7 +380,11 @@ function renderLists() {
     p.textContent = post.description || '没有摘要';
     const date = document.createElement('small');
     date.textContent = post.date;
-    card.append(tag, h, p, date);
+    const arrow = document.createElement('span');
+    arrow.className = 'article-card-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '→';
+    card.append(tag, h, p, date, arrow);
     card.addEventListener('pointerenter', () => prefetchArticle(post.slug));
     card.addEventListener('focus', () => prefetchArticle(post.slug));
     card.addEventListener('click', () =>
@@ -354,11 +392,36 @@ function renderLists() {
     );
     $('article-grid').append(card);
   }
-  if (!posts.length) {
-    const empty = document.createElement('p');
-    empty.className = 'muted';
-    empty.textContent = '还没有文章，从新建或导入原稿开始。';
+  if (!shown) {
+    const empty = document.createElement('div');
+    empty.className = 'studio-empty';
+    const title = document.createElement('h3'),
+      text = document.createElement('p');
+    title.textContent = posts.length ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
+    text.textContent = posts.length
+      ? '换一个关键词，或查看全部文章。'
+      : '点击“新文章”开始写作，也可以从更多操作导入原稿。';
+    empty.append(title, text);
+    if (posts.length) {
+      const reset = document.createElement('button');
+      reset.textContent = '清除筛选';
+      reset.addEventListener('click', () => {
+        $('search').value = '';
+        postFilter = 'all';
+        renderLists();
+        $('search').focus();
+      });
+      empty.append(reset);
+    }
     $('article-grid').append(empty);
+  }
+  if (!$('post-list').childElementCount) {
+    const empty = document.createElement('p');
+    empty.className = 'studio-list-empty';
+    empty.textContent = posts.length
+      ? '没有匹配的文章，请修改搜索关键词。'
+      : '还没有文章，先开始新文章。';
+    $('post-list').append(empty);
   }
 }
 async function refresh() {
@@ -368,6 +431,9 @@ async function refresh() {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
+  $('home-heading').textContent = data.site.author
+    ? '你好，' + data.site.author + '。'
+    : '从一个想法开始。';
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
     if (!post || (post.etag && post.etag !== cached.etag)) articleCache.delete(slug);
@@ -567,8 +633,7 @@ async function newPost() {
 for (const id of ['new-post', 'home-new'])
   $(id).addEventListener('click', () => newPost().catch((error) => notice(error.message)));
 $('search').addEventListener('input', renderLists);
-document.querySelector('.brand').addEventListener('click', async (e) => {
-  e.preventDefault();
+async function returnToList(name = 'home') {
   if (editorLocked) return;
   const version = ++navigationVersion;
   try {
@@ -577,12 +642,25 @@ document.querySelector('.brand').addEventListener('click', async (e) => {
     invalidatePreview(true);
     navigationStatus();
     doc = null;
-    view('home');
+    view(name);
     renderLists();
   } catch (error) {
     notice(error.message);
   }
+}
+document.querySelector('.brand').addEventListener('click', (event) => {
+  event.preventDefault();
+  void returnToList();
 });
+$('dashboard-nav').addEventListener('click', () => void returnToList());
+$('articles-nav').addEventListener('click', () => void returnToList('posts'));
+$('post-filters').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-post-filter]');
+  if (!button) return;
+  postFilter = button.dataset.postFilter;
+  renderLists();
+});
+
 async function manualSave() {
   if (editorLocked) return;
   await action(
