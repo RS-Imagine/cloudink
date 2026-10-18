@@ -290,7 +290,7 @@ fn page(
 
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
-        r#"<body>
+        r##"<body>
   <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
   <div class="wrapper reader-layout">
     <header class="site-header reader-header">
@@ -330,7 +330,7 @@ fn page(
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://unpkg.com/swup@4"></script>
   <script src="/client.js?v={client_hash}"></script>
-"#,
+"##,
         palette = palette,
         site_title = escape_html(site_title),
         body = body,

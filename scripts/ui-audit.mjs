@@ -570,7 +570,12 @@ try {
     gzip: gzipSync(motionJS).length + gzipSync(motionCSS).length,
   };
   assert.ok(report.assets['shared/motion.min.js+css'].gzip <= 4096, 'Motion runtime gzip budget');
-  const homeCSS = (await transform(await readFile('crates/blog-core/src/assets/home.css', 'utf8'), { minify: true, loader: 'css' })).code;
+  const homeCSS = (
+    await transform(await readFile('crates/blog-core/src/assets/home.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
+  ).code;
   report.assets['reader/home.min.css'] = { gzip: gzipSync(homeCSS).length };
   assert.ok(report.assets['reader/home.min.css'].gzip <= 3072, 'Home CSS gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));

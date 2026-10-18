@@ -78,7 +78,8 @@ test('new reader masthead preserves the full site name in response metadata', as
   const f = await fixture(t);
   await f.login();
   const release = await f.prepare();
-  const html = '<!doctype html><html><head><title>Article</title><meta name="description" content="Notes"></head><body>' +
+  const html =
+    '<!doctype html><html><head><title>Article</title><meta name="description" content="Notes"></head><body>' +
     '<a class="site-brand"><span class="site-mark"></span><span class="site-title">Notes &amp; Ideas</span></a>' +
     '<main id="swup"><h1>Article</h1></main></body></html>';
   await f.stage(release, [], html);
