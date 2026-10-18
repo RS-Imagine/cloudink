@@ -42,6 +42,8 @@ for (const [path, file, type] of paths) {
       await readFile(new URL('../assets/design-foundation.css', root)),
       Buffer.from('\n'),
       await readFile(new URL('../assets/motion.css', root)),
+      Buffer.from('\n'),
+      await readFile(new URL('ui/studio.css', root)),
     ]);
   }
   assets[path] = {
