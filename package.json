@@ -10,7 +10,10 @@
     "check": "npm run types && npm --prefix cloud-admin run check",
     "format": "prettier --write cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
     "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
-    "dev": "wrangler dev"
+    "dev": "wrangler dev",
+    "test:ui:audit": "node scripts/ui-audit.mjs",
+    "format:ui": "prettier --write prototypes/ui-2.0 docs/design scripts/ui-audit.mjs",
+    "format:ui:check": "prettier --check prototypes/ui-2.0 docs/design scripts/ui-audit.mjs"
   },
   "devDependencies": {
     "prettier": "3.9.9",

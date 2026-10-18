@@ -49,3 +49,38 @@ jobs:
           name: browser-screenshots
           path: cloud-web/dist/*.png
           if-no-files-found: ignore
+
+  ui-audit:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            cloud-admin/package-lock.json
+      - name: Install project tools
+        run: npm ci
+      - name: Check design source formatting
+        run: npm run format:ui:check
+      - name: Build isolated UI fixture
+        run: npm run build
+      - name: Bundle local Worker without deploying
+        run: npx wrangler deploy --dry-run --outdir cloud-web/dist
+      - name: Install three browser engines
+        working-directory: cloud-admin
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Capture baselines and verify UI study
+        run: npm run test:ui:audit
+      - name: Save UI review, screenshots and measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-design-review
+          retention-days: 90
+          path: build-work/ui-audit
+          if-no-files-found: ignore
