@@ -667,4 +667,52 @@ document.addEventListener('DOMContentLoaded', () => {
         initPageFeatures(visit);
         if (!visit.history.popstate) document.getElementById('swup')?.focus({ preventScroll: true });
       });
+
+      // Restore only after AJAX content exists: native restoration can run before replacement.
+      if (swup && 'scrollRestoration' in history) {
+        const previousRestoration = history.scrollRestoration;
+        const positions = new Map();
+        let currentIndex = history.state?.index, busy = false, restoreFrame = 0;
+        const remember = () => {
+          if (busy || !Number.isInteger(currentIndex)) return;
+          let position = positions.get(currentIndex);
+          if (!position) {
+            position = { x: 0, y: 0 };
+            positions.set(currentIndex, position);
+            if (positions.size > 100) positions.delete(positions.keys().next().value);
+          }
+          position.x = scrollX;
+          position.y = scrollY;
+        };
+        history.scrollRestoration = 'manual';
+        remember();
+        window.addEventListener('scroll', remember, { passive: true });
+        swup.hooks.on('visit:start', () => {
+          remember();
+          busy = true;
+          cancelAnimationFrame(restoreFrame);
+        });
+        swup.hooks.on('page:view', visit => {
+          currentIndex = history.state?.index;
+          const position = visit.history.popstate ? positions.get(currentIndex) : null;
+          if (!visit.history.popstate) positions.delete(currentIndex);
+          const restore = () => {
+            if (swup.visit.id !== visit.id) return;
+            if (position) window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+            busy = false;
+            remember();
+          };
+          if (position) window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+          // A second frame also covers Firefox's post-popstate layout.
+          restoreFrame = requestAnimationFrame(restore);
+        });
+        swup.hooks.on('visit:abort', () => cancelAnimationFrame(restoreFrame));
+        swup.hooks.on('disable', () => {
+          cancelAnimationFrame(restoreFrame);
+          window.removeEventListener('scroll', remember);
+          history.scrollRestoration = previousRestoration;
+        });
+        window.addEventListener('pagehide', () => { history.scrollRestoration = previousRestoration; });
+        window.addEventListener('pageshow', () => { history.scrollRestoration = 'manual'; });
+      }
     });
