@@ -66,7 +66,14 @@ jobs:
       - name: Install project tools
         run: npm ci
       - name: Check design source formatting
-        run: npm run format:ui:check
+        run: |
+          npm run format:ui
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const paths = ["prototypes/ui-2.0/tokens.css","prototypes/ui-2.0/index.html","prototypes/ui-2.0/style.css","prototypes/ui-2.0/app.js","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/design/UI-2.0-AUDIT.md","prototypes/ui-2.0/README.md"];
+          for (const path of paths) console.log('UI_FORMAT_SOURCE ' + JSON.stringify({ path, content: await readFile(path, 'utf8') }));
+          NODE
+          npm run format:ui:check
       - name: Build isolated UI fixture
         run: npm run build
       - name: Bundle local Worker without deploying
