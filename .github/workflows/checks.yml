@@ -65,18 +65,8 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Prepare design formatting review
-        run: |
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          import * as prettier from 'prettier';
-          const paths = ["prototypes/ui-2.0/tokens.css","prototypes/ui-2.0/index.html","prototypes/ui-2.0/style.css","prototypes/ui-2.0/app.js","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/design/UI-2.0-AUDIT.md","prototypes/ui-2.0/README.md"];
-          for (const path of paths) {
-            const options = await prettier.resolveConfig(path);
-            const content = await prettier.format(await readFile(path, 'utf8'), { ...options, filepath: path });
-            console.log('UI_FORMAT_SOURCE ' + JSON.stringify({ path, content }));
-          }
-          NODE
+      - name: Check design source formatting
+        run: npm run format:ui:check
       - name: Build isolated UI fixture
         run: npm run build
       - name: Bundle local Worker without deploying
@@ -91,5 +81,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-design-review
+          retention-days: 90
           path: build-work/ui-audit
           if-no-files-found: ignore

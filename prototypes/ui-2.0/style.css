@@ -39,6 +39,7 @@ h2,
 h3,
 p {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 h1,
 h2,
@@ -524,6 +525,7 @@ button:disabled {
   margin-top: 3px;
 }
 .article-body {
+  overflow-wrap: anywhere;
   font: 18px/1.95 var(--ci-font-reading);
 }
 .article-body p {

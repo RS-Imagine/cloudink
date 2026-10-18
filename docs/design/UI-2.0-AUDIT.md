@@ -6,29 +6,29 @@
 
 ## 页面、组件与工作流清单
 
-| 区域 | 当前实现与需要保留的行为 | 后续设计阶段 |
-| --- | --- | --- |
-| 首页/Header/页脚/关于/404 | render.rs 生成完整 HTML，首页文章列表，关于可关闭；正文无 JS 可读 | PR-03/04 |
-| 文章页 | article-shell 与 article-body，Rust Markdown/KaTeX；首图 eager，后图 lazy | PR-04 |
-| 主题 | 公共 styles.css 与后台 style.css 各有明暗颜色表；共同使用 localStorage 的 theme | PR-01 |
-| 页面导航 | client.js 建 Swup；page:view 重建页内功能，cleanupFunctions 清理监听；减少动态效果关闭过渡 | PR-02/04 |
-| 搜索 | 自定义 role=dialog + inert，打开聚焦输入，Esc 与焦点循环，异步加载索引 | PR-04 |
-| 目录 | 动态标题 ID、IntersectionObserver/滚动跟踪；≤1300px 为可关闭抽屉 | PR-04/07 |
-| 图片放大/分享 | 原生 dialog，Esc/关闭按钮、返回触发焦点、背景锁定；链接图片保留作者动作 | PR-04 |
-| 代码/表格 | 代码复制与状态文本；pre/table 可键盘横向滚动 | PR-04 |
-| 登录 | login-view，邮箱/密码与错误区；async 会话检查，不应动画中闪出已登录工作区 | PR-05 |
-| 首次设置 | 两步 fieldset、必填验证、返回、初始化口令；完成后在浏览器生成首页 | PR-05 |
-| 后台壳/文章首页 | 左侧文章选择与下方图片/设置/导入导出入口；主区显示文章管理 | PR-05 |
-| 编辑器 | 标题/摘要/日期/slug、正文/预览、字数；窄屏切换面板 | PR-06 |
-| 自动保存/并发保护 | 1500ms 防抖，ETag 冲突保留输入；dirty/savedVersion、savePromise 与导航版本保护 | PR-06：禁止改业务语义 |
-| 预览 | Worker/WASM，350ms 防抖；iframe 无脚本，图片异步解析，主题原地同步 | PR-06 |
-| 发布 | 单篇/站点分开、pending 状态、aria-busy、浏览器生成上传与版本提交 | PR-06：禁止改流程 |
-| 图片库 | 多图上传、搜索/引用筛选、预览、复制/插入、引用保护、真实删除与分页 | PR-06/07 |
-| 网站设置 | 信息/外观/关于/可选统计；保存与发布分开 | PR-06 |
-| 账号 | 当前密码验证、修改邮箱或密码、其他会话失效 | PR-06 |
-| 备份恢复 | ZIP 下载；恢复草稿，不覆盖线上指针；进度/错误保留 | PR-06 |
-| 异步通知/确认 | action() 禁重入、aria-busy、notice 状态；部分危险操作用原生 confirm | PR-02/06 |
-| 手机/辅助功能 | 后台 650/760/1099px，前台 720/1300px 等断点；焦点、Esc、减少动态效果已有基础 | PR-01/07/09 |
+| 区域                      | 当前实现与需要保留的行为                                                                   | 后续设计阶段          |
+| ------------------------- | ------------------------------------------------------------------------------------------ | --------------------- |
+| 首页/Header/页脚/关于/404 | render.rs 生成完整 HTML，首页文章列表，关于可关闭；正文无 JS 可读                          | PR-03/04              |
+| 文章页                    | article-shell 与 article-body，Rust Markdown/KaTeX；首图 eager，后图 lazy                  | PR-04                 |
+| 主题                      | 公共 styles.css 与后台 style.css 各有明暗颜色表；共同使用 localStorage 的 theme            | PR-01                 |
+| 页面导航                  | client.js 建 Swup；page:view 重建页内功能，cleanupFunctions 清理监听；减少动态效果关闭过渡 | PR-02/04              |
+| 搜索                      | 自定义 role=dialog + inert，打开聚焦输入，Esc 与焦点循环，异步加载索引                     | PR-04                 |
+| 目录                      | 动态标题 ID、IntersectionObserver/滚动跟踪；≤1300px 为可关闭抽屉                           | PR-04/07              |
+| 图片放大/分享             | 原生 dialog，Esc/关闭按钮、返回触发焦点、背景锁定；链接图片保留作者动作                    | PR-04                 |
+| 代码/表格                 | 代码复制与状态文本；pre/table 可键盘横向滚动                                               | PR-04                 |
+| 登录                      | login-view，邮箱/密码与错误区；async 会话检查，不应动画中闪出已登录工作区                  | PR-05                 |
+| 首次设置                  | 两步 fieldset、必填验证、返回、初始化口令；完成后在浏览器生成首页                          | PR-05                 |
+| 后台壳/文章首页           | 左侧文章选择与下方图片/设置/导入导出入口；主区显示文章管理                                 | PR-05                 |
+| 编辑器                    | 标题/摘要/日期/slug、正文/预览、字数；窄屏切换面板                                         | PR-06                 |
+| 自动保存/并发保护         | 1500ms 防抖，ETag 冲突保留输入；dirty/savedVersion、savePromise 与导航版本保护             | PR-06：禁止改业务语义 |
+| 预览                      | Worker/WASM，350ms 防抖；iframe 无脚本，图片异步解析，主题原地同步                         | PR-06                 |
+| 发布                      | 单篇/站点分开、pending 状态、aria-busy、浏览器生成上传与版本提交                           | PR-06：禁止改流程     |
+| 图片库                    | 多图上传、搜索/引用筛选、预览、复制/插入、引用保护、真实删除与分页                         | PR-06/07              |
+| 网站设置                  | 信息/外观/关于/可选统计；保存与发布分开                                                    | PR-06                 |
+| 账号                      | 当前密码验证、修改邮箱或密码、其他会话失效                                                 | PR-06                 |
+| 备份恢复                  | ZIP 下载；恢复草稿，不覆盖线上指针；进度/错误保留                                          | PR-06                 |
+| 异步通知/确认             | action() 禁重入、aria-busy、notice 状态；部分危险操作用原生 confirm                        | PR-02/06              |
+| 手机/辅助功能             | 后台 650/760/1099px，前台 720/1300px 等断点；焦点、Esc、减少动态效果已有基础               | PR-01/07/09           |
 
 源码入口：
 
@@ -50,7 +50,7 @@
 
 ## 截图与性能生成方式
 
-~~~sh
+```sh
 npm ci
 npm run build
 npm run check
@@ -59,7 +59,7 @@ cd cloud-admin
 npx playwright install --with-deps chromium firefox webkit
 cd ..
 npm run test:ui:audit
-~~~
+```
 
 scripts/ui-audit.mjs：
 
@@ -98,14 +98,14 @@ PR-00 不引用原型进入生产构建，正式依赖、资源与业务路径�
 
 基准源码 UTF-8 字节（构建值见报告）：
 
-| 文件 | 字节 |
-| --- | ---: |
+| 文件                                   |  字节 |
+| -------------------------------------- | ----: |
 | crates/blog-core/src/assets/styles.css | 19795 |
-| crates/blog-core/src/assets/client.js | 25683 |
-| cloud-admin/ui/style.css | 22059 |
-| cloud-admin/ui/app.js | 34915 |
-| cloud-web/theme.js | 550 |
-| cloud-admin/ui/admin-theme.js | 1193 |
+| crates/blog-core/src/assets/client.js  | 25683 |
+| cloud-admin/ui/style.css               | 22059 |
+| cloud-admin/ui/app.js                  | 34915 |
+| cloud-web/theme.js                     |   550 |
+| cloud-admin/ui/admin-theme.js          |  1193 |
 
 后续还需多次冷/热加载、4× CPU 限速、真实 iOS Safari/Android Chrome、
 5 分钟交互、软键盘、低端设备与 CSS 回退验证。

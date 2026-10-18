@@ -106,3 +106,11 @@ npm run test:web:browser
 测试使用本地临时 R2，覆盖初始化、账号、单桶隔离、备份恢复、发布失败与并发、设置、图片、预览及浏览器完整流程。截图与测试 ZIP 写入被忽略的 `dist/`，不提交仓库。GitHub Actions 对 PR 执行同一套检查，不部署云端资源，也不使用生产凭据。
 
 格式化使用 `npm run format`。改动 Worker 绑定后重新生成类型。提交前检查 `git diff --check`，并核对暂存文件，仅包含项目源代码、通用配置、文档和必要测试。
+
+## UI 2.0 设计审阅
+
+[执行计划](design/UI-2.0-PLAN.md)、[设计规范](design/UI-2.0-SYSTEM.md)与[现状审计](design/UI-2.0-AUDIT.md)记录分阶段 UI 升级。PR-00 的[四页交互原型](../prototypes/ui-2.0/README.md)独立于正式构建，使用通用演示内容。
+
+完成项目构建后，安装 Playwright 的 Chromium、Firefox、WebKit，再运行 `npm run test:ui:audit`。截图对比、资源与实验性能报告生成在 `build-work/ui-audit`；CI 保存为 `ui-design-review` 附件。`npm run format:ui:check` 检查设计原型、规范与审计脚本格式。
+
+实验不连接生产 R2，也不能替代真实 Safari、真机性能或人工视觉验收。每个设计阶段经确认后再接入正式界面。
