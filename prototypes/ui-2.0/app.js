@@ -336,7 +336,7 @@ const views = { home, article, dashboard, editor };
 function route() {
   clearTimeout(saveTimer);
   const id = location.hash.slice(1);
-  if (!views[id] && current === 'article' && document.getElementById(id)) return;
+  if (!views[id] && current && document.getElementById(id)) return;
   const view = views[id] ? id : 'home';
   const from = current;
   current = view;
@@ -419,11 +419,9 @@ document.addEventListener('click', (event) => {
   }
   if (element.hasAttribute('data-anchor')) {
     event.preventDefault();
-    document
-      .getElementById(element.dataset.anchor)
-      .scrollIntoView({
-        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-      });
+    document.getElementById(element.dataset.anchor).scrollIntoView({
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
   }
   if (element.id === 'demo-save' || element.id === 'demo-publish') {
     clearTimeout(saveTimer);

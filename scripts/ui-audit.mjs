@@ -273,13 +273,11 @@ try {
     await admin.locator('.post-item').filter({ hasText: post.title }).click();
     await expect(admin.locator('#title')).toHaveValue(post.title);
     if (post.slug === 'slow-days') {
-      await admin
-        .locator('#image-files')
-        .setInputFiles({
-          name: '山间来信.png',
-          mimeType: 'image/png',
-          buffer: Buffer.from(imageData, 'base64'),
-        });
+      await admin.locator('#image-files').setInputFiles({
+        name: '山间来信.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(imageData, 'base64'),
+      });
       await expect(admin.locator('#notice')).toContainText('图片已上传');
     }
     await admin.locator('#publish-post').click();
@@ -345,7 +343,7 @@ try {
       if (width !== 360)
         for (const [screen, path] of [
           ['about', '/about/'],
-          ['not-found', '/missing-design-page/'],
+          ['not-found', '/posts/missing-design-page/'],
         ]) {
           await page.goto(origin + path);
           await expect(page.locator('h1').last()).toBeVisible();
@@ -477,6 +475,9 @@ try {
     const page = await motionContext.newPage();
     await page.goto(studyOrigin + '/prototypes/ui-2.0/index.html#editor');
     await page.locator('#demo-body').fill('Retain this demo text');
+    await page.locator('.skip-link').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#demo-body')).toHaveValue('Retain this demo text');
     await page.evaluate(async () => {
       for (const name of ['dashboard', 'home', 'article', 'editor']) {
         location.hash = name;

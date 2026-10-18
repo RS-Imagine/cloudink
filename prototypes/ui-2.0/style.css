@@ -866,8 +866,8 @@ figure {
   gap: 0;
 }
 .editor-tools .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
 }
 .editor-tools .segment {
   background: transparent;
@@ -1442,11 +1442,36 @@ figure {
   border: 0;
 }
 
-:root:has(dialog[open]) { overflow: hidden; }
-.mobile-reader-toc { display: none; }
+:root:has(dialog[open]) {
+  overflow: hidden;
+}
+.mobile-reader-toc {
+  display: none;
+}
 @media (max-width: 759px) {
-  .article-toc { display: none; }
-  .mobile-reader-toc { display: block; margin: 8px 0 24px; border: 1px solid var(--ci-divider); border-radius: var(--ci-radius-md); padding: 0 16px; background: var(--ci-surface); }
-  .mobile-reader-toc summary { cursor: pointer; min-height: 48px; padding: 12px 0; color: var(--ci-muted); font-size: 13px; }
-  .mobile-reader-toc a { display: block; min-height: 44px; padding: 10px 0; font-size: 13px; color: var(--ci-primary); }
+  .article-toc {
+    display: none;
+  }
+  .mobile-reader-toc {
+    display: block;
+    margin: 8px 0 24px;
+    border: 1px solid var(--ci-divider);
+    border-radius: var(--ci-radius-md);
+    padding: 0 16px;
+    background: var(--ci-surface);
+  }
+  .mobile-reader-toc summary {
+    cursor: pointer;
+    min-height: 48px;
+    padding: 12px 0;
+    color: var(--ci-muted);
+    font-size: 13px;
+  }
+  .mobile-reader-toc a {
+    display: block;
+    min-height: 44px;
+    padding: 10px 0;
+    font-size: 13px;
+    color: var(--ci-primary);
+  }
 }
