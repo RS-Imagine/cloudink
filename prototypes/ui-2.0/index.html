@@ -41,9 +41,9 @@
       <span class="dock-divider" aria-hidden="true"></span>
       <button id="palette" aria-pressed="false" title="比较墨绿与中性配色">墨绿</button>
     </nav>
-    <dialog id="search-dialog" class="dialog">
+    <dialog id="search-dialog" class="dialog" aria-labelledby="search-dialog-title">
       <form method="dialog" class="dialog-top">
-        <h2>搜索文章</h2>
+        <h2 id="search-dialog-title">搜索文章</h2>
         <button class="icon-button" aria-label="关闭搜索" value="close">×</button>
       </form>
       <label class="search-field"
@@ -57,9 +57,9 @@
       <div id="search-results" class="search-results" aria-live="polite"></div>
       <p class="dialog-hint">Esc 关闭 · 原型使用演示文章</p>
     </dialog>
-    <dialog id="library-dialog" class="dialog">
+    <dialog id="library-dialog" class="dialog" aria-labelledby="library-dialog-title">
       <form method="dialog" class="dialog-top">
-        <h2>图片库</h2>
+        <h2 id="library-dialog-title">图片库</h2>
         <button class="icon-button" aria-label="关闭图片库">×</button>
       </form>
       <p class="muted">选择一张演示图片，查看轻量的预览与插入入口。</p>

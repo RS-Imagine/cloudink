@@ -459,6 +459,13 @@ document.getElementById('search-dialog').addEventListener('close', () => {
 document.getElementById('library-dialog').addEventListener('close', () => {
   if (libraryTrigger?.isConnected) libraryTrigger.focus({ preventScroll: true });
 });
+document.querySelectorAll('dialog').forEach((dialog) => {
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.isComposing) return;
+    event.preventDefault();
+    dialog.close();
+  });
+});
 window.addEventListener('hashchange', route);
 document.getElementById('palette').textContent =
   root.dataset.palette === 'neutral' ? '中性' : '墨绿';

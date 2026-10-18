@@ -142,6 +142,7 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
     };
   });
   report.samples.push({ version: name, screen, theme, width, engine, ...data });
+  console.log(JSON.stringify({ capture: name, screen, theme, width, engine }));
   const overflow = data.scrollWidth > width + 1;
   if (name === 'before' && overflow)
     report.existingLayoutIssues.push({ screen, width, theme, scrollWidth: data.scrollWidth });
