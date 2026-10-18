@@ -148,7 +148,6 @@ npm run test:web:browser
 
 实验不连接生产 R2，也不能替代真实 Safari、真机性能或人工视觉验收。每个设计阶段经确认后再接入正式界面。
 
-
 ## 阅读界面回归
 
 PR-04 的正文与阅读工具样式在 blog-core 的 reader.css，随 Rust/WASM 模板生成公开页面。

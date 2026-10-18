@@ -581,7 +581,12 @@ try {
   ).code;
   report.assets['reader/home.min.css'] = { gzip: gzipSync(homeCSS).length };
   assert.ok(report.assets['reader/home.min.css'].gzip <= 3072, 'Home CSS gzip budget');
-  const readerCSSMin = (await transform(await readFile('crates/blog-core/src/assets/reader.css', 'utf8'), { minify: true, loader: 'css' })).code;
+  const readerCSSMin = (
+    await transform(await readFile('crates/blog-core/src/assets/reader.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
+  ).code;
   report.assets['reader/reading.min.css'] = { gzip: gzipSync(readerCSSMin).length };
   assert.ok(report.assets['reader/reading.min.css'].gzip <= 4096, 'Reading CSS gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));

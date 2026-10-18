@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nativeSearch = typeof searchModal.showModal === 'function';
         let searchOverflow = null;
         let searchError = false;
+        let searchReturnFocus = true;
         let searchStatus = document.getElementById('search-status');
         if (!searchStatus) {
           searchStatus = document.createElement('p');
@@ -69,10 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
           searchModal.inert = true;
           if (searchOverflow !== null) document.body.style.overflow = searchOverflow;
           searchOverflow = null;
-          searchBtn.focus({ preventScroll: true });
+          if (searchReturnFocus) searchBtn.focus({ preventScroll: true });
         };
         const closeSearch = (immediate = false) => {
           if (!searchModal.classList.contains('active')) return;
+          if (immediate) searchReturnFocus = false;
           if (nativeSearch && searchModal.open) {
             if (motion && !immediate) motion.closeDialog(searchModal);
             else searchModal.close();
@@ -111,10 +113,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           const query = searchInput.value.trim().toLowerCase();
           const results = (query ? searchIndex.filter(post =>
-            (post.title + '\n' + post.description + '\n' + post.body).toLowerCase().includes(query)
+            post.title.toLowerCase().includes(query) || post.description.toLowerCase().includes(query) || post.body.toLowerCase().includes(query)
           ) : searchIndex).slice(0, query ? 10 : 5);
           searchStatus.textContent = results.length
-            ? (query ? '找到 ' + results.length + (results.length === 10 ? ' 篇匹配文章（最多显示 10 篇）' : ' 篇匹配文章') : '最近发布的文章')
+            ? (query ? (results.length === 10 ? '显示前 10 篇匹配文章' : '找到 ' + results.length + ' 篇匹配文章') : '最近发布的文章')
             : (query ? '还没有找到匹配的文字，试试其他关键词。' : '这里还没有发布的文章。');
           const fragment = document.createDocumentFragment();
           for (const post of results) {
@@ -143,8 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const loadSearch = () => {
           if (!searchLoading) searchLoading = (async () => {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
             try {
-              const response = await fetch('/search_index.json');
+              const response = await fetch('/search_index.json', { signal: controller.signal });
               if (!response.ok) throw new Error('Search index unavailable');
               const posts = await response.json();
               if (!Array.isArray(posts) || !posts.every(post => post && ['slug', 'title', 'description', 'body'].every(key => typeof post[key] === 'string')))
@@ -152,11 +156,12 @@ document.addEventListener('DOMContentLoaded', () => {
               searchIndex = posts;
               searchError = false;
             } catch { searchError = true; }
-            finally { searchLoading = null; }
+            finally { clearTimeout(timeout); searchLoading = null; }
           })();
           return searchLoading;
         };
         const openSearch = async () => {
+          searchReturnFocus = true;
           closeReaderMenu();
           closeArticleContents?.();
           searchModal.inert = false;
@@ -188,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
         searchModal.addEventListener('keydown', event => {
           if (event.isComposing) return;
           if (event.key === 'Escape') {
-            if (!nativeSearch) { event.preventDefault(); closeSearch(); }
+            event.preventDefault();
+            closeSearch();
             return;
           }
           const links = [...searchResults.querySelectorAll('a[href]')];

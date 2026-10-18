@@ -285,7 +285,8 @@ dialog.search-modal {
   -webkit-backdrop-filter: none;
   transition: none;
 }
-dialog.search-modal[open] {
+dialog.search-modal[open],
+dialog.search-modal.active {
   display: flex;
 }
 dialog.search-modal .search-content {

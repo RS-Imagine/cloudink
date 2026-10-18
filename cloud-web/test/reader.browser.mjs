@@ -10,8 +10,10 @@ export async function verifyReader(browser, origin, output, engine) {
     reducedMotion: 'reduce',
     colorScheme: 'light',
   });
-  context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const page = await context.newPage();
   await page.goto(origin + '/posts/slow-days/');
   await expect(page.locator('.article-heading h1')).toBeVisible();
@@ -25,23 +27,45 @@ export async function verifyReader(browser, origin, output, engine) {
     return { articleRight: article.right, tocLeft: toc.left, width: article.width };
   });
   assert.ok(bounds.width >= 600 && bounds.width <= 720);
-  assert.ok(bounds.tocLeft >= bounds.articleRight + 30, 'The desktop TOC must stay outside the reading column');
+  assert.ok(
+    bounds.tocLeft >= bounds.articleRight + 30,
+    'The desktop TOC must stay outside the reading column',
+  );
   await expect(page.locator('.mobile-toc-btn')).toBeHidden();
-  const ids = await page.locator('.article-body h2').evaluateAll(nodes => nodes.map(node => node.id));
+  const ids = await page
+    .locator('.article-body h2')
+    .evaluateAll((nodes) => nodes.map((node) => node.id));
   assert.equal(new Set(ids).size, ids.length);
   await page.locator('.toc-link').first().click();
   await expect(page.locator('.article-body h2').first()).toBeFocused();
   await expect(page.locator('.toc-link[aria-current="location"]')).toHaveCount(1);
   await page.goto(origin + '/posts/slow-days/#' + encodeURIComponent(ids[0]));
-  await expect.poll(() => page.locator('.article-body h2').first().evaluate(node => Math.abs(node.getBoundingClientRect().top - 32))).toBeLessThan(50);
+  await expect
+    .poll(() =>
+      page
+        .locator('.article-body h2')
+        .first()
+        .evaluate((node) => Math.abs(node.getBoundingClientRect().top - 32)),
+    )
+    .toBeLessThan(50);
   await expect(page.locator('.article-body .katex')).toHaveCount(1);
   await expect(page.locator('.article-body code.hljs')).toHaveCount(1);
   await expect(page.locator('.article-body table')).toHaveAttribute('tabindex', '0');
-  for (const [width, theme] of [[1440, 'light'], [390, 'light'], [360, 'dark']]) {
+  for (const [width, theme] of [
+    [1440, 'light'],
+    [390, 'light'],
+    [360, 'dark'],
+  ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await page.locator('select[data-theme-mode]').selectOption(theme);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.screenshot({ path: resolve(output, 'reader-article-' + engine + '-' + width + '-' + theme + '.png'), fullPage: true });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.screenshot({
+      path: resolve(output, 'reader-article-' + engine + '-' + width + '-' + theme + '.png'),
+      fullPage: true,
+    });
   }
   await page.setViewportSize({ width: 320, height: 720 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -63,7 +87,10 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.locator('#search-input').fill('不存在的搜索词');
   await expect(page.locator('#search-status')).toContainText('还没有找到');
   await expect(page.locator('#search-results a')).toHaveCount(0);
-  await page.screenshot({ path: resolve(output, 'reader-search-empty-' + engine + '.png'), fullPage: true });
+  await page.screenshot({
+    path: resolve(output, 'reader-search-empty-' + engine + '.png'),
+    fullPage: true,
+  });
   await page.keyboard.press('Escape');
   await expect(page.locator('#site-search-btn')).toBeFocused();
   await page.goto(origin + '/');
@@ -76,19 +103,36 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.goBack();
   await expect(page.locator('.home-layout')).toBeVisible();
   await expect(page.locator('.toc-container')).toHaveCount(0);
-  await expect.poll(() => page.evaluate(expected => Math.abs(scrollY - expected), previousY)).toBeLessThan(30);
+  await expect
+    .poll(() => page.evaluate((expected) => Math.abs(scrollY - expected), previousY))
+    .toBeLessThan(30);
   await page.goForward();
   await expect(page.locator('#swup')).toHaveAttribute('data-page', 'post');
   await expect(page.locator('.toc-container')).toHaveCount(1);
   await context.close();
 
-  const delayed = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
-  delayed.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await delayed.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
-  let release, requests = 0;
-  const gate = new Promise(resolve => { release = resolve; });
-  const searchData = [{ slug: 'slow-days', title: '<img src=x onerror=BAD> 长信', description: 'A & B', body: '一封长信' }];
-  await delayed.route('**/search_index.json', async route => {
+  const delayed = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 390, height: 844 },
+  });
+  delayed.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await delayed.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
+  let release,
+    requests = 0;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const searchData = [
+    {
+      slug: 'slow-days',
+      title: '<img src=x onerror=BAD> 长信',
+      description: 'A & B',
+      body: '一封长信',
+    },
+  ];
+  await delayed.route('**/search_index.json', async (route) => {
     requests++;
     await gate;
     await route.fulfill({ json: searchData });
@@ -107,7 +151,10 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(slow.locator('#search-results img')).toHaveCount(0);
   await expect(slow.locator('#search-results')).toContainText('<img src=x onerror=BAD>');
   await expect(slow.locator('#search-results mark').first()).toHaveText('长信');
-  await slow.screenshot({ path: resolve(output, 'reader-search-results-' + engine + '.png'), fullPage: true });
+  await slow.screenshot({
+    path: resolve(output, 'reader-search-results-' + engine + '.png'),
+    fullPage: true,
+  });
   await slow.keyboard.press('ArrowDown');
   await expect(slow.locator('#search-results a')).toBeFocused();
   await slow.keyboard.press('ArrowUp');
@@ -118,13 +165,20 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(slow.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await delayed.close();
 
-  const retry = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
-  retry.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await retry.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  const retry = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 390, height: 844 },
+  });
+  retry.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await retry.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   let attempts = 0;
-  await retry.route('**/search_index.json', route => {
+  await retry.route('**/search_index.json', (route) => {
     attempts++;
-    return attempts === 1 ? route.fulfill({ status: 503, body: 'Unavailable' }) : route.fulfill({ json: searchData });
+    return attempts === 1
+      ? route.fulfill({ status: 503, body: 'Unavailable' })
+      : route.fulfill({ json: searchData });
   });
   const recover = await retry.newPage();
   await recover.goto(origin + '/');
@@ -137,14 +191,22 @@ export async function verifyReader(browser, origin, output, engine) {
   assert.equal(attempts, 2);
   await retry.close();
 
-  const native = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 360, height: 844 } });
-  await native.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  const native = await browser.newContext({
+    javaScriptEnabled: false,
+    viewport: { width: 360, height: 844 },
+  });
+  await native.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const plain = await native.newPage();
   await plain.goto(origin + '/posts/slow-days/');
   await expect(plain.locator('.article-heading h1')).toBeVisible();
   await expect(plain.locator('.article-body')).toContainText('写作');
   await expect(plain.locator('#search-modal')).toBeHidden();
-  assert.equal(await plain.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  assert.equal(
+    await plain.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    false,
+  );
   await plain.locator('.article-back').click();
   await expect(plain.locator('.home-layout')).toBeVisible();
   await native.close();

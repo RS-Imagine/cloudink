@@ -108,11 +108,14 @@ try {
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
   // The preview embeds the same Rust stylesheet; headings must remain visible.
   await expect(page.frameLocator('#preview-frame').locator('.article-heading h1')).toBeVisible();
-  const readingStyle = node => {
+  const readingStyle = (node) => {
     const style = getComputedStyle(node);
     return { family: style.fontFamily, size: style.fontSize, lineHeight: style.lineHeight };
   };
-  const previewWidth = await page.frameLocator('#preview-frame').locator('.article-body').evaluate(() => innerWidth);
+  const previewWidth = await page
+    .frameLocator('#preview-frame')
+    .locator('.article-body')
+    .evaluate(() => innerWidth);
   await live.setViewportSize({ width: previewWidth, height: 1000 });
   assert.deepEqual(
     await live.locator('.article-body').evaluate(readingStyle),
