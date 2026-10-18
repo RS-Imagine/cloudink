@@ -70,13 +70,15 @@
   --ci-shadow-soft: var(--ci-light-shadow-soft);
   --ci-shadow-floating: var(--ci-light-shadow-floating);
   --ci-shadow-overlay: var(--ci-light-shadow-overlay);
-  --ci-font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --ci-font-reading: 'Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'Noto Serif CJK SC', serif;
+  --ci-font-ui:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --ci-font-reading:
+    'Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'Noto Serif CJK SC', serif;
   --ci-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --ci-type-display: clamp(2.5rem, 5.1vw, 4.5rem);
   --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);
   --ci-type-body: 1rem;
-  --ci-type-caption: .8125rem;
+  --ci-type-caption: 0.8125rem;
   --ci-radius-sm: 8px;
   --ci-radius-md: 14px;
   --ci-radius-lg: 22px;
@@ -96,7 +98,7 @@
   --ci-motion-fast: 150ms;
   --ci-motion-standard: 250ms;
   --ci-motion-emphasized: 380ms;
-  --ci-ease: cubic-bezier(.2, .7, .2, 1);
+  --ci-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ci-layer-base: 0;
   --ci-layer-navigation: 20;
   --ci-layer-modal: 60;
@@ -104,7 +106,7 @@
   --ci-state-hover: var(--ci-hover);
   --ci-state-pressed: var(--ci-pressed);
   --ci-state-selected: var(--ci-primary-container);
-  --ci-state-disabled-opacity: .5;
+  --ci-state-disabled-opacity: 0.5;
 
   /* Transitional aliases keep existing layouts on the same semantic palette. */
   --bg: var(--ci-bg);
@@ -140,7 +142,7 @@
   --font-heading: var(--ci-font-ui);
   --ease: var(--ci-ease);
 }
-:root[data-palette="neutral"] {
+:root[data-palette='neutral'] {
   --ci-light-primary: #40536b;
   --ci-light-on-primary: #ffffff;
   --ci-light-primary-strong: #31445d;
@@ -153,7 +155,7 @@
   --ci-dark-on-primary-container: #d6e3f5;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
     --ci-bg: var(--ci-dark-bg);
     --ci-surface: var(--ci-dark-surface);
@@ -180,7 +182,7 @@
     --ci-shadow-overlay: var(--ci-dark-shadow-overlay);
   }
 }
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   color-scheme: dark;
   --ci-bg: var(--ci-dark-bg);
   --ci-surface: var(--ci-dark-surface);

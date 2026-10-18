@@ -5,11 +5,15 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 
 export async function verifyThemes(browser, origin, output, engine) {
   const context = await browser.newContext({
-    viewport: { width: 390, height: 844 }, colorScheme: 'light', reducedMotion: 'reduce',
+    viewport: { width: 390, height: 844 },
+    colorScheme: 'light',
+    reducedMotion: 'reduce',
   });
   const errors = [];
-  context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const page = await context.newPage();
   const root = page.locator('html');
   const mode = page.locator('select[data-theme-mode]');
@@ -31,11 +35,15 @@ export async function verifyThemes(browser, origin, output, engine) {
   await expect(page.locator('article h1')).toBeVisible();
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(mode).toHaveValue('auto');
+  await page.keyboard.press('Tab');
   await mode.focus();
   await expect(mode).toBeFocused();
   await expect(mode).toHaveCSS('outline-style', 'solid');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await page.screenshot({ path: resolve(output, 'theme-' + engine + '-mobile-dark.png'), fullPage: true });
+  await page.screenshot({
+    path: resolve(output, 'theme-' + engine + '-mobile-dark.png'),
+    fullPage: true,
+  });
   // Reader mode and the admin cache must not override the published author palette.
   await page.evaluate(() => localStorage.setItem('cloudink-admin-palette', 'neutral'));
   await page.reload();
@@ -50,12 +58,18 @@ export async function verifyThemes(browser, origin, output, engine) {
 
   // Denied storage must preserve system following, navigation and manual theme changes.
   const blocked = await browser.newContext({ colorScheme: 'dark' });
-  blocked.on('page', p => p.on('pageerror', e => errors.push(e.message)));
-  await blocked.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  blocked.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)));
+  await blocked.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   await blocked.addInitScript(() => {
-    for (const key of ['getItem', 'setItem']) Object.defineProperty(Storage.prototype, key, {
-      configurable: true, value() { throw new DOMException('Unavailable', 'SecurityError'); },
-    });
+    for (const key of ['getItem', 'setItem'])
+      Object.defineProperty(Storage.prototype, key, {
+        configurable: true,
+        value() {
+          throw new DOMException('Unavailable', 'SecurityError');
+        },
+      });
   });
   const blockedPage = await blocked.newPage();
   await blockedPage.goto(origin + '/');
@@ -65,7 +79,9 @@ export async function verifyThemes(browser, origin, output, engine) {
   await blocked.close();
 
   const noScript = await browser.newContext({ javaScriptEnabled: false, colorScheme: 'dark' });
-  await noScript.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  await noScript.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const staticPage = await noScript.newPage();
   await staticPage.goto(origin + '/');
   await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(20, 27, 23)');

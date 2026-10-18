@@ -23,14 +23,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize changed sources for review
-        run: |
-          npx prettier --write assets/design-tokens.css assets/design-foundation.css assets/theme.js crates/blog-core/src/assets/styles.css cloud-admin/ui/style.css cloud-admin/build-ui.mjs scripts/web-assets.mjs prototypes/ui-2.0/tokens.css cloud-admin/src/models.ts cloud-admin/src/index.ts cloud-admin/ui/app.js cloud-admin/ui/index.html cloud-admin/ui/preview.js crates/blog-core/src/assets/client.js scripts/ui-audit.mjs cloud-web/test/deployment.browser.mjs cloud-web/test/theme.test.mjs cloud-web/test/theme.browser.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md README.md docs/DEPLOYMENT.md prototypes/ui-2.0/README.md package.json .github/workflows/checks.yml
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          const paths = ["assets/design-tokens.css","assets/design-foundation.css","assets/theme.js","crates/blog-core/src/assets/styles.css","cloud-admin/ui/style.css","cloud-admin/build-ui.mjs","scripts/web-assets.mjs","prototypes/ui-2.0/tokens.css","cloud-admin/src/models.ts","cloud-admin/src/index.ts","cloud-admin/ui/app.js","cloud-admin/ui/index.html","cloud-admin/ui/preview.js","crates/blog-core/src/assets/client.js","scripts/ui-audit.mjs","cloud-web/test/deployment.browser.mjs","cloud-web/test/theme.test.mjs","cloud-web/test/theme.browser.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md","README.md","docs/DEPLOYMENT.md","prototypes/ui-2.0/README.md","package.json",".github/workflows/checks.yml"];
-          for (const path of paths) console.log('UI_FORMAT_SOURCE ' + JSON.stringify({ path, content: await readFile(path, 'utf8') }));
-          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -73,14 +65,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize changed sources for review
-        run: |
-          npx prettier --write assets/design-tokens.css assets/design-foundation.css assets/theme.js crates/blog-core/src/assets/styles.css cloud-admin/ui/style.css cloud-admin/build-ui.mjs scripts/web-assets.mjs prototypes/ui-2.0/tokens.css cloud-admin/src/models.ts cloud-admin/src/index.ts cloud-admin/ui/app.js cloud-admin/ui/index.html cloud-admin/ui/preview.js crates/blog-core/src/assets/client.js scripts/ui-audit.mjs cloud-web/test/deployment.browser.mjs cloud-web/test/theme.test.mjs cloud-web/test/theme.browser.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md README.md docs/DEPLOYMENT.md prototypes/ui-2.0/README.md package.json .github/workflows/checks.yml
-          node --input-type=module <<'NODE'
-          import { readFile } from 'node:fs/promises';
-          const paths = ["assets/design-tokens.css","assets/design-foundation.css","assets/theme.js","crates/blog-core/src/assets/styles.css","cloud-admin/ui/style.css","cloud-admin/build-ui.mjs","scripts/web-assets.mjs","prototypes/ui-2.0/tokens.css","cloud-admin/src/models.ts","cloud-admin/src/index.ts","cloud-admin/ui/app.js","cloud-admin/ui/index.html","cloud-admin/ui/preview.js","crates/blog-core/src/assets/client.js","scripts/ui-audit.mjs","cloud-web/test/deployment.browser.mjs","cloud-web/test/theme.test.mjs","cloud-web/test/theme.browser.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md","README.md","docs/DEPLOYMENT.md","prototypes/ui-2.0/README.md","package.json",".github/workflows/checks.yml"];
-          for (const path of paths) console.log('UI_FORMAT_SOURCE ' + JSON.stringify({ path, content: await readFile(path, 'utf8') }));
-          NODE
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

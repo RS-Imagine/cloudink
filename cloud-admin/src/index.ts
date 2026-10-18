@@ -133,7 +133,7 @@ async function apiRoute(
     return json({
       posts: [...posts.values()],
       site: release.site,
-      appearance: { themePalette: savedSite?.themePalette || release.site.themePalette || 'ink' },
+      appearance: { themePalette: (savedSite || release.site).themePalette || 'ink' },
       publishing,
       email: session.email,
       csrf: session.csrf,

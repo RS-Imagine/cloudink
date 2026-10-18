@@ -263,7 +263,7 @@ $('setup-form').addEventListener('submit', async (event) => {
     try {
       const session = await api('/api/setup', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${form.elements.token.value}` },
+        headers: { Authorization: `*** },
         body: {
           email: form.elements.email.value,
           password: form.elements.password.value,
@@ -1044,7 +1044,8 @@ configureBackup({
   getSettingsEtag: () => settingsEtag,
   restored: (result) => {
     settingsEtag = result.etag;
-    for (const input of $('site-form').querySelectorAll('input,textarea,select[name]')) input.value = '';
+    for (const input of $('site-form').querySelectorAll('input,textarea,select[name]'))
+      input.value = '';
     $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
     applySiteAppearance(result.site);
     for (const [key, value] of Object.entries(result.site))

@@ -530,9 +530,23 @@ try {
   const foundations = await readFile('assets/design-foundation.css', 'utf8');
   const readerCSS = await readFile('build-work/web-public/styles.css', 'utf8');
   const adminCSS = await (await mf.dispatchFetch(origin + '/style.css')).text();
-  assert.ok(readerCSS.includes(tokens) && adminCSS.includes(tokens), 'Both surfaces must embed the same tokens');
-  assert.ok(readerCSS.includes(foundations) && adminCSS.includes(foundations), 'Both surfaces must embed the same foundations');
-  assert.ok(gzipSync(tokens).length + gzipSync(foundations).length <= 4096, 'Shared CSS gzip budget');
+  report.assets['served/admin/style.css'] = {
+    bytes: Buffer.byteLength(adminCSS),
+    gzip: gzipSync(adminCSS).length,
+    brotli: brotliCompressSync(adminCSS).length,
+  };
+  assert.ok(
+    readerCSS.includes(tokens) && adminCSS.includes(tokens),
+    'Both surfaces must embed the same tokens',
+  );
+  assert.ok(
+    readerCSS.includes(foundations) && adminCSS.includes(foundations),
+    'Both surfaces must embed the same foundations',
+  );
+  assert.ok(
+    gzipSync(tokens).length + gzipSync(foundations).length <= 4096,
+    'Shared CSS gzip budget',
+  );
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -557,7 +571,10 @@ try {
       resolve(output, 'preview/prototypes/ui-2.0', name),
     );
   await copyFile(resolve('assets/cloudink.svg'), resolve(output, 'preview/assets/cloudink.svg'));
-  await copyFile(resolve('assets/design-tokens.css'), resolve(output, 'preview/assets/design-tokens.css'));
+  await copyFile(
+    resolve('assets/design-tokens.css'),
+    resolve(output, 'preview/assets/design-tokens.css'),
+  );
   const pairs = new Map();
   for (const sample of report.samples) {
     const key = [sample.screen, sample.width, sample.theme, sample.engine].join('-');

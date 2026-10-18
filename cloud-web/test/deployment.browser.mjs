@@ -82,9 +82,15 @@ try {
   });
   await expect(page.locator('#notice')).toContainText('图片已上传');
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
-  await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute('data-palette', 'neutral');
+  await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
+    'data-palette',
+    'neutral',
+  );
   assert.equal(
-    await page.frameLocator('#preview-frame').locator('html').evaluate(node => getComputedStyle(node).getPropertyValue('--ci-primary').trim()),
+    await page
+      .frameLocator('#preview-frame')
+      .locator('html')
+      .evaluate((node) => getComputedStyle(node).getPropertyValue('--ci-primary').trim()),
     '#40536b',
   );
   await expect
