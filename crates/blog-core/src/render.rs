@@ -15,7 +15,8 @@ pub fn stylesheet() -> &'static str {
         include_str!("../../../assets/design-tokens.css"), "\n",
         include_str!("assets/styles.css"), "\n",
         include_str!("../../../assets/design-foundation.css"), "\n",
-        include_str!("../../../assets/motion.css")
+        include_str!("../../../assets/motion.css"), "\n",
+        include_str!("assets/home.css")
     )
 }
 
@@ -34,59 +35,72 @@ pub fn client_script() -> &'static str {
 
 /// Renders the blog index page listing all published posts.
 pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
-    let cards: String = posts
-        .iter()
-        .filter(|post| !post.draft())
-        .map(|post| {
-            let date_str = match post.updated() {
-                Some(u) => format!("{} (Updated: {})", post.date(), u),
-                None => post.date().to_string(),
-            };
-            format!(
-                r#"<article class="post-card">
-  <div class="meta">{date}</div>
-  <div class="post-summary">
+    let mut cards = String::new();
+    let mut count = 0;
+    for post in posts.iter().filter(|post| !post.draft()) {
+        let featured = count == 0;
+        count += 1;
+        let updated = post.updated().map(|date| format!(
+            "<span>更新 <time datetime=\"{date}\">{date}</time></span>", date = escape_html(date)
+        )).unwrap_or_default();
+        let art = if featured {
+            r#"<div class="home-feature-art" aria-hidden="true"><span class="landscape-sun"></span><span class="landscape-label">NOTES, NOT NOISE.</span></div>"#
+        } else { "" };
+        cards.push_str(&format!(
+            r#"<article class="post-card home-card{featured_class}">
+  <div class="home-card-copy">
+    {badge}
     <h2><a href="/posts/{slug}/">{title}</a></h2>
     <p>{description}</p>
-  </div>
-  <span class="post-arrow" aria-hidden="true">&rarr;</span>
+    <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
+  </div>{art}
 </article>"#,
-                date = escape_html(&date_str),
-                slug = escape_html(post.slug()),
-                title = escape_html(post.title()),
-                description = escape_html(post.description()),
-            )
-        })
-        .collect();
-
+            featured_class = if featured { " home-feature" } else { "" },
+            badge = if featured { "<span class=\"home-badge\">最新文章</span>" } else { "" },
+            slug = escape_html(post.slug()),
+            title = escape_html(post.title()),
+            description = escape_html(post.description()),
+            date = escape_html(post.date()),
+            updated = updated,
+            art = art,
+        ));
+    }
+    let title = config.big_title.as_deref().filter(|value| !value.trim().is_empty()).unwrap_or(&config.title);
     page(
         &config.title,
         &config.description,
         &config.title,
         &config.description,
         &format!(
-            r#"<section class="hero">
-  <span class="tag">{author}</span>
-  <h1>{title}</h1>
-  <p>{subtitle}</p>
-  {intro_link}
+            r#"<div class="home-layout">
+<section class="hero home-hero" aria-labelledby="home-title">
+  <div class="home-intro">
+    <div class="home-eyebrow"><span aria-hidden="true"></span> {site_title}</div>
+    <h1 id="home-title">{title}</h1>
+    <p>{subtitle}</p>
+    <div class="home-author"><span class="home-avatar" aria-hidden="true">{initial}</span><span>{author}</span></div>
+  </div>
+  <aside class="home-note" aria-hidden="true"><span class="home-note-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 12-12 4 4L8 20H4Zm9-9 4 4"/></svg></span><p>让想法落笔，<br>让文字生长。</p><small>NOTES, NOT NOISE.</small></aside>
 </section>
 <section id="posts" aria-labelledby="posts-heading">
-  <div class="section-heading"><h2 id="posts-heading">Articles</h2><span>{count}</span></div>
-  <div class="grid">{cards}</div>
-</section>"#,
-            author = escape_html(&config.author),
-            title = escape_html(config.big_title.as_deref().unwrap_or(&config.title)),
+  <div class="home-section-heading"><h2 id="posts-heading">最近的文字</h2><span>{count} 篇文章</span></div>
+  <div class="grid home-post-grid">{cards}</div>
+</section>
+</div>"#,
+            site_title = escape_html(&config.title),
+            title = escape_html(title),
             subtitle = escape_html(&config.subtitle),
-            cards = if cards.is_empty() { "<p class=\"empty-state\">No articles yet.</p>".to_owned() } else { cards },
-            count = posts.iter().filter(|post| !post.draft()).count(),
-            intro_link = if config.about.as_deref().is_none_or(|text| !text.trim().is_empty()) {
-                "<a class=\"hero-action\" href=\"/about/\">About me <span aria-hidden=\"true\">&rarr;</span></a>"
-            } else { "" },
+            author = escape_html(&config.author),
+            initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
+            cards = if cards.is_empty() {
+                "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
+            } else { cards },
+            count = count,
         ),
         "",
         css_hash,
         config,
+        "home",
     )
 }
 
@@ -140,6 +154,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         &extra_head,
         css_hash,
         config,
+        "post",
     )
 }
 
@@ -172,6 +187,7 @@ pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> 
         &extra_head,
         css_hash,
         config,
+        "about",
     )
 }
 
@@ -190,6 +206,7 @@ pub fn render_404(config: &SiteConfig, css_hash: &str) -> String {
         "",
         css_hash,
         config,
+        "not-found",
     )
 }
 
@@ -207,11 +224,12 @@ fn page(
     title: &str,
     description: &str,
     site_title: &str,
-    site_description: &str,
+    _site_description: &str,
     body: &str,
     extra_head: &str,
     css_hash: &str,
     config: &SiteConfig,
+    page_kind: &str,
 ) -> String {
     // Build the document in segments to avoid a 500-line format! string with
     // escaped braces.  Each segment is a distinct format! call or a raw push.
@@ -261,28 +279,44 @@ fn page(
     let footer = config.footer.as_deref().filter(|text| !text.is_empty()).map(str::to_owned)
         .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
+    let navigation = format!(
+        r#"<a href="/#posts" data-reader-nav="posts"{posts_current}>文章</a>{about}"#,
+        posts_current = if page_kind == "home" { " aria-current=\"page\"" } else { "" },
+        about = if config.about.as_deref().is_none_or(|value| !value.trim().is_empty()) {
+            format!("<a href=\"/about/\" data-reader-nav=\"about\"{}>关于</a>",
+                if page_kind == "about" { " aria-current=\"page\"" } else { "" })
+        } else { String::new() },
+    );
+
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
-        r#"<body>
-  <div class="wrapper">
-    <header class="site-header">
-      <div class="site-brand">
-        <h1><a href="/" title="{site_description}">{site_title}</a></h1>
+        r##"<body>
+  <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
+  <div class="wrapper reader-layout">
+    <header class="site-header reader-header">
+      <a class="site-brand" href="/" title="{site_title}">
+        <span class="site-mark"><img src="/favicon.svg" width="26" height="26" alt=""></span>
+        <span class="site-title">{site_title}</span>
+      </a>
+      <div class="reader-navigation">
+        <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
+        <div class="reader-tools">
+          <button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
+          <button id="theme-toggle-btn" class="reader-icon theme-btn" aria-label="切换明暗主题">
+            <svg class="sun-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+            <svg class="moon-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
+          </button>
+          <details class="reader-menu" id="reader-menu">
+            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
+            <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
+          </details>
+        </div>
       </div>
-      <nav class="site-nav" aria-label="Primary">
-        <a href="/#posts">Articles</a>
-        <button id="site-search-btn" class="search-btn" aria-label="Search" aria-haspopup="dialog" aria-controls="search-modal">Search</button>
-        {about_link}
-        <button id="theme-toggle-btn" class="search-btn theme-btn" aria-label="Toggle Theme">
-          <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-        </button>
-      </nav>
     </header>
-    <main id="swup" class="transition-fade" data-palette="{palette}">
+    <main id="swup" class="transition-fade" data-palette="{palette}" data-page="{page_kind}" tabindex="-1">
       {body}
     </main>
-    <footer>{footer}<br><label class="theme-mode">Appearance / 外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">System / 跟随系统</option><option value="light">Light / 浅色</option><option value="dark">Dark / 深色</option></select></label></footer>
+    <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div><label class="theme-mode">外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></footer>
   </div>
   <div id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-label="Search articles" aria-hidden="true" inert>
     <div class="search-content">
@@ -296,17 +330,13 @@ fn page(
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://unpkg.com/swup@4"></script>
   <script src="/client.js?v={client_hash}"></script>
-"#,
+"##,
         palette = palette,
         site_title = escape_html(site_title),
-        site_description = escape_html(site_description),
         body = body,
+        navigation = navigation,
+        page_kind = page_kind,
         footer = escape_html(&footer),
-        about_link = if config.about.as_deref().is_none_or(|text| !text.trim().is_empty()) {
-            "<a href=\"/about/\">About</a>"
-        } else {
-            ""
-        },
         client_hash = crate::content_hash(client_script()),
     ));
 

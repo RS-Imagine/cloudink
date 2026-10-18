@@ -52,7 +52,7 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
         author = el.getAttribute('content') || '';
       },
     })
-    .on('.site-brand h1', {
+    .on('.site-brand .site-title, .site-brand h1', {
       text(chunk) {
         site += chunk.text;
       },
