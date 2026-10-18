@@ -147,3 +147,15 @@ npm run test:web:browser
 完成项目构建后，安装 Playwright 的 Chromium、Firefox、WebKit，再运行 `npm run test:ui:audit`。截图对比、资源与实验性能报告生成在 `build-work/ui-audit`；CI 保存为 `ui-design-review` 附件。`npm run format:ui:check` 检查设计原型、规范与审计脚本格式。
 
 实验不连接生产 R2，也不能替代真实 Safari、真机性能或人工视觉验收。每个设计阶段经确认后再接入正式界面。
+
+
+## 阅读界面回归
+
+PR-04 的正文与阅读工具样式在 blog-core 的 reader.css，随 Rust/WASM 模板生成公开页面。
+后台预览使用相同样式；调整预览的隐藏规则时，仅选择站点页眉/页脚，不能隐藏文章的 header。
+目录以 1100px 为分界，桌面右侧静态列、窄屏浮动入口；手势系统不在本阶段。
+
+三引擎隔离审计包含目录锚点/焦点、初始深链、搜索加载中输入、快速重开、
+失败后重试、文本高亮安全、键盘选择、浏览器前进/后退及无脚本正文访问。
+阅读 CSS 单独压缩预算为 4 KiB；资源与实验截图记录在 ui-design-review 附件。
+真实 Safari/iOS、软键盘和真机性能仍需对应阶段的人工检查。

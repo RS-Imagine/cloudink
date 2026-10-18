@@ -16,7 +16,8 @@ pub fn stylesheet() -> &'static str {
         include_str!("assets/styles.css"), "\n",
         include_str!("../../../assets/design-foundation.css"), "\n",
         include_str!("../../../assets/motion.css"), "\n",
-        include_str!("assets/home.css")
+        include_str!("assets/home.css"), "\n",
+        include_str!("assets/reader.css")
     )
 }
 
@@ -106,34 +107,44 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
 
 /// Renders a single blog post page.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
-    let date_str = match post.updated() {
-        Some(u) => format!("{} (Updated: {})", post.date(), u),
-        None => post.date().to_string(),
-    };
+    let updated = post.updated().map(|value| format!(
+        "<span>更新于 <time datetime=\"{date}\">{date}</time></span>", date = escape_html(value)
+    )).unwrap_or_default();
+    // Approximate mixed Chinese/Japanese/Korean characters and space-separated words.
+    let is_cjk = |c: char| matches!(c as u32, 0x3400..=0x9fff | 0x3040..=0x30ff | 0xac00..=0xd7af);
+    let characters = post.body_plain_text.chars().filter(|c| is_cjk(*c)).count();
+    let words = post.body_plain_text.split_whitespace()
+        .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !is_cjk(c))).count();
+    let minutes = (characters as f64 / 400.0 + words as f64 / 200.0).ceil().max(1.0) as usize;
 
     let body = format!(
-        r#"<section class="article-shell">
-  <a class="back-link" href="/">&larr; Back to posts</a>
+        r#"<section class="article-shell reader-article">
   <article>
-  <div class="meta">{date}</div>
-  <h1>{title}</h1>
-  <p class="meta">{description}</p>
-  <div class="article-body">{body}</div>
-  <div class="share-container">
-    <a class="back-link" href="/">&larr; Back to posts</a>
-    <button id="copy-link" class="share-button">Copy link / 复制链接</button>
-    <span id="share-status" role="status"></span>
-    <button id="share-btn" class="share-button">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5zm-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
-      </svg>
-      Share
-    </button>
-  </div>
-</article></section>"#,
-        date = escape_html(&date_str),
+    <header class="article-heading">
+      <a class="back-link article-back" href="/">&larr; 所有文章</a>
+      <h1>{title}</h1>
+      <p class="meta article-description">{description}</p>
+      <div class="article-author"><span class="home-avatar" aria-hidden="true">{initial}</span><div><span class="article-author-name">{author}</span><div class="meta article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div></div>
+    </header>
+    <div class="article-body">{body}</div>
+    <div class="share-container article-end">
+      <a class="back-link" href="/">&larr; 返回文章</a>
+      <div class="article-share-actions">
+        <button id="copy-link" class="share-button">复制链接</button>
+        <button id="share-btn" class="share-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 12v8h14v-8"/></svg>分享文章</button>
+      </div>
+      <span id="share-status" role="status"></span>
+    </div>
+  </article>
+  <div class="reader-toc-slot"></div>
+</section>"#,
+        date = escape_html(post.date()),
+        updated = updated,
+        minutes = minutes,
         title = escape_html(post.title()),
         description = escape_html(post.description()),
+        author = escape_html(&config.author),
+        initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
         body = post.body_html,
     );
 
@@ -161,11 +172,11 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
 /// Renders a standalone content page (e.g. the About page).
 pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> String {
     let body = format!(
-        r#"<section class="article-shell">
+        r#"<section class="article-shell reader-article reader-page">
   <article>
   <h1>{title}</h1>
   <div class="article-body">{body}</div>
-</article></section>"#,
+</article><div class="reader-toc-slot"></div></section>"#,
         title = escape_html(&page_content.front_matter.title),
         body = page_content.body_html,
     );
@@ -318,15 +329,15 @@ fn page(
     </main>
     <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div><label class="theme-mode">外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></footer>
   </div>
-  <div id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-label="Search articles" aria-hidden="true" inert>
+  <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
-      <div class="search-input-wrapper">
-        <input type="text" id="search-input" class="search-input" placeholder="Search posts..." aria-label="Search posts" autocomplete="off">
-        <button id="search-close" class="search-close" aria-label="Close search">&times;</button>
-      </div>
-      <ul id="search-results" class="search-results" aria-live="polite"></ul>
+      <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
+      <label class="search-input-wrapper" for="search-input"><span>标题、摘要或正文</span><input type="search" id="search-input" class="search-input" placeholder="寻找一段文字…" autocomplete="off" enterkeyhint="search" aria-controls="search-results"></label>
+      <p id="search-status" class="search-status" role="status" aria-live="polite">输入关键词，或浏览最近的文章。</p>
+      <ul id="search-results" class="search-results"></ul>
+      <p class="search-hint"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></p>
     </div>
-  </div>
+  </dialog>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://unpkg.com/swup@4"></script>
   <script src="/client.js?v={client_hash}"></script>

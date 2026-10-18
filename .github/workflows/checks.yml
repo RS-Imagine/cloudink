@@ -23,6 +23,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize reader design sources for review
+        run: |
+          npx prettier --write cloud-admin/ui/preview.js crates/blog-core/src/assets/reader.css scripts/ui-audit.mjs package.json cloud-web/test/reader.browser.mjs cloud-web/test/deployment.browser.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const path of ["cloud-admin/ui/preview.js","crates/blog-core/src/assets/reader.css","scripts/ui-audit.mjs","package.json","cloud-web/test/reader.browser.mjs","cloud-web/test/deployment.browser.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log('READER04_FORMAT_SOURCE ' + JSON.stringify({ path, base64: readFileSync(path).toString('base64') }));
+          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -65,6 +72,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize reader design sources for review
+        run: |
+          npx prettier --write cloud-admin/ui/preview.js crates/blog-core/src/assets/reader.css scripts/ui-audit.mjs package.json cloud-web/test/reader.browser.mjs cloud-web/test/deployment.browser.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const path of ["cloud-admin/ui/preview.js","crates/blog-core/src/assets/reader.css","scripts/ui-audit.mjs","package.json","cloud-web/test/reader.browser.mjs","cloud-web/test/deployment.browser.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log('READER04_FORMAT_SOURCE ' + JSON.stringify({ path, base64: readFileSync(path).toString('base64') }));
+          NODE
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
