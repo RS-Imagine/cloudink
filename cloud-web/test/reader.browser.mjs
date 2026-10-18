@@ -95,12 +95,18 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.keyboard.press('Escape');
   await expect(page.locator('#site-search-btn')).toBeFocused();
   await page.goto(origin + '/');
-  const last = page.locator('.home-card h2 a').last();
+  const last = page.locator('.home-card h2 a').first();
   await last.scrollIntoViewIfNeeded();
   const previousY = await page.evaluate(() => scrollY);
   await last.click();
   await expect(page.locator('#swup')).toHaveAttribute('data-page', 'post');
   await expect(page.locator('#swup')).toBeFocused();
+  await page.evaluate(() => {
+    scrollTo({ top: 500, behavior: 'instant' });
+    return new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+  });
+  const articleY = await page.evaluate(() => scrollY);
+  assert.ok(articleY > 300);
   await page.goBack();
   await expect(page.locator('.home-layout')).toBeVisible();
   await expect(page.locator('.toc-container')).toHaveCount(0);
@@ -110,6 +116,9 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.goForward();
   await expect(page.locator('#swup')).toHaveAttribute('data-page', 'post');
   await expect(page.locator('.toc-container')).toHaveCount(1);
+  await expect
+    .poll(() => page.evaluate((expected) => Math.abs(scrollY - expected), articleY))
+    .toBeLessThan(30);
   await context.close();
 
   const delayed = await browser.newContext({

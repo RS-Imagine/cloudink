@@ -707,12 +707,16 @@ document.addEventListener('DOMContentLoaded', () => {
           restoreFrame = requestAnimationFrame(restore);
         });
         swup.hooks.on('visit:abort', () => cancelAnimationFrame(restoreFrame));
+        const nativeRestoration = () => { history.scrollRestoration = previousRestoration; };
+        const managedRestoration = () => { history.scrollRestoration = 'manual'; };
         swup.hooks.on('disable', () => {
           cancelAnimationFrame(restoreFrame);
+          window.removeEventListener('pagehide', nativeRestoration);
+          window.removeEventListener('pageshow', managedRestoration);
           window.removeEventListener('scroll', remember);
           history.scrollRestoration = previousRestoration;
         });
-        window.addEventListener('pagehide', () => { history.scrollRestoration = previousRestoration; });
-        window.addEventListener('pageshow', () => { history.scrollRestoration = 'manual'; });
+        window.addEventListener('pagehide', nativeRestoration);
+        window.addEventListener('pageshow', managedRestoration);
       }
     });
