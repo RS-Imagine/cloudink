@@ -23,13 +23,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize studio sources for review
-        run: |
-          npx prettier --write cloud-admin/ui/index.html assets/theme.js cloud-admin/ui/shell.js cloud-admin/ui/app.js cloud-admin/build-ui.mjs cloud-admin/ui/studio.css cloud-web/test/studio.browser.mjs cloud-web/test/editor.browser.mjs cloud-web/test/deployment.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
-          node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          for (const path of ["cloud-admin/ui/index.html","assets/theme.js","cloud-admin/ui/shell.js","cloud-admin/ui/app.js","cloud-admin/build-ui.mjs","cloud-admin/ui/studio.css","cloud-web/test/studio.browser.mjs","cloud-web/test/editor.browser.mjs","cloud-web/test/deployment.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log('STUDIO_FORMAT_SOURCE ' + JSON.stringify({ path, base64: readFileSync(path).toString('base64') }));
-          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -72,13 +65,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize studio sources for review
-        run: |
-          npx prettier --write cloud-admin/ui/index.html assets/theme.js cloud-admin/ui/shell.js cloud-admin/ui/app.js cloud-admin/build-ui.mjs cloud-admin/ui/studio.css cloud-web/test/studio.browser.mjs cloud-web/test/editor.browser.mjs cloud-web/test/deployment.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
-          node --input-type=module <<'NODE'
-          import { readFileSync } from 'node:fs';
-          for (const path of ["cloud-admin/ui/index.html","assets/theme.js","cloud-admin/ui/shell.js","cloud-admin/ui/app.js","cloud-admin/build-ui.mjs","cloud-admin/ui/studio.css","cloud-web/test/studio.browser.mjs","cloud-web/test/editor.browser.mjs","cloud-web/test/deployment.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log('STUDIO_FORMAT_SOURCE ' + JSON.stringify({ path, base64: readFileSync(path).toString('base64') }));
-          NODE
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

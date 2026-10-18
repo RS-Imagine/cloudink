@@ -594,7 +594,12 @@ try {
   ).code;
   report.assets['reader/reading.min.css'] = { gzip: gzipSync(readerCSSMin).length };
   assert.ok(report.assets['reader/reading.min.css'].gzip <= 4096, 'Reading CSS gzip budget');
-  const studioCSS = (await transform(await readFile('cloud-admin/ui/studio.css', 'utf8'), { minify: true, loader: 'css' })).code;
+  const studioCSS = (
+    await transform(await readFile('cloud-admin/ui/studio.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
+  ).code;
   report.assets['admin/studio.min.css'] = { gzip: gzipSync(studioCSS).length };
   assert.ok(report.assets['admin/studio.min.css'].gzip <= 4096, 'Studio shell CSS gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));

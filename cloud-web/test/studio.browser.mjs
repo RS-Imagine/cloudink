@@ -5,17 +5,21 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 import { owner, password, setupToken } from './fixture.mjs';
 
 export async function openPostSwitcher(page) {
-  if (!(await page.locator('#post-switcher').evaluate(node => node.open)))
+  if (!(await page.locator('#post-switcher').evaluate((node) => node.open)))
     await page.locator('#post-switcher summary').click();
 }
 
 export async function verifyStudio(browser, origin, output, engine) {
   const errors = [];
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 1000 }, colorScheme: 'light', reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 1000 },
+    colorScheme: 'light',
+    reducedMotion: 'reduce',
   });
-  context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const page = await context.newPage();
   await page.goto(origin + '/admin');
   await expect(page.locator('#login-view')).toBeVisible();
@@ -51,14 +55,18 @@ export async function verifyStudio(browser, origin, output, engine) {
   await page.locator('#dashboard-nav').click();
   for (const width of [1440, 900, 390, 360, 320]) {
     await page.setViewportSize({ width, height: width >= 1100 ? 1000 : 844 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
     for (const id of ['dashboard-nav', 'articles-nav', 'images', 'settings', 'new-post']) {
       await expect(page.locator('#' + id)).toBeVisible();
       const rect = await page.locator('#' + id).boundingBox();
       assert.ok(rect.width >= 44 && rect.height >= 44, id + ' must keep a touch target');
     }
     if (width < 760) await expect(page.locator('.studio-nav')).toHaveCSS('position', 'fixed');
-    else assert.ok((await page.locator('.sidebar').boundingBox()).width >= (width >= 1100 ? 220 : 80));
+    else
+      assert.ok((await page.locator('.sidebar').boundingBox()).width >= (width >= 1100 ? 220 : 80));
   }
   await page.locator('#studio-tools summary').click();
   await expect(page.locator('#logout')).toBeVisible();
@@ -79,10 +87,20 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('#site-form')).toBeVisible();
   await expect(page.locator('#settings')).toHaveAttribute('aria-current', 'page');
   await page.locator('#dashboard-nav').click();
-  for (const [width, dark] of [[1440, false], [390, false], [360, true]]) {
+  for (const [width, dark] of [
+    [1440, false],
+    [390, false],
+    [360, true],
+  ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
-    await page.evaluate(dark => CloudInkTheme.setMode(dark ? 'dark' : 'light'), dark);
-    await page.screenshot({ path: resolve(output, 'studio-shell-' + engine + '-' + width + '-' + (dark ? 'dark' : 'light') + '.png'), fullPage: true });
+    await page.evaluate((dark) => CloudInkTheme.setMode(dark ? 'dark' : 'light'), dark);
+    await page.screenshot({
+      path: resolve(
+        output,
+        'studio-shell-' + engine + '-' + width + '-' + (dark ? 'dark' : 'light') + '.png',
+      ),
+      fullPage: true,
+    });
   }
   await page.locator('.workspace-header [data-theme-toggle]').click();
   await expect(page.locator('.workspace-header [data-theme-toggle] svg')).toHaveCount(2);
@@ -99,9 +117,12 @@ export async function verifyStudio(browser, origin, output, engine) {
   await page.locator('#dashboard-nav').click();
   await expect(page.locator('#home-view')).toBeVisible();
   await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'Studio draft ' + engine }).click();
+  await page
+    .locator('.post-item')
+    .filter({ hasText: 'Studio draft ' + engine })
+    .click();
   await expect(page.locator('#body')).toHaveValue('Keep this text while navigating.');
-  page.once('dialog', dialog => dialog.accept());
+  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#delete-post').click();
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('#post-count')).toHaveText(String(initialCount));
@@ -112,10 +133,14 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('.studio-skip')).toBeHidden();
   await context.close();
 
-  const wizard = await browser.newContext({ viewport: { width: 360, height: 844 }, colorScheme: 'dark' });
-  wizard.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await wizard.route('**/api/config', async route => {
-    const response = await route.fetch(), config = await response.json();
+  const wizard = await browser.newContext({
+    viewport: { width: 360, height: 844 },
+    colorScheme: 'dark',
+  });
+  wizard.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await wizard.route('**/api/config', async (route) => {
+    const response = await route.fetch(),
+      config = await response.json();
     await route.fulfill({ response, json: { ...config, initialized: false } });
   });
   const setup = await wizard.newPage();
@@ -124,14 +149,25 @@ export async function verifyStudio(browser, origin, output, engine) {
   await setup.locator('#setup-next').click();
   await expect(setup.locator('#setup-account-step')).toBeVisible();
   await expect(setup.locator('#setup-form input[name=token]')).toBeFocused();
-  for (const [name, value] of Object.entries({ token: setupToken, email: owner, password, confirm: password }))
+  for (const [name, value] of Object.entries({
+    token: setupToken,
+    email: owner,
+    password,
+    confirm: password,
+  }))
     await setup.locator('#setup-form input[name=' + name + ']').fill(value);
   await setup.locator('#setup-next').click();
   await expect(setup.locator('#setup-site-step')).toBeVisible();
   await expect(setup.locator('#setup-form input[name=title]')).toBeFocused();
   await expect(setup.locator('#setup-progress-site')).toHaveAttribute('aria-current', 'step');
-  assert.equal(await setup.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await setup.screenshot({ path: resolve(output, 'studio-setup-' + engine + '.png'), fullPage: true });
+  assert.equal(
+    await setup.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    false,
+  );
+  await setup.screenshot({
+    path: resolve(output, 'studio-setup-' + engine + '.png'),
+    fullPage: true,
+  });
   await setup.locator('#setup-back').click();
   await expect(setup.locator('#setup-form input[name=token]')).toHaveValue(setupToken);
   await expect(setup.locator('#setup-progress-account')).toHaveAttribute('aria-current', 'step');

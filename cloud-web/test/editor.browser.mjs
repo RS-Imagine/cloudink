@@ -208,6 +208,10 @@ try {
   await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#notice')).toContainText('云端冲突');
   await expect(page.locator('#title')).toHaveValue('beta');
+  await page.locator('#dashboard-nav').click();
+  await expect(page.locator('#editor-view')).toBeVisible();
+  await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
+  await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
   await page.screenshot({ path: resolve('cloud-web/dist/editor.browser.png'), fullPage: true });
   assert.equal(errors.length, 0, JSON.stringify(errors));
   console.log(

@@ -192,11 +192,14 @@ function showLogin() {
 }
 function view(name) {
   const sectionName = name === 'posts' ? 'home' : name;
-  const fromNavigation = document.activeElement?.closest('.studio-nav,#post-list');
+  const fromNavigation = document.activeElement?.closest(
+    '.studio-nav,#post-list,[data-studio-shortcut]',
+  );
   shell.close();
   $('app-view').dataset.view = name;
   for (const button of document.querySelectorAll('[data-studio-nav]')) {
-    const selected = button.dataset.studioNav === (name === 'editor' || name === 'posts' ? 'articles' : name);
+    const selected =
+      button.dataset.studioNav === (name === 'editor' || name === 'posts' ? 'articles' : name);
     if (selected) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   }
@@ -360,7 +363,11 @@ function renderLists() {
       openPost(post.slug).catch((error) => notice(error.message)),
     );
     $('post-list').append(button);
-    if ((postFilter === 'published' && !post.published) || (postFilter === 'draft' && post.published)) continue;
+    if (
+      (postFilter === 'published' && !post.published) ||
+      (postFilter === 'draft' && post.published)
+    )
+      continue;
     shown++;
     const card = document.createElement('button');
     card.className = 'article-card';
@@ -388,9 +395,12 @@ function renderLists() {
   if (!shown) {
     const empty = document.createElement('div');
     empty.className = 'studio-empty';
-    const title = document.createElement('h3'), text = document.createElement('p');
+    const title = document.createElement('h3'),
+      text = document.createElement('p');
     title.textContent = posts.length ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
-    text.textContent = posts.length ? '换一个关键词，或查看全部文章。' : '点击“新文章”开始写作，也可以从更多操作导入原稿。';
+    text.textContent = posts.length
+      ? '换一个关键词，或查看全部文章。'
+      : '点击“新文章”开始写作，也可以从更多操作导入原稿。';
     empty.append(title, text);
     if (posts.length) {
       const reset = document.createElement('button');
@@ -408,7 +418,9 @@ function renderLists() {
   if (!$('post-list').childElementCount) {
     const empty = document.createElement('p');
     empty.className = 'studio-list-empty';
-    empty.textContent = posts.length ? '没有匹配的文章，请修改搜索关键词。' : '还没有文章，先开始新文章。';
+    empty.textContent = posts.length
+      ? '没有匹配的文章，请修改搜索关键词。'
+      : '还没有文章，先开始新文章。';
     $('post-list').append(empty);
   }
 }
@@ -419,7 +431,9 @@ async function refresh() {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
-  $('home-heading').textContent = data.site.author ? '你好，' + data.site.author + '。' : '从一个想法开始。';
+  $('home-heading').textContent = data.site.author
+    ? '你好，' + data.site.author + '。'
+    : '从一个想法开始。';
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
     if (!post || (post.etag && post.etag !== cached.etag)) articleCache.delete(slug);
@@ -634,13 +648,13 @@ async function returnToList(name = 'home') {
     notice(error.message);
   }
 }
-document.querySelector('.brand').addEventListener('click', event => {
+document.querySelector('.brand').addEventListener('click', (event) => {
   event.preventDefault();
   void returnToList();
 });
 $('dashboard-nav').addEventListener('click', () => void returnToList());
 $('articles-nav').addEventListener('click', () => void returnToList('posts'));
-$('post-filters').addEventListener('click', event => {
+$('post-filters').addEventListener('click', (event) => {
   const button = event.target.closest('[data-post-filter]');
   if (!button) return;
   postFilter = button.dataset.postFilter;
