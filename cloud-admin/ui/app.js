@@ -804,13 +804,37 @@ async function upload(file) {
   form.append('file', file);
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  insertImage({ url: result.url, name: file.name });
+  let dimensions = {};
+  const localURL = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = localURL;
+    await image.decode();
+    dimensions = { width: image.naturalWidth, height: image.naturalHeight };
+  } catch {
+    // Unsupported image formats still upload and remain readable.
+  } finally {
+    URL.revokeObjectURL(localURL);
+  }
+  if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
+  insertImage({ url: result.url, name: file.name, ...dimensions });
 }
 function insertImage(image) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
   const name = image.name.replace(/[\[\]\\\n\r]/g, '');
-  const text = `\n\n![${name}](${image.url})\n\n`;
+  const escape = (value) =>
+    String(value).replace(/[&<>"']/g, (c) => {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  const sized =
+    Number.isInteger(image.width) &&
+    image.width > 0 &&
+    Number.isInteger(image.height) &&
+    image.height > 0;
+  const text = sized
+    ? `\n\n<img src="${escape(image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}">\n\n`
+    : `\n\n![${name}](${image.url})\n\n`;
   view('editor');
   textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
   textarea.focus();

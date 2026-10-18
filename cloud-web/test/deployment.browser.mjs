@@ -55,7 +55,7 @@ try {
   await page.locator('#new-post').click();
   await page.locator('#title').fill('Browser published mathematics');
   const body =
-    '## A heading\n\n**Browser publication** $x^2$\n\n```rust\nlet x = 1;\n```\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
+    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$\n\n```rust\nlet x = 1;\n```\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
   await page.locator('#body').fill(body);
   const slug = await page.locator('#slug').inputValue();
   await page.locator('#image-files').setInputFiles({
@@ -88,6 +88,49 @@ try {
   await expect
     .poll(() => image.evaluate((node) => node.complete && node.naturalWidth > 0))
     .toBe(true);
+  await expect(image).toHaveAttribute('width', '1');
+  await expect(image).toHaveAttribute('height', '1');
+  await image.focus();
+  await live.keyboard.press('Enter');
+  await expect(live.locator('.reader-dialog')).toBeVisible();
+  await expect(live.locator('.reader-dialog-close')).toBeFocused();
+  await live.keyboard.press('Escape');
+  await expect(live.locator('.reader-dialog')).toHaveCount(0);
+  await expect(image).toBeFocused();
+  await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  // Reopening must not leave old dialogs or keep background scrolling locked.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await live.keyboard.press('Enter');
+    await expect(live.locator('.reader-dialog')).toHaveCount(1);
+    await live.locator('.reader-dialog-close').click();
+    await expect(live.locator('.reader-dialog')).toHaveCount(0);
+    await expect(image).toBeFocused();
+    await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  }
+  await expect(live.locator('.copy-code')).toHaveCount(1);
+  await live.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (text) => {
+          window.COPIED_TEXT = text;
+        },
+      },
+    });
+  });
+  await live.locator('.copy-code').click();
+  assert.equal(await live.evaluate(() => window.COPIED_TEXT), 'let x = 1;\n');
+  await live.locator('#copy-link').click();
+  assert.equal(await live.evaluate(() => window.COPIED_TEXT), live.url());
+  await live.locator('#share-btn').click();
+  await expect(live.locator('.share-download')).toHaveAttribute('download', 'cloudink-share.png');
+  await live.keyboard.press('Escape');
+  await expect(live.locator('#share-btn')).toBeFocused();
+  const headingIds = await live
+    .locator('.article-body h2')
+    .evaluateAll((nodes) => nodes.map((n) => n.id));
+  assert.equal(new Set(headingIds).size, headingIds.length);
+  await expect(live.locator('.article-body table')).toHaveAttribute('tabindex', '0');
   await live.locator('#theme-toggle-btn').click();
   await expect(live.locator('html')).toHaveAttribute('data-theme', 'dark');
   await live.locator('#site-search-btn').click();
@@ -126,6 +169,10 @@ try {
   await expect(live.locator('html')).toHaveCSS('scroll-behavior', 'auto');
   await live.locator('.mobile-toc-btn').click();
   await expect(live.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'true');
+  await expect(live.locator('.toc-link').first()).toBeFocused();
+  await live.keyboard.press('Escape');
+  await expect(live.locator('.mobile-toc-btn')).toBeFocused();
+  await live.locator('.mobile-toc-btn').click();
   await live.locator('.toc-link').first().click();
   await expect(live.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');
   assert.equal(await live.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

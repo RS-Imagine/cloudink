@@ -100,6 +100,8 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
   <div class="article-body">{body}</div>
   <div class="share-container">
     <a class="back-link" href="/">&larr; Back to posts</a>
+    <button id="copy-link" class="share-button">Copy link / 复制链接</button>
+    <span id="share-status" role="status"></span>
     <button id="share-btn" class="share-button">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
         <path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5zm-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
@@ -216,6 +218,7 @@ fn page(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{description}">
+  <meta name="author" content="{author}">
   <title>{title}</title>
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -245,6 +248,7 @@ fn page(
   </script>
 "#,
         description = escape_html(description),
+        author = escape_html(&config.author),
         title = escape_html(title),
         css_hash = css_hash,
         extra_head = extra_head,
