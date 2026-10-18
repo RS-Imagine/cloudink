@@ -98,6 +98,15 @@ try {
   await expect(live.locator('.reader-dialog')).toHaveCount(0);
   await expect(image).toBeFocused();
   await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  // Reopening must not leave old dialogs or keep background scrolling locked.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await live.keyboard.press('Enter');
+    await expect(live.locator('.reader-dialog')).toHaveCount(1);
+    await live.locator('.reader-dialog-close').click();
+    await expect(live.locator('.reader-dialog')).toHaveCount(0);
+    await expect(image).toBeFocused();
+    await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
+  }
   await expect(live.locator('.copy-code')).toHaveCount(1);
   await live.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {

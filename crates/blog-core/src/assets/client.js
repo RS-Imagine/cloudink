@@ -169,6 +169,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!swupContainer) return;
 
         const images = document.querySelectorAll('.article-body img');
+        const dialogs = new Set();
+        cleanupFunctions.push(() => {
+          for (const dialog of dialogs) if (dialog.open) dialog.close();
+        });
         const showDialog = (content, label, trigger) => {
           const dialog = document.createElement('dialog');
           dialog.className = 'reader-dialog';
@@ -183,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const finish = () => {
             document.body.style.overflow = overflow;
             dialog.remove();
+            dialogs.delete(dialog);
             if (trigger?.isConnected) trigger.focus({ preventScroll: true });
           };
           dialog.addEventListener('close', finish, { once: true });
@@ -191,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.style.overflow = 'hidden';
           dialog.showModal();
           close.focus();
-          cleanupFunctions.push(() => { if (dialog.open) dialog.close(); });
+          dialogs.add(dialog);
         };
         images.forEach(img => {
           // Linked images retain their author's link action.
