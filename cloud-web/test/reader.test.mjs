@@ -14,14 +14,14 @@ test('public metadata, lazy images and discovery follow the live release without
   await f.request('/api/posts/private', 'PUT', { draft: draft('private'), etag: null });
   const state = await f.prepare({ slug: 'public', etag: saved.etag });
   const html =
-    '<!doctype html><html><head><title>Reading &amp; writing</title>' +
+    '<!doctype html><html><head><title>Writer&#39;s &amp; &#x1f333; &#128512;</title>' +
     '<meta name="description" content="A &quot;small&quot; story">' +
-    '<meta name="author" content="Writer">' +
+    '<meta name="author" content="Writer&#39;s name">' +
     '<link rel="canonical" href="https://wrong.example/">' +
     '<meta property="og:title" content="obsolete"></head><body>' +
     '<header class="site-brand"><h1>Blog</h1></header>' +
     '<article><div class="article-body">' +
-    '<img src="/images/uploads/first.png" alt="First" width="800" height="600">' +
+    '<img src="first.png" alt="First" width="800" height="600">' +
     '<img src="/images/uploads/second.png" alt="Second"></div></article></body></html>';
   await f.stage(state, [], html);
   assert.equal((await f.commit(state)).status, 200);
@@ -39,11 +39,14 @@ test('public metadata, lazy images and discovery follow the live release without
     result.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1],
   );
   assert.equal(json['@type'], 'BlogPosting');
-  assert.equal(json.name, 'Reading & writing');
+  assert.equal(json.name, "Writer's & 🌳 😀");
+  assert.match(result, /property="og:title" content="Writer&#39;s &amp; 🌳 😀"/);
+  assert.match(result, /name="twitter:title" content="Writer&#39;s &amp; 🌳 😀"/);
+  assert.ok(!result.includes('&amp;#39;'));
   assert.equal(json.description, 'A "small" story');
   assert.equal(json.url, origin + '/posts/public/');
-  assert.equal(json.author.name, 'Writer');
-  assert.equal(json.image[0], origin + '/images/uploads/first.png');
+  assert.equal(json.author.name, "Writer's name");
+  assert.equal(json.image[0], origin + '/posts/public/first.png');
   const sitemap = await (await f.request('/sitemap.xml')).text();
   assert.match(sitemap, /\/posts\/public\//);
   assert.ok(!sitemap.includes('private'));

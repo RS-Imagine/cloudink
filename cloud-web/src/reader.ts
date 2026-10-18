@@ -1,5 +1,5 @@
 export async function readerEtag(etag: string, url: URL): Promise<string> {
-  const input = new TextEncoder().encode('reader-v1:' + url.origin + url.pathname + etag);
+  const input = new TextEncoder().encode('reader-v2:' + url.origin + url.pathname + etag);
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
   return '"' + [...hash].map((byte) => byte.toString(16).padStart(2, '0')).join('') + '"';
 }
@@ -11,7 +11,7 @@ const escape = (value: string) =>
   });
 
 const decode = (value: string) =>
-  value.replace(/&(#x[0-9a-f]+|#\\d+|amp|lt|gt|quot|apos);/gi, (entity, name: string) => {
+  value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entity, name: string) => {
     if (name[0] === '#') {
       const code =
         name[1].toLowerCase() === 'x' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
@@ -65,7 +65,7 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
         else el.removeAttribute('fetchpriority');
         if (!image) {
           try {
-            const candidate = new URL(decode(el.getAttribute('src') || ''), url.origin);
+            const candidate = new URL(decode(el.getAttribute('src') || ''), url);
             if (el.getAttribute('src') && ['https:', 'http:'].includes(candidate.protocol)) {
               image = candidate.href;
               imageAlt = el.getAttribute('alt') || title;
