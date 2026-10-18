@@ -106,6 +106,22 @@ try {
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
+  // The preview embeds the same Rust stylesheet; headings must remain visible.
+  await expect(page.frameLocator('#preview-frame').locator('.article-heading h1')).toBeVisible();
+  const readingStyle = (node) => {
+    const style = getComputedStyle(node);
+    return { family: style.fontFamily, size: style.fontSize, lineHeight: style.lineHeight };
+  };
+  const previewWidth = await page
+    .frameLocator('#preview-frame')
+    .locator('.article-body')
+    .evaluate(() => innerWidth);
+  await live.setViewportSize({ width: previewWidth, height: 1000 });
+  assert.deepEqual(
+    await live.locator('.article-body').evaluate(readingStyle),
+    await page.frameLocator('#preview-frame').locator('.article-body').evaluate(readingStyle),
+  );
+  await live.setViewportSize({ width: 1440, height: 1000 });
   await expect(live.locator('.katex')).toHaveCount(1);
   await expect(live.locator('code.hljs')).toHaveCount(1);
   assert.equal(await live.evaluate(() => window.BAD_SCRIPT), undefined);
