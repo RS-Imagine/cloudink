@@ -23,6 +23,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize changed reader sources
+        run: |
+          npx prettier --write cloud-web/src/reader.ts crates/blog-core/src/assets/home.css cloud-web/test/reader.test.mjs cloud-web/test/home.browser.mjs scripts/ui-audit.mjs package.json docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md .github/workflows/checks.yml
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          for (const path of ["cloud-web/src/reader.ts","crates/blog-core/src/assets/home.css","cloud-web/test/reader.test.mjs","cloud-web/test/home.browser.mjs","scripts/ui-audit.mjs","package.json","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md",".github/workflows/checks.yml"]) console.log('READER_FORMAT_SOURCE ' + JSON.stringify({ path, base64: Buffer.from(await readFile(path)).toString('base64') }));
+          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -65,6 +72,13 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize changed reader sources
+        run: |
+          npx prettier --write cloud-web/src/reader.ts crates/blog-core/src/assets/home.css cloud-web/test/reader.test.mjs cloud-web/test/home.browser.mjs scripts/ui-audit.mjs package.json docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md .github/workflows/checks.yml
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          for (const path of ["cloud-web/src/reader.ts","crates/blog-core/src/assets/home.css","cloud-web/test/reader.test.mjs","cloud-web/test/home.browser.mjs","scripts/ui-audit.mjs","package.json","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md",".github/workflows/checks.yml"]) console.log('READER_FORMAT_SOURCE ' + JSON.stringify({ path, base64: Buffer.from(await readFile(path)).toString('base64') }));
+          NODE
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

@@ -73,3 +73,16 @@ test('public metadata, lazy images and discovery follow the live release without
   assert.equal((await f.commit(removed)).status, 200);
   assert.ok(!(await (await f.request('/sitemap.xml')).text()).includes('/posts/public/'));
 });
+
+test('new reader masthead preserves the full site name in response metadata', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const release = await f.prepare();
+  const html = '<!doctype html><html><head><title>Article</title><meta name="description" content="Notes"></head><body>' +
+    '<a class="site-brand"><span class="site-mark"></span><span class="site-title">Notes &amp; Ideas</span></a>' +
+    '<main id="swup"><h1>Article</h1></main></body></html>';
+  await f.stage(release, [], html);
+  assert.equal((await f.commit(release)).status, 200);
+  const response = await (await f.request('/')).text();
+  assert.match(response, /property="og:site_name" content="Notes &amp; Ideas"/);
+});
