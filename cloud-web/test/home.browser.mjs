@@ -109,10 +109,19 @@ export async function verifyHome(browser, origin, output, engine) {
       .forEach((node) => (node.textContent = 'LongArticleTitle'.repeat(25)));
   });
   const wideElements = await page.evaluate(() =>
-    [...document.querySelectorAll('body *')].filter(node => node.getBoundingClientRect().right > innerWidth + 1)
-      .map(node => ({ tag: node.tagName, class: node.className, width: node.getBoundingClientRect().width })),
+    [...document.querySelectorAll('body *')]
+      .filter((node) => node.getBoundingClientRect().right > innerWidth + 1)
+      .map((node) => ({
+        tag: node.tagName,
+        class: node.className,
+        width: node.getBoundingClientRect().width,
+      })),
   );
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, JSON.stringify(wideElements));
+  assert.equal(
+    await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+    false,
+    JSON.stringify(wideElements),
+  );
   await page.screenshot({
     path: resolve(output, 'reader-long-text-' + engine + '.png'),
     fullPage: true,
