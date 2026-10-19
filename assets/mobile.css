@@ -164,7 +164,9 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
   .editor-toolbar {
     scroll-margin-top: 8px;
   }
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     scroll-margin-block: 96px 112px;
   }
   .image-library-filters {

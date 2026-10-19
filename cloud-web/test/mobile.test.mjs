@@ -21,6 +21,10 @@ test('compact sheets have no artificial middle detent', () => {
   assert.equal(snap({ offset: 240, velocity: 0, height: 300 }), 'closed');
 });
 test('invalid or collapsed geometry does not turn a release into dismissal', () => {
-  for (const input of [{ offset: 20, velocity: NaN, height: 700 }, { offset: 20, velocity: 0, height: 0 }, { offset: Infinity, velocity: 0, height: 700 }])
+  for (const input of [
+    { offset: 20, velocity: NaN, height: 700 },
+    { offset: 20, velocity: 0, height: 0 },
+    { offset: Infinity, velocity: 0, height: 700 },
+  ])
     assert.equal(snap(input), 'expanded');
 });

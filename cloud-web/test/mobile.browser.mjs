@@ -7,11 +7,18 @@ import { openPostSwitcher } from './studio.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 
 async function settled(page) {
-  await expect.poll(() => page.evaluate(() => !CloudInkMotion.stats().framePending && !CloudInkMobile.stats().viewportPending)).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => !CloudInkMotion.stats().framePending && !CloudInkMobile.stats().viewportPending,
+      ),
+    )
+    .toBe(true);
 }
 async function drag(page, handle, distance) {
   const bounds = await handle.boundingBox();
-  const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2;
+  const x = bounds.x + bounds.width / 2,
+    y = bounds.y + bounds.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x, y + distance, { steps: 8 });
@@ -21,20 +28,27 @@ async function drag(page, handle, distance) {
 export async function verifyMobile(browser, origin, output, engine) {
   const errors = [];
   const context = await browser.newContext({
-    viewport: { width: 390, height: 844 }, colorScheme: 'light',
+    viewport: { width: 390, height: 844 },
+    colorScheme: 'light',
     reducedMotion: 'no-preference',
     ...(engine !== 'firefox' ? { hasTouch: true, isMobile: true } : {}),
   });
-  context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const page = await context.newPage();
   await page.goto(origin + '/posts/slow-days/');
   await page.locator('.mobile-toc-btn').click();
-  const toc = page.locator('.toc-container'), grip = toc.locator('.ci-sheet-grip');
+  const toc = page.locator('.toc-container'),
+    grip = toc.locator('.ci-sheet-grip');
   await settled(page);
   await expect(toc).toHaveAttribute('data-sheet-snap', 'peek');
   await expect(grip).toHaveCSS('touch-action', 'none');
-  await page.screenshot({ path: resolve(output, 'mobile-toc-peek-' + engine + '.png'), fullPage: false });
+  await page.screenshot({
+    path: resolve(output, 'mobile-toc-peek-' + engine + '.png'),
+    fullPage: false,
+  });
   await drag(page, grip, -140);
   await expect(toc).toHaveAttribute('data-sheet-snap', 'expanded');
   await grip.press('End');
@@ -44,7 +58,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   await settled(page);
   await expect(toc).toHaveAttribute('data-sheet-snap', 'expanded');
   // Content scroll must not start a sheet gesture or move the underlying document.
-  await toc.evaluate(node => {
+  await toc.evaluate((node) => {
     const overflow = document.createElement('div');
     for (let i = 0; i < 30; i++) {
       const paragraph = document.createElement('p');
@@ -53,30 +67,64 @@ export async function verifyMobile(browser, origin, output, engine) {
     }
     node.append(overflow);
   });
-  const position = await toc.evaluate(node => node.style.translate);
+  const position = await toc.evaluate((node) => node.style.translate);
   const articleY = await page.evaluate(() => scrollY);
-  await toc.evaluate(node => { node.scrollTop = 120; });
-  assert.equal(await toc.evaluate(node => node.style.translate), position);
+  await toc.evaluate((node) => {
+    node.scrollTop = 120;
+  });
+  assert.equal(await toc.evaluate((node) => node.style.translate), position);
   assert.equal(await page.evaluate(() => scrollY), articleY);
-  await toc.evaluate(node => { node.scrollTop = 0; });
+  await toc.evaluate((node) => {
+    node.scrollTop = 0;
+  });
   if (engine === 'chromium') {
     const session = await context.newCDPSession(page);
     const bounds = await grip.boundingBox();
-    const x = bounds.x + bounds.width / 2, y = bounds.y + 22;
+    const startTop = (await toc.boundingBox()).y;
+    const x = bounds.x + bounds.width / 2,
+      y = bounds.y + 22;
     await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     for (let i = 1; i <= 6; i++)
-      await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + i * 18 }] });
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x, y: y + i * 18 }],
+      });
+    assert.ok(
+      (await toc.boundingBox()).y > startTop + 60,
+      'Touch drag moves the sheet before cancellation',
+    );
     await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
     await session.detach();
     await settled(page);
     await expect(toc).toHaveAttribute('data-sheet-snap', 'expanded');
+    assert.equal(await page.evaluate(() => scrollY), articleY);
   }
-  await grip.dispatchEvent('pointerdown', { pointerId: 17, pointerType: 'touch', button: 0, isPrimary: true, clientY: 150 });
-  await grip.dispatchEvent('pointermove', { pointerId: 17, pointerType: 'touch', button: 0, isPrimary: true, clientY: 240 });
-  await grip.dispatchEvent('pointercancel', { pointerId: 17, pointerType: 'touch', button: 0, isPrimary: true });
+  await grip.dispatchEvent('pointerdown', {
+    pointerId: 17,
+    pointerType: 'touch',
+    button: 0,
+    isPrimary: true,
+    clientY: 150,
+  });
+  await grip.dispatchEvent('pointermove', {
+    pointerId: 17,
+    pointerType: 'touch',
+    button: 0,
+    isPrimary: true,
+    clientY: 240,
+  });
+  await grip.dispatchEvent('pointercancel', {
+    pointerId: 17,
+    pointerType: 'touch',
+    button: 0,
+    isPrimary: true,
+  });
   await settled(page);
   await expect(toc).toHaveAttribute('data-sheet-snap', 'expanded');
-  await page.screenshot({ path: resolve(output, 'mobile-toc-expanded-' + engine + '.png'), fullPage: false });
+  await page.screenshot({
+    path: resolve(output, 'mobile-toc-expanded-' + engine + '.png'),
+    fullPage: false,
+  });
   await drag(page, grip, 550);
   await expect(page.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.mobile-toc-btn')).toBeFocused();
@@ -119,34 +167,62 @@ export async function verifyMobile(browser, origin, output, engine) {
   await expect(page.locator('#article-browser #search')).toHaveCount(0);
   await page.locator('#search').fill('Mobile draft ' + engine);
   await expect(page.locator('#post-list .post-item')).toHaveCount(1);
-  await page.screenshot({ path: resolve(output, 'mobile-post-picker-' + engine + '.png'), fullPage: false });
+  await page.screenshot({
+    path: resolve(output, 'mobile-post-picker-' + engine + '.png'),
+    fullPage: false,
+  });
   await page.locator('#post-list .post-item').click();
   await expect(page.locator('#studio-sheet')).toBeHidden();
   await expect(page.locator('#article-browser #search')).toHaveCount(1);
-  await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
+  await expect(page.locator('#body')).toHaveValue(
+    'Keep this draft through mobile menus and rotation.',
+  );
   await openPostSwitcher(page);
   await expect(page.locator('#studio-sheet')).toBeVisible();
+  await settled(page);
+  const pickerGrip = page.locator('#studio-sheet > .ci-sheet-grip');
+  await pickerGrip.dispatchEvent('pointerdown', {
+    pointerId: 19,
+    pointerType: 'touch',
+    button: 0,
+    isPrimary: true,
+    clientY: 400,
+  });
+  await pickerGrip.dispatchEvent('pointermove', {
+    pointerId: 19,
+    pointerType: 'touch',
+    button: 0,
+    isPrimary: true,
+    clientY: 460,
+  });
   await page.setViewportSize({ width: 844, height: 390 });
   await expect(page.locator('#studio-sheet')).toBeHidden();
   await expect(page.locator('#article-browser #search')).toHaveCount(1);
-  await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
+  await expect(page.locator('#body')).toHaveValue(
+    'Keep this draft through mobile menus and rotation.',
+  );
   await page.setViewportSize({ width: 360, height: 844 });
   await page.evaluate(() => CloudInkTheme.setMode('dark'));
   await page.locator('#studio-tools summary').click();
   await expect(page.locator('#studio-sheet')).toBeVisible();
   await settled(page);
-  await page.screenshot({ path: resolve(output, 'mobile-more-dark-' + engine + '.png'), fullPage: false });
+  await page.screenshot({
+    path: resolve(output, 'mobile-more-dark-' + engine + '.png'),
+    fullPage: false,
+  });
   await page.keyboard.press('Escape');
   await expect(page.locator('#studio-tools summary')).toBeFocused();
   let deletions = 0;
-  page.on('request', request => {
+  page.on('request', (request) => {
     if (request.method() === 'DELETE' && request.url().includes('/api/posts/')) deletions++;
   });
   await page.locator('#delete-post').click();
   await expect(page.locator('#confirmation-cancel')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
-  await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
+  await expect(page.locator('#body')).toHaveValue(
+    'Keep this draft through mobile menus and rotation.',
+  );
   await page.locator('#delete-post').click();
   await settled(page);
   await page.evaluate(() => {
@@ -157,28 +233,40 @@ export async function verifyMobile(browser, origin, output, engine) {
   await page.keyboard.press('Escape');
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
   assert.equal(deletions, 0, 'Reopening an outgoing confirmation cancels its old result');
-  await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
+  await expect(page.locator('#body')).toHaveValue(
+    'Keep this draft through mobile menus and rotation.',
+  );
   await page.locator('#delete-post').click();
   await acceptConfirmation(page);
   await expect(page.locator('#post-count')).toHaveText('4');
   assert.equal(deletions, 1);
   await settled(page);
-  assert.deepEqual(await page.evaluate(() => {
-    const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
-    return ids.filter((id, index) => ids.indexOf(id) !== index);
-  }), []);
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const ids = [...document.querySelectorAll('[id]')].map((node) => node.id);
+      return ids.filter((id, index) => ids.indexOf(id) !== index);
+    }),
+    [],
+  );
   await context.close();
 
   // Simulates visualViewport geometry, not a real mobile input method.
   const keyboard = await browser.newContext({
-    viewport: { width: 390, height: 844 }, reducedMotion: 'reduce', colorScheme: 'light',
+    viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce',
+    colorScheme: 'light',
   });
-  keyboard.on('page', p => p.on('pageerror', error => errors.push(error.message)));
-  await keyboard.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ contentType: 'text/css', body: '' }));
+  keyboard.on('page', (p) => p.on('pageerror', (error) => errors.push(error.message)));
+  await keyboard.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   await keyboard.addInitScript(() => {
     const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 });
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
-    window.__resizeTestViewport = height => { viewport.height = height; viewport.dispatchEvent(new Event('resize')); };
+    window.__resizeTestViewport = (height) => {
+      viewport.height = height;
+      viewport.dispatchEvent(new Event('resize'));
+    };
   });
   const keypad = await keyboard.newPage();
   await keypad.goto(origin + '/posts/slow-days/');
@@ -188,9 +276,15 @@ export async function verifyMobile(browser, origin, output, engine) {
   await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
   await settled(keypad);
   const bounds = await keypad.locator('#search-modal').boundingBox();
-  assert.ok(bounds.y >= -1 && bounds.y + bounds.height <= 431, 'Search stays above the simulated keyboard');
+  assert.ok(
+    bounds.y >= -1 && bounds.y + bounds.height <= 431,
+    'Search stays above the simulated keyboard',
+  );
   await expect(keypad.locator('#search-input')).toBeFocused();
-  await keypad.screenshot({ path: resolve(output, 'mobile-keyboard-search-' + engine + '.png'), fullPage: false });
+  await keypad.screenshot({
+    path: resolve(output, 'mobile-keyboard-search-' + engine + '.png'),
+    fullPage: false,
+  });
   await keypad.keyboard.press('Escape');
   await keypad.evaluate(() => __resizeTestViewport(844));
   await keypad.goto(origin + '/admin');
@@ -203,7 +297,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.evaluate(() => __resizeTestViewport(430));
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
   await expect(keypad.locator('#body')).toBeFocused();
-  await keypad.locator('#body').evaluate(node => node.blur());
+  await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(844));
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
   await keyboard.close();
