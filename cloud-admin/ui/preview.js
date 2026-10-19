@@ -1,6 +1,7 @@
 const frame = document.getElementById('preview-frame');
 const loading = document.getElementById('preview-loading');
 function applyPreviewTheme(page) {
+  if (!page?.documentElement) return;
   const dark = document.documentElement.dataset.theme === 'dark';
   page.documentElement.dataset.theme = dark ? 'dark' : 'light';
   page.documentElement.dataset.palette = document.documentElement.dataset.palette || 'ink';

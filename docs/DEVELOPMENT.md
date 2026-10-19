@@ -197,3 +197,12 @@ data-sheet 标记的原生 dialog 由 CloudInkMotion 接入手机面板；目录
 移动面板新增单独压缩预算 5 KiB（JS+CSS），共享动效原有预算不变。
 自动检查包含释放方向与速度、拖拽/取消、停靠、键盘替代、原生内容滚动、
 横竖屏/尺寸变化和 viewport 键盘尺寸模拟；真实移动输入法与 Safari 仍需真机验收。
+
+## 表面增强回归
+
+assets/expressive.css 通过原有 Rust/WASM 和后台构建共享，格式检查与 2KiB minified gzip 预算覆盖新增样式。
+theme.js 复用阻塞式引导，主题与效果 bootstrap 合计 gzip 预算 2KiB。
+视觉效果是本浏览器偏好，不写入站点设置，也不需要发布才生效；公开模板代码更新后仍按既有流程重发内容。
+运行 npm run test:ui:audit 验证 Chromium、Firefox、WebKit 的效果/不透明比较、合成对比度、面积、关闭与降级。
+report.json 的 surfaces 包含 4× CPU 滚动帧样本；它是实验记录，不能作为真实 GPU 或输入延迟的结论。
+原型 prototypes/ui-2.0/surfaces.html 只使用共享资源和本地示例，审阅包可直接解压打开。

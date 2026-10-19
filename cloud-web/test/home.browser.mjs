@@ -145,10 +145,18 @@ export async function verifyHome(browser, origin, output, engine) {
   await nativePage.goto(origin + '/');
   await nativePage.locator('.home-feature h2 a').click();
   await expect(nativePage.locator('article h1')).toBeVisible();
-  assert.equal(
-    await nativePage.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-    false,
-  );
+  const nativeLayout = await nativePage.evaluate(() => ({
+    width: innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    overflowing: [...document.querySelectorAll('body *')]
+      .filter((node) => node.getBoundingClientRect().right > innerWidth + 1)
+      .map((node) => ({
+        tag: node.tagName,
+        class: node.className,
+        width: node.getBoundingClientRect().width,
+      })),
+  }));
+  assert.equal(nativeLayout.scrollWidth > nativeLayout.width, false, JSON.stringify(nativeLayout));
   await noScript.close();
   assert.deepEqual(errors, [], engine + ' reader home must not produce browser errors');
 }

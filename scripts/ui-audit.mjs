@@ -17,6 +17,7 @@ import {
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
 import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
+import { verifySurfaces } from '../cloud-web/test/surfaces.browser.mjs';
 import { verifyMobile } from '../cloud-web/test/mobile.browser.mjs';
 import { verifyWorkflows } from '../cloud-web/test/workflows.browser.mjs';
 import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
@@ -33,18 +34,19 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: 'f4fe831a5361a82342ec14890443301b79e10f7e',
+  upstream: '34bb5159aea55a288d2ae5fc3d2f3b3fd6dbce1a',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
   browsers: {},
   assets: {},
   samples: [],
+  surfaces: [],
   existingLayoutIssues: [],
 };
 await mkdir(output, { recursive: true });
 const allowed = new Set(
-  ['tokens.css', 'style.css', 'app.js', 'index.html', 'motion.html', 'motion.js']
+  ['tokens.css', 'style.css', 'app.js', 'index.html', 'motion.html', 'motion.js', 'surfaces.html']
     .map((p) => '/prototypes/ui-2.0/' + p)
     .concat(
       '/assets/cloudink.svg',
@@ -52,6 +54,8 @@ const allowed = new Set(
       '/assets/design-foundation.css',
       '/assets/motion.css',
       '/assets/motion.js',
+      '/assets/theme.js',
+      '/assets/expressive.css',
     ),
 );
 const server = createServer(async (request, response) => {
@@ -435,6 +439,7 @@ try {
     await verifyReader(localBrowser, origin, output, engine);
     await verifyMobile(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
+    report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
       for (const theme of themes) {
@@ -508,6 +513,25 @@ try {
         assert.deepEqual(outside, [], 'The prototype must be completely local, with no API calls');
         await context.close();
       }
+    const surfaceDemoContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      reducedMotion: 'no-preference',
+    });
+    const surfaceDemo = await surfaceDemoContext.newPage();
+    const demoOutside = [];
+    surfaceDemo.on('request', (request) => {
+      if (!request.url().startsWith(studyOrigin + '/')) demoOutside.push(request.url());
+    });
+    await surfaceDemo.goto(studyOrigin + '/prototypes/ui-2.0/surfaces.html');
+    await expect(surfaceDemo.locator('select[data-effects-mode]')).toBeVisible();
+    await surfaceDemo.locator('select[data-effects-mode]').selectOption('off');
+    await expect(surfaceDemo.locator('html')).toHaveAttribute('data-effects', 'solid');
+    await surfaceDemo.locator('select[data-theme-mode]').selectOption('dark');
+    await expect(surfaceDemo.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await surfaceDemo.keyboard.press('Escape');
+    await expect(surfaceDemo.locator('.reader-menu')).not.toHaveAttribute('open', '');
+    assert.deepEqual(demoOutside, [], 'Surface comparison stays local');
+    await surfaceDemoContext.close();
     // Ordinary motion can be interrupted by quick navigation; editor state stays in memory.
     const motionContext = await browser.newContext({
       reducedMotion: 'no-preference',
@@ -550,6 +574,7 @@ try {
     'assets/motion.css',
     'assets/mobile.js',
     'assets/mobile.css',
+    'assets/expressive.css',
     'prototypes/ui-2.0/index.html',
     'prototypes/ui-2.0/tokens.css',
     'prototypes/ui-2.0/style.css',
@@ -636,6 +661,21 @@ try {
     report.assets['shared/mobile.min.js+css'].gzip <= 5120,
     'Mobile interactions gzip budget',
   );
+  const expressiveCSS = (
+    await transform(await readFile('assets/expressive.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
+  ).code;
+  report.assets['shared/expressive.min.css'] = { gzip: gzipSync(expressiveCSS).length };
+  assert.ok(
+    report.assets['shared/expressive.min.css'].gzip <= 2048,
+    'Expressive surfaces CSS gzip budget',
+  );
+  assert.ok(
+    report.assets['assets/theme.js'].gzip <= 2048,
+    'Theme and effects bootstrap gzip budget',
+  );
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -644,6 +684,7 @@ try {
     'touch emulation (Chromium/WebKit)',
     '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
+    'three-engine bounded glass/opaque comparisons, worst-backdrop text contrast, effect opt-out/sync, storage/CSS denial, system preferences and low-resource fallback; Chromium CPU4x scroll samples',
     'reduced motion',
     'three-engine mobile detents, drag/cancel, keyboard alternatives, modal menu identity, rotation and viewport simulation; Chromium touch cancellation',
     'three-engine editor pane/selection retention, save retry, library failure/retry and protection, confirmation focus/Escape, settings and backup feedback',
@@ -668,6 +709,7 @@ try {
     'README.md',
     'motion.html',
     'motion.js',
+    'surfaces.html',
   ])
     await copyFile(
       resolve('prototypes/ui-2.0', name),
@@ -684,6 +726,8 @@ try {
     'motion.js',
     'mobile.css',
     'mobile.js',
+    'theme.js',
+    'expressive.css',
   ])
     await copyFile(resolve('assets', name), resolve(output, 'preview/assets', name));
   await writeFile(
@@ -733,7 +777,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 移动交互审阅</h1><p><a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 表面效果审阅</h1><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +
@@ -745,6 +789,7 @@ try {
       screenshots: report.samples.length,
       samples: report.samples,
       assets: report.assets,
+      surfaces: report.surfaces,
       existingLayoutIssues: report.existingLayoutIssues,
       checks: report.checks,
     }),
