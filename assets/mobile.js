@@ -327,8 +327,15 @@
     viewportFrame = 0;
     if (!doc?.documentElement) return;
     const viewport = env.visualViewport;
-    // Preserve browser pinch zoom; ordinary page zoom still uses responsive layout.
-    if (viewport?.scale && Math.abs(viewport.scale - 1) > 0.01) return;
+    // Pinch zoom changes visual geometry without changing the layout viewport.
+    // Release earlier keyboard overrides so navigation cannot remain hidden after blur.
+    const root = doc.documentElement;
+    if (viewport?.scale && Math.abs(viewport.scale - 1) > 0.01) {
+      root.removeAttribute('data-ci-keyboard');
+      root.style.removeProperty('--ci-vp-height');
+      root.style.removeProperty('--ci-vp-bottom');
+      return;
+    }
     const height = viewportHeight(),
       top = viewport?.offsetTop || 0;
     const editing = !!doc.activeElement?.matches(
@@ -339,7 +346,6 @@
       Math.abs(height - lastViewportHeight) > 1 || env.innerWidth !== lastViewportWidth;
     lastViewportHeight = height;
     lastViewportWidth = env.innerWidth;
-    const root = doc.documentElement;
     root.style.setProperty('--ci-vp-height', height + 'px');
     root.style.setProperty(
       '--ci-vp-bottom',

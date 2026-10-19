@@ -37,11 +37,6 @@ a:hover { color: var(--accent-strong); }
 .hero { padding: 64px 0 72px; max-width: 800px; }
 .hero h1 { margin: 16px 0 24px; font-family: var(--font-heading); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 600; line-height: 1.18; letter-spacing: -0.035em; text-wrap: balance; overflow-wrap: anywhere; white-space: pre-line; }
 .hero p { margin: 0; max-width: 540px; color: var(--muted); font-size: 18px; line-height: 1.8; }
-.hero-action { display: inline-flex; align-items: center; gap: 12px; margin-top: 32px; padding: 11px 22px; background: var(--accent); color: var(--bg); border-radius: 6px; text-decoration: none; font-size: 15px; transition: background-color 180ms ease, transform 180ms var(--ease); }
-.hero-action:hover { background: var(--accent-strong); color: var(--bg); transform: translateY(-2px); }
-.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
-.section-heading h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; margin: 0; color: var(--muted); }
-.section-heading span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .grid { display: grid; gap: 0; }
 .post-card { position: relative; display: grid; grid-template-columns: 150px minmax(0, 1fr) 24px; gap: 28px; align-items: baseline; padding: 28px 0; border-bottom: 1px solid var(--border-soft); transition: border-color 180ms ease; }
 .post-card h2 { margin: 0 0 8px; font-size: 21px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
@@ -338,7 +333,6 @@ article img {
   border-radius: 2px;
 }
 .transition-fade {
-  transition: opacity 180ms ease, transform 180ms var(--ease);
   opacity: 1;
   transform: translateY(0);
 }

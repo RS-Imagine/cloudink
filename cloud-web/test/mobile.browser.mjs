@@ -263,8 +263,9 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keyboard.addInitScript(() => {
     const viewport = Object.assign(new EventTarget(), { height: 844, offsetTop: 0, scale: 1 });
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
-    window.__resizeTestViewport = (height) => {
+    window.__resizeTestViewport = (height, scale = 1) => {
       viewport.height = height;
+      viewport.scale = scale;
       viewport.dispatchEvent(new Event('resize'));
     };
   });
@@ -293,13 +294,33 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.locator('#login-submit').click();
   await expect(keypad.locator('#app-view')).toHaveAttribute('data-view', 'home');
   await keypad.locator('#new-post').click();
-  await keypad.locator('#body').focus();
+  await keypad.locator('#body').fill('Retain writing while the keyboard and zoom change.');
   await keypad.evaluate(() => __resizeTestViewport(430));
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
   await expect(keypad.locator('#body')).toBeFocused();
+  // A keyboard close during pinch zoom must not leave the navigation hidden.
+  await keypad.locator('#body').evaluate((node) => node.blur());
+  await keypad.evaluate(() => __resizeTestViewport(422, 2));
+  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
+  await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
+  assert.deepEqual(
+    await keypad.evaluate(() => [
+      document.documentElement.style.getPropertyValue('--ci-vp-height'),
+      document.documentElement.style.getPropertyValue('--ci-vp-bottom'),
+    ]),
+    ['', ''],
+    'Pinch zoom releases keyboard geometry instead of resizing the layout',
+  );
+  await keypad.evaluate(() => __resizeTestViewport(844));
+  await keypad.locator('#body').focus();
+  await keypad.evaluate(() => __resizeTestViewport(430));
+  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
   await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(844));
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
+  await expect(keypad.locator('#body')).toHaveValue(
+    'Retain writing while the keyboard and zoom change.',
+  );
   await keyboard.close();
   assert.deepEqual(errors, [], engine + ' mobile flows must not throw browser errors');
 }
