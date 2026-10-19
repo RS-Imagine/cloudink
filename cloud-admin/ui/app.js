@@ -83,8 +83,11 @@ async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
   const button = $(id),
     labelNode = button.querySelector('[data-action-label]') || button,
-    original = labelNode.textContent;
+    original = labelNode.textContent,
+    originalInlineSize = button.style.inlineSize,
+    initialWidth = button.getBoundingClientRect().width;
   activeActions.add(id);
+  if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   labelNode.textContent = label;
@@ -101,6 +104,7 @@ async function action(id, label, work, success = '') {
   } finally {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
+    button.style.inlineSize = originalInlineSize;
     labelNode.textContent =
       publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
     button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);

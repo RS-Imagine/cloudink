@@ -1,4 +1,9 @@
 /* Writing, library and settings share the existing CloudInk tokens and motion. */
+button[aria-busy='true'] {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .editor-view {
   padding: 0;
   overflow: visible;

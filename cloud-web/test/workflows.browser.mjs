@@ -152,17 +152,32 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await page.locator('#settings').click();
   await expect(page.locator('#site-form')).toBeVisible();
   let failSettings = true,
-    accountRequests = 0;
+    accountRequests = 0,
+    releaseSettings;
+  const pendingSettings = new Promise((resolve) => {
+    releaseSettings = resolve;
+  });
   page.on('request', (request) => {
     if (request.url().endsWith('/api/account')) accountRequests++;
   });
   await page.route('**/api/settings', async (route) => {
     if (route.request().method() === 'PUT' && failSettings) {
       failSettings = false;
+      await pendingSettings;
       await route.fulfill({ status: 503, json: { error: 'Temporary settings failure' } });
     } else await route.continue();
   });
-  await page.locator('#save-site').click();
+  const saveButton = page.locator('#save-site');
+  const beforeSave = await saveButton.boundingBox();
+  try {
+    await saveButton.click();
+    await expect(saveButton).toHaveAttribute('aria-busy', 'true');
+    const duringSave = await saveButton.boundingBox();
+    assert.ok(Math.abs(beforeSave.width - duringSave.width) < 1, 'Waiting keeps the button width');
+    await expect(saveButton).toBeDisabled();
+  } finally {
+    releaseSettings();
+  }
   await expect(page.locator('#site-feedback')).toHaveAttribute('data-tone', 'error');
   await expect(page.locator('#site-feedback')).toContainText('Temporary settings failure');
   await expect(page.locator('#site-form input[name=title]')).not.toHaveValue('');
