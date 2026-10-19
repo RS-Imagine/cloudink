@@ -79,6 +79,9 @@
   --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);
   --ci-type-body: 1rem;
   --ci-type-caption: 0.8125rem;
+  --ci-glass-opacity: 92%;
+  --ci-glass-blur: 12px;
+  --ci-glass-highlight: #ffffff38;
   --ci-radius-sm: 8px;
   --ci-radius-md: 14px;
   --ci-radius-lg: 22px;

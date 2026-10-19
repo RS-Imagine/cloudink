@@ -1,0 +1,58 @@
+/* Opt-in enhancement of bounded floating controls; the existing opaque UI is the fallback. */
+[data-effects-control][hidden] {
+  display: none !important;
+}
+.reader-preferences {
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px 20px;
+}
+.reader-preferences .theme-mode {
+  min-width: 0;
+  max-width: 100%;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and
+  (color: color-mix(in srgb, black, transparent)) {
+  :root[data-effects='glass'] .reader-menu[open] > .reader-menu-links,
+  :root[data-effects='glass'] .mobile-toc-btn {
+    background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
+    color: var(--ci-text);
+    border: 1px solid var(--ci-divider);
+    box-shadow:
+      inset 0 1px 0 var(--ci-glass-highlight),
+      var(--ci-shadow-floating);
+    -webkit-backdrop-filter: blur(var(--ci-glass-blur));
+    backdrop-filter: blur(var(--ci-glass-blur));
+  }
+  :root[data-effects='glass'] .mobile-toc-btn:hover {
+    border-color: var(--ci-outline);
+  }
+  @media (min-width: 760px) {
+    :root[data-effects='glass'] #studio-tools[open] > .studio-tools-panel {
+      background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
+      box-shadow:
+        inset 0 1px 0 var(--ci-glass-highlight),
+        var(--ci-shadow-floating);
+      -webkit-backdrop-filter: blur(var(--ci-glass-blur));
+      backdrop-filter: blur(var(--ci-glass-blur));
+    }
+  }
+  @media (max-width: 759px) {
+    :root[data-effects='glass'] .studio-nav {
+      background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
+      box-shadow:
+        inset 0 1px 0 var(--ci-glass-highlight),
+        var(--ci-shadow-floating);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+  }
+}
+@media (max-width: 759px) {
+  .reader-preferences {
+    justify-content: flex-start;
+  }
+}
