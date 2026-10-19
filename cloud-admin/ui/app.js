@@ -58,9 +58,8 @@ function showStartup(error = '') {
   $('app-view').hidden = true;
   $('studio-skip').hidden = true;
 }
-async function startWorkspace() {
+async function startWorkspace({ focus = false } = {}) {
   if (booting) return;
-  const focus = !!document.activeElement?.closest('#startup-view');
   booting = true;
   showStartup();
   configReady = api('/api/config').then((config) => {
@@ -326,7 +325,7 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-submit').textContent = '登录';
   }
 });
-$('startup-retry').addEventListener('click', () => void startWorkspace());
+$('startup-retry').addEventListener('click', () => void startWorkspace({ focus: true }));
 void startWorkspace();
 
 function setupStep(siteStep) {

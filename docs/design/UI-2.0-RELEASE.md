@@ -8,21 +8,20 @@ Rust/WASM、原生 JavaScript/CSS 与 Swup 架构。没有新增服务、运行�
 自动化检查与实验数据见对应 PR 的 CI 和 `ui-design-review` 附件。
 实际终端发布验收仍需按下列清单完成；没有将模拟结果记为实机结论，也没有自行发布用户内容。
 
-
 ## 阶段交付清单
 
-| 阶段 | 合并记录 | 已交付范围 |
-| --- | --- | --- |
-| PR-00 | [#9](https://github.com/RS-Imagine/cloudink/pull/9) | 设计审计、四页原型、截图与质量基线 |
+| 阶段  | 合并记录                                              | 已交付范围                               |
+| ----- | ----------------------------------------------------- | ---------------------------------------- |
+| PR-00 | [#9](https://github.com/RS-Imagine/cloudink/pull/9)   | 设计审计、四页原型、截图与质量基线       |
 | PR-01 | [#10](https://github.com/RS-Imagine/cloudink/pull/10) | 共享 Token、明暗主题、作者配色与控件基础 |
-| PR-02 | [#11](https://github.com/RS-Imagine/cloudink/pull/11) | 物理弹簧、动效中断、减少动态效果 |
-| PR-03 | [#12](https://github.com/RS-Imagine/cloudink/pull/12) | 首页、全局导航、文章卡片与无脚本链接 |
-| PR-04 | [#13](https://github.com/RS-Imagine/cloudink/pull/13) | 阅读、目录、搜索、图片预览与历史导航 |
-| PR-05 | [#14](https://github.com/RS-Imagine/cloudink/pull/14) | 后台外壳、工作台、导航、登录与设置向导 |
-| PR-06 | [#15](https://github.com/RS-Imagine/cloudink/pull/15) | 编辑器、图库、设置、确认与异步反馈 |
-| PR-07 | [#16](https://github.com/RS-Imagine/cloudink/pull/16) | 手机面板、停靠、拖拽、旋转与键盘 |
-| PR-08 | [#17](https://github.com/RS-Imagine/cloudink/pull/17) | 有限区域磨砂、视觉偏好与不透明降级 |
-| PR-09 | [#18](https://github.com/RS-Imagine/cloudink/pull/18) | 清理、边界修复、整体预算与升级/回滚说明 |
+| PR-02 | [#11](https://github.com/RS-Imagine/cloudink/pull/11) | 物理弹簧、动效中断、减少动态效果         |
+| PR-03 | [#12](https://github.com/RS-Imagine/cloudink/pull/12) | 首页、全局导航、文章卡片与无脚本链接     |
+| PR-04 | [#13](https://github.com/RS-Imagine/cloudink/pull/13) | 阅读、目录、搜索、图片预览与历史导航     |
+| PR-05 | [#14](https://github.com/RS-Imagine/cloudink/pull/14) | 后台外壳、工作台、导航、登录与设置向导   |
+| PR-06 | [#15](https://github.com/RS-Imagine/cloudink/pull/15) | 编辑器、图库、设置、确认与异步反馈       |
+| PR-07 | [#16](https://github.com/RS-Imagine/cloudink/pull/16) | 手机面板、停靠、拖拽、旋转与键盘         |
+| PR-08 | [#17](https://github.com/RS-Imagine/cloudink/pull/17) | 有限区域磨砂、视觉偏好与不透明降级       |
+| PR-09 | [#18](https://github.com/RS-Imagine/cloudink/pull/18) | 清理、边界修复、整体预算与升级/回滚说明  |
 
 新功能或新的视觉方向另开需求；本轮不引入 FlClash 的 Dart、GPL 实现、额外服务或新的必填配置。
 

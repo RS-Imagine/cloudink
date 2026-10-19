@@ -799,8 +799,10 @@ try {
     )
     .join('');
   const primaryFiles = new Set(
-    report.samples.map((sample) =>
-      [sample.version, sample.screen, sample.width, sample.theme, sample.engine].join('-') + '.png',
+    report.samples.map(
+      (sample) =>
+        [sample.version, sample.screen, sample.width, sample.theme, sample.engine].join('-') +
+        '.png',
     ),
   );
   report.supplementalScreenshots = (await readdir(output))
@@ -810,8 +812,17 @@ try {
     .map((file) => {
       const url = encodeURIComponent(file);
       const label = file.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;');
-      return '<figure><figcaption>' + label + '</figcaption><a href="' + url +
-        '"><img loading="lazy" decoding="async" src="' + url + '" alt="' + label + '"></a></figure>';
+      return (
+        '<figure><figcaption>' +
+        label +
+        '</figcaption><a href="' +
+        url +
+        '"><img loading="lazy" decoding="async" src="' +
+        url +
+        '" alt="' +
+        label +
+        '"></a></figure>'
+      );
     })
     .join('');
   await writeFile(
@@ -820,7 +831,11 @@ try {
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +
-      '<details open><summary>全部补充交互截图 · ' + report.supplementalScreenshots.length + ' 张</summary><div class="supplemental">' + supplemental + '</div></details>' +
+      '<details open><summary>全部补充交互截图 · ' +
+      report.supplementalScreenshots.length +
+      ' 张</summary><div class="supplemental">' +
+      supplemental +
+      '</div></details>' +
       '</main><script>document.querySelectorAll("select").forEach(select=>select.addEventListener("change",()=>{document.querySelectorAll("section[data-width]").forEach(section=>{const w=document.getElementById("width").value,t=document.getElementById("theme").value;section.hidden=!!((w&&section.dataset.width!==w)||(t&&section.dataset.theme!==t))})}));</script></html>',
   );
   console.log(

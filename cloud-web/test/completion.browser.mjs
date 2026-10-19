@@ -22,7 +22,9 @@ export async function verifyCompletion(browser, origin, output, engine) {
   const session = await context();
   const page = await session.newPage();
   let releaseConfig;
-  const configGate = new Promise((done) => { releaseConfig = done; });
+  const configGate = new Promise((done) => {
+    releaseConfig = done;
+  });
   await page.route('**/api/config', async (route) => {
     await configGate;
     await route.continue();
@@ -54,7 +56,9 @@ export async function verifyCompletion(browser, origin, output, engine) {
   // An authenticated refresh stays in the startup view until the first data read succeeds.
   const resumed = await session.newPage();
   let releasePosts;
-  const postsGate = new Promise((done) => { releasePosts = done; });
+  const postsGate = new Promise((done) => {
+    releasePosts = done;
+  });
   let postAttempts = 0;
   await resumed.route('**/api/posts', async (route) => {
     if (++postAttempts === 1) {
@@ -62,7 +66,9 @@ export async function verifyCompletion(browser, origin, output, engine) {
       await route.fulfill({ status: 503, json: { error: 'Temporary startup data failure' } });
     } else await route.continue();
   });
-  const firstRead = resumed.waitForRequest((request) => new URL(request.url()).pathname === '/api/posts');
+  const firstRead = resumed.waitForRequest(
+    (request) => new URL(request.url()).pathname === '/api/posts',
+  );
   try {
     await resumed.goto(origin + '/admin');
     await firstRead;
@@ -131,7 +137,9 @@ export async function verifyCompletion(browser, origin, output, engine) {
     await failed.goto(origin + '/admin');
     await expect(failed.locator('#startup-view')).toHaveAttribute('data-state', 'error');
     await expect(failed.locator('#startup-message')).toHaveAttribute('role', 'alert');
-    await expect(failed.locator('#startup-message')).toContainText('Temporary startup read failure');
+    await expect(failed.locator('#startup-message')).toContainText(
+      'Temporary startup read failure',
+    );
     await expect(failed.locator('#login-view')).toBeHidden();
     await expect(failed.locator('#setup-view')).toBeHidden();
     if (path === '/api/config')
@@ -165,7 +173,8 @@ export async function verifyCompletion(browser, origin, output, engine) {
   const native = await context({ javaScriptEnabled: false });
   const plain = await native.newPage();
   await plain.goto(origin + '/admin');
-  await expect(plain.locator('noscript')).toContainText('启用 JavaScript');
+  await expect(plain.locator('noscript p')).toBeVisible();
+  await expect(plain.locator('noscript p')).toContainText('启用 JavaScript');
   await expect(plain.locator('.startup-indicator')).toBeHidden();
   await expect(plain.locator('#login-view')).toBeHidden();
   await expect(plain.locator('.startup-reload')).toHaveAttribute('href', '/admin');
