@@ -1,9 +1,11 @@
+import { confirmAction } from './workflows.js';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 
 const MAX_ARCHIVE = 100 * 1024 * 1024;
 const $ = (id) => document.getElementById(id);
 function status(text) {
   $('backup-status').textContent = text;
+  $('backup-status').dataset.tone = 'pending';
 }
 async function checksum(bytes) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
@@ -66,9 +68,10 @@ export function configureBackup({
     if (!file) return;
     try {
       if (
-        !confirm(
-          '恢复会导入草稿、图片和待发布设置。登录账号与线上版本会保留，已有不同原稿不会被覆盖。继续吗？',
-        )
+        !(await confirmAction(
+          '恢复会导入草稿、图片和待发布设置。登录账号与线上版本会保留，已有不同原稿不会被覆盖。',
+          { title: '从备份恢复？', accept: '恢复为草稿' },
+        ))
       )
         return;
       await action('restore-backup', '正在恢复…', async () => {
@@ -135,6 +138,8 @@ export function configureBackup({
         notice('备份已恢复为草稿，线上版本与账号均保留。', 'success');
       });
     } catch (error) {
+      $('backup-status').textContent = error.message;
+      $('backup-status').dataset.tone = 'error';
       notice(error.message, 'error');
     } finally {
       event.target.value = '';

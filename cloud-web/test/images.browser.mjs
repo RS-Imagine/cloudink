@@ -1,3 +1,4 @@
+import { acceptConfirmation } from './workflows.browser.mjs';
 import {
   Miniflare,
   convertV4MiniflareOptions,
@@ -49,7 +50,6 @@ try {
   const page = await context.newPage(),
     errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('dialog', (dialog) => dialog.accept());
   await page.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({ contentType: 'text/css', body: '' }),
   );
@@ -113,6 +113,7 @@ try {
   await expect(page.locator('#image-library-empty')).toContainText('没有符合筛选条件');
   await page.locator('#image-library-search').fill('');
   await unused.getByRole('button', { name: '删除', exact: true }).click();
+  await acceptConfirmation(page);
   await expect(page.locator('#notice')).toContainText('已从存储桶删除');
   assert.equal(await (await mf.getR2Bucket('STORAGE')).head(key), null);
   await page.locator('#image-library-unused').uncheck();

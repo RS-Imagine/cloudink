@@ -172,3 +172,16 @@ PR-04 的正文与阅读工具样式在 blog-core 的 reader.css，随 Rust/WASM
 所有截图仍来自临时 Miniflare；后台壳 CSS 单独压缩预算为 4 KiB。
 审计使用本地 HTTPS 测试证书，浏览器仅在测试上下文接受该证书，
 以便 WebKit 也能验证真实的 Secure/HttpOnly 会话；不修改生产 Cookie 或认证规则。
+
+## 写作工作流回归
+
+后台 workflows.css 追加到既有 /style.css，workflows.js 提供视图、就近反馈与统一确认弹窗。
+正文 textarea 和预览 iframe 始终复用同一节点；视图切换不能改写原稿、重置选区或触发发布。
+saveCurrent、flush、发布与图片引用保护仍由原有工作流维护，不在动效回调执行数据操作。
+
+确认弹窗采用原生 dialog；测试使用 acceptConfirmation 明确操作，
+不能用浏览器 dialog 事件跳过网页确认。取消与 Escape 均不得执行删除或恢复。
+三引擎 workflows.browser.mjs 覆盖保存失败/重试、视图与选区、窄屏操作、图片库加载失败/重试、
+引用保护、弹窗焦点与取消、设置及备份错误。原有完整浏览器流程仍验证发布、恢复与图片物理删除。
+审阅包还包含 workflow-editor/images/settings/confirmation 开头的截图。
+工作流 CSS 单独 minify 后 gzip 预算为 4 KiB；最终资源影响记录在对应 PR 与审计报告。

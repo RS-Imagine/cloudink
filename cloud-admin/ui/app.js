@@ -1,5 +1,6 @@
 import '../../assets/motion.js';
 import { mountStudioShell } from './shell.js';
+import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
@@ -70,23 +71,36 @@ function notice(message, tone = 'info') {
   }, 6500);
 }
 
+const operationAreas = {
+  'save-site': 'site-feedback',
+  'publish-settings': 'site-feedback',
+  'save-account': 'account-feedback',
+  'download-backup': 'backup-status',
+  'restore-backup': 'backup-status',
+  'image-library-upload': 'image-library-status',
+};
 async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
   const button = $(id),
-    original = button.textContent;
+    labelNode = button.querySelector('[data-action-label]') || button,
+    original = labelNode.textContent;
   activeActions.add(id);
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  button.textContent = label;
+  labelNode.textContent = label;
+  feedback(operationAreas[id], label, 'pending');
   try {
     await work();
+    const message = success || (id === 'publish-settings' ? '发布请求已处理，请查看上方发布状态。' : undefined);
+    feedback(operationAreas[id], message, 'success');
     if (success) notice(success, 'success');
   } catch (error) {
+    feedback(operationAreas[id], error.message, 'error');
     notice(error.message, 'error');
   } finally {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
-    button.textContent =
+    labelNode.textContent =
       publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
     button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);
   }
@@ -180,6 +194,7 @@ function showLogin() {
   $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
   if ($('image-preview-dialog').open) $('image-preview-dialog').close();
+  if ($('confirmation-dialog').open) $('confirmation-dialog').close();
   clearTimeout(autosaveTimer);
   $('app-view').hidden = true;
   const wizard = appConfig && !appConfig.initialized;
@@ -464,7 +479,8 @@ function preview() {
     !doc ||
     $('editor-view').hidden ||
     (!matchMedia('(min-width:1100px)').matches &&
-      !$('editor-panes').classList.contains('preview-only'))
+      !$('editor-panes').classList.contains('preview-only')) ||
+    $('editor-panes').classList.contains('writing-only')
   )
     return;
   const draft = currentDraft();
@@ -486,7 +502,7 @@ function fillEditor(draft, etag) {
   $('slug').readOnly =
     !!etag || posts.some((p) => p.slug === draft.front_matter.slug && p.published);
   $('body').value = draft.body_markdown;
-  $('save-state').textContent = etag ? '草稿已保存' : '尚未保存草稿';
+  feedback('save-state', etag ? '草稿已保存' : '尚未保存草稿', etag ? 'success' : 'neutral');
   const published = posts.some((p) => p.slug === draft.front_matter.slug && p.published);
   $('unpublish-post').hidden = !published;
   $('delete-post').hidden = published;
@@ -503,7 +519,7 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
-  $('save-state').textContent = '有未保存的修改';
+  feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
   clearTimeout(autosaveTimer);
   if (!conflict)
@@ -524,12 +540,12 @@ async function saveCurrent() {
   if (dirty === savedVersion && doc.etag) return;
   const captured = currentDraft();
   if (!captured.front_matter.title.trim()) {
-    $('save-state').textContent = '填写标题后自动保存';
+    feedback('save-state', '填写标题后自动保存', 'neutral');
     return;
   }
   const version = dirty;
   const slug = captured.front_matter.slug;
-  $('save-state').textContent = '正在保存到云端…';
+  feedback('save-state', '正在保存到云端…', 'pending');
   savePromise = api(`/api/posts/${encodeURIComponent(slug)}`, {
     method: 'PUT',
     body: { draft: captured, etag: doc.etag || null },
@@ -539,7 +555,7 @@ async function saveCurrent() {
       doc.front_matter.slug = slug;
       $('slug').readOnly = true;
       savedVersion = version;
-      $('save-state').textContent = dirty === version ? '已保存到云端' : '正在等待保存最新修改…';
+      feedback('save-state', dirty === version ? '已保存到云端' : '正在等待保存最新修改…', dirty === version ? 'success' : 'pending');
       if (dirty !== version)
         autosaveTimer = setTimeout(
           () => saveCurrent().catch((error) => notice(error.message)),
@@ -549,8 +565,7 @@ async function saveCurrent() {
     })
     .catch((error) => {
       if (error.status === 409) conflict = true;
-      $('save-state').textContent =
-        error.status === 409 ? '版本冲突，请下载原稿后重新打开' : '保存失败，请重试';
+      feedback('save-state', error.status === 409 ? '版本冲突，请下载原稿后重新打开' : '保存失败，请重试', 'error');
       throw error;
     })
     .finally(() => {
@@ -686,19 +701,7 @@ window.addEventListener('beforeunload', (e) => {
     e.returnValue = '';
   }
 });
-$('show-preview').addEventListener('click', () => {
-  $('editor-panes').classList.add('preview-only');
-  $('show-preview').classList.add('active');
-  $('show-writing').classList.remove('active');
-  preview();
-});
-$('show-writing').addEventListener('click', () => {
-  $('editor-panes').classList.remove('preview-only');
-  $('show-writing').classList.add('active');
-  $('show-preview').classList.remove('active');
-  if (!matchMedia('(min-width:1100px)').matches) invalidatePreview();
-});
-matchMedia('(min-width:1100px)').addEventListener('change', () => preview());
+mountEditorPanes({ preview, invalidate: invalidatePreview });
 function download(data, name, type) {
   const a = document.createElement('a'),
     url = URL.createObjectURL(new Blob([data], { type }));
@@ -735,6 +738,7 @@ function showPublishing(state) {
   banner.hidden = !state;
   if (!state) return;
   banner.classList.toggle('failed', state.status === 'failed');
+  banner.dataset.tone = state.status === 'failed' ? 'error' : state.status === 'deployed' ? 'success' : 'pending';
   const messages = {
     queued: '正在准备发布，请保持此页面打开。',
     building: '正在排版文章并上传页面，请保持此页面打开。',
@@ -832,14 +836,15 @@ $('publish-post').addEventListener('click', () => {
   });
 });
 async function unpublish(slug) {
-  if (!confirm('取消发布后，这篇文章将从网站移除，原稿保留为草稿。继续吗？')) return;
+  if (!(await confirmAction('取消发布后，这篇文章将从网站移除，原稿保留为草稿。', { title: '取消发布这篇文章？', accept: '取消发布', danger: true }))) return;
   await startPublish({ unpublish: slug });
 }
 $('unpublish-post').addEventListener('click', () =>
   unpublish(doc.front_matter.slug).catch((error) => notice(error.message)),
 );
-$('delete-post').addEventListener('click', () => {
-  if (!doc || editorLocked || !confirm('删除这份草稿？删除后无法恢复。')) return;
+$('delete-post').addEventListener('click', async () => {
+  if (!doc || editorLocked) return;
+  if (!(await confirmAction('这份草稿将被永久删除，无法恢复。已上传的图片仍可在图片库管理。', { title: '删除这份草稿？', accept: '删除草稿', danger: true }))) return;
   void action(
     'delete-post',
     '正在删除…',
@@ -1004,7 +1009,7 @@ $('import-files').addEventListener('change', async (e) => {
       const existing = posts.find((p) => p.slug === draft.front_matter.slug);
       if (
         existing?.has_draft &&
-        !confirm(`“${draft.front_matter.title}”已经有在线草稿。用这个文件替换吗？`)
+        !(await confirmAction(`“${draft.front_matter.title}”已经有在线草稿。用这个文件替换吗？`, { title: '替换已有草稿？', accept: '替换草稿', danger: true }))
       )
         continue;
       const old = existing?.has_draft ? await api(`/api/posts/${draft.front_matter.slug}`) : null;
@@ -1061,20 +1066,18 @@ $('settings').addEventListener('click', async () => {
     if (version === navigationVersion) navigationStatus();
   }
 });
-$('site-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  try {
-    const values = Object.fromEntries(new FormData(e.currentTarget));
+$('site-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  void action('save-site', '正在保存…', async () => {
+    const values = Object.fromEntries(new FormData(form));
     const data = await api('/api/settings', {
       method: 'PUT',
       body: { site: values, etag: settingsEtag },
     });
     settingsEtag = data.etag;
     applySiteAppearance(data.site);
-    notice('网站信息已保存，点击发布后上线。');
-  } catch (error) {
-    notice(error.message);
-  }
+  }, '网站信息已保存，点击发布后上线。');
 });
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {
@@ -1107,6 +1110,7 @@ $('account-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   if (form.elements.password.value !== form.elements.confirm.value) {
+    feedback('account-feedback', '两次新密码不一致。', 'error');
     notice('两次新密码不一致。', 'error');
     return;
   }

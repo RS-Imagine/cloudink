@@ -1,3 +1,4 @@
+import { acceptConfirmation } from './workflows.browser.mjs';
 import {
   Miniflare,
   convertV4MiniflareOptions,
@@ -267,8 +268,8 @@ try {
   const backupPath = resolve('cloud-web/dist/browser-backup.zip');
   await backup.saveAs(backupPath);
   await expect(page.locator('#backup-status')).toContainText('1 张图片');
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#backup-file').setInputFiles(backupPath);
+  await acceptConfirmation(page);
   await expect(page.locator('#backup-status')).toContainText('已恢复');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
