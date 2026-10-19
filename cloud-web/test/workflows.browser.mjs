@@ -181,13 +181,12 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await page.locator('#download-backup').click();
   await expect(page.locator('#backup-status')).toHaveAttribute('data-tone', 'error');
   await expect(page.locator('#backup-status')).toContainText('Temporary backup failure');
-  await page
-    .locator('#backup-file')
-    .setInputFiles({
-      name: 'cancelled.zip',
-      mimeType: 'application/zip',
-      buffer: Buffer.from('Not imported'),
-    });
+  const cancelledArchive = {
+    name: 'cancelled.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from('Not imported'),
+  };
+  await page.locator('#backup-file').setInputFiles(cancelledArchive);
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-cancel').click();
   await expect(page.locator('#confirmation-dialog')).toBeHidden();

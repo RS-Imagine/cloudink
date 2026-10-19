@@ -587,7 +587,9 @@
   font-size: 13px;
   line-height: 1.8;
 }
-.operation-feedback[data-tone='error'] {
+.operation-feedback[data-tone='error'],
+#backup-status[data-tone='error'],
+#image-library-status[data-tone='error'] {
   color: var(--ci-error);
   border-color: var(--ci-error);
 }

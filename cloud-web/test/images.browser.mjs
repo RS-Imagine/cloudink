@@ -113,6 +113,12 @@ try {
   await expect(page.locator('#image-library-empty')).toContainText('没有符合筛选条件');
   await page.locator('#image-library-search').fill('');
   await unused.getByRole('button', { name: '删除', exact: true }).click();
+  await expect(page.locator('#confirmation-cancel')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#confirmation-dialog')).toBeHidden();
+  await expect(unused.getByRole('button', { name: '删除', exact: true })).toBeFocused();
+  assert.notEqual(await (await mf.getR2Bucket('STORAGE')).head(key), null);
+  await unused.getByRole('button', { name: '删除', exact: true }).click();
   await acceptConfirmation(page);
   await expect(page.locator('#notice')).toContainText('已从存储桶删除');
   assert.equal(await (await mf.getR2Bucket('STORAGE')).head(key), null);

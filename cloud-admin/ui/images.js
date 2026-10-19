@@ -95,16 +95,18 @@ export function configureImages({
       }
       const actions = document.createElement('div');
       actions.className = 'image-actions';
-      function button(text, work) {
+      function button(text, work, { confirmFirst = false } = {}) {
         const element = document.createElement('button');
         element.textContent = text;
         element.addEventListener('click', async () => {
-          if (element.disabled) return;
-          element.disabled = true;
+          if (element.disabled || element.getAttribute('aria-busy') === 'true') return;
+          element.disabled = !confirmFirst;
           element.setAttribute('aria-busy', 'true');
           try {
             await work();
           } catch (error) {
+            status(error.message);
+            $('image-library-status').dataset.tone = 'error';
             notice(error.message, 'error');
           } finally {
             element.disabled = false;
@@ -121,30 +123,35 @@ export function configureImages({
       const use = button('插入当前文章', () => insert(image));
       use.disabled = !canInsert();
       if (use.disabled) use.title = '先打开或新建一篇文章，再从编辑器进入图片库。';
-      const remove = button('删除', async () => {
-        if (
-          !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
-            title: '删除这张图片？',
-            accept: '永久删除',
-            danger: true,
-          }))
-        )
-          return;
-        await flush();
-        try {
-          await api('/api/images', {
-            method: 'DELETE',
-            body: { key: image.key, etag: image.etag },
-          });
-        } catch (error) {
-          await load().catch(() => {});
-          throw error;
-        }
-        images = images.filter((item) => item.key !== image.key);
-        render();
-        $('image-library-refresh').focus({ preventScroll: true });
-        notice('图片已从存储桶删除。', 'success');
-      });
+      const remove = button(
+        '删除',
+        async () => {
+          if (
+            !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
+              title: '删除这张图片？',
+              accept: '永久删除',
+              danger: true,
+            }))
+          )
+            return;
+          remove.disabled = true;
+          await flush();
+          try {
+            await api('/api/images', {
+              method: 'DELETE',
+              body: { key: image.key, etag: image.etag },
+            });
+          } catch (error) {
+            await load().catch(() => {});
+            throw error;
+          }
+          images = images.filter((item) => item.key !== image.key);
+          render();
+          $('image-library-refresh').focus({ preventScroll: true });
+          notice('图片已从存储桶删除。', 'success');
+        },
+        { confirmFirst: true },
+      );
       remove.classList.add('danger');
       remove.disabled = !image.referencesChecked || image.references.length > 0;
       remove.title = !image.referencesChecked
