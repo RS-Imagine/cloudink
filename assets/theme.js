@@ -5,7 +5,8 @@
   const admin = root.hasAttribute('data-cloudink-admin');
   const system = matchMedia('(prefers-color-scheme: dark)');
   const validMode = (value) => (value === 'light' || value === 'dark' ? value : 'auto');
-  const validPalette = (value) => (value === 'neutral' ? 'neutral' : 'ink');
+  const palettes = Object.freeze(['ink', 'neutral', 'brown', 'blue', 'violet', 'rose']);
+  const validPalette = (value) => (palettes.includes(value) ? value : 'ink');
   const read = (key) => {
     try {
       return localStorage.getItem(key);

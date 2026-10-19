@@ -563,6 +563,84 @@ button[aria-busy='true'] {
 .appearance-settings p {
   color: var(--ci-muted);
 }
+.palette-picker {
+  border: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  min-width: 0;
+}
+.palette-picker legend {
+  padding: 0;
+  font-weight: 500;
+}
+.palette-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.palette-options .palette-choice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  cursor: pointer;
+}
+.palette-choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.palette-swatch {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--swatch);
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px var(--ci-outline);
+  color: transparent;
+  font: 600 18px/1 var(--ci-font-ui);
+  transition: transform var(--ci-motion-fast) var(--ci-ease);
+}
+.palette-choice:hover .palette-swatch {
+  transform: scale(1.08);
+}
+.palette-choice:active .palette-swatch {
+  transform: scale(0.96);
+}
+.palette-choice input:checked + .palette-swatch {
+  color: #ffffff;
+  box-shadow: 0 0 0 2px var(--ci-text);
+}
+.palette-choice input:focus-visible + .palette-swatch {
+  outline: 3px solid var(--ci-primary);
+  outline-offset: 4px;
+}
+@media (forced-colors: active) {
+  .palette-choice input {
+    position: static;
+    opacity: 1;
+    width: 24px;
+    height: 24px;
+    appearance: auto;
+    forced-color-adjust: auto;
+  }
+  .palette-swatch {
+    display: none;
+  }
+}
 .settings-details {
   font-size: 13px;
   border-color: var(--ci-divider);

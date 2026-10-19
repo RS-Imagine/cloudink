@@ -610,8 +610,8 @@ try {
     'Both surfaces must embed the same foundations',
   );
   assert.ok(
-    gzipSync(tokens).length + gzipSync(foundations).length <= 4096,
-    'Shared CSS gzip budget',
+    gzipSync(tokens).length + gzipSync(foundations).length <= 5120,
+    'Six-palette shared CSS gzip budget',
   );
   const motionJS = (await transform(await readFile('assets/motion.js', 'utf8'), { minify: true }))
     .code;
@@ -684,9 +684,9 @@ try {
   // Aggregate guards complement the per-module budgets: no hidden growth between releases.
   const releaseBudgets = {
     'build-work/web-public/client.js': 74 * 1024,
-    'build-work/web-public/styles.css': 12 * 1024,
+    'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 27 * 1024,
-    'served/admin/style.css': 14 * 1024,
+    'served/admin/style.css': 15 * 1024,
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
   };
@@ -700,6 +700,7 @@ try {
     'Chromium, Firefox and WebKit production theme + prototype smoke',
     'touch emulation (Chromium/WebKit)',
     '360px overflow guard on production and prototype',
+    'six native color swatches: keyboard, saved choice, Brown preview, 12 palette/mode contrast combinations and responsive screenshots',
     'light/dark palette contrast pairs',
     'three-engine bounded glass/opaque comparisons, worst-backdrop text contrast, effect opt-out/sync, storage/CSS denial, system preferences and low-resource fallback; Chromium CPU4x scroll samples',
     'reduced motion',

@@ -27,9 +27,12 @@ fn author_palette_is_safe_and_shared_by_every_page() {
     let legacy = serde_json::to_value(&site).unwrap();
     assert!(legacy.get("themePalette").is_none());
     assert!(render::render_index(&site, &[], "test").contains("data-palette=\"ink\""));
-    site.theme_palette = Some("neutral".into());
-    assert!(render::render_index(&site, &[], "test").contains("<html lang=\"en\" data-palette=\"neutral\">"));
-    assert!(render::render_404(&site, "test").contains("data-palette=\"neutral\""));
+    for palette in ["ink", "neutral", "brown", "blue", "violet", "rose"] {
+        site.theme_palette = Some(palette.into());
+        let marker = format!("data-palette=\"{palette}\"");
+        assert!(render::render_index(&site, &[], "test").contains(&marker));
+        assert!(render::render_404(&site, "test").contains(&marker));
+    }
     site.theme_palette = Some("\"><script>bad()</script>".into());
     assert!(render::render_index(&site, &[], "test").contains("<html lang=\"en\" data-palette=\"ink\">"));
 }
