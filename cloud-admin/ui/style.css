@@ -620,8 +620,10 @@ code {
   .editor-panes {
     grid-template-columns: 1fr;
   }
-  .preview-pane {
+  .editor-panes:not([data-ci-panes]) > .preview-pane {
     display: none;
+  }
+  .preview-pane {
     border: 0;
   }
   .editor-panes.preview-only > .markdown-input {

@@ -106,7 +106,21 @@ export async function verifyCompletion(browser, origin, output, engine) {
   await expect(page.locator('#preview-frame')).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#show-writing')).toBeFocused();
+  try {
+    await expect(page.locator('#show-writing')).toBeFocused();
+  } catch (error) {
+    console.error(
+      engine + ' responsive focus',
+      await page.evaluate(() => ({
+        focused: document.activeElement?.outerHTML.slice(0, 300),
+        panes: document.getElementById('editor-panes').outerHTML.slice(0, 200),
+        frameDisplay: getComputedStyle(document.getElementById('preview-frame').parentElement)
+          .display,
+        documentFocused: document.hasFocus(),
+      })),
+    );
+    throw error;
+  }
   await expect(page.locator('#body')).toHaveValue(text);
   assert.deepEqual(
     await page.locator('#body').evaluate((node) => [node.selectionStart, node.selectionEnd]),
