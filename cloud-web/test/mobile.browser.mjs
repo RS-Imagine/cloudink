@@ -138,14 +138,30 @@ export async function verifyMobile(browser, origin, output, engine) {
   await page.screenshot({ path: resolve(output, 'mobile-more-dark-' + engine + '.png'), fullPage: false });
   await page.keyboard.press('Escape');
   await expect(page.locator('#studio-tools summary')).toBeFocused();
+  let deletions = 0;
+  page.on('request', request => {
+    if (request.method() === 'DELETE' && request.url().includes('/api/posts/')) deletions++;
+  });
   await page.locator('#delete-post').click();
   await expect(page.locator('#confirmation-cancel')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
   await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
   await page.locator('#delete-post').click();
+  await settled(page);
+  await page.evaluate(() => {
+    document.getElementById('confirmation-accept').click();
+    CloudInkMotion.openDialog(document.getElementById('confirmation-dialog'));
+  });
+  await settled(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#confirmation-dialog')).toBeHidden();
+  assert.equal(deletions, 0, 'Reopening an outgoing confirmation cancels its old result');
+  await expect(page.locator('#body')).toHaveValue('Keep this draft through mobile menus and rotation.');
+  await page.locator('#delete-post').click();
   await acceptConfirmation(page);
   await expect(page.locator('#post-count')).toHaveText('4');
+  assert.equal(deletions, 1);
   await settled(page);
   assert.deepEqual(await page.evaluate(() => {
     const ids = [...document.querySelectorAll('[id]')].map(node => node.id);

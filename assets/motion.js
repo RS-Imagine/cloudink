@@ -222,6 +222,7 @@
         cancelWithin(dialog);
       });
     }
+    if (state.closing) dialog.returnValue = '';
     state.closing = false;
     if (!dialog.open) dialog.showModal();
     if (env.CloudInkMobile?.openDialog(dialog)) return;
