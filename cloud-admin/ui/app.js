@@ -85,7 +85,7 @@ async function action(id, label, work, success = '') {
     labelNode = button.querySelector('[data-action-label]') || button,
     original = labelNode.textContent,
     originalInlineSize = button.style.inlineSize,
-    initialWidth = button.getBoundingClientRect().width;
+    initialWidth = button.offsetWidth;
   activeActions.add(id);
   if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
   button.disabled = true;
