@@ -81,10 +81,11 @@ async function startWorkspace() {
     else throw session.reason;
   } catch (error) {
     if (error.status === 401) showLogin({ focus });
-    else
-      showStartup(
-        error.status ? error.message : '暂时无法打开写作空间，请检查网络后重试。',
-      );
+    else {
+      showStartup(error.status ? error.message : '暂时无法打开写作空间，请检查网络后重试。');
+      if (focus && document.activeElement === document.body)
+        $('startup-retry').focus({ preventScroll: true });
+    }
   } finally {
     booting = false;
   }
@@ -271,6 +272,7 @@ function view(name, { focus = true } = {}) {
   }
   $('article-browser').hidden = !['home', 'posts', 'editor'].includes(name);
   $('posts-title').hidden = name !== 'posts';
+  $('home-view').setAttribute('aria-labelledby', name === 'posts' ? 'posts-title' : 'home-heading');
   motion.enter($(sectionName + '-view'), { kind: 'content' });
   $('workspace-title').textContent = {
     home: '工作台',

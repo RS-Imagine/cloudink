@@ -123,7 +123,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
     const retry = await context({ colorScheme: 'dark' });
     let attempts = 0;
     await retry.route('**' + path, (route) =>
-      ++attempts === 1
+      ++attempts <= 2
         ? route.fulfill({ status: 503, json: { error: 'Temporary startup read failure' } })
         : route.continue(),
     );
@@ -140,9 +140,13 @@ export async function verifyCompletion(browser, origin, output, engine) {
         fullPage: true,
       });
     await failed.locator('#startup-retry').click();
+    await expect.poll(() => attempts).toBe(2);
+    await expect(failed.locator('#startup-view')).toHaveAttribute('data-state', 'error');
+    await expect(failed.locator('#startup-retry')).toBeFocused();
+    await failed.locator('#startup-retry').click();
     await expect(failed.locator('#login-view')).toBeVisible();
     await expect(failed.locator('#login-form input[name=email]')).toBeFocused();
-    assert.equal(attempts, 2);
+    assert.equal(attempts, 3);
     await retry.close();
   }
 
