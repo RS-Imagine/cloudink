@@ -19,6 +19,7 @@ import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/
 import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
 import { verifySurfaces } from '../cloud-web/test/surfaces.browser.mjs';
 import { verifyMobile } from '../cloud-web/test/mobile.browser.mjs';
+import { verifyRelease } from '../cloud-web/test/release.browser.mjs';
 import { verifyWorkflows } from '../cloud-web/test/workflows.browser.mjs';
 import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
@@ -34,7 +35,7 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: '34bb5159aea55a288d2ae5fc3d2f3b3fd6dbce1a',
+  upstream: '41a48f36732852d0aea5bb2542068571a4c77437',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
@@ -438,6 +439,7 @@ try {
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
     await verifyMobile(localBrowser, origin, output, engine);
+    await verifyRelease(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
@@ -676,6 +678,18 @@ try {
     report.assets['assets/theme.js'].gzip <= 2048,
     'Theme and effects bootstrap gzip budget',
   );
+  // Aggregate guards complement the per-module budgets: no hidden growth between releases.
+  const releaseBudgets = {
+    'build-work/web-public/client.js': 74 * 1024,
+    'build-work/web-public/styles.css': 12 * 1024,
+    'cloud-admin/ui/app.generated.js': 27 * 1024,
+    'served/admin/style.css': 14 * 1024,
+    'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
+    'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
+  };
+  report.releaseBudgets = releaseBudgets;
+  for (const [path, budget] of Object.entries(releaseBudgets))
+    assert.ok(report.assets[path].gzip <= budget, path + ' exceeds the release gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -698,6 +712,11 @@ try {
     'rapid navigation',
     'no external prototype network',
   ];
+  report.checks.push(
+    'three-engine 360px text-spacing reflow: reader/search/login/dashboard/settings/images and primary navigation',
+    'keyboard viewport overrides released during simulated pinch zoom; editor text retained',
+    'aggregate public/admin/preview/WASM gzip release budgets',
+  );
   // Artifact includes a self-contained folder hierarchy: open index.html after extracting.
   await mkdir(resolve(output, 'preview/prototypes/ui-2.0'), { recursive: true });
   await mkdir(resolve(output, 'preview/assets'), { recursive: true });
@@ -777,7 +796,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 表面效果审阅</h1><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 最终设计审阅</h1><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39238605433/artifacts/12180362373">下载 PR-08 上游基线</a>。左侧为当前正式界面，右侧为已确认原型，不能将原型当作升级前截图；升级前请使用 PR-00 基线包。补充文字间距截图以 release-text-spacing 开头。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +
@@ -790,6 +809,7 @@ try {
       samples: report.samples,
       assets: report.assets,
       surfaces: report.surfaces,
+      releaseBudgets: report.releaseBudgets,
       existingLayoutIssues: report.existingLayoutIssues,
       checks: report.checks,
     }),

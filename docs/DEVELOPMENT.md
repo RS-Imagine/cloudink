@@ -40,7 +40,7 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 前后台与预览共享 `assets/design-tokens.css` 的明暗主题与墨绿/中性灰蓝主题色，
 `assets/design-foundation.css` 提供按钮、输入、焦点与表面规则。
 Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复制颜色表。
-旧页面的布局保持可用，CloudInk 2.0 的导航与页面重设计按 [阶段计划](design/UI-2.0-PLAN.md)推进。
+首页、阅读页、后台壳与写作工作流共享同一设计系统；[升级与验收](design/UI-2.0-RELEASE.md)记录最终回归、资源预算与回滚。
 
 唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
 后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
@@ -60,7 +60,7 @@ CSS 提供无脚本系统主题、普通圆角与不支持 color-mix 的回退�
 无脚本时菜单及原有链接仍可操作。主内容包含跳转入口、唯一 h1 与 SSR 导航状态。
 品牌文本结构变更同步更新分享卡片与 HTMLRewriter 的站点名读取，保留旧发布页的选择器。
 
-阅读正文仍沿用原样式；全局首页样式与组件基础共用现有 Token。
+阅读正文由 reader.css 统一控制，全局首页样式与组件基础共用现有 Token。
 `npm run test:ui:audit` 同时验证三引擎首页、320/360/390px、长文本、键盘与无脚本导航；
 实际 Safari/iOS、200% 浏览器缩放与真机观感仍需人工检查。
 
@@ -152,7 +152,7 @@ npm run test:web:browser
 
 PR-04 的正文与阅读工具样式在 blog-core 的 reader.css，随 Rust/WASM 模板生成公开页面。
 后台预览使用相同样式；调整预览的隐藏规则时，仅选择站点页眉/页脚，不能隐藏文章的 header。
-目录以 1100px 为分界，桌面右侧静态列、窄屏浮动入口；手势系统不在本阶段。
+目录以 1100px 为分界，桌面右侧静态列、窄屏浮动入口；移动面板共享 mobile.js 的手势系统。
 
 三引擎隔离审计包含目录锚点/焦点、初始深链、搜索加载中输入、快速重开、
 失败后重试、文本高亮安全、键盘选择、浏览器前进/后退及无脚本正文访问。
@@ -206,3 +206,15 @@ theme.js 复用阻塞式引导，主题与效果 bootstrap 合计 gzip 预算 2K
 运行 npm run test:ui:audit 验证 Chromium、Firefox、WebKit 的效果/不透明比较、合成对比度、面积、关闭与降级。
 report.json 的 surfaces 包含 4× CPU 滚动帧样本；它是实验记录，不能作为真实 GPU 或输入延迟的结论。
 原型 prototypes/ui-2.0/surfaces.html 只使用共享资源和本地示例，审阅包可直接解压打开。
+
+## UI 发布候选收尾
+
+release.browser.mjs 在三引擎 360px 下施加文字间距覆盖，验证公开阅读/搜索、登录、工作台、图片和设置重排。
+mobile.browser.mjs 覆盖键盘视口缩小、缩放几何变化和键盘收起；不得用它宣称已经通过真实输入法测试。
+ui-audit 的 releaseBudgets 同时限制实际公开/后台 bundle、预览 Worker 和 WASM；不是只测各模块文件。
+需要调整预算时，提供具体 gzip 增量、视觉收益及原始报告，不通过放宽上限掩盖异常增长。
+
+清理 CSS 前检查 render.rs、前后台交互与原型的实际引用。目录仍使用 zoom-overlay，搜索仍保留旧模板回退，
+不能按历史名称批量删除。新增颜色/交互继续使用共享来源，不在页面样式中复制主题表。
+截图解压包中的原型是设计参考；升级前后对比使用 PR-00 的同尺寸正式页面截图。
+完整发布、人工验收和回滚步骤见 [UI 升级指南](design/UI-2.0-RELEASE.md)。

@@ -327,19 +327,29 @@
     viewportFrame = 0;
     if (!doc?.documentElement) return;
     const viewport = env.visualViewport;
-    // Preserve browser pinch zoom; ordinary page zoom still uses responsive layout.
-    if (viewport?.scale && Math.abs(viewport.scale - 1) > 0.01) return;
-    const height = viewportHeight(),
-      top = viewport?.offsetTop || 0;
+    const root = doc.documentElement;
     const editing = !!doc.activeElement?.matches(
       'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),textarea,[contenteditable=true]',
     );
+    // Pinch zoom scales visual geometry without changing layout viewport units.
+    // Keep the last keyboard layout until blur or recovery to the keyboard-free height.
+    if (viewport?.scale && Math.abs(viewport.scale - 1) > 0.01) {
+      const keyboardRecovered =
+        baselineHeight > 0 && viewportHeight() * viewport.scale >= baselineHeight * 0.78;
+      if (!editing || keyboardRecovered) {
+        root.removeAttribute('data-ci-keyboard');
+        root.style.removeProperty('--ci-vp-height');
+        root.style.removeProperty('--ci-vp-bottom');
+      }
+      return;
+    }
+    const height = viewportHeight(),
+      top = viewport?.offsetTop || 0;
     if (!editing || !baselineHeight) baselineHeight = Math.max(height, env.innerHeight || 0);
     const resized =
       Math.abs(height - lastViewportHeight) > 1 || env.innerWidth !== lastViewportWidth;
     lastViewportHeight = height;
     lastViewportWidth = env.innerWidth;
-    const root = doc.documentElement;
     root.style.setProperty('--ci-vp-height', height + 'px');
     root.style.setProperty(
       '--ci-vp-bottom',
