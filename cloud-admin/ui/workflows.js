@@ -52,15 +52,15 @@ export function mountEditorPanes({ preview, invalidate }) {
       $('show-' + name).setAttribute('aria-pressed', String(name === mode));
       $('show-' + name).classList.toggle('active', name === mode);
     }
-    if (
+    const moveFocus =
       (focused === $('preview-frame') && mode === 'writing') ||
       (focused === $('body') && mode === 'preview') ||
-      (focused === $('show-split') && !wide.matches)
-    )
-      $('show-' + mode).focus({ preventScroll: true });
+      (focused === $('show-split') && !wide.matches);
     $('editor-panes').classList.toggle('preview-only', mode === 'preview');
     $('editor-panes').classList.toggle('writing-only', mode === 'writing');
     $('show-split').hidden = !wide.matches;
+    // Hiding a focused iframe resets focus in Firefox; select the visible control afterwards.
+    if (moveFocus) $('show-' + mode).focus({ preventScroll: true });
     if (mode === 'writing') invalidate();
     else preview();
   }
