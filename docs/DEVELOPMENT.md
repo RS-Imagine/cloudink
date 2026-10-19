@@ -37,7 +37,7 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 正式前台的 HTML 在 `crates/blog-core/src/render.rs`，共享样式和交互在同目录的 `assets/styles.css` 与 `assets/client.js`。原生构建和浏览器 WASM 发布使用相同模板；后台文章预览也使用这份样式。
 
-前后台与预览共享 `assets/design-tokens.css` 的明暗主题与墨绿/中性灰蓝主题色，
+前后台与预览共享 `assets/design-tokens.css` 的明暗主题与六套作者主题色（含棕褐 Brown），
 `assets/design-foundation.css` 提供按钮、输入、焦点与表面规则。
 Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复制颜色表。
 首页、阅读页、后台壳与写作工作流共享同一设计系统；[升级与验收](design/UI-2.0-RELEASE.md)记录最终回归、资源预算与回滚。
