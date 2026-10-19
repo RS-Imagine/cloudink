@@ -44,6 +44,7 @@ export function mountEditorPanes({ preview, invalidate }) {
   const wide = matchMedia('(min-width:1100px)');
   let preferred = 'split';
   function render() {
+    const focused = document.activeElement;
     const mode = wide.matches ? preferred : preferred === 'preview' ? 'preview' : 'writing';
     $('editor-panes').classList.toggle('preview-only', mode === 'preview');
     $('editor-panes').classList.toggle('writing-only', mode === 'writing');
@@ -51,6 +52,12 @@ export function mountEditorPanes({ preview, invalidate }) {
       $('show-' + name).setAttribute('aria-pressed', String(name === mode));
       $('show-' + name).classList.toggle('active', name === mode);
     }
+    if (
+      (focused === $('preview-frame') && mode === 'writing') ||
+      (focused === $('body') && mode === 'preview') ||
+      (focused === $('show-split') && !wide.matches)
+    )
+      $('show-' + mode).focus({ preventScroll: true });
     if (mode === 'writing') invalidate();
     else preview();
   }

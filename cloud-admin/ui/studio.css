@@ -815,3 +815,51 @@
     max-width: calc(100vw - 36px);
   }
 }
+
+/* Checking the session is a complete state, never a flash of the wrong form. */
+.startup-card .auth-brand {
+  margin-bottom: 32px;
+}
+.startup-indicator {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 24px;
+  border: 3px solid var(--ci-divider);
+  border-top-color: var(--ci-primary);
+  border-radius: 50%;
+  animation: startup-spin 900ms linear infinite;
+}
+.startup-card p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ci-muted);
+  overflow-wrap: anywhere;
+}
+.startup-card .form-actions {
+  align-items: center;
+  gap: 16px;
+}
+.startup-reload {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.startup-view[data-state='error'] .startup-indicator {
+  display: none;
+}
+.startup-view[data-state='error'] #startup-message {
+  color: var(--ci-error);
+}
+@keyframes startup-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-indicator {
+    animation: none;
+  }
+}

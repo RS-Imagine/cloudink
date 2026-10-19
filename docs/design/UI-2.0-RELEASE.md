@@ -3,10 +3,28 @@
 本次升级统一公开博客、后台和文章预览的视觉系统，保持单 Worker、单私有 R2、
 Rust/WASM、原生 JavaScript/CSS 与 Swup 架构。没有新增服务、运行时依赖、必填配置或存储迁移。
 
-状态：PR-00 至 PR-08 已分阶段合并；PR-09 为最终回归与发布候选。
+交付状态：PR-00 至 PR-09 均已分阶段合并，FlClash 方向的 UI 2.0 代码与自动化回归已交付。
+最终补全包含启动/失败状态、键盘焦点、响应式焦点与完整截图目录。
 自动化检查与实验数据见对应 PR 的 CI 和 `ui-design-review` 附件。
-真实设备与辅助技术验收仍需按下列清单完成，不能将模拟结果写成实机结论。
-本阶段没有部署生产资源或重新发布用户内容。
+实际终端发布验收仍需按下列清单完成；没有将模拟结果记为实机结论，也没有自行发布用户内容。
+
+
+## 阶段交付清单
+
+| 阶段 | 合并记录 | 已交付范围 |
+| --- | --- | --- |
+| PR-00 | [#9](https://github.com/RS-Imagine/cloudink/pull/9) | 设计审计、四页原型、截图与质量基线 |
+| PR-01 | [#10](https://github.com/RS-Imagine/cloudink/pull/10) | 共享 Token、明暗主题、作者配色与控件基础 |
+| PR-02 | [#11](https://github.com/RS-Imagine/cloudink/pull/11) | 物理弹簧、动效中断、减少动态效果 |
+| PR-03 | [#12](https://github.com/RS-Imagine/cloudink/pull/12) | 首页、全局导航、文章卡片与无脚本链接 |
+| PR-04 | [#13](https://github.com/RS-Imagine/cloudink/pull/13) | 阅读、目录、搜索、图片预览与历史导航 |
+| PR-05 | [#14](https://github.com/RS-Imagine/cloudink/pull/14) | 后台外壳、工作台、导航、登录与设置向导 |
+| PR-06 | [#15](https://github.com/RS-Imagine/cloudink/pull/15) | 编辑器、图库、设置、确认与异步反馈 |
+| PR-07 | [#16](https://github.com/RS-Imagine/cloudink/pull/16) | 手机面板、停靠、拖拽、旋转与键盘 |
+| PR-08 | [#17](https://github.com/RS-Imagine/cloudink/pull/17) | 有限区域磨砂、视觉偏好与不透明降级 |
+| PR-09 | [#18](https://github.com/RS-Imagine/cloudink/pull/18) | 清理、边界修复、整体预算与升级/回滚说明 |
+
+新功能或新的视觉方向另开需求；本轮不引入 FlClash 的 Dart、GPL 实现、额外服务或新的必填配置。
 
 ## 用户能看到的变化
 
@@ -16,6 +34,8 @@ Rust/WASM、原生 JavaScript/CSS 与 Swup 架构。没有新增服务、运行�
 - 按压与面板使用可中断的真实弹簧，支持减少动态效果；正文与编辑器不会被动画替换。
 - 手机面板支持拖动把手、停靠、关闭，也能点击、使用方向键或 Esc；键盘输入时保留可用工作区。
 - 小范围导航和菜单支持轻量磨砂。效果可在当前浏览器关闭，系统和低资源策略提供不透明降级。
+- 后台启动、失败和重试采用完整状态；读取失败时保留重试入口，不短暂显示错误的登录/初始化界面。
+- 主动登录、退出、文章卡片和编辑器断点切换都有明确的焦点去向，保留正文与选区。
 
 **作者配色**：后台“网站与外观”选择主题色，保存影响后台与预览，发布后应用到公开网站。  
 **读者偏好**：明暗模式与“自动 / 简洁（不透明）”只影响当前浏览器，不改变作者的网站设置。
@@ -78,13 +98,16 @@ Chromium、Firefox 与 Playwright WebKit 均运行正式界面的行为检查。
 [PR-00 升级前截图与报告](https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772)  
 [PR-08 上游截图与报告](https://github.com/RS-Imagine/cloudink/actions/runs/39238605433/artifacts/12180362373)
 
-当前 PR 的附件解压后打开 `index.html`。其中左侧为当前正式界面、右侧为已确认原型；
+当前提交的附件解压后打开 `index.html`，补充交互截图也有可点击的完整目录。其中左侧为当前正式界面、右侧为已确认原型；
 原型不等于升级前截图，比较升级前后需打开 PR-00 包的同尺寸、同主题正式界面。
 `reader-*`、`studio-*`、`workflow-*`、`mobile-*`、`surface-*`、
-`release-text-spacing-*` 提供补充截图；`report.json` 保留所有样本与资源统计。
+`release-text-spacing-*`、`completion-*` 提供补充截图；`report.json` 保留所有样本、补充截图目录与资源统计。
 离线演示只使用本地样例，共享正式动效，不连接账号或 API。
 Actions 附件按工作流保留 90 天；需要长期保存时下载归档，或从锁定提交重新运行隔离检查。
 截图和构建产物不进入源码仓库。
+
+无需本地工具即可重建审阅包：在 GitHub 仓库进入 **Actions → Project checks → Run workflow**，
+选择需要检查的分支，运行完成后下载 `ui-design-review`。手动运行同样只使用临时 Miniflare 数据，不需要生产凭据。
 
 ## 资源与性能对比
 
@@ -119,7 +142,7 @@ LCP、CLS、长任务和 4× CPU rAF 间隔保留在原始报告，不以单轮�
 - [ ] 代表性低性能设备：连续阅读/写作与面板交互、玻璃关闭/开启的滚动、发热和耗电。
 - [ ] 部署后重新发布一次通用验证内容，检查公开页面与编辑器预览；生产内容由站点作者操作。
 
-这些项未完成时，状态应为发布候选，不能宣称已完成真实 Safari、能耗或整站 AA 验收。
+上述是独立的实际终端发布验收；代码交付完成不等于已经通过真实 Safari、能耗或整站 AA 验收，未实测项保持未勾选。
 
 ## 回滚
 

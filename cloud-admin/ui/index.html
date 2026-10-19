@@ -11,7 +11,37 @@
   <body>
     <a id="studio-skip" class="studio-skip" href="#workspace" hidden>跳到工作区</a>
     <div id="notice" role="status" aria-live="polite"></div>
-    <section id="login-view" class="login-view">
+    <section
+      id="startup-view"
+      class="login-view startup-view"
+      aria-labelledby="startup-title"
+      aria-busy="true"
+      data-state="loading"
+    >
+      <div class="login-card startup-card">
+        <a class="auth-brand" href="/" aria-label="CloudInk 首页"
+          ><span class="brand-mark"><img src="/favicon.svg" width="26" height="26" alt="" /></span
+          ><span>CloudInk · 云砚</span></a
+        >
+        <span class="startup-indicator" aria-hidden="true"></span>
+        <h1 id="startup-title">留一点时间，给写作。</h1>
+        <p id="startup-message" role="status">正在打开你的写作空间…</p>
+        <div class="form-actions">
+          <button id="startup-retry" type="button" class="primary" hidden>重试</button>
+          <a class="startup-reload" href="/admin">重新加载</a>
+        </div>
+        <noscript>
+          <p>写作后台需要启用 JavaScript。请启用后重新加载，或返回博客继续阅读。</p>
+          <style>
+            .startup-indicator,
+            #startup-message {
+              display: none;
+            }
+          </style>
+        </noscript>
+      </div>
+    </section>
+    <section id="login-view" class="login-view" hidden>
       <div class="login-card">
         <div class="appearance-row">
           <a class="auth-brand" href="/" aria-label="CloudInk 首页"

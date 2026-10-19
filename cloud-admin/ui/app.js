@@ -43,19 +43,52 @@ let navigationVersion = 0,
 let uploading = null;
 const activeActions = new Set();
 let noticeTimer;
-let appConfig;
-const configReady = api('/api/config').then((config) => {
-  appConfig = config;
-  configurePreview(config);
-  $('site-link').href = config.siteUrl;
-  $('service-site-link').href = config.siteUrl;
-  $('service-site-link').textContent = config.siteUrl;
-  if (!config.initialized) showLogin();
-  return config;
-});
-void configReady.catch((error) => {
-  $('login-error').textContent = error.message;
-});
+let appConfig, configReady;
+let booting = false;
+function showStartup(error = '') {
+  $('startup-view').hidden = false;
+  $('startup-view').dataset.state = error ? 'error' : 'loading';
+  $('startup-view').setAttribute('aria-busy', String(!error));
+  $('startup-message').setAttribute('role', error ? 'alert' : 'status');
+  $('startup-message').textContent = error || '正在打开你的写作空间…';
+  $('startup-retry').hidden = !error;
+  $('startup-retry').disabled = !error;
+  $('login-view').hidden = true;
+  $('setup-view').hidden = true;
+  $('app-view').hidden = true;
+  $('studio-skip').hidden = true;
+}
+async function startWorkspace() {
+  if (booting) return;
+  const focus = !!document.activeElement?.closest('#startup-view');
+  booting = true;
+  showStartup();
+  configReady = api('/api/config').then((config) => {
+    appConfig = config;
+    configurePreview(config);
+    $('site-link').href = config.siteUrl;
+    $('service-site-link').href = config.siteUrl;
+    $('service-site-link').textContent = config.siteUrl;
+    return config;
+  });
+  try {
+    // Settle both reads before choosing a view; an early 401 must not flash the login form.
+    const [config, session] = await Promise.allSettled([configReady, api('/api/session')]);
+    if (config.status === 'rejected') throw config.reason;
+    if (!config.value.initialized) showLogin({ focus });
+    else if (session.status === 'fulfilled') await signedIn(session.value, { focus });
+    else if (session.reason.status === 401) showLogin({ focus });
+    else throw session.reason;
+  } catch (error) {
+    if (error.status === 401) showLogin({ focus });
+    else
+      showStartup(
+        error.status ? error.message : '暂时无法打开写作空间，请检查网络后重试。',
+      );
+  } finally {
+    booting = false;
+  }
+}
 function applySiteAppearance(config) {
   const palette = config?.themePalette === 'neutral' ? 'neutral' : 'ink';
   if (site) site.themePalette = palette;
@@ -190,12 +223,12 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.error || '操作未完成。');
     error.status = response.status;
-    if (response.status === 401 && path !== '/api/login') showLogin();
+    if (response.status === 401 && path !== '/api/login' && !booting) showLogin({ focus: true });
     throw error;
   }
   return data;
 }
-function showLogin() {
+function showLogin({ focus = false } = {}) {
   shell.close();
   $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
@@ -206,6 +239,11 @@ function showLogin() {
   const wizard = appConfig && !appConfig.initialized;
   $('setup-view').hidden = !wizard;
   $('login-view').hidden = wizard;
+  $('startup-view').hidden = true;
+  if (focus)
+    (wizard ? $('setup-form').elements.token : $('login-form').elements.email).focus({
+      preventScroll: true,
+    });
   csrf = '';
   articleCache.clear();
   articleRequests.clear();
@@ -214,7 +252,7 @@ function showLogin() {
 function view(name) {
   const sectionName = name === 'posts' ? 'home' : name;
   const fromNavigation = document.activeElement?.closest(
-    '.studio-nav,#post-list,[data-studio-shortcut]',
+    '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
   );
   shell.close();
   $('app-view').dataset.view = name;
@@ -242,18 +280,20 @@ function view(name) {
   }[name];
   if (fromNavigation) $(sectionName + '-view').focus({ preventScroll: true });
 }
-async function signedIn(session) {
+async function signedIn(session, { focus = false } = {}) {
   await configReady;
   csrf = session.csrf;
   appConfig.initialized = true;
+  $('account-email').textContent = session.email;
+  $('account-form').elements.email.value = session.email;
+  await refresh();
+  $('startup-view').hidden = true;
   $('setup-view').hidden = true;
   $('login-view').hidden = true;
   $('app-view').hidden = false;
   $('studio-skip').hidden = false;
-  $('account-email').textContent = session.email;
-  $('account-form').elements.email.value = session.email;
-  await refresh();
   view('home');
+  if (focus) $('workspace').focus({ preventScroll: true });
   (window.requestIdleCallback || setTimeout)(() => {
     void engineTask('warm').catch(() => {});
   });
@@ -271,6 +311,7 @@ $('login-form').addEventListener('submit', async (e) => {
         method: 'POST',
         body: { email: form.elements.email.value, password: form.elements.password.value },
       }),
+      { focus: true },
     );
     form.reset();
   } catch (error) {
@@ -281,9 +322,8 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-submit').textContent = '登录';
   }
 });
-api('/api/session')
-  .then(signedIn)
-  .catch(() => {});
+$('startup-retry').addEventListener('click', () => void startWorkspace());
+void startWorkspace();
 
 function setupStep(siteStep) {
   $('setup-account-step').hidden = siteStep;
@@ -336,13 +376,13 @@ $('setup-form').addEventListener('submit', async (event) => {
         },
       });
       form.reset();
-      await signedIn(session);
+      await signedIn(session, { focus: true });
       await startPublish({ rebuild: true });
     } catch (error) {
       $('setup-error').textContent = error.message;
       if (error.status === 409) {
         appConfig.initialized = true;
-        showLogin();
+        showLogin({ focus: true });
         $('login-error').textContent = '账号已经创建，请使用设置的邮箱和密码登录。';
       }
       throw error;
@@ -1139,7 +1179,7 @@ $('logout').addEventListener('click', async () => {
     doc = null;
     dirty = 0;
     savedVersion = 0;
-    showLogin();
+    showLogin({ focus: true });
   } catch (error) {
     notice(error.message);
   }
