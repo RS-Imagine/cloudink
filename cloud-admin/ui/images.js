@@ -1,3 +1,4 @@
+import { confirmAction } from './workflows.js';
 const $ = (id) => document.getElementById(id);
 const kinds = {
   published: '已发布',
@@ -25,13 +26,15 @@ export function configureImages({
     cursor = null,
     requestVersion = 0,
     loading = false,
-    referenceError = '';
+    referenceError = '',
+    loadError = '';
   function status(message) {
     $('image-library-status').textContent = message;
   }
   function render() {
     const grid = $('image-library-grid');
     grid.replaceChildren();
+    grid.setAttribute('aria-busy', String(loading));
     const query = $('image-library-search').value.trim().toLowerCase();
     const unused = $('image-library-unused').checked;
     const visible = images.filter(
@@ -44,6 +47,7 @@ export function configureImages({
     for (const image of visible) {
       const card = document.createElement('article');
       card.className = 'image-card';
+      const helpId = 'image-help-' + grid.childElementCount;
       card.dataset.key = image.key;
       const preview = document.createElement('button');
       preview.className = 'image-thumbnail';
@@ -91,18 +95,22 @@ export function configureImages({
       }
       const actions = document.createElement('div');
       actions.className = 'image-actions';
-      function button(text, work) {
+      function button(text, work, { confirmFirst = false } = {}) {
         const element = document.createElement('button');
         element.textContent = text;
         element.addEventListener('click', async () => {
-          if (element.disabled) return;
-          element.disabled = true;
+          if (element.disabled || element.getAttribute('aria-busy') === 'true') return;
+          element.disabled = !confirmFirst;
+          element.setAttribute('aria-busy', 'true');
           try {
             await work();
           } catch (error) {
+            status(error.message);
+            $('image-library-status').dataset.tone = 'error';
             notice(error.message, 'error');
           } finally {
             element.disabled = false;
+            element.removeAttribute('aria-busy');
           }
         });
         actions.append(element);
@@ -115,22 +123,35 @@ export function configureImages({
       const use = button('插入当前文章', () => insert(image));
       use.disabled = !canInsert();
       if (use.disabled) use.title = '先打开或新建一篇文章，再从编辑器进入图片库。';
-      const remove = button('删除', async () => {
-        if (!confirm(`永久删除“${image.name}”？图片将从存储桶移除，无法撤销。`)) return;
-        await flush();
-        try {
-          await api('/api/images', {
-            method: 'DELETE',
-            body: { key: image.key, etag: image.etag },
-          });
-        } catch (error) {
-          await load().catch(() => {});
-          throw error;
-        }
-        images = images.filter((item) => item.key !== image.key);
-        render();
-        notice('图片已从存储桶删除。', 'success');
-      });
+      const remove = button(
+        '删除',
+        async () => {
+          if (
+            !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
+              title: '删除这张图片？',
+              accept: '永久删除',
+              danger: true,
+            }))
+          )
+            return;
+          remove.disabled = true;
+          await flush();
+          try {
+            await api('/api/images', {
+              method: 'DELETE',
+              body: { key: image.key, etag: image.etag },
+            });
+          } catch (error) {
+            await load().catch(() => {});
+            throw error;
+          }
+          images = images.filter((item) => item.key !== image.key);
+          render();
+          $('image-library-refresh').focus({ preventScroll: true });
+          notice('图片已从存储桶删除。', 'success');
+        },
+        { confirmFirst: true },
+      );
       remove.classList.add('danger');
       remove.disabled = !image.referencesChecked || image.references.length > 0;
       remove.title = !image.referencesChecked
@@ -138,14 +159,26 @@ export function configureImages({
         : image.references.length
           ? '先处理文章或网站设置中的引用。'
           : '永久删除这张图片';
-      body.append(actions);
+      const help = document.createElement('p');
+      help.id = helpId;
+      help.className = 'image-protection';
+      help.textContent = !image.referencesChecked
+        ? '引用检查完成前，图片会受到保护。'
+        : image.references.length
+          ? '这张图片正在使用，删除已受保护。'
+          : '删除前会再次检查引用，确认后才永久移除。';
+      remove.setAttribute('aria-describedby', helpId);
+      body.append(help, actions);
       card.append(preview, body);
       grid.append(card);
     }
     $('image-library-empty').hidden = visible.length > 0 || loading;
-    $('image-library-empty').textContent = images.length
-      ? '没有符合筛选条件的图片。'
-      : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
+    $('image-library-retry').hidden = !loadError || loading;
+    $('image-library-empty').textContent = loadError
+      ? '图片库暂时无法读取，请重新加载。'
+      : images.length
+        ? '没有符合筛选条件的图片。'
+        : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
     $('image-library-more').hidden = !cursor;
     $('image-library-back').hidden = !canInsert();
     $('image-library-warning').hidden = !referenceError;
@@ -156,6 +189,8 @@ export function configureImages({
   async function load(reset = true) {
     const version = ++requestVersion;
     loading = true;
+    loadError = '';
+    $('image-library-status').dataset.tone = 'pending';
     status('正在读取图片库和引用信息…');
     if (reset) {
       images = [];
@@ -178,6 +213,14 @@ export function configureImages({
       cursor = data.cursor;
       referenceError = data.referenceError || referenceError;
       status(cursor ? '还有更多图片，可继续加载。筛选只作用于已加载图片。' : '图片库已加载。');
+      $('image-library-status').dataset.tone = 'success';
+    } catch (error) {
+      if (version === requestVersion) {
+        loadError = error.message;
+        status(error.message);
+        $('image-library-status').dataset.tone = 'error';
+      }
+      throw error;
     } finally {
       if (version === requestVersion) {
         loading = false;
@@ -196,6 +239,9 @@ export function configureImages({
     $(id).addEventListener('click', () => action(id, '正在打开…', show));
   $('image-library-refresh').addEventListener('click', () =>
     action('image-library-refresh', '正在刷新…', () => load()),
+  );
+  $('image-library-retry').addEventListener('click', () =>
+    action('image-library-retry', '正在重试…', () => load()),
   );
   $('image-library-more').addEventListener('click', () =>
     action('image-library-more', '正在加载…', () => load(false)),

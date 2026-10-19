@@ -206,7 +206,7 @@
             >
               <path d="m3 10 9-7 9 7v10H3Z" />
               <path d="M9 20v-7h6v7" /></svg
-            ><span>工作台</span>
+            ><span data-action-label>工作台</span>
           </button>
           <button
             id="articles-nav"
@@ -227,7 +227,7 @@
             >
               <path d="M6 3h8l4 4v14H6Z" />
               <path d="M14 3v5h4M9 12h6m-6 4h5" /></svg
-            ><span>所有文章</span><small data-post-count>0</small>
+            ><span data-action-label>所有文章</span><small data-post-count>0</small>
           </button>
           <button id="images" title="图片库" data-studio-nav="images" aria-label="图片库">
             <svg
@@ -244,7 +244,7 @@
               <rect x="3" y="3" width="18" height="18" rx="4" />
               <circle cx="8" cy="8" r="1.5" />
               <path d="m3 17 6-5 4 3 4-6 4 5" /></svg
-            ><span>图片库</span>
+            ><span data-action-label>图片库</span>
           </button>
           <button id="settings" title="网站设置" data-studio-nav="settings" aria-label="网站设置">
             <svg
@@ -260,7 +260,7 @@
             >
               <circle cx="12" cy="12" r="3" />
               <path d="m9 3-1 3-3 1 1 4-2 2 2 3 3-1 2 3 3-1 1-3 3-1-1-4 2-2-2-3-3 1-2-3Z" /></svg
-            ><span>网站设置</span>
+            ><span data-action-label>网站设置</span>
           </button>
         </nav>
         <div class="studio-aside-note">
@@ -477,16 +477,17 @@
             </section>
           </div>
         </section>
-        <section id="images-view" class="images-view" hidden>
+        <section id="images-view" class="images-view" aria-labelledby="library-title" hidden>
           <div class="section-heading">
             <div>
-              <h1>图片库</h1>
+              <span class="workflow-eyebrow">你的创作素材</span>
+              <h1 id="library-title">图片库</h1>
               <p class="muted">上传一次，随时复用。仍被文章或网站设置引用的图片不能删除。</p>
             </div>
             <div class="form-actions">
               <button id="image-library-back" hidden>返回当前文章</button>
               <button id="image-library-refresh">刷新</button>
-              <button id="image-library-upload" class="primary">＋ 上传图片</button>
+              <button id="image-library-upload" class="primary">上传图片</button>
               <input
                 id="image-library-files"
                 type="file"
@@ -503,64 +504,100 @@
               placeholder="筛选已加载的图片名称或路径"
               aria-label="搜索图片"
             />
-            <label><input id="image-library-unused" type="checkbox" />只看未发现引用的图片</label>
+            <label class="library-switch"
+              ><input id="image-library-unused" type="checkbox" role="switch" /><span
+                >仅未引用</span
+              ></label
+            >
             <span id="image-library-summary" class="muted"></span>
           </div>
           <p id="image-library-status" class="muted" role="status" aria-live="polite"></p>
           <p id="image-library-warning" class="error" role="alert" hidden></p>
-          <div id="image-library-grid" class="image-library-grid"></div>
-          <p id="image-library-empty" class="muted" hidden></p>
+          <div id="image-library-grid" class="image-library-grid" aria-busy="false"></div>
+          <div id="image-library-empty" class="workflow-empty" hidden></div>
+          <button id="image-library-retry" hidden>重新加载图片库</button>
           <button id="image-library-more" hidden>加载更多图片</button>
         </section>
-        <section id="editor-view" class="editor-view" hidden>
+        <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden>
           <div class="editor-toolbar">
-            <span id="save-state" class="muted" role="status">尚未保存</span>
+            <div class="editor-save-status">
+              <span class="status-dot" aria-hidden="true"></span
+              ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
+            </div>
             <div class="toolbar-actions">
-              <button id="download-post" class="quiet">下载原稿</button
-              ><button id="save-post">保存草稿</button
-              ><button id="publish-post" class="primary">发布这篇</button>
+              <button id="download-post" class="quiet">下载原稿</button>
+              <button id="save-post">保存草稿</button>
+              <button id="publish-post" class="primary">发布这篇</button>
             </div>
           </div>
-          <input
-            id="title"
-            class="title-input"
-            placeholder="文章标题"
-            aria-label="文章标题"
-            maxlength="300"
-          />
-          <textarea
-            id="description"
-            class="description-input"
-            placeholder="写一句文章摘要（可选）"
-            aria-label="文章摘要"
-            maxlength="2000"
-            rows="2"
-          ></textarea>
-          <details class="post-details">
-            <summary>文章日期和地址</summary>
-            <div class="details-fields">
-              <label>日期<input id="date" type="date" /></label
-              ><label
-                >文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" /><small
-                  >发布后建议保持地址不变</small
-                ></label
-              >
-            </div>
-          </details>
-          <div class="pane-heading">
-            <div>
-              <button id="show-writing" class="tab active">Markdown</button
-              ><button id="show-preview" class="tab">页面预览</button>
-            </div>
-            <button id="choose-library-image" class="quiet">从图片库选择</button
-            ><button id="upload-image" class="quiet">＋ 上传图片</button
-            ><input
-              id="image-files"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-              multiple
-              hidden
+          <div class="editor-document">
+            <label class="editor-field-label" for="title">文章标题</label>
+            <input
+              id="title"
+              class="title-input"
+              placeholder="给想法一个标题"
+              aria-label="文章标题"
+              maxlength="300"
             />
+            <label class="editor-field-label" for="description">摘要 <span>可选</span></label>
+            <textarea
+              id="description"
+              class="description-input"
+              placeholder="用一两句话，留下一点阅读的线索。"
+              aria-label="文章摘要"
+              maxlength="2000"
+              rows="2"
+            ></textarea>
+            <details class="post-details">
+              <summary>文章日期和地址 <span aria-hidden="true">⌄</span></summary>
+              <div class="details-fields">
+                <label>日期<input id="date" type="date" /></label>
+                <label
+                  >文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" /><small
+                    >保存后地址锁定，发布后链接保持稳定。</small
+                  ></label
+                >
+              </div>
+            </details>
+          </div>
+          <div class="pane-heading">
+            <div class="editor-view-switch" role="group" aria-label="编辑视图">
+              <button
+                id="show-writing"
+                class="tab"
+                aria-pressed="false"
+                aria-controls="editor-panes"
+              >
+                写作
+              </button>
+              <button
+                id="show-split"
+                class="tab active"
+                aria-pressed="true"
+                aria-controls="editor-panes"
+              >
+                分栏
+              </button>
+              <button
+                id="show-preview"
+                class="tab"
+                aria-pressed="false"
+                aria-controls="editor-panes"
+              >
+                预览
+              </button>
+            </div>
+            <div class="editor-image-actions">
+              <button id="choose-library-image" class="quiet">图片库</button>
+              <button id="upload-image" class="quiet">上传图片</button>
+              <input
+                id="image-files"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                multiple
+                hidden
+              />
+            </div>
           </div>
           <div id="editor-panes" class="editor-panes">
             <textarea
@@ -569,6 +606,7 @@
               spellcheck="false"
               placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。"
               aria-label="Markdown 正文"
+              aria-describedby="writing-help"
             ></textarea>
             <div class="preview-pane">
               <iframe
@@ -576,174 +614,252 @@
                 title="文章发布效果预览"
                 sandbox="allow-same-origin"
               ></iframe>
-              <div id="preview-loading" class="preview-loading">正在加载 Rust 预览引擎…</div>
+              <div id="preview-loading" class="preview-loading" role="status">
+                正在加载 Rust 预览引擎…
+              </div>
             </div>
           </div>
           <div class="editor-footer">
             <span id="word-count" class="muted"></span>
+            <span id="writing-help">Markdown · 支持粘贴与拖入图片</span>
+          </div>
+          <div class="editor-danger-zone">
+            <p>保存草稿仅保存原稿；点击发布，读者才会看到更新。</p>
             <div>
               <button id="unpublish-post" class="quiet danger">取消发布</button
               ><button id="delete-post" class="quiet danger">删除草稿</button>
             </div>
           </div>
         </section>
-        <section id="settings-view" class="settings-view" hidden>
-          <nav class="settings-nav" aria-label="设置分类">
-            <a href="#site-form">网站与外观</a><a href="#account-form">账号</a
-            ><a href="#backup-card">备份与恢复</a><a href="#service-card">运行信息</a>
-          </nav>
-          <form id="site-form" class="settings-card">
-            <h3>网站信息</h3>
-            <p class="muted">保存后仍需点击发布，线上网站才会更新。</p>
-            <label>网站标题<input name="title" required maxlength="300" /></label
-            ><label>首页大标题<input name="bigTitle" maxlength="300" /></label
-            ><label>首页副标题<input name="subtitle" maxlength="1000" /></label
-            ><label>作者<input name="author" required maxlength="300" /></label
-            ><label
-              >网站描述<textarea name="description" maxlength="2000" rows="3"></textarea>
-            </label>
-            <fieldset class="appearance-settings">
-              <legend>外观</legend>
-              <label
-                >主题色<select name="themePalette" aria-describedby="palette-help">
-                  <option value="ink">墨绿</option>
-                  <option value="neutral">中性灰蓝</option>
-                </select></label
-              >
-              <p id="palette-help">
-                保存后应用到后台和预览；发布网站信息后，公开网页统一更新主题色。
-              </p>
-              <label
-                >本机明暗模式<select data-theme-mode>
-                  <option value="auto">跟随系统</option>
-                  <option value="light">浅色</option>
-                  <option value="dark">深色</option>
-                </select></label
-              >
-              <p>明暗模式只影响当前浏览器。读者可以自行选择，不会强制跟随后台。</p>
-            </fieldset>
-            <details class="settings-details">
-              <summary>外观与关于页面</summary>
-              <label
-                >页脚文字<input
-                  name="footer"
-                  maxlength="2000"
-                  placeholder="留空使用默认页脚" /></label
-              ><label
-                >关于页面<textarea
-                  name="about"
-                  maxlength="100000"
-                  rows="7"
-                  placeholder="用 Markdown 介绍自己；留空关闭关于页面"
-                ></textarea>
-              </label>
-            </details>
-            <details class="settings-details">
-              <summary>访问统计（可选）</summary>
-              <p class="muted">
-                默认关闭。填写 Microsoft Clarity 项目 ID 后，发布网站信息以启用统计。
-              </p>
-              <label
-                >Clarity 项目 ID<input
-                  name="clarityId"
-                  maxlength="64"
-                  pattern="[A-Za-z0-9]*"
-                  placeholder="留空关闭统计"
-              /></label>
-            </details>
-            <div class="form-actions">
-              <button type="submit">保存网站信息</button
-              ><button type="button" id="publish-settings" class="primary">发布网站信息</button>
+        <section id="settings-view" class="settings-view" aria-labelledby="settings-title" hidden>
+          <div class="workflow-heading">
+            <span class="workflow-eyebrow">属于你的文字角落</span>
+            <h1 id="settings-title">网站设置</h1>
+            <p>整理博客的外观、账号与备份，让写作更安心。</p>
+          </div>
+          <div class="settings-layout">
+            <nav class="settings-nav" aria-label="设置分类">
+              <a href="#site-form">网站与外观</a><a href="#account-form">账号</a
+              ><a href="#backup-card">备份与恢复</a><a href="#service-card">运行信息</a>
+            </nav>
+            <div class="settings-sections">
+              <form id="site-form" class="settings-card" aria-labelledby="site-form-title">
+                <div class="settings-card-heading">
+                  <span class="settings-section-number" aria-hidden="true">01</span>
+                  <div>
+                    <h2 id="site-form-title">网站与外观</h2>
+                    <p>为你的博客，留下一点个人印记。</p>
+                  </div>
+                </div>
+                <p class="muted">保存后仍需点击发布，线上网站才会更新。</p>
+                <label>网站标题<input name="title" required maxlength="300" /></label
+                ><label>首页大标题<input name="bigTitle" maxlength="300" /></label
+                ><label>首页副标题<input name="subtitle" maxlength="1000" /></label
+                ><label>作者<input name="author" required maxlength="300" /></label
+                ><label
+                  >网站描述<textarea name="description" maxlength="2000" rows="3"></textarea>
+                </label>
+                <fieldset class="appearance-settings">
+                  <legend>外观</legend>
+                  <label
+                    >主题色<select name="themePalette" aria-describedby="palette-help">
+                      <option value="ink">墨绿</option>
+                      <option value="neutral">中性灰蓝</option>
+                    </select></label
+                  >
+                  <p id="palette-help">
+                    保存后应用到后台和预览；发布网站信息后，公开网页统一更新主题色。
+                  </p>
+                  <label
+                    >本机明暗模式<select data-theme-mode>
+                      <option value="auto">跟随系统</option>
+                      <option value="light">浅色</option>
+                      <option value="dark">深色</option>
+                    </select></label
+                  >
+                  <p>明暗模式只影响当前浏览器。读者可以自行选择，不会强制跟随后台。</p>
+                </fieldset>
+                <details class="settings-details">
+                  <summary>外观与关于页面</summary>
+                  <label
+                    >页脚文字<input
+                      name="footer"
+                      maxlength="2000"
+                      placeholder="留空使用默认页脚" /></label
+                  ><label
+                    >关于页面<textarea
+                      name="about"
+                      maxlength="100000"
+                      rows="7"
+                      placeholder="用 Markdown 介绍自己；留空关闭关于页面"
+                    ></textarea>
+                  </label>
+                </details>
+                <details class="settings-details">
+                  <summary>访问统计（可选）</summary>
+                  <p class="muted">
+                    默认关闭。填写 Microsoft Clarity 项目 ID 后，发布网站信息以启用统计。
+                  </p>
+                  <label
+                    >Clarity 项目 ID<input
+                      name="clarityId"
+                      maxlength="64"
+                      pattern="[A-Za-z0-9]*"
+                      placeholder="留空关闭统计"
+                  /></label>
+                </details>
+                <div class="form-actions">
+                  <button type="submit" id="save-site">保存网站信息</button
+                  ><button type="button" id="publish-settings" class="primary">发布网站信息</button>
+                </div>
+                <p
+                  id="site-feedback"
+                  class="operation-feedback"
+                  role="status"
+                  aria-live="polite"
+                  hidden
+                ></p>
+              </form>
+              <form id="account-form" class="settings-card" aria-labelledby="account-form-title">
+                <div class="settings-card-heading">
+                  <span class="settings-section-number" aria-hidden="true">02</span>
+                  <div>
+                    <h2 id="account-form-title">登录账号</h2>
+                    <p>一个作者，一处安心的写作空间。</p>
+                  </div>
+                </div>
+                <p class="muted">修改邮箱或密码需要验证当前密码。修改后，其他设备的登录会失效。</p>
+                <label
+                  >登录邮箱<input
+                    name="email"
+                    type="email"
+                    maxlength="254"
+                    autocomplete="username"
+                    required /></label
+                ><label
+                  >当前密码<input
+                    name="current_password"
+                    type="password"
+                    maxlength="128"
+                    autocomplete="current-password"
+                    required
+                /></label>
+                <div class="settings-columns">
+                  <label
+                    >新密码（可选）<input
+                      name="password"
+                      type="password"
+                      minlength="12"
+                      maxlength="128"
+                      autocomplete="new-password" /></label
+                  ><label
+                    >再次输入新密码<input
+                      name="confirm"
+                      type="password"
+                      maxlength="128"
+                      autocomplete="new-password"
+                  /></label>
+                </div>
+                <button id="save-account">更新账号</button>
+                <p
+                  id="account-feedback"
+                  class="operation-feedback"
+                  role="status"
+                  aria-live="polite"
+                  hidden
+                ></p>
+              </form>
+              <section id="backup-card" class="settings-card" aria-labelledby="backup-title">
+                <div class="settings-card-heading">
+                  <span class="settings-section-number" aria-hidden="true">03</span>
+                  <div>
+                    <h2 id="backup-title">备份与恢复</h2>
+                    <p>为写下的每一篇，留一份副本。</p>
+                  </div>
+                </div>
+                <p>
+                  下载一份包含网站设置、文章原稿和上传图片的 ZIP
+                  备份。备份包含未发布的文字，请妥善保存。
+                </p>
+                <div class="form-actions">
+                  <button id="download-backup">下载网站备份</button
+                  ><button id="restore-backup">从备份恢复</button
+                  ><input id="backup-file" type="file" accept=".zip" hidden />
+                </div>
+                <p class="muted">
+                  恢复为草稿与待发布设置，不修改登录账号或当前线上版本；检查后再发布。相同内容会跳过，不覆盖已有的不同原稿。
+                </p>
+                <p
+                  id="backup-status"
+                  class="operation-feedback"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </section>
+              <section id="service-card" class="settings-card" aria-labelledby="service-title">
+                <div class="settings-card-heading">
+                  <span class="settings-section-number" aria-hidden="true">04</span>
+                  <div>
+                    <h2 id="service-title">运行信息</h2>
+                    <p>查看网站连接与维护方式。</p>
+                  </div>
+                </div>
+                <dl class="service-info">
+                  <div>
+                    <dt>网站地址</dt>
+                    <dd><a id="service-site-link" target="_blank" rel="noopener"></a></dd>
+                  </div>
+                  <div>
+                    <dt>管理方式</dt>
+                    <dd>一个 Worker · 一个私有存储桶</dd>
+                  </div>
+                  <div>
+                    <dt>文章发布</dt>
+                    <dd>后台生成并发布，无需部署链接</dd>
+                  </div>
+                </dl>
+                <p class="muted">
+                  自定义域名在 Cloudflare 的 Domains & Routes 中绑定。程序更新由 GitHub 与
+                  Cloudflare Builds 管理，网站设置会保留。
+                </p>
+                <a
+                  href="https://github.com/RS-Imagine/cloudink/blob/master/docs/DEPLOYMENT.md"
+                  target="_blank"
+                  rel="noopener"
+                  >查看部署与维护说明 ↗</a
+                >
+              </section>
             </div>
-          </form>
-          <form id="account-form" class="settings-card">
-            <h3>登录账号</h3>
-            <p class="muted">修改邮箱或密码需要验证当前密码。修改后，其他设备的登录会失效。</p>
-            <label
-              >登录邮箱<input
-                name="email"
-                type="email"
-                maxlength="254"
-                autocomplete="username"
-                required /></label
-            ><label
-              >当前密码<input
-                name="current_password"
-                type="password"
-                maxlength="128"
-                autocomplete="current-password"
-                required
-            /></label>
-            <div class="settings-columns">
-              <label
-                >新密码（可选）<input
-                  name="password"
-                  type="password"
-                  minlength="12"
-                  maxlength="128"
-                  autocomplete="new-password" /></label
-              ><label
-                >再次输入新密码<input
-                  name="confirm"
-                  type="password"
-                  maxlength="128"
-                  autocomplete="new-password"
-              /></label>
-            </div>
-            <button id="save-account">更新账号</button>
-          </form>
-          <section id="backup-card" class="settings-card">
-            <h3>备份与恢复</h3>
-            <p>
-              下载一份包含网站设置、文章原稿和上传图片的 ZIP
-              备份。备份包含未发布的文字，请妥善保存。
-            </p>
-            <div class="form-actions">
-              <button id="download-backup">下载网站备份</button
-              ><button id="restore-backup">从备份恢复</button
-              ><input id="backup-file" type="file" accept=".zip" hidden />
-            </div>
-            <p class="muted">
-              恢复为草稿与待发布设置，不修改登录账号或当前线上版本；检查后再发布。相同内容会跳过，不覆盖已有的不同原稿。
-            </p>
-            <p id="backup-status" role="status" aria-live="polite"></p>
-          </section>
-          <section id="service-card" class="settings-card">
-            <h3>运行信息</h3>
-            <dl class="service-info">
-              <div>
-                <dt>网站地址</dt>
-                <dd><a id="service-site-link" target="_blank" rel="noopener"></a></dd>
-              </div>
-              <div>
-                <dt>管理方式</dt>
-                <dd>一个 Worker · 一个私有存储桶</dd>
-              </div>
-              <div>
-                <dt>文章发布</dt>
-                <dd>后台生成并发布，无需部署链接</dd>
-              </div>
-            </dl>
-            <p class="muted">
-              自定义域名在 Cloudflare 的 Domains & Routes 中绑定。程序更新由 GitHub 与 Cloudflare
-              Builds 管理，网站设置会保留。
-            </p>
-            <a
-              href="https://github.com/RS-Imagine/cloudink/blob/master/docs/DEPLOYMENT.md"
-              target="_blank"
-              rel="noopener"
-              >查看部署与维护说明 ↗</a
-            >
-          </section>
+          </div>
         </section>
       </main>
     </div>
-    <dialog id="image-preview-dialog" class="image-preview-dialog">
+    <dialog
+      id="image-preview-dialog"
+      class="image-preview-dialog"
+      aria-labelledby="image-preview-title"
+    >
       <div class="dialog-heading">
         <h3 id="image-preview-title">图片预览</h3>
         <button id="image-preview-close">关闭</button>
       </div>
       <img id="image-preview-full" alt="完整图片预览" />
+    </dialog>
+    <dialog
+      id="confirmation-dialog"
+      class="confirmation-dialog"
+      aria-labelledby="confirmation-title"
+      aria-describedby="confirmation-message"
+    >
+      <form method="dialog">
+        <span class="workflow-eyebrow">请确认此操作</span>
+        <h2 id="confirmation-title">继续操作？</h2>
+        <p id="confirmation-message"></p>
+        <div class="form-actions">
+          <button id="confirmation-cancel" value="cancel" autofocus>暂不操作</button
+          ><button id="confirmation-accept" value="confirm" class="primary">继续</button>
+        </div>
+      </form>
     </dialog>
     <script type="module" src="/app.js"></script>
   </body>

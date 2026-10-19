@@ -1,3 +1,4 @@
+import { acceptConfirmation } from './workflows.browser.mjs';
 // App-shell checks use only the UI audit's local temporary fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -126,8 +127,8 @@ export async function verifyStudio(browser, origin, output, engine) {
     .filter({ hasText: 'Studio draft ' + engine })
     .click();
   await expect(page.locator('#body')).toHaveValue('Keep this text while navigating.');
-  page.once('dialog', (dialog) => dialog.accept());
   await page.locator('#delete-post').click();
+  await acceptConfirmation(page);
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('#post-count')).toHaveText(String(initialCount));
   await page.locator('#studio-tools summary').click();
