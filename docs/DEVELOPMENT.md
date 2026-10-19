@@ -44,7 +44,8 @@ Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复
 
 唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
 后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
-作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral）。
+作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral/brown/blue/violet/rose）。
+后台通过有可访问名称、选中标记及焦点环的原生单选色块选择，强制颜色模式显示名称和原生控件。
 保存影响后台与预览，发布后应用到所有公开页；SSR 直接输出配色，Swup 同步后续页面配色。
 后台缓存不覆盖公开页面。文章预览同步明暗与主题色到禁用脚本的 iframe，沿用公开字体与样式。
 CSS 提供无脚本系统主题、普通圆角与不支持 color-mix 的回退，减少动态效果关闭过渡。

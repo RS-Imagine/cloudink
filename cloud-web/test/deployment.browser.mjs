@@ -289,9 +289,9 @@ try {
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   assert.deepEqual(
-    await page.locator('#site-form input[name=themePalette]').evaluateAll((inputs) =>
-      inputs.map((input) => input.value),
-    ),
+    await page
+      .locator('#site-form input[name=themePalette]')
+      .evaluateAll((inputs) => inputs.map((input) => input.value)),
     ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose'],
   );
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');

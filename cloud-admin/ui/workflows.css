@@ -601,6 +601,7 @@ button[aria-busy='true'] {
   cursor: pointer;
 }
 .palette-swatch {
+  pointer-events: none;
   display: grid;
   place-items: center;
   width: 34px;

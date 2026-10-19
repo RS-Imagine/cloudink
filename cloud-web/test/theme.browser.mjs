@@ -161,7 +161,10 @@ async function verifyPalettePicker(browser, origin, output, engine) {
           overflow: document.documentElement.scrollWidth > innerWidth,
         };
       });
-      assert.ok(colors.ratios.every((ratio) => ratio >= 4.5), palette + ' ' + mode + ' contrast');
+      assert.ok(
+        colors.ratios.every((ratio) => ratio >= 4.5),
+        palette + ' ' + mode + ' contrast',
+      );
       assert.equal(colors.overflow, false);
       if (mode === 'light') accents.add(colors.primary);
       await page.screenshot({

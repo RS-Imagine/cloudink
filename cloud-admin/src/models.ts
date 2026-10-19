@@ -125,8 +125,7 @@ export function validateSite(input: unknown): SiteConfig {
       throw new HttpError(400, '统计项目格式不正确。');
   }
   if (v.themePalette !== undefined) {
-    if (!isThemePalette(v.themePalette))
-      throw new HttpError(400, '请选择支持的主题色。');
+    if (!isThemePalette(v.themePalette)) throw new HttpError(400, '请选择支持的主题色。');
     appearance.themePalette = v.themePalette;
   }
   return {
