@@ -301,6 +301,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   // A keyboard close during pinch zoom must not leave the navigation hidden.
   await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(422, 2));
+  await settled(keypad);
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
   await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
   assert.deepEqual(

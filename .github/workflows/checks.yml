@@ -23,14 +23,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize release sources for review
-        run: |
-          npx prettier --write assets/mobile.js cloud-web/test/mobile.browser.mjs assets/motion.css cloud-web/test/release.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-RELEASE.md docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md README.md docs/DEVELOPMENT.md docs/DEPLOYMENT.md docs/design/UI-2.0-AUDIT.md .github/workflows/checks.yml
-          npx prettier --write assets/mobile.js cloud-web/test/mobile.browser.mjs assets/motion.css cloud-web/test/release.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-RELEASE.md docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md README.md docs/DEVELOPMENT.md docs/DEPLOYMENT.md docs/design/UI-2.0-AUDIT.md .github/workflows/checks.yml
-          node --input-type=module <<'JS'
-          import {readFileSync} from 'node:fs';
-          for (const path of ["assets/mobile.js","cloud-web/test/mobile.browser.mjs","assets/motion.css","cloud-web/test/release.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-RELEASE.md","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","README.md","docs/DEVELOPMENT.md","docs/DEPLOYMENT.md","docs/design/UI-2.0-AUDIT.md"]) console.log('RELEASE_FORMAT_SOURCE '+JSON.stringify({path,base64:readFileSync(path).toString('base64')}));
-          JS
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -73,14 +65,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize release sources for review
-        run: |
-          npx prettier --write assets/mobile.js cloud-web/test/mobile.browser.mjs assets/motion.css cloud-web/test/release.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-RELEASE.md docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md README.md docs/DEVELOPMENT.md docs/DEPLOYMENT.md docs/design/UI-2.0-AUDIT.md .github/workflows/checks.yml
-          npx prettier --write assets/mobile.js cloud-web/test/mobile.browser.mjs assets/motion.css cloud-web/test/release.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-RELEASE.md docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md README.md docs/DEVELOPMENT.md docs/DEPLOYMENT.md docs/design/UI-2.0-AUDIT.md .github/workflows/checks.yml
-          node --input-type=module <<'JS'
-          import {readFileSync} from 'node:fs';
-          for (const path of ["assets/mobile.js","cloud-web/test/mobile.browser.mjs","assets/motion.css","cloud-web/test/release.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-RELEASE.md","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","README.md","docs/DEVELOPMENT.md","docs/DEPLOYMENT.md","docs/design/UI-2.0-AUDIT.md"]) console.log('RELEASE_FORMAT_SOURCE '+JSON.stringify({path,base64:readFileSync(path).toString('base64')}));
-          JS
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
