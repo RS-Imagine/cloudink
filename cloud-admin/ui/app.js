@@ -43,19 +43,53 @@ let navigationVersion = 0,
 let uploading = null;
 const activeActions = new Set();
 let noticeTimer;
-let appConfig;
-const configReady = api('/api/config').then((config) => {
-  appConfig = config;
-  configurePreview(config);
-  $('site-link').href = config.siteUrl;
-  $('service-site-link').href = config.siteUrl;
-  $('service-site-link').textContent = config.siteUrl;
-  if (!config.initialized) showLogin();
-  return config;
-});
-void configReady.catch((error) => {
-  $('login-error').textContent = error.message;
-});
+let appConfig, configReady;
+let booting = false;
+let pendingWorkspace = null;
+function showStartup(error = '') {
+  $('startup-view').hidden = false;
+  $('startup-view').dataset.state = error ? 'error' : 'loading';
+  $('startup-view').setAttribute('aria-busy', String(!error));
+  $('startup-message').setAttribute('role', error ? 'alert' : 'status');
+  $('startup-message').textContent = error || '正在打开你的写作空间…';
+  $('startup-retry').hidden = !error;
+  $('startup-retry').disabled = !error;
+  $('login-view').hidden = true;
+  $('setup-view').hidden = true;
+  $('app-view').hidden = true;
+  $('studio-skip').hidden = true;
+}
+async function startWorkspace({ focus = false } = {}) {
+  if (booting) return;
+  booting = true;
+  showStartup();
+  configReady = api('/api/config').then((config) => {
+    appConfig = config;
+    configurePreview(config);
+    $('site-link').href = config.siteUrl;
+    $('service-site-link').href = config.siteUrl;
+    $('service-site-link').textContent = config.siteUrl;
+    return config;
+  });
+  try {
+    // Settle both reads before choosing a view; an early 401 must not flash the login form.
+    const [config, session] = await Promise.allSettled([configReady, api('/api/session')]);
+    if (config.status === 'rejected') throw config.reason;
+    if (!config.value.initialized) showLogin({ focus });
+    else if (session.status === 'fulfilled') await signedIn(session.value, { focus });
+    else if (session.reason.status === 401) showLogin({ focus });
+    else throw session.reason;
+  } catch (error) {
+    if (error.status === 401) showLogin({ focus });
+    else {
+      showStartup(error.status ? error.message : '暂时无法打开写作空间，请检查网络后重试。');
+      if (focus && document.activeElement === document.body)
+        $('startup-retry').focus({ preventScroll: true });
+    }
+  } finally {
+    booting = false;
+  }
+}
 function applySiteAppearance(config) {
   const palette = config?.themePalette === 'neutral' ? 'neutral' : 'ink';
   if (site) site.themePalette = palette;
@@ -190,12 +224,13 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.error || '操作未完成。');
     error.status = response.status;
-    if (response.status === 401 && path !== '/api/login') showLogin();
+    if (response.status === 401 && path !== '/api/login' && !booting) showLogin({ focus: true });
     throw error;
   }
   return data;
 }
-function showLogin() {
+function showLogin({ focus = false } = {}) {
+  pendingWorkspace = null;
   shell.close();
   $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
@@ -206,15 +241,21 @@ function showLogin() {
   const wizard = appConfig && !appConfig.initialized;
   $('setup-view').hidden = !wizard;
   $('login-view').hidden = wizard;
+  $('startup-view').hidden = true;
+  if (focus)
+    (wizard ? $('setup-form').elements.token : $('login-form').elements.email).focus({
+      preventScroll: true,
+    });
   csrf = '';
   articleCache.clear();
   articleRequests.clear();
   disposePreview();
 }
-function view(name) {
+function view(name, { focus = true } = {}) {
+  const changingView = $('app-view').dataset.view !== name;
   const sectionName = name === 'posts' ? 'home' : name;
   const fromNavigation = document.activeElement?.closest(
-    '.studio-nav,#post-list,[data-studio-shortcut]',
+    '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
   );
   shell.close();
   $('app-view').dataset.view = name;
@@ -232,6 +273,7 @@ function view(name) {
   }
   $('article-browser').hidden = !['home', 'posts', 'editor'].includes(name);
   $('posts-title').hidden = name !== 'posts';
+  $('home-view').setAttribute('aria-labelledby', name === 'posts' ? 'posts-title' : 'home-heading');
   motion.enter($(sectionName + '-view'), { kind: 'content' });
   $('workspace-title').textContent = {
     home: '工作台',
@@ -240,23 +282,40 @@ function view(name) {
     settings: '网站设置',
     images: '图片库',
   }[name];
-  if (fromNavigation) $(sectionName + '-view').focus({ preventScroll: true });
+  if (focus && (fromNavigation || changingView))
+    $(sectionName + '-view').focus({ preventScroll: true });
 }
-async function signedIn(session) {
+async function signedIn(session, { focus = false, afterReady = null } = {}) {
   await configReady;
   csrf = session.csrf;
   appConfig.initialized = true;
+  $('account-email').textContent = session.email;
+  $('account-form').elements.email.value = session.email;
+  pendingWorkspace = { session, afterReady };
+  showStartup();
+  try {
+    await refresh();
+  } catch (error) {
+    if (error.status === 401) showLogin({ focus });
+    else {
+      showStartup(error.status ? error.message : '暂时无法读取工作区，请检查网络后重试。');
+      if (focus && document.activeElement === document.body)
+        $('startup-retry').focus({ preventScroll: true });
+    }
+    return false;
+  }
+  pendingWorkspace = null;
+  $('startup-view').hidden = true;
   $('setup-view').hidden = true;
   $('login-view').hidden = true;
   $('app-view').hidden = false;
   $('studio-skip').hidden = false;
-  $('account-email').textContent = session.email;
-  $('account-form').elements.email.value = session.email;
-  await refresh();
-  view('home');
+  view('home', { focus: false });
+  if (focus) $('workspace').focus({ preventScroll: true });
   (window.requestIdleCallback || setTimeout)(() => {
     void engineTask('warm').catch(() => {});
   });
+  return true;
 }
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -271,6 +330,7 @@ $('login-form').addEventListener('submit', async (e) => {
         method: 'POST',
         body: { email: form.elements.email.value, password: form.elements.password.value },
       }),
+      { focus: true },
     );
     form.reset();
   } catch (error) {
@@ -281,9 +341,22 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-submit').textContent = '登录';
   }
 });
-api('/api/session')
-  .then(signedIn)
-  .catch(() => {});
+$('startup-retry').addEventListener('click', async () => {
+  if (!pendingWorkspace) return void startWorkspace({ focus: true });
+  if (booting) return;
+  const pending = pendingWorkspace;
+  booting = true;
+  try {
+    const ready = await signedIn(pending.session, { focus: true, afterReady: pending.afterReady });
+    booting = false;
+    if (ready) await pending.afterReady?.();
+  } catch (error) {
+    notice(error.message, 'error');
+  } finally {
+    booting = false;
+  }
+});
+void startWorkspace();
 
 function setupStep(siteStep) {
   $('setup-account-step').hidden = siteStep;
@@ -336,13 +409,13 @@ $('setup-form').addEventListener('submit', async (event) => {
         },
       });
       form.reset();
-      await signedIn(session);
-      await startPublish({ rebuild: true });
+      const afterReady = () => startPublish({ rebuild: true });
+      if (await signedIn(session, { focus: true, afterReady })) await afterReady();
     } catch (error) {
       $('setup-error').textContent = error.message;
       if (error.status === 409) {
         appConfig.initialized = true;
-        showLogin();
+        showLogin({ focus: true });
         $('login-error').textContent = '账号已经创建，请使用设置的邮箱和密码登录。';
       }
       throw error;
@@ -1139,7 +1212,7 @@ $('logout').addEventListener('click', async () => {
     doc = null;
     dirty = 0;
     savedVersion = 0;
-    showLogin();
+    showLogin({ focus: true });
   } catch (error) {
     notice(error.message);
   }

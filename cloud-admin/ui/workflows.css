@@ -697,7 +697,7 @@ body:has(dialog[open]) {
   }
 }
 @media (max-width: 1099px) {
-  #show-split {
+  #show-split:not([data-ci-pane-control]) {
     display: none;
   }
   .editor-toolbar {

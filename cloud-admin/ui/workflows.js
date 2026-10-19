@@ -43,14 +43,24 @@ export function confirmAction(
 export function mountEditorPanes({ preview, invalidate }) {
   const wide = matchMedia('(min-width:1100px)');
   let preferred = 'split';
+  $('editor-panes').dataset.ciPanes = '';
+  $('show-split').dataset.ciPaneControl = '';
   function render() {
+    const focused = document.activeElement;
     const mode = wide.matches ? preferred : preferred === 'preview' ? 'preview' : 'writing';
-    $('editor-panes').classList.toggle('preview-only', mode === 'preview');
-    $('editor-panes').classList.toggle('writing-only', mode === 'writing');
     for (const name of ['writing', 'split', 'preview']) {
       $('show-' + name).setAttribute('aria-pressed', String(name === mode));
       $('show-' + name).classList.toggle('active', name === mode);
     }
+    const moveFocus =
+      (focused === $('preview-frame') && mode === 'writing') ||
+      (focused === $('body') && mode === 'preview') ||
+      (focused === $('show-split') && !wide.matches);
+    $('editor-panes').classList.toggle('preview-only', mode === 'preview');
+    $('editor-panes').classList.toggle('writing-only', mode === 'writing');
+    $('show-split').hidden = !wide.matches;
+    // Hiding a focused iframe resets focus in Firefox; select the visible control afterwards.
+    if (moveFocus) $('show-' + mode).focus({ preventScroll: true });
     if (mode === 'writing') invalidate();
     else preview();
   }
