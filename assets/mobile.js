@@ -26,7 +26,7 @@
     handle.setAttribute('aria-controls', surface.id);
     surface.prepend(handle);
     let height = 1, peek = 0, position = 0, target = 0, phase = 'idle';
-    let gesture = null, suppressUntil = 0, completion = null;
+    let gesture = null, suppressUntil = 0, completion = null, resizeFrame = 0, pendingHeight = 0;
     const originalTranslate = surface.style.translate;
     const native = typeof surface.showModal === 'function';
     function label() {
@@ -58,7 +58,9 @@
     });
     function measure(nextHeight = surface.offsetHeight) {
       if (!active.has(record)) return;
-      height = Math.max(1, nextHeight);
+      const measuredHeight = Math.max(1, nextHeight);
+      if (Math.abs(measuredHeight - height) < 0.5) return;
+      height = measuredHeight;
       peek = surface.dataset.sheet === 'list'
         ? clamp(1 - viewportHeight() * 0.58 / height, 0, 0.65) : 0;
       if (!gesture && phase !== 'closing') {
@@ -70,7 +72,11 @@
     }
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
       const size = entries[0]?.borderBoxSize;
-      measure(size?.[0]?.blockSize || size?.blockSize || surface.offsetHeight);
+      pendingHeight = size?.[0]?.blockSize || size?.blockSize || surface.offsetHeight;
+      if (!resizeFrame) resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        measure(pendingHeight);
+      });
     }) : null;
     function moveTo(next, velocity) {
       target = next;
@@ -119,7 +125,9 @@
       },
       close(done = onDismiss, velocity) {
         if (!active.has(record)) return false;
+        const captured = gesture?.id;
         gesture = null;
+        if (captured !== undefined) { try { handle.releasePointerCapture(captured); } catch {} }
         completion = done;
         target = 1.05;
         phase = 'closing';
@@ -135,6 +143,8 @@
           try { handle.releasePointerCapture(id); } catch {}
         }
         observer?.disconnect();
+        if (resizeFrame) cancelAnimationFrame(resizeFrame);
+        resizeFrame = 0;
         active.delete(record);
         phase = 'idle';
         completion = null;
@@ -155,6 +165,7 @@
         if (surface.contains(doc.activeElement) && doc.activeElement.matches('input,textarea,[contenteditable=true]') && !gesture && phase !== 'closing')
           moveTo(0);
       },
+      get resizePending() { return !!resizeFrame; },
       cancelGesture() { finishGesture(true); },
       closeImmediately() {
         record.reset();
@@ -252,6 +263,7 @@
     if (doc.hidden) for (const record of active) record.cancelGesture();
   });
   env.addEventListener?.('pagehide', cancelAll);
+  env.addEventListener?.('pageshow', queueViewport);
   env.CloudInkMobile = Object.freeze({
     attach, snapTarget, cancelAll,
     openDialog(surface) {
@@ -259,7 +271,7 @@
       return attach(surface).open();
     },
     closeDialog(surface, done) { return records.get(surface)?.close(done) || false; },
-    stats: () => ({ active: active.size, viewportPending: !!viewportFrame }),
+    stats: () => ({ active: active.size, viewportPending: !!viewportFrame || [...active].some(record => record.resizePending) }),
   });
   if (doc) refreshViewport();
 })();
