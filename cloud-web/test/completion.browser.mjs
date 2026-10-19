@@ -212,9 +212,10 @@ export async function verifyCompletion(browser, origin, output, engine) {
     const response = await route.fetch({
       url: origin + '/api/login',
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
       postData: JSON.stringify({ email: owner, password }),
     });
+    assert.equal(response.status(), 200);
     await route.fulfill({ response });
   });
   await wizard.route('**/api/posts', (route) =>
