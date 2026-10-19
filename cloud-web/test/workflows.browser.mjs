@@ -17,7 +17,9 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   });
   const errors = [];
   context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', (route) => route.fulfill({ contentType: 'text/css', body: '' }));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
   const page = await context.newPage();
   await page.goto(origin + '/admin');
   await page.locator('#login-form input[name=email]').fill(owner);
@@ -46,16 +48,35 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await page.frameLocator('#preview-frame').locator('article h1').waitFor();
   await page.locator('#show-writing').click();
   await expect(page.locator('#body')).toBeVisible();
-  assert.deepEqual(await page.locator('#body').evaluate((node) => [node.selectionStart, node.selectionEnd]), [7, 11]);
+  assert.deepEqual(
+    await page.locator('#body').evaluate((node) => [node.selectionStart, node.selectionEnd]),
+    [7, 11],
+  );
   await page.locator('#show-split').click();
   await expect(page.locator('#body')).toBeVisible();
   await expect(page.locator('.preview-pane')).toBeVisible();
   await page.frameLocator('#preview-frame').locator('article h1').waitFor();
-  for (const [width, theme] of [[1440, 'light'], [390, 'light'], [360, 'dark'], [320, 'dark']]) {
+  for (const [width, theme] of [
+    [1440, 'light'],
+    [390, 'light'],
+    [360, 'dark'],
+    [320, 'dark'],
+  ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await page.evaluate((mode) => CloudInkTheme.setMode(mode), theme);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    for (const id of ['save-post', 'publish-post', 'download-post', 'show-writing', 'show-preview', 'choose-library-image', 'upload-image']) {
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    for (const id of [
+      'save-post',
+      'publish-post',
+      'download-post',
+      'show-writing',
+      'show-preview',
+      'choose-library-image',
+      'upload-image',
+    ]) {
       const rect = await page.locator('#' + id).boundingBox();
       assert.ok(rect.width >= 44 && rect.height >= 44, engine + '/' + id + ' remains touchable');
     }
@@ -63,13 +84,20 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       await expect(page.locator('#show-split')).toBeHidden();
       await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
     }
-    if (width !== 320) await page.screenshot({ path: resolve(output, 'workflow-editor-' + engine + '-' + width + '-' + theme + '.png'), fullPage: true });
+    if (width !== 320)
+      await page.screenshot({
+        path: resolve(output, 'workflow-editor-' + engine + '-' + width + '-' + theme + '.png'),
+        fullPage: true,
+      });
   }
   await page.locator('#delete-post').click();
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await expect(page.locator('#confirmation-cancel')).toBeFocused();
   await expect(page.locator('body')).toHaveCSS('overflow', 'hidden');
-  await page.screenshot({ path: resolve(output, 'workflow-confirmation-' + engine + '.png'), fullPage: true });
+  await page.screenshot({
+    path: resolve(output, 'workflow-confirmation-' + engine + '.png'),
+    fullPage: true,
+  });
   await page.keyboard.press('Escape');
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
   await expect(page.locator('#delete-post')).toBeFocused();
@@ -105,16 +133,29 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await expect(page.locator('.image-card')).toHaveCount(0);
   await expect(page.locator('#image-library-empty')).toContainText('筛选');
   await page.locator('#image-library-unused').uncheck();
-  for (const [width, theme] of [[1440, 'light'], [390, 'light'], [360, 'dark']]) {
+  for (const [width, theme] of [
+    [1440, 'light'],
+    [390, 'light'],
+    [360, 'dark'],
+  ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await page.evaluate((mode) => CloudInkTheme.setMode(mode), theme);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.screenshot({ path: resolve(output, 'workflow-images-' + engine + '-' + width + '-' + theme + '.png'), fullPage: true });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.screenshot({
+      path: resolve(output, 'workflow-images-' + engine + '-' + width + '-' + theme + '.png'),
+      fullPage: true,
+    });
   }
   await page.locator('#settings').click();
   await expect(page.locator('#site-form')).toBeVisible();
-  let failSettings = true, accountRequests = 0;
-  page.on('request', (request) => { if (request.url().endsWith('/api/account')) accountRequests++; });
+  let failSettings = true,
+    accountRequests = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/account')) accountRequests++;
+  });
   await page.route('**/api/settings', async (route) => {
     if (route.request().method() === 'PUT' && failSettings) {
       failSettings = false;
@@ -134,24 +175,50 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await page.locator('#save-account').click();
   await expect(page.locator('#account-feedback')).toHaveAttribute('data-tone', 'error');
   assert.equal(accountRequests, 0, 'A mismatched password never submits account changes');
-  await page.route('**/api/backup', (route) => route.fulfill({ status: 503, json: { error: 'Temporary backup failure' } }));
+  await page.route('**/api/backup', (route) =>
+    route.fulfill({ status: 503, json: { error: 'Temporary backup failure' } }),
+  );
   await page.locator('#download-backup').click();
   await expect(page.locator('#backup-status')).toHaveAttribute('data-tone', 'error');
   await expect(page.locator('#backup-status')).toContainText('Temporary backup failure');
-  await page.locator('#backup-file').setInputFiles({ name: 'cancelled.zip', mimeType: 'application/zip', buffer: Buffer.from('Not imported') });
+  await page
+    .locator('#backup-file')
+    .setInputFiles({
+      name: 'cancelled.zip',
+      mimeType: 'application/zip',
+      buffer: Buffer.from('Not imported'),
+    });
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-cancel').click();
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
   await expect(page.locator('#backup-file')).toHaveValue('');
-  for (const [width, theme] of [[1440, 'light'], [390, 'light'], [360, 'dark'], [320, 'dark']]) {
+  for (const [width, theme] of [
+    [1440, 'light'],
+    [390, 'light'],
+    [360, 'dark'],
+    [320, 'dark'],
+  ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
     await page.evaluate((mode) => CloudInkTheme.setMode(mode), theme);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    for (const id of ['save-site', 'publish-settings', 'save-account', 'download-backup', 'restore-backup']) {
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    for (const id of [
+      'save-site',
+      'publish-settings',
+      'save-account',
+      'download-backup',
+      'restore-backup',
+    ]) {
       const rect = await page.locator('#' + id).boundingBox();
       assert.ok(rect.width >= 44 && rect.height >= 44, id + ' keeps a touch target');
     }
-    if (width !== 320) await page.screenshot({ path: resolve(output, 'workflow-settings-' + engine + '-' + width + '-' + theme + '.png'), fullPage: true });
+    if (width !== 320)
+      await page.screenshot({
+        path: resolve(output, 'workflow-settings-' + engine + '-' + width + '-' + theme + '.png'),
+        fullPage: true,
+      });
   }
   await context.close();
   assert.deepEqual(errors, [], engine + ' workflow UI must not throw browser errors');

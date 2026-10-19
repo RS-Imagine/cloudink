@@ -613,7 +613,10 @@ try {
   report.assets['admin/studio.min.css'] = { gzip: gzipSync(studioCSS).length };
   assert.ok(report.assets['admin/studio.min.css'].gzip <= 4096, 'Studio shell CSS gzip budget');
   const workflowCSS = (
-    await transform(await readFile('cloud-admin/ui/workflows.css', 'utf8'), { minify: true, loader: 'css' })
+    await transform(await readFile('cloud-admin/ui/workflows.css', 'utf8'), {
+      minify: true,
+      loader: 'css',
+    })
   ).code;
   report.assets['admin/workflows.min.css'] = { gzip: gzipSync(workflowCSS).length };
   assert.ok(report.assets['admin/workflows.min.css'].gzip <= 4096, 'Workflow CSS gzip budget');

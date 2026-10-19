@@ -23,10 +23,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize review sources
-        run: |
-          npx prettier --write cloud-admin/ui/index.html cloud-admin/ui/workflows.js cloud-admin/ui/workflows.css cloud-admin/build-ui.mjs cloud-admin/ui/app.js cloud-admin/ui/backup.js cloud-admin/ui/images.js cloud-web/test/workflows.browser.mjs cloud-web/test/studio.browser.mjs cloud-web/test/deployment.browser.mjs cloud-web/test/images.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
-          node --input-type=module -e 'import {readFile} from "node:fs/promises"; for (const path of ["cloud-admin/ui/index.html","cloud-admin/ui/workflows.js","cloud-admin/ui/workflows.css","cloud-admin/build-ui.mjs","cloud-admin/ui/app.js","cloud-admin/ui/backup.js","cloud-admin/ui/images.js","cloud-web/test/workflows.browser.mjs","cloud-web/test/studio.browser.mjs","cloud-web/test/deployment.browser.mjs","cloud-web/test/images.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log("WORKFLOW_FORMAT_SOURCE "+JSON.stringify({path,base64:(await readFile(path)).toString("base64")}));'
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -69,10 +65,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize review sources
-        run: |
-          npx prettier --write cloud-admin/ui/index.html cloud-admin/ui/workflows.js cloud-admin/ui/workflows.css cloud-admin/build-ui.mjs cloud-admin/ui/app.js cloud-admin/ui/backup.js cloud-admin/ui/images.js cloud-web/test/workflows.browser.mjs cloud-web/test/studio.browser.mjs cloud-web/test/deployment.browser.mjs cloud-web/test/images.browser.mjs scripts/ui-audit.mjs docs/design/UI-2.0-PLAN.md docs/design/UI-2.0-SYSTEM.md docs/DEVELOPMENT.md
-          node --input-type=module -e 'import {readFile} from "node:fs/promises"; for (const path of ["cloud-admin/ui/index.html","cloud-admin/ui/workflows.js","cloud-admin/ui/workflows.css","cloud-admin/build-ui.mjs","cloud-admin/ui/app.js","cloud-admin/ui/backup.js","cloud-admin/ui/images.js","cloud-web/test/workflows.browser.mjs","cloud-web/test/studio.browser.mjs","cloud-web/test/deployment.browser.mjs","cloud-web/test/images.browser.mjs","scripts/ui-audit.mjs","docs/design/UI-2.0-PLAN.md","docs/design/UI-2.0-SYSTEM.md","docs/DEVELOPMENT.md"]) console.log("WORKFLOW_FORMAT_SOURCE "+JSON.stringify({path,base64:(await readFile(path)).toString("base64")}));'
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

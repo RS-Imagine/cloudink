@@ -91,7 +91,8 @@ async function action(id, label, work, success = '') {
   feedback(operationAreas[id], label, 'pending');
   try {
     await work();
-    const message = success || (id === 'publish-settings' ? '发布请求已处理，请查看上方发布状态。' : undefined);
+    const message =
+      success || (id === 'publish-settings' ? '发布请求已处理，请查看上方发布状态。' : undefined);
     feedback(operationAreas[id], message, 'success');
     if (success) notice(success, 'success');
   } catch (error) {
@@ -555,7 +556,11 @@ async function saveCurrent() {
       doc.front_matter.slug = slug;
       $('slug').readOnly = true;
       savedVersion = version;
-      feedback('save-state', dirty === version ? '已保存到云端' : '正在等待保存最新修改…', dirty === version ? 'success' : 'pending');
+      feedback(
+        'save-state',
+        dirty === version ? '已保存到云端' : '正在等待保存最新修改…',
+        dirty === version ? 'success' : 'pending',
+      );
       if (dirty !== version)
         autosaveTimer = setTimeout(
           () => saveCurrent().catch((error) => notice(error.message)),
@@ -565,7 +570,11 @@ async function saveCurrent() {
     })
     .catch((error) => {
       if (error.status === 409) conflict = true;
-      feedback('save-state', error.status === 409 ? '版本冲突，请下载原稿后重新打开' : '保存失败，请重试', 'error');
+      feedback(
+        'save-state',
+        error.status === 409 ? '版本冲突，请下载原稿后重新打开' : '保存失败，请重试',
+        'error',
+      );
       throw error;
     })
     .finally(() => {
@@ -738,7 +747,8 @@ function showPublishing(state) {
   banner.hidden = !state;
   if (!state) return;
   banner.classList.toggle('failed', state.status === 'failed');
-  banner.dataset.tone = state.status === 'failed' ? 'error' : state.status === 'deployed' ? 'success' : 'pending';
+  banner.dataset.tone =
+    state.status === 'failed' ? 'error' : state.status === 'deployed' ? 'success' : 'pending';
   const messages = {
     queued: '正在准备发布，请保持此页面打开。',
     building: '正在排版文章并上传页面，请保持此页面打开。',
@@ -836,7 +846,14 @@ $('publish-post').addEventListener('click', () => {
   });
 });
 async function unpublish(slug) {
-  if (!(await confirmAction('取消发布后，这篇文章将从网站移除，原稿保留为草稿。', { title: '取消发布这篇文章？', accept: '取消发布', danger: true }))) return;
+  if (
+    !(await confirmAction('取消发布后，这篇文章将从网站移除，原稿保留为草稿。', {
+      title: '取消发布这篇文章？',
+      accept: '取消发布',
+      danger: true,
+    }))
+  )
+    return;
   await startPublish({ unpublish: slug });
 }
 $('unpublish-post').addEventListener('click', () =>
@@ -844,7 +861,14 @@ $('unpublish-post').addEventListener('click', () =>
 );
 $('delete-post').addEventListener('click', async () => {
   if (!doc || editorLocked) return;
-  if (!(await confirmAction('这份草稿将被永久删除，无法恢复。已上传的图片仍可在图片库管理。', { title: '删除这份草稿？', accept: '删除草稿', danger: true }))) return;
+  if (
+    !(await confirmAction('这份草稿将被永久删除，无法恢复。已上传的图片仍可在图片库管理。', {
+      title: '删除这份草稿？',
+      accept: '删除草稿',
+      danger: true,
+    }))
+  )
+    return;
   void action(
     'delete-post',
     '正在删除…',
@@ -1009,7 +1033,11 @@ $('import-files').addEventListener('change', async (e) => {
       const existing = posts.find((p) => p.slug === draft.front_matter.slug);
       if (
         existing?.has_draft &&
-        !(await confirmAction(`“${draft.front_matter.title}”已经有在线草稿。用这个文件替换吗？`, { title: '替换已有草稿？', accept: '替换草稿', danger: true }))
+        !(await confirmAction(`“${draft.front_matter.title}”已经有在线草稿。用这个文件替换吗？`, {
+          title: '替换已有草稿？',
+          accept: '替换草稿',
+          danger: true,
+        }))
       )
         continue;
       const old = existing?.has_draft ? await api(`/api/posts/${draft.front_matter.slug}`) : null;
@@ -1069,15 +1097,20 @@ $('settings').addEventListener('click', async () => {
 $('site-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.currentTarget;
-  void action('save-site', '正在保存…', async () => {
-    const values = Object.fromEntries(new FormData(form));
-    const data = await api('/api/settings', {
-      method: 'PUT',
-      body: { site: values, etag: settingsEtag },
-    });
-    settingsEtag = data.etag;
-    applySiteAppearance(data.site);
-  }, '网站信息已保存，点击发布后上线。');
+  void action(
+    'save-site',
+    '正在保存…',
+    async () => {
+      const values = Object.fromEntries(new FormData(form));
+      const data = await api('/api/settings', {
+        method: 'PUT',
+        body: { site: values, etag: settingsEtag },
+      });
+      settingsEtag = data.etag;
+      applySiteAppearance(data.site);
+    },
+    '网站信息已保存，点击发布后上线。',
+  );
 });
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {

@@ -122,7 +122,14 @@ export function configureImages({
       use.disabled = !canInsert();
       if (use.disabled) use.title = '先打开或新建一篇文章，再从编辑器进入图片库。';
       const remove = button('删除', async () => {
-        if (!(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, { title: '删除这张图片？', accept: '永久删除', danger: true }))) return;
+        if (
+          !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
+            title: '删除这张图片？',
+            accept: '永久删除',
+            danger: true,
+          }))
+        )
+          return;
         await flush();
         try {
           await api('/api/images', {
@@ -150,7 +157,9 @@ export function configureImages({
       help.className = 'image-protection';
       help.textContent = !image.referencesChecked
         ? '引用检查完成前，图片会受到保护。'
-        : image.references.length ? '这张图片正在使用，删除已受保护。' : '删除前会再次检查引用，确认后才永久移除。';
+        : image.references.length
+          ? '这张图片正在使用，删除已受保护。'
+          : '删除前会再次检查引用，确认后才永久移除。';
       remove.setAttribute('aria-describedby', helpId);
       body.append(help, actions);
       card.append(preview, body);
@@ -158,9 +167,11 @@ export function configureImages({
     }
     $('image-library-empty').hidden = visible.length > 0 || loading;
     $('image-library-retry').hidden = !loadError || loading;
-    $('image-library-empty').textContent = loadError ? '图片库暂时无法读取，请重新加载。' : images.length
-      ? '没有符合筛选条件的图片。'
-      : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
+    $('image-library-empty').textContent = loadError
+      ? '图片库暂时无法读取，请重新加载。'
+      : images.length
+        ? '没有符合筛选条件的图片。'
+        : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
     $('image-library-more').hidden = !cursor;
     $('image-library-back').hidden = !canInsert();
     $('image-library-warning').hidden = !referenceError;
@@ -222,7 +233,9 @@ export function configureImages({
   $('image-library-refresh').addEventListener('click', () =>
     action('image-library-refresh', '正在刷新…', () => load()),
   );
-  $('image-library-retry').addEventListener('click', () => action('image-library-retry', '正在重试…', () => load()));
+  $('image-library-retry').addEventListener('click', () =>
+    action('image-library-retry', '正在重试…', () => load()),
+  );
   $('image-library-more').addEventListener('click', () =>
     action('image-library-more', '正在加载…', () => load(false)),
   );

@@ -14,7 +14,10 @@ confirmation.querySelector('form').addEventListener('submit', (event) => {
   confirmation.returnValue = event.submitter?.value || 'cancel';
   window.CloudInkMotion.closeDialog(confirmation);
 });
-export function confirmAction(message, { title = '继续操作？', accept = '继续', danger = false } = {}) {
+export function confirmAction(
+  message,
+  { title = '继续操作？', accept = '继续', danger = false } = {},
+) {
   if (!confirmation.showModal) return Promise.resolve(window.confirm(message));
   if (confirmation.open) return Promise.resolve(false);
   const trigger = document.activeElement;
@@ -24,10 +27,15 @@ export function confirmAction(message, { title = '继续操作？', accept = '�
   $('confirmation-accept').classList.toggle('destructive', danger);
   confirmation.returnValue = '';
   return new Promise((resolve) => {
-    confirmation.addEventListener('close', () => {
-      if (trigger?.isConnected && !trigger.closest('[hidden]')) trigger.focus({ preventScroll: true });
-      resolve(confirmation.returnValue === 'confirm');
-    }, { once: true });
+    confirmation.addEventListener(
+      'close',
+      () => {
+        if (trigger?.isConnected && !trigger.closest('[hidden]'))
+          trigger.focus({ preventScroll: true });
+        resolve(confirmation.returnValue === 'confirm');
+      },
+      { once: true },
+    );
     window.CloudInkMotion.openDialog(confirmation);
     $('confirmation-cancel').focus({ preventScroll: true });
   });
@@ -47,7 +55,10 @@ export function mountEditorPanes({ preview, invalidate }) {
     else preview();
   }
   for (const mode of ['writing', 'split', 'preview'])
-    $('show-' + mode).addEventListener('click', () => { preferred = mode; render(); });
+    $('show-' + mode).addEventListener('click', () => {
+      preferred = mode;
+      render();
+    });
   wide.addEventListener('change', render);
   render();
 }
