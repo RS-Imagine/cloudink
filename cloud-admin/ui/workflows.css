@@ -204,6 +204,10 @@ button[aria-busy='true'] {
   background: var(--ci-surface);
   font-size: 13px;
 }
+/* Once mounted, the controller moves focus before hiding either pane. */
+.editor-panes[data-ci-panes]:not(.writing-only) > .preview-pane {
+  display: block;
+}
 .editor-panes.preview-only,
 .editor-panes.writing-only {
   grid-template-columns: minmax(0, 1fr);
@@ -697,7 +701,7 @@ body:has(dialog[open]) {
   }
 }
 @media (max-width: 1099px) {
-  #show-split {
+  #show-split:not([data-ci-pane-control]) {
     display: none;
   }
   .editor-toolbar {

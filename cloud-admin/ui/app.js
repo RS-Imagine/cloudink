@@ -249,7 +249,8 @@ function showLogin({ focus = false } = {}) {
   articleRequests.clear();
   disposePreview();
 }
-function view(name) {
+function view(name, { focus = true } = {}) {
+  const changingView = $('app-view').dataset.view !== name;
   const sectionName = name === 'posts' ? 'home' : name;
   const fromNavigation = document.activeElement?.closest(
     '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
@@ -278,7 +279,8 @@ function view(name) {
     settings: '网站设置',
     images: '图片库',
   }[name];
-  if (fromNavigation) $(sectionName + '-view').focus({ preventScroll: true });
+  if (focus && (fromNavigation || changingView))
+    $(sectionName + '-view').focus({ preventScroll: true });
 }
 async function signedIn(session, { focus = false } = {}) {
   await configReady;
@@ -292,7 +294,7 @@ async function signedIn(session, { focus = false } = {}) {
   $('login-view').hidden = true;
   $('app-view').hidden = false;
   $('studio-skip').hidden = false;
-  view('home');
+  view('home', { focus: false });
   if (focus) $('workspace').focus({ preventScroll: true });
   (window.requestIdleCallback || setTimeout)(() => {
     void engineTask('warm').catch(() => {});
