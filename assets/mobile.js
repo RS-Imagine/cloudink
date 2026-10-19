@@ -327,20 +327,24 @@
     viewportFrame = 0;
     if (!doc?.documentElement) return;
     const viewport = env.visualViewport;
-    // Pinch zoom changes visual geometry without changing the layout viewport.
-    // Release earlier keyboard overrides so navigation cannot remain hidden after blur.
     const root = doc.documentElement;
+    const editing = !!doc.activeElement?.matches(
+      'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),textarea,[contenteditable=true]',
+    );
+    // Pinch zoom scales visual geometry without changing layout viewport units.
+    // Keep the last keyboard layout until blur or recovery to the keyboard-free height.
     if (viewport?.scale && Math.abs(viewport.scale - 1) > 0.01) {
-      root.removeAttribute('data-ci-keyboard');
-      root.style.removeProperty('--ci-vp-height');
-      root.style.removeProperty('--ci-vp-bottom');
+      const keyboardRecovered =
+        baselineHeight > 0 && viewportHeight() * viewport.scale >= baselineHeight * 0.78;
+      if (!editing || keyboardRecovered) {
+        root.removeAttribute('data-ci-keyboard');
+        root.style.removeProperty('--ci-vp-height');
+        root.style.removeProperty('--ci-vp-bottom');
+      }
       return;
     }
     const height = viewportHeight(),
       top = viewport?.offsetTop || 0;
-    const editing = !!doc.activeElement?.matches(
-      'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),textarea,[contenteditable=true]',
-    );
     if (!editing || !baselineHeight) baselineHeight = Math.max(height, env.innerHeight || 0);
     const resized =
       Math.abs(height - lastViewportHeight) > 1 || env.innerWidth !== lastViewportWidth;

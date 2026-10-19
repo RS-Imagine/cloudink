@@ -298,7 +298,32 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.evaluate(() => __resizeTestViewport(430));
   await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
   await expect(keypad.locator('#body')).toBeFocused();
-  // A keyboard close during pinch zoom must not leave the navigation hidden.
+  // Pinching a focused field keeps the keyboard layout, even at a smaller visual height.
+  await keypad.evaluate(() => __resizeTestViewport(215, 2));
+  await settled(keypad);
+  await expect(keypad.locator('#body')).toBeFocused();
+  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
+  await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
+  assert.equal(
+    await keypad.evaluate(() => document.documentElement.style.getPropertyValue('--ci-vp-height')),
+    '430px',
+    'Zoom preserves the last keyboard layout height',
+  );
+  // Dismissing the keyboard can leave a textarea focused: compare in layout viewport units.
+  await keypad.evaluate(() => __resizeTestViewport(422, 2));
+  await settled(keypad);
+  await expect(keypad.locator('#body')).toBeFocused();
+  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
+  await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
+  assert.equal(
+    await keypad.evaluate(() => document.documentElement.style.getPropertyValue('--ci-vp-height')),
+    '',
+  );
+  await keypad.evaluate(() => __resizeTestViewport(844));
+  await settled(keypad);
+  await keypad.evaluate(() => __resizeTestViewport(430));
+  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
+  // A keyboard close after blur during pinch zoom must also restore navigation.
   await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(422, 2));
   await settled(keypad);
