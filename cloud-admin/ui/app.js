@@ -347,8 +347,9 @@ $('startup-retry').addEventListener('click', async () => {
   const pending = pendingWorkspace;
   booting = true;
   try {
-    if (await signedIn(pending.session, { focus: true, afterReady: pending.afterReady }))
-      await pending.afterReady?.();
+    const ready = await signedIn(pending.session, { focus: true, afterReady: pending.afterReady });
+    booting = false;
+    if (ready) await pending.afterReady?.();
   } catch (error) {
     notice(error.message, 'error');
   } finally {
