@@ -628,7 +628,19 @@ button[aria-busy='true'] {
   outline: 3px solid var(--ci-primary);
   outline-offset: 4px;
 }
+.palette-name {
+  display: none;
+}
 @media (forced-colors: active) {
+  .palette-options .palette-choice {
+    width: auto;
+    grid-template-columns: 24px auto;
+    gap: 8px;
+  }
+  .palette-name {
+    display: inline;
+    font-size: 14px;
+  }
   .palette-choice input {
     position: static;
     opacity: 1;

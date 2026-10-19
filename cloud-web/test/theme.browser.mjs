@@ -188,6 +188,13 @@ async function verifyPalettePicker(browser, origin, output, engine) {
     }
   }
   assert.equal(accents.size, palettes.length, 'Every swatch selects a distinct palette');
+  if (engine === 'chromium') {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await expect(page.locator('.palette-name').first()).toBeVisible();
+    await page.getByRole('radio', { name: '棕褐 Brown', exact: true }).check();
+    await expect(page.getByRole('radio', { name: '棕褐 Brown', exact: true })).toBeChecked();
+    await page.emulateMedia({ forcedColors: 'none' });
+  }
   await ink.check();
   await page.locator('#save-site').click();
   await expect(root).toHaveAttribute('data-palette', 'ink');

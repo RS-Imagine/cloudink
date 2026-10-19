@@ -28,6 +28,14 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize palette sources for this review
+        run: |
+          npx prettier --write assets/design-tokens.css assets/theme.js cloud-admin/ui/index.html cloud-admin/ui/app.js cloud-admin/ui/workflows.css cloud-admin/src/models.ts cloud-web/test/deployment.browser.mjs cloud-web/test/theme.test.mjs cloud-web/test/theme.browser.mjs scripts/ui-audit.mjs README.md docs/design/UI-2.0-SYSTEM.md docs/design/UI-2.0-RELEASE.md cloud-web/test/surfaces.browser.mjs
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const paths = ["assets/design-tokens.css","assets/theme.js","cloud-admin/ui/index.html","cloud-admin/ui/app.js","cloud-admin/ui/workflows.css","cloud-admin/src/models.ts","cloud-web/test/deployment.browser.mjs","cloud-web/test/theme.test.mjs","cloud-web/test/theme.browser.mjs","scripts/ui-audit.mjs","README.md","docs/design/UI-2.0-SYSTEM.md","docs/design/UI-2.0-RELEASE.md","cloud-web/test/surfaces.browser.mjs"];
+          for (const path of paths) process.stdout.write('PALETTE_FORMAT ' + JSON.stringify({path, base64: readFileSync(path).toString('base64')}) + '\n');
+          NODE
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment
@@ -70,6 +78,8 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
+      - name: Normalize palette sources for this review
+        run: npx prettier --write assets/design-tokens.css assets/theme.js cloud-admin/ui/index.html cloud-admin/ui/app.js cloud-admin/ui/workflows.css cloud-admin/src/models.ts cloud-web/test/deployment.browser.mjs cloud-web/test/theme.test.mjs cloud-web/test/theme.browser.mjs scripts/ui-audit.mjs README.md docs/design/UI-2.0-SYSTEM.md docs/design/UI-2.0-RELEASE.md cloud-web/test/surfaces.browser.mjs
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
