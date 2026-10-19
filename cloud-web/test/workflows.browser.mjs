@@ -225,8 +225,16 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       'download-backup',
       'restore-backup',
     ]) {
-      const rect = await page.locator('#' + id).boundingBox();
-      assert.ok(rect.width >= 44 && rect.height >= 44, id + ' keeps a touch target');
+      // Wait for responsive layout to settle; allow only sub-pixel floating-point noise.
+      await expect
+        .poll(
+          async () => {
+            const rect = await page.locator('#' + id).boundingBox();
+            return rect ? Math.min(rect.width, rect.height) : 0;
+          },
+          { message: id + ' keeps a 44px touch target in ' + engine + ' at ' + width + 'px' },
+        )
+        .toBeGreaterThanOrEqual(44 - 0.01);
     }
     if (width !== 320)
       await page.screenshot({
