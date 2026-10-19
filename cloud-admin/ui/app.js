@@ -1,4 +1,5 @@
 import '../../assets/motion.js';
+import '../../assets/mobile.js';
 import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { zipSync, strToU8 } from 'fflate';
@@ -600,6 +601,7 @@ async function openPost(slug) {
   }
   const version = ++navigationVersion;
   if (doc?.front_matter.slug === slug && !$('editor-view').hidden) {
+    shell.close(true);
     navigationStatus();
     return;
   }

@@ -73,6 +73,8 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.locator('.mobile-toc-btn').click();
   await expect(page.locator('.toc-link').first()).toBeFocused();
   await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('.toc-container > .ci-sheet-grip')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(page.locator('.toc-close')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('.mobile-toc-btn')).toBeFocused();

@@ -835,6 +835,7 @@
       </main>
     </div>
     <dialog
+      data-sheet="compact"
       id="image-preview-dialog"
       class="image-preview-dialog"
       aria-labelledby="image-preview-title"
@@ -845,7 +846,13 @@
       </div>
       <img id="image-preview-full" alt="完整图片预览" />
     </dialog>
+    <dialog id="studio-sheet" class="studio-sheet" data-sheet="list" aria-labelledby="studio-sheet-title">
+      <div class="studio-sheet-heading"><h2 id="studio-sheet-title">选择文章</h2><button id="studio-sheet-close" type="button" aria-label="关闭菜单">关闭</button></div>
+      <div id="studio-sheet-search" class="studio-sheet-search"></div>
+      <div id="studio-sheet-content"></div>
+    </dialog>
     <dialog
+      data-sheet="compact"
       id="confirmation-dialog"
       class="confirmation-dialog"
       aria-labelledby="confirmation-title"

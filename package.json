@@ -12,8 +12,8 @@
     "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/src cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
     "dev": "wrangler dev",
     "test:ui:audit": "node scripts/ui-audit.mjs",
-    "format:ui": "prettier --write prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css",
-    "format:ui:check": "prettier --check prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css"
+    "format:ui": "prettier --write prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css",
+    "format:ui:check": "prettier --check prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css"
   },
   "devDependencies": {
     "prettier": "3.9.9",

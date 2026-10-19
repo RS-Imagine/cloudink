@@ -17,7 +17,8 @@ pub fn stylesheet() -> &'static str {
         include_str!("../../../assets/design-foundation.css"), "\n",
         include_str!("../../../assets/motion.css"), "\n",
         include_str!("assets/home.css"), "\n",
-        include_str!("assets/reader.css")
+        include_str!("assets/reader.css"), "\n",
+        include_str!("../../../assets/mobile.css")
     )
 }
 
@@ -27,7 +28,11 @@ pub fn favicon_svg() -> &'static str {
 }
 
 pub fn client_script() -> &'static str {
-    concat!(include_str!("../../../assets/motion.js"), "\n", include_str!("assets/client.js"))
+    concat!(
+        include_str!("../../../assets/motion.js"), "\n",
+        include_str!("../../../assets/mobile.js"), "\n",
+        include_str!("assets/client.js")
+    )
 }
 
 // ---------------------------------------------------------------------------
