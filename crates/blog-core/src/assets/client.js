@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (searchBtn && searchModal) {
         const nativeSearch = typeof searchModal.showModal === 'function';
+        if (nativeSearch) searchModal.dataset.sheet = 'full';
         let searchOverflow = null;
         let searchError = false;
         let searchReturnFocus = true;
@@ -226,6 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         swup?.hooks.on('visit:start', () => {
           closeReaderMenu();
           closeSearch(true);
+          window.CloudInkMobile?.cancelAll();
           motion?.cancelWithin(document.body);
           document.querySelectorAll('.reader-dialog[open]').forEach(dialog => dialog.close());
         });
@@ -249,6 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const showDialog = (content, label, trigger) => {
           const dialog = document.createElement('dialog');
           dialog.className = 'reader-dialog';
+          dialog.dataset.sheet = 'compact';
           dialog.setAttribute('aria-label', label);
           const close = document.createElement('button');
           close.className = 'reader-dialog-close';
@@ -544,8 +547,18 @@ document.addEventListener('DOMContentLoaded', () => {
             closeTocDrawer();
             closeArticleContents = null;
           });
-          tocClose.addEventListener('click', () => { closeTocDrawer(); mobileTocBtn.focus(); });
+          tocContainer.dataset.sheet = 'list';
+          const tocSheet = window.CloudInkMobile?.attach(tocContainer, {
+            media: '(max-width:1099px)',
+            onDismiss: () => { closeTocDrawer(); mobileTocBtn.focus({ preventScroll: true }); }
+          });
+          cleanupFunctions.push(() => tocSheet?.dispose());
+          const requestTocClose = () => {
+            if (!tocSheet?.close()) { closeTocDrawer(); mobileTocBtn.focus({ preventScroll: true }); }
+          };
+          tocClose.addEventListener('click', requestTocClose);
           function closeTocDrawer() {
+             tocSheet?.reset();
              if (tocOverflow !== null) document.body.style.overflow = tocOverflow;
              tocOverflow = null;
              for (const [node, inert] of tocBackground) node.inert = inert;
@@ -559,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
           closeArticleContents = closeTocDrawer;
           mobileTocBtn.addEventListener('click', () => {
             if (tocContainer.classList.contains('drawer-open')) {
-              closeTocDrawer();
+              requestTocClose();
             } else {
               tocOverflow = document.body.style.overflow;
               tocBackground = [article, document.querySelector('.site-header'), document.querySelector('.site-footer')].filter(Boolean).map(node => [node, node.inert]);
@@ -569,21 +582,22 @@ document.addEventListener('DOMContentLoaded', () => {
               syncToc();
               mobileTocBtn.setAttribute('aria-expanded', 'true');
               tocDrawerOverlay.classList.add('active');
+              tocSheet?.open();
               tocContainer.querySelector('a')?.focus({ preventScroll: true });
             }
           });
 
-          tocDrawerOverlay.addEventListener('click', () => { closeTocDrawer(); mobileTocBtn.focus(); });
+          tocDrawerOverlay.addEventListener('click', requestTocClose);
           const tocKeyboard = e => {
             if (e.isComposing) return;
             if (e.key === 'Tab' && tocContainer.classList.contains('drawer-open')) {
-              const first = tocContainer.querySelector('a'), last = tocClose;
+              const first = tocContainer.hasAttribute('data-ci-sheet-active') ? tocSheet.handle : tocContainer.querySelector('a'), last = tocClose;
               if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
               else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
             }
             if (e.key === 'Escape' && tocContainer.classList.contains('drawer-open')) {
-              closeTocDrawer();
-              mobileTocBtn.focus();
+              e.preventDefault();
+              requestTocClose();
             }
           };
           document.addEventListener('keydown', tocKeyboard);

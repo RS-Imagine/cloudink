@@ -185,3 +185,15 @@ saveCurrent、flush、发布与图片引用保护仍由原有工作流维护，�
 引用保护、弹窗焦点与取消、设置及备份错误。原有完整浏览器流程仍验证发布、恢复与图片物理删除。
 审阅包还包含 workflow-editor/images/settings/confirmation 开头的截图。
 工作流 CSS 单独 minify 后 gzip 预算为 4 KiB；最终资源影响记录在对应 PR 与审计报告。
+
+## 移动交互回归
+
+共享 mobile.js/mobile.css 通过现有前后台资源构建输出，原生与 WASM 使用同一实现。
+data-sheet 标记的原生 dialog 由 CloudInkMotion 接入手机面板；目录使用相同控制器与原有导航清理。
+面板只改变布局与展示，不能在关闭回调中执行删除、发布或保存。
+
+移动后台菜单临时移动原有 panel/search 节点，关闭、导航与断点变化后还原。
+修改 shell 时必须覆盖原生弹窗的背景 inert、Esc/焦点、重复开关和无重复 ID。
+移动面板新增单独压缩预算 5 KiB（JS+CSS），共享动效原有预算不变。
+自动检查包含释放方向与速度、拖拽/取消、停靠、键盘替代、原生内容滚动、
+横竖屏/尺寸变化和 viewport 键盘尺寸模拟；真实移动输入法与 Safari 仍需真机验收。

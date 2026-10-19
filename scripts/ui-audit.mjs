@@ -17,6 +17,7 @@ import {
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
 import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
+import { verifyMobile } from '../cloud-web/test/mobile.browser.mjs';
 import { verifyWorkflows } from '../cloud-web/test/workflows.browser.mjs';
 import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
@@ -32,7 +33,7 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: '5429a185092c115e5af0eebdbba8277cb998c3c3',
+  upstream: 'f4fe831a5361a82342ec14890443301b79e10f7e',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
@@ -432,6 +433,7 @@ try {
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
+    await verifyMobile(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
     await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
@@ -546,6 +548,8 @@ try {
     'crates/blog-core/src/assets/reader.css',
     'assets/motion.js',
     'assets/motion.css',
+    'assets/mobile.js',
+    'assets/mobile.css',
     'prototypes/ui-2.0/index.html',
     'prototypes/ui-2.0/tokens.css',
     'prototypes/ui-2.0/style.css',
@@ -620,6 +624,18 @@ try {
   ).code;
   report.assets['admin/workflows.min.css'] = { gzip: gzipSync(workflowCSS).length };
   assert.ok(report.assets['admin/workflows.min.css'].gzip <= 4096, 'Workflow CSS gzip budget');
+  const mobileJS = (await transform(await readFile('assets/mobile.js', 'utf8'), { minify: true }))
+    .code;
+  const mobileCSS = (
+    await transform(await readFile('assets/mobile.css', 'utf8'), { minify: true, loader: 'css' })
+  ).code;
+  report.assets['shared/mobile.min.js+css'] = {
+    gzip: gzipSync(mobileJS).length + gzipSync(mobileCSS).length,
+  };
+  assert.ok(
+    report.assets['shared/mobile.min.js+css'].gzip <= 5120,
+    'Mobile interactions gzip budget',
+  );
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
@@ -629,6 +645,7 @@ try {
     '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
     'reduced motion',
+    'three-engine mobile detents, drag/cancel, keyboard alternatives, modal menu identity, rotation and viewport simulation; Chromium touch cancellation',
     'three-engine editor pane/selection retention, save retry, library failure/retry and protection, confirmation focus/Escape, settings and backup feedback',
     'three-engine studio shell, filters, native disclosures, guarded draft navigation, login and setup steps',
     'three-engine reader layout, TOC focus/anchors, search keyboard/loading/retry, history and no-script article',
@@ -661,8 +678,22 @@ try {
     resolve('assets/design-tokens.css'),
     resolve(output, 'preview/assets/design-tokens.css'),
   );
-  for (const name of ['design-foundation.css', 'motion.css', 'motion.js'])
+  for (const name of [
+    'design-foundation.css',
+    'motion.css',
+    'motion.js',
+    'mobile.css',
+    'mobile.js',
+  ])
     await copyFile(resolve('assets', name), resolve(output, 'preview/assets', name));
+  await writeFile(
+    resolve(output, 'preview/mobile-frame.html'),
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 移动面板演示</title><link rel="stylesheet" href="assets/design-tokens.css"><link rel="stylesheet" href="assets/design-foundation.css"><link rel="stylesheet" href="assets/motion.css"><link rel="stylesheet" href="assets/mobile.css"><style>*{box-sizing:border-box}body{margin:0;padding:24px;font:15px/1.8 var(--ci-font-ui);color:var(--ci-text);background:var(--ci-bg)}body:has(dialog[open]){overflow:hidden}header{display:flex;align-items:center;gap:10px;font-weight:600}h1{font-size:30px;line-height:1.4;margin-top:40px}p{color:var(--ci-muted)}button{min-height:44px;border:1px solid var(--ci-divider);border-radius:14px;padding:10px 16px;background:var(--ci-surface);color:var(--ci-text);font:inherit}main>button{display:block;width:100%;margin:16px 0}.demo-items button{display:block;width:100%;margin:8px 0;text-align:left}.demo-close{float:right}.demo-actions{display:flex;gap:8px;justify-content:flex-end}dialog{border:1px solid var(--ci-divider);background:var(--ci-elevated);color:var(--ci-text)}</style><header><img src="assets/cloudink.svg" width="28" height="28" alt="">CloudInk · 云砚</header><main><h1>随手展开，轻轻收起。</h1><p>拖动把手，或使用点击与方向键，体验正式共用的移动面板。</p><button id="open-list">选择文章</button><button id="open-confirm">操作确认</button><button id="theme">切换明暗</button><p id="result" role="status">本地交互演示。</p></main><dialog id="list" data-sheet="list" aria-labelledby="list-title"><button class="demo-close" data-close="list">关闭</button><h2 id="list-title">选择文章</h2><div class="demo-items"></div></dialog><dialog id="confirm" data-sheet="compact" aria-labelledby="confirm-title"><h2 id="confirm-title">继续这次操作？</h2><p>把手关闭和 Esc 均为取消；按钮确认只更新本地演示状态。</p><div class="demo-actions"><button data-close="confirm">取消</button><button id="accept">确认</button></div></dialog><script src="assets/motion.js"></script><script src="assets/mobile.js"></script><script>CloudInkMotion.mount();const $=id=>document.getElementById(id);for(let i=1;i<=12;i++){const button=document.createElement(\'button\');button.textContent=\'一篇值得留下的文字 · \'+i;button.addEventListener(\'click\',()=>{$(\'result\').textContent=\'已选择演示文章 \'+i;CloudInkMotion.closeDialog($(\'list\'))});document.querySelector(\'.demo-items\').append(button)}$(\'open-list\').onclick=()=>CloudInkMotion.openDialog($(\'list\'));$(\'open-confirm\').onclick=()=>CloudInkMotion.openDialog($(\'confirm\'));document.querySelectorAll(\'[data-close]\').forEach(button=>button.onclick=()=>CloudInkMotion.closeDialog($(button.dataset.close)));$(\'accept\').onclick=()=>{$(\'result\').textContent=\'本地确认已完成\';CloudInkMotion.closeDialog($(\'confirm\'))};$(\'theme\').onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme===\'dark\'?\'light\':\'dark\'};</script></html>',
+  );
+  await writeFile(
+    resolve(output, 'preview/mobile.html'),
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 移动交互预览</title><link rel="stylesheet" href="assets/design-tokens.css"><style>body{margin:0;padding:24px;font:15px/1.8 var(--ci-font-ui);background:var(--ci-bg);color:var(--ci-text);text-align:center}h1{font-size:26px}iframe{display:block;width:390px;max-width:100%;height:760px;border:1px solid var(--ci-divider);border-radius:28px;margin:24px auto;background:var(--ci-surface)}</style><h1>CloudInk · 移动面板</h1><p>使用鼠标或触摸拖动把手，也可以点击把手、使用方向键或 Esc。</p><iframe src="mobile-frame.html" title="CloudInk 手机交互演示"></iframe></html>',
+  );
   const pairs = new Map();
   for (const sample of report.samples) {
     const key = [sample.screen, sample.width, sample.theme, sample.engine].join('-');
@@ -702,7 +733,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 写作工作流审阅</h1><p><a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk 2.0 · 移动交互审阅</h1><p><a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">打开已确认的设计参考</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +

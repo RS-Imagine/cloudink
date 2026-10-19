@@ -84,6 +84,9 @@ export async function verifyStudio(browser, origin, output, engine) {
   await page.keyboard.press('Escape');
   await expect(page.locator('#post-switcher summary')).toBeFocused();
   await openPostSwitcher(page);
+  await expect(page.locator('#studio-sheet')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#studio-sheet')).toBeHidden();
   await page.locator('#images').click();
   await expect(page.locator('#images-view')).toBeVisible();
   await expect(page.locator('#post-switcher')).not.toHaveAttribute('open', '');

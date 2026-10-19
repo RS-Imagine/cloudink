@@ -222,8 +222,10 @@
         cancelWithin(dialog);
       });
     }
+    if (state.closing) dialog.returnValue = '';
     state.closing = false;
     if (!dialog.open) dialog.showModal();
+    if (env.CloudInkMobile?.openDialog(dialog)) return;
     transition(dialog, true);
   }
   function closeDialog(dialog) {
@@ -234,6 +236,12 @@
       return;
     }
     state.closing = true;
+    if (
+      env.CloudInkMobile?.closeDialog(dialog, () => {
+        if (state.closing && dialog.open) dialog.close();
+      })
+    )
+      return;
     transition(dialog, false, {
       onFinish() {
         if (state.closing && dialog.open) dialog.close();

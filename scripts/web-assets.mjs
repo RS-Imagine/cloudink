@@ -16,10 +16,11 @@ if (process.argv[2] === 'seed') {
   await writeFile(resolve(content, 'about.md'), '+++\ntitle = "About"\n+++\n\nWelcome to my blog.');
 } else if (process.argv[2] === 'bundle') {
   const motion = await readFile(resolve(root, 'assets/motion.js'), 'utf8');
+  const mobile = await readFile(resolve(root, 'assets/mobile.js'), 'utf8');
   const source = await readFile(resolve(root, 'crates/blog-core/src/assets/client.js'), 'utf8');
   await build({
     stdin: {
-      contents: `import Swup from 'swup';\nimport hljs from './cloud-admin/node_modules/highlight.js/lib/common';\nwindow.Swup = Swup; window.hljs = hljs;\n${motion}\n${source}`,
+      contents: `import Swup from 'swup';\nimport hljs from './cloud-admin/node_modules/highlight.js/lib/common';\nwindow.Swup = Swup; window.hljs = hljs;\n${motion}\n${mobile}\n${source}`,
       resolveDir: root,
       sourcefile: 'public-client.js',
     },

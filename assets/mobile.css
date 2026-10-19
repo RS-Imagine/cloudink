@@ -1,0 +1,183 @@
+/* Shared sheet geometry; ordinary desktop surfaces retain their existing layouts. */
+.ci-sheet-grip {
+  display: none;
+}
+[data-ci-sheet-active] {
+  position: fixed !important;
+  inset: auto 0 var(--ci-vp-bottom, 0px) !important;
+  width: min(100%, 640px) !important;
+  min-width: 0 !important;
+  height: auto;
+  max-height: calc(var(--ci-vp-height, 100dvh) - 12px) !important;
+  margin: 0 auto !important;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom) + var(--ci-sheet-reserve, 0px)) !important;
+  box-sizing: border-box;
+  border: 1px solid var(--ci-divider);
+  border-bottom: 0;
+  border-radius: 28px 28px 0 0 !important;
+  color: var(--ci-text);
+  background: var(--ci-elevated);
+  box-shadow: var(--ci-shadow-overlay);
+  transform: none !important;
+  transition: none !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  scroll-padding-block: 48px 24px;
+  touch-action: pan-y;
+  will-change: auto;
+}
+[data-ci-sheet-active][data-sheet='list'],
+[data-ci-sheet-active][data-sheet='full'] {
+  height: calc(var(--ci-vp-height, 100dvh) * 0.86);
+}
+[data-ci-sheet-active] > .ci-sheet-grip {
+  display: grid;
+  place-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ci-elevated);
+  color: var(--ci-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+[data-ci-sheet-active] > .ci-sheet-grip::before {
+  content: '';
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ci-outline);
+}
+[data-ci-sheet-active] > .ci-sheet-grip:active {
+  cursor: grabbing;
+}
+[data-ci-sheet-active] > .ci-sheet-grip:focus-visible {
+  outline: 2px solid var(--ci-primary);
+  outline-offset: -4px;
+}
+dialog.search-modal[data-ci-sheet-active] {
+  display: block;
+}
+dialog.search-modal[data-ci-sheet-active] .search-content {
+  display: block;
+  max-height: none;
+  padding: 0 0 8px;
+  overflow: visible;
+}
+dialog.search-modal[data-ci-sheet-active] .search-results {
+  max-height: none;
+  overflow: visible;
+}
+[data-ci-sheet-active] .search-heading {
+  margin-top: 0;
+}
+.reader-dialog[data-ci-sheet-active] .reader-dialog-close {
+  position: static;
+  margin-bottom: 16px;
+}
+.reader-dialog[data-ci-sheet-active] img,
+.image-preview-dialog[data-ci-sheet-active] > img {
+  max-width: 100%;
+  max-height: calc(var(--ci-vp-height, 100dvh) * 0.6);
+}
+.toc-container[data-ci-sheet-active] {
+  z-index: 1000;
+}
+.toc-container[data-ci-sheet-active] .toc-title {
+  margin: 8px 0 12px;
+}
+.toc-container[data-ci-sheet-active] .toc-close {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  margin-top: 16px;
+  z-index: 2;
+}
+.studio-sheet {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 24px;
+  color: var(--ci-text);
+  background: var(--ci-elevated);
+  border: 1px solid var(--ci-divider);
+}
+.studio-sheet::backdrop {
+  background: var(--ci-overlay);
+}
+.studio-sheet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.studio-sheet-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.studio-sheet-heading button {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 999px;
+}
+.studio-sheet .post-list-panel,
+.studio-sheet .studio-tools-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+.studio-sheet-search input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--ci-outline);
+  border-radius: 999px;
+  background: var(--ci-surface);
+  font-size: 16px;
+}
+.studio-sheet .post-item {
+  min-height: 68px;
+}
+@media (max-width: 759px) {
+  html[data-ci-keyboard] .studio-nav,
+  html[data-ci-keyboard] .mobile-toc-btn {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .editor-panes {
+    height: max(220px, calc(var(--ci-vp-height, 100dvh) * 0.62));
+    min-height: 220px;
+  }
+  .editor-toolbar {
+    scroll-margin-top: 8px;
+  }
+  input,
+  textarea,
+  select {
+    scroll-margin-block: 96px 112px;
+  }
+  .image-library-filters {
+    gap: 12px;
+  }
+  .image-preview-dialog .dialog-heading button {
+    flex: none;
+  }
+}
+@supports (corner-shape: squircle) {
+  [data-ci-sheet-active] {
+    corner-shape: squircle;
+  }
+}
