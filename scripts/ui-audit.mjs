@@ -17,6 +17,7 @@ import {
 import { workerOptions, owner, password, setupToken, draft } from '../cloud-web/test/fixture.mjs';
 
 import { transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
+import { verifyMobile } from '../cloud-web/test/mobile.browser.mjs';
 import { verifyWorkflows } from '../cloud-web/test/workflows.browser.mjs';
 import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
@@ -432,6 +433,7 @@ try {
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
+    await verifyMobile(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
     await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
@@ -635,6 +637,7 @@ try {
     '360px overflow guard on production and prototype',
     'light/dark palette contrast pairs',
     'reduced motion',
+    'three-engine mobile detents, drag/cancel, keyboard alternatives, modal menu identity, rotation and viewport simulation; Chromium touch cancellation',
     'three-engine editor pane/selection retention, save retry, library failure/retry and protection, confirmation focus/Escape, settings and backup feedback',
     'three-engine studio shell, filters, native disclosures, guarded draft navigation, login and setup steps',
     'three-engine reader layout, TOC focus/anchors, search keyboard/loading/retry, history and no-script article',
