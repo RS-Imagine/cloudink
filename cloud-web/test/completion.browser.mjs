@@ -47,11 +47,32 @@ export async function verifyCompletion(browser, origin, output, engine) {
   await expect(page.locator('#login-view')).toBeVisible();
   await expect(page.locator('#startup-view')).toBeHidden();
   await page.unroute('**/api/config');
+  let loginCalls = 0,
+    loginReads = 0,
+    repeatedBootReads = 0;
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path === '/api/login' && request.method() === 'POST') loginCalls++;
+    if (path === '/api/config' || path === '/api/session') repeatedBootReads++;
+  });
+  await page.route('**/api/posts', (route) =>
+    ++loginReads === 1
+      ? route.fulfill({ status: 503, json: { error: 'Temporary signed-in data failure' } })
+      : route.continue(),
+  );
   await page.locator('#login-form input[name=email]').fill(owner);
   await page.locator('#login-form input[name=password]').fill(password);
   await page.locator('#login-submit').click();
+  await expect(page.locator('#startup-view')).toHaveAttribute('data-state', 'error');
+  await expect(page.locator('#startup-message')).toContainText('Temporary signed-in data failure');
+  await expect(page.locator('#login-view')).toBeHidden();
+  await page.locator('#startup-retry').click();
   await expect(page.locator('#app-view')).toBeVisible();
   await expect(page.locator('#workspace')).toBeFocused();
+  assert.equal(loginCalls, 1);
+  assert.equal(loginReads, 2);
+  assert.equal(repeatedBootReads, 0);
+  await page.unroute('**/api/posts');
 
   // An authenticated refresh stays in the startup view until the first data read succeeds.
   const resumed = await session.newPage();
@@ -182,6 +203,47 @@ export async function verifyCompletion(browser, origin, output, engine) {
   await expect(setup.locator('#setup-view')).toBeVisible();
   await expect(setup.locator('#login-view')).toBeHidden();
   await expect(setup.locator('#startup-view')).toBeHidden();
+  // Reuse only the local fixture account to simulate successful setup before a failed data read.
+  let setupCalls = 0,
+    setupReads = 0,
+    publishCalls = 0;
+  await wizard.route('**/api/setup', async (route) => {
+    setupCalls++;
+    const response = await route.fetch({
+      url: origin + '/api/login',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      postData: JSON.stringify({ email: owner, password }),
+    });
+    await route.fulfill({ response });
+  });
+  await wizard.route('**/api/posts', (route) =>
+    ++setupReads === 1
+      ? route.fulfill({ status: 503, json: { error: 'Temporary setup data failure' } })
+      : route.continue(),
+  );
+  await wizard.route('**/api/publish', (route) => {
+    publishCalls++;
+    return route.fulfill({ status: 503, json: { error: 'Simulated publication failure' } });
+  });
+  for (const [name, value] of Object.entries({
+    token: 'completion-setup-fixture-token',
+    email: owner,
+    password,
+    confirm: password,
+  }))
+    await setup.locator('#setup-form input[name=' + name + ']').fill(value);
+  await setup.locator('#setup-next').click();
+  await setup.locator('#setup-form input[name=title]').fill('Completion fixture');
+  await setup.locator('#setup-submit').click();
+  await expect(setup.locator('#startup-message')).toContainText('Temporary setup data failure');
+  await expect(setup.locator('#setup-view')).toBeHidden();
+  assert.equal(publishCalls, 0);
+  await setup.locator('#startup-retry').click();
+  await expect(setup.locator('#app-view')).toBeVisible();
+  await expect.poll(() => publishCalls).toBe(1);
+  await expect(setup.locator('#notice')).toContainText('Simulated publication failure');
+  assert.equal(setupCalls, 1);
   await wizard.close();
 
   const native = await context({ javaScriptEnabled: false });

@@ -45,6 +45,7 @@ const activeActions = new Set();
 let noticeTimer;
 let appConfig, configReady;
 let booting = false;
+let pendingWorkspace = null;
 function showStartup(error = '') {
   $('startup-view').hidden = false;
   $('startup-view').dataset.state = error ? 'error' : 'loading';
@@ -229,6 +230,7 @@ async function api(path, options = {}) {
   return data;
 }
 function showLogin({ focus = false } = {}) {
+  pendingWorkspace = null;
   shell.close();
   $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
@@ -283,13 +285,26 @@ function view(name, { focus = true } = {}) {
   if (focus && (fromNavigation || changingView))
     $(sectionName + '-view').focus({ preventScroll: true });
 }
-async function signedIn(session, { focus = false } = {}) {
+async function signedIn(session, { focus = false, afterReady = null } = {}) {
   await configReady;
   csrf = session.csrf;
   appConfig.initialized = true;
   $('account-email').textContent = session.email;
   $('account-form').elements.email.value = session.email;
-  await refresh();
+  pendingWorkspace = { session, afterReady };
+  showStartup();
+  try {
+    await refresh();
+  } catch (error) {
+    if (error.status === 401) showLogin({ focus });
+    else {
+      showStartup(error.status ? error.message : '暂时无法读取工作区，请检查网络后重试。');
+      if (focus && document.activeElement === document.body)
+        $('startup-retry').focus({ preventScroll: true });
+    }
+    return false;
+  }
+  pendingWorkspace = null;
   $('startup-view').hidden = true;
   $('setup-view').hidden = true;
   $('login-view').hidden = true;
@@ -300,6 +315,7 @@ async function signedIn(session, { focus = false } = {}) {
   (window.requestIdleCallback || setTimeout)(() => {
     void engineTask('warm').catch(() => {});
   });
+  return true;
 }
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -325,7 +341,20 @@ $('login-form').addEventListener('submit', async (e) => {
     $('login-submit').textContent = '登录';
   }
 });
-$('startup-retry').addEventListener('click', () => void startWorkspace({ focus: true }));
+$('startup-retry').addEventListener('click', async () => {
+  if (!pendingWorkspace) return void startWorkspace({ focus: true });
+  if (booting) return;
+  const pending = pendingWorkspace;
+  booting = true;
+  try {
+    if (await signedIn(pending.session, { focus: true, afterReady: pending.afterReady }))
+      await pending.afterReady?.();
+  } catch (error) {
+    notice(error.message, 'error');
+  } finally {
+    booting = false;
+  }
+});
 void startWorkspace();
 
 function setupStep(siteStep) {
@@ -379,8 +408,8 @@ $('setup-form').addEventListener('submit', async (event) => {
         },
       });
       form.reset();
-      await signedIn(session, { focus: true });
-      await startPublish({ rebuild: true });
+      const afterReady = () => startPublish({ rebuild: true });
+      if (await signedIn(session, { focus: true, afterReady })) await afterReady();
     } catch (error) {
       $('setup-error').textContent = error.message;
       if (error.status === 409) {
