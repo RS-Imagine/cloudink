@@ -33,13 +33,17 @@ export async function verifySiteIcons(browser, origin, output, engine) {
     const key = await page.locator('#site-icon-value').inputValue();
     uploaded.add(key);
     assert.match(key, new RegExp('^uploads/icons/[a-f0-9]{64}\\.' + ext + '$'));
-    console.log(JSON.stringify({
-      iconDecode: { engine, ext, key },
-      image: await page.locator('#site-icon-preview').evaluate((image) => ({
-        src: image.getAttribute('src'), currentSrc: image.currentSrc,
-        complete: image.complete, width: image.naturalWidth,
-      })),
-    }));
+    console.log(
+      JSON.stringify({
+        iconDecode: { engine, ext, key },
+        image: await page.locator('#site-icon-preview').evaluate((image) => ({
+          src: image.getAttribute('src'),
+          currentSrc: image.currentSrc,
+          complete: image.complete,
+          width: image.naturalWidth,
+        })),
+      }),
+    );
     await expect
       .poll(() =>
         page
@@ -47,7 +51,10 @@ export async function verifySiteIcons(browser, origin, output, engine) {
           .evaluate((image) => image.complete && image.naturalWidth > 0),
       )
       .toBe(true);
-    await expect(page.locator('#site-icon-preview')).toHaveAttribute('src', '/site-icon/' + key.split('/').pop());
+    await expect(page.locator('#site-icon-preview')).toHaveAttribute(
+      'src',
+      '/site-icon/' + key.split('/').pop(),
+    );
     await page.locator('#save-site').click();
     await expect(page.locator('#site-feedback')).toHaveAttribute('data-tone', 'success');
     await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
