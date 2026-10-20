@@ -84,7 +84,8 @@ async function apiRoute(
   path: string,
   session: Session,
 ): Promise<Response> {
-  if (path === '/api/site-icon' && request.method === 'POST') return uploadSiteIcon(request, env.STORAGE);
+  if (path === '/api/site-icon' && request.method === 'POST')
+    return uploadSiteIcon(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
   if (images) return images;
   const backup = await backupRoute(request, env, path);
@@ -135,7 +136,10 @@ async function apiRoute(
     return json({
       posts: [...posts.values()],
       site: release.site,
-      appearance: { themePalette: (savedSite || release.site).themePalette || 'ink', siteIcon: (savedSite || release.site).siteIcon || '' },
+      appearance: {
+        themePalette: (savedSite || release.site).themePalette || 'ink',
+        siteIcon: (savedSite || release.site).siteIcon || '',
+      },
       publishing,
       email: session.email,
       csrf: session.csrf,

@@ -226,7 +226,9 @@ export async function imageLibraryRoute(
     const remaining = catalog.filter(
       (object) =>
         validImageKey(object.key) &&
-        /^image\/(?:jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(object.httpMetadata?.contentType || '') &&
+        /^image\/(?:jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(
+          object.httpMetadata?.contentType || '',
+        ) &&
         (!after ||
           object.uploaded.getTime() < after[0] ||
           (object.uploaded.getTime() === after[0] && object.key > after[1])),

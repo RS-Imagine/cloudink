@@ -133,7 +133,8 @@ export function validateSite(input: unknown): SiteConfig {
     appearance.themePalette = v.themePalette;
   }
   if (v.siteIcon !== undefined) {
-    if (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon)) throw new HttpError(400, '网站图标地址不正确。');
+    if (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon))
+      throw new HttpError(400, '网站图标地址不正确。');
     appearance.siteIcon = v.siteIcon;
   }
   return {

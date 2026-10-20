@@ -691,17 +691,42 @@
                 </label>
                 <fieldset class="appearance-settings">
                   <legend>外观</legend>
-                  <div class="site-icon-settings" role="group" aria-labelledby="site-icon-label" aria-describedby="site-icon-help">
+                  <div
+                    class="site-icon-settings"
+                    role="group"
+                    aria-labelledby="site-icon-label"
+                    aria-describedby="site-icon-help"
+                  >
                     <span id="site-icon-label">网站图标</span>
                     <div class="site-icon-controls">
-                      <span class="site-icon-sample"><img id="site-icon-preview" src="/favicon.svg" width="48" height="48" alt="网站图标预览" /></span>
+                      <span class="site-icon-sample"
+                        ><img
+                          id="site-icon-preview"
+                          src="/favicon.svg"
+                          width="48"
+                          height="48"
+                          alt="网站图标预览"
+                      /></span>
                       <button id="upload-site-icon" type="button">上传图标</button>
                       <button id="reset-site-icon" type="button" class="secondary">恢复默认</button>
                     </div>
                     <input id="site-icon-value" name="siteIcon" type="hidden" value="" />
-                    <input id="site-icon-file" type="file" accept=".svg,.ico,image/svg+xml,image/x-icon,image/vnd.microsoft.icon" hidden />
-                    <p id="site-icon-help">支持 SVG / ICO，最多 256 KB。SVG 会移除脚本、外部资源和嵌入内容。公开网页的标签页与页头共用此图标，上传文件可在图片库管理。</p>
-                    <p id="site-icon-status" class="operation-feedback" role="status" aria-live="polite"></p>
+                    <input
+                      id="site-icon-file"
+                      type="file"
+                      accept=".svg,.ico,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
+                      hidden
+                    />
+                    <p id="site-icon-help">
+                      支持 SVG / ICO，最多 256 KB。SVG
+                      会移除脚本、外部资源和嵌入内容。公开网页的标签页与页头共用此图标，上传文件可在图片库管理。
+                    </p>
+                    <p
+                      id="site-icon-status"
+                      class="operation-feedback"
+                      role="status"
+                      aria-live="polite"
+                    ></p>
                   </div>
                   <fieldset class="palette-picker" aria-describedby="palette-help">
                     <legend>主题色</legend>

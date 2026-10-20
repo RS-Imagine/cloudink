@@ -4,10 +4,11 @@ export const MAX_IMAGE = 10 * 1024 * 1024;
 // The single bucket also contains credentials and drafts. Media routes must
 // never translate an arbitrary URL into an arbitrary object key.
 export function validImageKey(key: string): boolean {
-  return validSiteIconKey(key) || (
-    key.length <= 1024 &&
-    /^uploads\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|avif)$/.test(key) &&
-    !key.split('/').some((part) => !part || part === '.' || part === '..')
+  return (
+    validSiteIconKey(key) ||
+    (key.length <= 1024 &&
+      /^uploads\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|avif)$/.test(key) &&
+      !key.split('/').some((part) => !part || part === '.' || part === '..'))
   );
 }
 export function imageType(bytes: Uint8Array): { type: string; ext: string } {
@@ -53,7 +54,9 @@ export async function publicImage(request: Request, storage: R2Bucket): Promise<
     'Cache-Control': 'public, max-age=86400',
   });
   object.writeHttpMetadata(headers);
-  if (!/^image\/(jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(headers.get('Content-Type') || '')) {
+  if (
+    !/^image\/(jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(headers.get('Content-Type') || '')
+  ) {
     if (body) await body.body.cancel();
     return new Response('Unsupported image', { status: 415 });
   }

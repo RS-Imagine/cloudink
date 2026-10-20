@@ -45,7 +45,9 @@ try {
   await page.locator('#site-form input[name=title]').fill('Browser deployed blog');
   await page.locator('#site-form input[name=author]').fill('Reader');
   await page.locator('#site-form input[name=themePalette][value=brown]').check();
-  await page.locator('#site-icon-file').setInputFiles({ name: 'site.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svgBytes) });
+  await page
+    .locator('#site-icon-file')
+    .setInputFiles({ name: 'site.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svgBytes) });
   await expect(page.locator('#site-icon-status')).toHaveAttribute('data-tone', 'success');
   const svgIconKey = await page.locator('#site-icon-value').inputValue();
   const svgIconURL = '/site-icon/' + svgIconKey.split('/').pop();
@@ -58,7 +60,10 @@ try {
   const beforeThemePublish = await browser.newPage();
   await beforeThemePublish.goto('http://localhost:8791/');
   await expect(beforeThemePublish.locator('html')).toHaveAttribute('data-palette', 'ink');
-  await expect(beforeThemePublish.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
+  await expect(beforeThemePublish.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/favicon.svg',
+  );
   await beforeThemePublish.close();
   await page.locator('#settings').click();
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
@@ -74,7 +79,11 @@ try {
   await expect(live.locator('.hero h1')).toHaveText('Browser deployed blog');
   await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
   await expect(live.locator('.site-mark img')).toHaveAttribute('src', svgIconURL);
-  await expect.poll(() => live.locator('.site-mark img').evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await expect
+    .poll(() =>
+      live.locator('.site-mark img').evaluate((image) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
   await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.locator('#new-post').click();
   await page.locator('#title').fill('Browser published mathematics');
@@ -285,11 +294,16 @@ try {
   await page.locator('#site-form input[name=themePalette][value=brown]').check();
   await page.locator('#save-site').click();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
-  await page.locator('#site-icon-file').setInputFiles({ name: 'site.ico', mimeType: 'image/x-icon', buffer: Buffer.from(icoBytes()) });
+  await page
+    .locator('#site-icon-file')
+    .setInputFiles({ name: 'site.ico', mimeType: 'image/x-icon', buffer: Buffer.from(icoBytes()) });
   await expect(page.locator('#site-icon-status')).toHaveAttribute('data-tone', 'success');
   const icoIconKey = await page.locator('#site-icon-value').inputValue();
   await page.locator('#save-site').click();
-  await expect(page.locator('head link[rel=icon]')).toHaveAttribute('href', '/site-icon/' + icoIconKey.split('/').pop());
+  await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
   const downloaded = page.waitForEvent('download');
   await page.locator('#download-backup').click();
   const backup = await downloaded;
@@ -304,7 +318,10 @@ try {
   await acceptConfirmation(page);
   await expect(page.locator('#backup-status')).toContainText('已恢复');
   await expect(page.locator('#site-icon-value')).toHaveValue(icoIconKey);
-  await expect(page.locator('head link[rel=icon]')).toHaveAttribute('href', '/site-icon/' + icoIconKey.split('/').pop());
+  await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   assert.deepEqual(
@@ -317,7 +334,10 @@ try {
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.goto('http://localhost:8791/');
-  await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', '/site-icon/' + icoIconKey.split('/').pop());
+  await expect(live.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
   await page.locator('#reset-site-icon').click();
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');

@@ -1,10 +1,15 @@
 const $ = (id) => document.getElementById(id);
-const iconURL = (key) => /^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(key || '')
-  ? '/site-icon/' + key.slice('uploads/icons/'.length) : '/favicon.svg';
+const iconURL = (key) =>
+  /^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(key || '')
+    ? '/site-icon/' + key.slice('uploads/icons/'.length)
+    : '/favicon.svg';
 
 export function configureSiteIcon({ api, notice }) {
-  const input = $('site-icon-file'), field = $('site-icon-value'), preview = $('site-icon-preview');
-  let generation = 0, pending = Promise.resolve();
+  const input = $('site-icon-file'),
+    field = $('site-icon-value'),
+    preview = $('site-icon-preview');
+  let generation = 0,
+    pending = Promise.resolve();
   const show = () => {
     preview.src = iconURL(field.value);
     $('reset-site-icon').disabled = !field.value;
@@ -13,12 +18,16 @@ export function configureSiteIcon({ api, notice }) {
     generation++;
     pending = Promise.resolve();
     field.value = config?.siteIcon || '';
-    $('site-icon-status').textContent = field.value ? '已选择自定义图标。' : '正在使用 CloudInk 默认图标。';
+    $('site-icon-status').textContent = field.value
+      ? '已选择自定义图标。'
+      : '正在使用 CloudInk 默认图标。';
     show();
   }
   function apply(config) {
     const url = iconURL(config?.siteIcon);
-    document.querySelectorAll('.sidebar .brand-mark img, .studio-intro-mark').forEach((image) => { image.src = url; });
+    document.querySelectorAll('.sidebar .brand-mark img, .studio-intro-mark').forEach((image) => {
+      image.src = url;
+    });
     const favicon = document.querySelector('link[rel="icon"]');
     favicon.href = url;
     favicon.type = url.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
@@ -49,15 +58,17 @@ export function configureSiteIcon({ api, notice }) {
       $('site-icon-status').dataset.tone = 'success';
       show();
     })();
-    pending = task.catch((error) => {
-      if (version !== generation) return;
-      $('site-icon-status').textContent = error.message;
-      $('site-icon-status').dataset.tone = 'error';
-      notice(error.message, 'error');
-    }).finally(() => {
-      $('upload-site-icon').disabled = false;
-      $('reset-site-icon').disabled = !field.value;
-    });
+    pending = task
+      .catch((error) => {
+        if (version !== generation) return;
+        $('site-icon-status').textContent = error.message;
+        $('site-icon-status').dataset.tone = 'error';
+        notice(error.message, 'error');
+      })
+      .finally(() => {
+        $('upload-site-icon').disabled = false;
+        $('reset-site-icon').disabled = !field.value;
+      });
   });
   preview.addEventListener('error', () => {
     if (preview.getAttribute('src') !== '/favicon.svg') {
