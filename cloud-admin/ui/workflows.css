@@ -625,7 +625,7 @@ button[aria-busy='true'] {
   color: #ffffff;
   box-shadow: 0 0 0 2px var(--ci-text);
 }
-.palette-choice input:focus-visible + .palette-swatch {
+.palette-choice input:focus + .palette-swatch {
   outline: 3px solid var(--ci-primary);
   outline-offset: 4px;
 }
