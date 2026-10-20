@@ -91,6 +91,11 @@ function validateSvgDocument(source: string): void {
     nodes = 0;
   try {
     const parser = new SaxesParser({ xmlns: true });
+    const unsupported = () => {
+      throw new HttpError(400, 'SVG 不支持文档声明或处理指令，请重新导出静态图标。');
+    };
+    parser.on('doctype', unsupported);
+    parser.on('processinginstruction', unsupported);
     parser.on('opentag', (tag) => {
       if (++depth > 128 || ++nodes > 5000)
         throw new HttpError(413, 'SVG 图标过于复杂，请简化后上传。');
@@ -113,12 +118,6 @@ async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
     throw new HttpError(400, 'SVG 必须使用 UTF-8 编码。');
   }
   input = input.trim().replace(/^<\?xml[^?]*\?>\s*/i, '');
-  if (
-    !/^<svg(?:\s|\/?>)/i.test(input) ||
-    !/(?:<\/svg\s*>|\/>)$/i.test(input) ||
-    /<!|<\?/.test(input)
-  )
-    throw new HttpError(400, '请上传不含文档声明的静态 SVG 图标。');
   validateSvgDocument(input);
   let roots = 0,
     shapes = 0,

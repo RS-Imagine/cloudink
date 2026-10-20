@@ -2,7 +2,7 @@ import { deflateSync } from 'node:zlib';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
-import { svgBytes, icoBytes, pngIcoBytes } from './icon-fixtures.mjs';
+import { svgBytes, svgIcon, icoBytes, pngIcoBytes } from './icon-fixtures.mjs';
 
 async function upload(f, bytes = svgBytes) {
   const response = await f.request('/api/site-icon', 'POST', bytes);
@@ -223,6 +223,8 @@ test('SVG upload rejects trailing content, mismatched tags and undefined XML ent
   }
   const bucket = await f.mf.getR2Bucket('STORAGE');
   assert.equal((await bucket.list({ prefix: 'uploads/icons/' })).objects.length, 0);
+  const commented = '<!-- exported icon -->' + svgIcon.replace('<defs>', '<!-- gradient --><defs>');
+  await upload(f, new TextEncoder().encode(commented));
 });
 test('ICO PNG validation rejects invalid deflate streams, filters, row sizes and decompression bombs', async (t) => {
   const f = await fixture(t);
