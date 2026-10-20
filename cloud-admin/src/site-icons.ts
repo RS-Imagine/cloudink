@@ -1,3 +1,4 @@
+import { SaxesParser } from 'saxes';
 import { HttpError, json, limitedBody, validSiteIconKey, type SiteConfig } from './models';
 
 export const MAX_SITE_ICON = 256 * 1024;
@@ -85,6 +86,21 @@ function safeValue(name: string, value: string): boolean {
     );
   return /^[A-Za-z0-9.,%()+:\-\s]*$/.test(value);
 }
+function validateSvgDocument(source: string): void {
+  let depth = 0, nodes = 0;
+  try {
+    const parser = new SaxesParser({ xmlns: true });
+    parser.on('opentag', (tag) => {
+      if (++depth > 128 || ++nodes > 5000) throw new HttpError(413, 'SVG 图标过于复杂，请简化后上传。');
+      if (depth === 1 && tag.name !== 'svg') throw new HttpError(400, 'SVG 需要一个完整的根元素。');
+    });
+    parser.on('closetag', () => { depth--; });
+    parser.write(source).close();
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(400, 'SVG 不是完整有效的 XML 文档，请重新导出。');
+  }
+}
 async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
   let input: string;
   try {
@@ -99,6 +115,7 @@ async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
     /<!|<\?/.test(input)
   )
     throw new HttpError(400, '请上传不含文档声明的静态 SVG 图标。');
+  validateSvgDocument(input);
   let roots = 0,
     shapes = 0,
     nodes = 0;
@@ -160,7 +177,9 @@ async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
       },
     })
     .transform(new Response(input, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
-  const output = encoder.encode(await response.text());
+  const sanitized = await response.text();
+  validateSvgDocument(sanitized);
+  const output = encoder.encode(sanitized);
   if (roots !== 1 || !shapes) throw new HttpError(400, 'SVG 需要一个根元素和可显示的图形。');
   if (output.length > MAX_SITE_ICON) throw new HttpError(413, '网站图标最多 256 KB。');
   return output;
@@ -174,11 +193,58 @@ function pngCrc(bytes: Uint8Array): number {
   for (const byte of bytes) value = (value >>> 8) ^ crcTable[(value ^ byte) & 255];
   return (value ^ 0xffffffff) >>> 0;
 }
-function validateIconPng(payload: Uint8Array, width: number, height: number): void {
-  const invalid = () => {
+async function validatePngPixels(
+  chunks: Uint8Array[], width: number, height: number, depth: number, color: number,
+  interlace: number, remaining: number,
+): Promise<number> {
+  const invalid = (): never => { throw new HttpError(400, 'ICO 中的 PNG 压缩数据或扫描行无效。'); };
+  const channels: Record<number, number> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+  const bits = channels[color] * depth;
+  const rows: number[] = [];
+  const passes = interlace ? [[0,0,8,8],[4,0,8,8],[0,4,4,8],[2,0,4,4],[0,2,2,4],[1,0,2,2],[0,1,1,2]] : [[0,0,1,1]];
+  for (const [x, y, dx, dy] of passes) {
+    const w = width > x ? Math.ceil((width - x) / dx) : 0;
+    const h = height > y ? Math.ceil((height - y) / dy) : 0;
+    if (w) for (let row = 0; row < h; row++) rows.push(1 + Math.ceil(w * bits / 8));
+  }
+  const expected = rows.reduce((sum, length) => sum + length, 0);
+  if (expected > remaining) throw new HttpError(413, '图标解码后的内容过大，请减少图标尺寸或数量。');
+  const compressed = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) { compressed.set(chunk, offset); offset += chunk.length; }
+  const body = new Response(compressed).body;
+  if (!body) invalid();
+  const reader = body.pipeThrough(new DecompressionStream('deflate')).getReader();
+  let count = 0, row = 0, column = 0, finished = false;
+  try {
+    for (;;) {
+      const item = await reader.read();
+      if (item.done) break;
+      if (item.value.length > expected - count) invalid();
+      for (const byte of item.value) {
+        if (!column && byte > 4) invalid();
+        if (++column === rows[row]) { row++; column = 0; }
+      }
+      count += item.value.length;
+    }
+    finished = true;
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    invalid();
+  } finally {
+    if (!finished) await reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+  if (count !== expected || row !== rows.length || column !== 0) invalid();
+  return expected;
+}
+async function validateIconPng(payload: Uint8Array, width: number, height: number, remaining: number): Promise<number> {
+  const invalid = (): never => {
     throw new HttpError(400, 'ICO 中的 PNG 图像不完整或校验失败。');
   };
   const data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  const compressed: Uint8Array[] = [];
+  let depth = 0, interlace = 0;
   let offset = 8,
     chunks = 0,
     imageData = false,
@@ -204,7 +270,8 @@ function validateIconPng(payload: Uint8Array, width: number, height: number): vo
         data.getUint32(offset + 12) !== height
       )
         invalid();
-      const depth = payload[offset + 16];
+      depth = payload[offset + 16];
+      interlace = payload[offset + 20];
       color = payload[offset + 17];
       const depths: Record<number, number[]> = {
         0: [1, 2, 4, 8, 16],
@@ -235,10 +302,13 @@ function validateIconPng(payload: Uint8Array, width: number, height: number): vo
       palette = true;
     } else if (type === 'IDAT') {
       if (endedData || (color === 3 && !palette)) invalid();
-      if (length) imageData = true;
+      if (length) {
+        imageData = true;
+        compressed.push(payload.subarray(offset + 8, offset + 8 + length));
+      }
     } else if (type === 'IEND') {
       if (length !== 0 || !imageData || next !== payload.length) invalid();
-      return;
+      return validatePngPixels(compressed, width, height, depth, color, interlace, remaining);
     } else {
       if (type[0] === type[0].toUpperCase()) invalid();
       if (imageData) endedData = true;
@@ -247,8 +317,9 @@ function validateIconPng(payload: Uint8Array, width: number, height: number): vo
   }
   invalid();
 }
-function validateIco(bytes: Uint8Array): void {
-  const invalid = () => {
+async function validateIco(bytes: Uint8Array): Promise<void> {
+  let decoded = 0;
+  const invalid = (): never => {
     throw new HttpError(400, 'ICO 文件结构无效或图像数据不完整，请重新导出图标。');
   };
   if (bytes.length < 22) invalid();
@@ -279,7 +350,7 @@ function validateIco(bytes: Uint8Array): void {
       height = bytes[entry + 1] || 256;
     const png = [137, 80, 78, 71, 13, 10, 26, 10].every((v, n) => payload[n] === v);
     if (png) {
-      validateIconPng(payload, width, height);
+      decoded += await validateIconPng(payload, width, height, 4 * 1024 * 1024 - decoded);
     } else {
       if (size < 40) invalid();
       const header = data.getUint32(0, true),
@@ -316,7 +387,7 @@ export async function inspectSiteIcon(input: Uint8Array) {
     throw new HttpError(413, '网站图标需为 1 字节至 256 KB。');
   const ico = input[0] === 0 && input[1] === 0 && input[2] === 1 && input[3] === 0;
   const bytes = ico ? input : await sanitizeSvg(input);
-  if (ico) validateIco(bytes);
+  if (ico) await validateIco(bytes);
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
     .map((v) => v.toString(16).padStart(2, '0'))
     .join('');

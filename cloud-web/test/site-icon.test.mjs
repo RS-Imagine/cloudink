@@ -1,3 +1,4 @@
+import { deflateSync } from 'node:zlib';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
@@ -44,6 +45,7 @@ test('site icons require authentication/CSRF and validate actual SVG/ICO bytes a
   new DataView(broken.buffer).setUint32(18, 0xffffffff, true);
   assert.equal((await f.request('/api/site-icon', 'POST', broken)).status, 400);
   await upload(f, pngIcoBytes());
+  await upload(f, pngIcoBytes({ interlaced: true }));
   const icon = await upload(f, ico);
   assert.match(icon.key, /^uploads\/icons\/[a-f0-9]{64}\.ico$/);
   assert.equal((await f.request(icon.url)).headers.get('Content-Type'), 'image/x-icon');
@@ -201,6 +203,38 @@ test('ICO validation rejects header-only payloads, missing bitmap masks and inco
   badCrc[badCrc.length - 1] ^= 1;
   for (const bytes of [truncatedDib, truncatedPng, missingMask, missingEnd, badCrc]) {
     const response = await f.request('/api/site-icon', 'POST', bytes);
+    assert.equal(response.status, 400, await response.clone().text());
+  }
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  assert.equal((await bucket.list({ prefix: 'uploads/icons/' })).objects.length, 0);
+});
+
+test('SVG upload rejects trailing content, mismatched tags and undefined XML entities', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  for (const source of [
+    '<svg><path d="M0 0"/></svg>junk</svg>',
+    '<svg><path d="M0 0"/></svg><path/></svg>',
+    '<svg><path d="M0 0"></svg>',
+    '<svg><path d="M0 0"/>&unknown;</svg>',
+  ]) {
+    const response = await f.request('/api/site-icon', 'POST', new TextEncoder().encode(source));
+    assert.equal(response.status, 400, await response.clone().text());
+  }
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  assert.equal((await bucket.list({ prefix: 'uploads/icons/' })).objects.length, 0);
+});
+test('ICO PNG validation rejects invalid deflate streams, filters, row sizes and decompression bombs', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  for (const compressed of [
+    new Uint8Array([1]),
+    deflateSync(new Uint8Array([5, 128, 82, 50, 255])),
+    deflateSync(new Uint8Array([0, 128])),
+    deflateSync(new Uint8Array([0, 128, 82, 50, 255, 0])),
+    deflateSync(new Uint8Array(4 * 1024 * 1024)),
+  ]) {
+    const response = await f.request('/api/site-icon', 'POST', pngIcoBytes({ compressed }));
     assert.equal(response.status, 400, await response.clone().text());
   }
   const bucket = await f.mf.getR2Bucket('STORAGE');

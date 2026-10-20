@@ -3,7 +3,7 @@ import { crc32, deflateSync } from 'node:zlib';
 export const svgIcon =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ink"><stop offset="0" stop-color="#805232"/><stop offset="1" stop-color="#24594f"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#ink)"/><path d="M16 44 42 18 48 24 22 50H16Z" fill="white"/></svg>';
 export const svgBytes = new TextEncoder().encode(svgIcon);
-export function pngIcoBytes() {
+export function pngIcoBytes(options = {}) {
   function chunk(type, content) {
     const bytes = Buffer.alloc(content.length + 12);
     bytes.writeUInt32BE(content.length, 0);
@@ -17,10 +17,11 @@ export function pngIcoBytes() {
   header.writeUInt32BE(1, 4);
   header[8] = 8;
   header[9] = 6;
+  header[12] = options.interlaced ? 1 : 0;
   const png = Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', header),
-    chunk('IDAT', deflateSync(Buffer.from([0, 128, 82, 50, 255]))),
+    chunk('IDAT', options.compressed ?? deflateSync(Buffer.from([0, 128, 82, 50, 255]))),
     chunk('IEND', Buffer.alloc(0)),
   ]);
   const bytes = new Uint8Array(22 + png.length);
