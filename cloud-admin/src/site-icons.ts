@@ -204,6 +204,7 @@ async function validatePngPixels(
   color: number,
   interlace: number,
   remaining: number,
+  paletteSize: number,
 ): Promise<number> {
   const invalid = (): never => {
     throw new HttpError(400, 'ICO 中的 PNG 压缩数据或扫描行无效。');
@@ -211,6 +212,8 @@ async function validatePngPixels(
   const channels: Record<number, number> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
   const bits = channels[color] * depth;
   const rows: number[] = [];
+  const rowWidths: number[] = [];
+  const firstRows = new Set<number>();
   const passes = interlace
     ? [
         [0, 0, 8, 8],
@@ -225,7 +228,13 @@ async function validatePngPixels(
   for (const [x, y, dx, dy] of passes) {
     const w = width > x ? Math.ceil((width - x) / dx) : 0;
     const h = height > y ? Math.ceil((height - y) / dy) : 0;
-    if (w) for (let row = 0; row < h; row++) rows.push(1 + Math.ceil((w * bits) / 8));
+    if (w && h) {
+      firstRows.add(rows.length);
+      for (let row = 0; row < h; row++) {
+        rows.push(1 + Math.ceil((w * bits) / 8));
+        rowWidths.push(w);
+      }
+    }
   }
   const expected = rows.reduce((sum, length) => sum + length, 0);
   if (expected > remaining)
@@ -255,15 +264,46 @@ async function validatePngPixels(
   let count = 0,
     row = 0,
     column = 0,
-    finished = false;
+    finished = false,
+    filter = 0;
+  let previous = new Uint8Array(0), current = new Uint8Array(0);
+  const paeth = (left: number, above: number, corner: number): number => {
+    const prediction = left + above - corner;
+    const a = Math.abs(prediction - left), b = Math.abs(prediction - above), c = Math.abs(prediction - corner);
+    return a <= b && a <= c ? left : b <= c ? above : corner;
+  };
   try {
     for (;;) {
       const item = await reader.read();
       if (item.done) break;
       if (item.value.length > expected - count) invalid();
       for (const byte of item.value) {
-        if (!column && byte > 4) invalid();
+        if (!column) {
+          if (byte > 4) invalid();
+          filter = byte;
+          if (color === 3 && firstRows.has(row)) {
+            previous = new Uint8Array(rows[row] - 1);
+            current = new Uint8Array(rows[row] - 1);
+          }
+        } else if (color === 3) {
+          const index = column - 1;
+          const left = index ? current[index - 1] : 0;
+          const above = previous[index];
+          const corner = index ? previous[index - 1] : 0;
+          const predictor = filter === 1 ? left : filter === 2 ? above : filter === 3 ? Math.floor((left + above) / 2) : filter === 4 ? paeth(left, above, corner) : 0;
+          current[index] = (byte + predictor) & 255;
+        }
         if (++column === rows[row]) {
+          if (color === 3) {
+            for (let pixel = 0; pixel < rowWidths[row]; pixel++) {
+              const bit = pixel * depth;
+              const sample = (current[bit >>> 3] >>> (8 - depth - (bit & 7))) & ((1 << depth) - 1);
+              if (sample >= paletteSize) invalid();
+            }
+            const swap = previous;
+            previous = current;
+            current = swap;
+          }
           row++;
           column = 0;
         }
@@ -293,7 +333,8 @@ async function validateIconPng(
   const data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
   const compressed: Uint8Array[] = [];
   let depth = 0,
-    interlace = 0;
+    interlace = 0,
+    paletteSize = 0;
   let offset = 8,
     chunks = 0,
     imageData = false,
@@ -348,6 +389,8 @@ async function validateIconPng(
         color === 4
       )
         invalid();
+      paletteSize = length / 3;
+      if (color === 3 && paletteSize > 2 ** depth) invalid();
       palette = true;
     } else if (type === 'IDAT') {
       if (endedData || (color === 3 && !palette)) invalid();
@@ -357,7 +400,7 @@ async function validateIconPng(
       }
     } else if (type === 'IEND') {
       if (length !== 0 || !imageData || next !== payload.length) invalid();
-      return validatePngPixels(compressed, width, height, depth, color, interlace, remaining);
+      return validatePngPixels(compressed, width, height, depth, color, interlace, remaining, paletteSize);
     } else {
       if (type[0] === type[0].toUpperCase()) invalid();
       if (imageData) endedData = true;

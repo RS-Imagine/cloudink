@@ -12,24 +12,26 @@ export function pngIcoBytes(options = {}) {
     bytes.writeUInt32BE(crc32(bytes.subarray(4, content.length + 8)), content.length + 8);
     return bytes;
   }
+  const width = options.width ?? 1, height = options.height ?? 1;
   const header = Buffer.alloc(13);
-  header.writeUInt32BE(1, 0);
-  header.writeUInt32BE(1, 4);
-  header[8] = 8;
-  header[9] = 6;
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = options.depth ?? 8;
+  header[9] = options.palette ? 3 : 6;
   header[12] = options.interlaced ? 1 : 0;
   const png = Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', header),
-    chunk('IDAT', options.compressed ?? deflateSync(Buffer.from([0, 128, 82, 50, 255]))),
+    ...(options.palette ? [chunk('PLTE', Buffer.from(options.palette.flat()))] : []),
+    chunk('IDAT', options.compressed ?? deflateSync(Buffer.from(options.palette ? [0, 0] : [0, 128, 82, 50, 255]))),
     chunk('IEND', Buffer.alloc(0)),
   ]);
   const bytes = new Uint8Array(22 + png.length);
   const view = new DataView(bytes.buffer);
   view.setUint16(2, 1, true);
   view.setUint16(4, 1, true);
-  bytes[6] = 1;
-  bytes[7] = 1;
+  bytes[6] = width === 256 ? 0 : width;
+  bytes[7] = height === 256 ? 0 : height;
   view.setUint16(10, 1, true);
   view.setUint16(12, 32, true);
   view.setUint32(14, png.length, true);
