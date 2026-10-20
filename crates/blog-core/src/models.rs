@@ -24,6 +24,9 @@ pub struct SiteConfig {
     /// Optional author palette; absent or unsupported values use the Ink default.
     #[serde(rename = "themePalette", default, skip_serializing_if = "Option::is_none")]
     pub theme_palette: Option<String>,
+    /// Content-addressed uploaded SVG or ICO; absent values use the project icon.
+    #[serde(rename = "siteIcon", default, skip_serializing_if = "Option::is_none")]
+    pub site_icon: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -38,6 +41,7 @@ impl Default for SiteConfig {
             clarity_id: None,
             about: None,
             theme_palette: None,
+            site_icon: None,
         }
     }
 }

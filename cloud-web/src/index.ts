@@ -1,5 +1,6 @@
 import { readerHtml, readerEtag, discovery } from './reader';
 import admin from '../../cloud-admin/src/index';
+import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
 import { publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
@@ -77,6 +78,7 @@ export default {
       }
       if (path.startsWith('/api/') || editorAssets.has(path)) return admin.fetch(request, env);
       if (path.startsWith('/images/')) return publicImage(request, env.STORAGE);
+      if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE);
       if (!['GET', 'HEAD'].includes(request.method))
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),

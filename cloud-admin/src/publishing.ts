@@ -1,3 +1,4 @@
+import { ensureSiteIcon } from './site-icons';
 import type { CloudInkEnv } from './env';
 import {
   requiredPages,
@@ -77,6 +78,7 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
   } else if (data.rebuild !== true) throw new HttpError(400, '请选择要发布的文章或网站信息。');
   if (new TextEncoder().encode(JSON.stringify(release)).byteLength > 16_000_000)
     throw new HttpError(413, '网站内容超过当前版本的发布大小限制。');
+  await ensureSiteIcon(env.STORAGE, release.site);
   const pending: Publishing = {
     release_id: release.id,
     previous_id: base.id,

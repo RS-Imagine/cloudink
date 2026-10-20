@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 import { owner, password } from './fixture.mjs';
+import { verifySiteIcons } from './site-icon.browser.mjs';
 
 export async function verifyThemes(browser, origin, output, engine) {
   const context = await browser.newContext({
@@ -90,6 +91,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   await expect(staticPage.locator('article h1')).toBeVisible();
   await noScript.close();
   await verifyPalettePicker(browser, origin, output, engine);
+  await verifySiteIcons(browser, origin, output, engine);
   assert.deepEqual(errors, [], 'Theme smoke must have no browser errors: ' + engine);
 }
 
