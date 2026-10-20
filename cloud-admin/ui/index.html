@@ -691,12 +691,82 @@
                 </label>
                 <fieldset class="appearance-settings">
                   <legend>外观</legend>
-                  <label
-                    >主题色<select name="themePalette" aria-describedby="palette-help">
-                      <option value="ink">墨绿</option>
-                      <option value="neutral">中性灰蓝</option>
-                    </select></label
-                  >
+                  <fieldset class="palette-picker" aria-describedby="palette-help">
+                    <legend>主题色</legend>
+                    <div class="palette-options">
+                      <label class="palette-choice" title="墨绿">
+                        <input
+                          type="radio"
+                          name="themePalette"
+                          value="ink"
+                          aria-label="墨绿"
+                          checked
+                        />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-ink)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">墨绿</span>
+                      </label>
+                      <label class="palette-choice" title="灰蓝">
+                        <input type="radio" name="themePalette" value="neutral" aria-label="灰蓝" />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-neutral)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">灰蓝</span>
+                      </label>
+                      <label class="palette-choice" title="棕褐 Brown">
+                        <input
+                          type="radio"
+                          name="themePalette"
+                          value="brown"
+                          aria-label="棕褐 Brown"
+                        />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-brown)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">棕褐 Brown</span>
+                      </label>
+                      <label class="palette-choice" title="靛蓝">
+                        <input type="radio" name="themePalette" value="blue" aria-label="靛蓝" />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-blue)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">靛蓝</span>
+                      </label>
+                      <label class="palette-choice" title="紫藤">
+                        <input type="radio" name="themePalette" value="violet" aria-label="紫藤" />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-violet)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">紫藤</span>
+                      </label>
+                      <label class="palette-choice" title="玫瑰">
+                        <input type="radio" name="themePalette" value="rose" aria-label="玫瑰" />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-rose)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">玫瑰</span>
+                      </label>
+                    </div>
+                  </fieldset>
                   <p id="palette-help">
                     保存后应用到后台和预览；发布网站信息后，公开网页统一更新主题色。
                   </p>

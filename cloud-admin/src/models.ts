@@ -20,6 +20,11 @@ export interface Draft {
   front_matter: FrontMatter;
   body_markdown: string;
 }
+const themePalettes = ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose'] as const;
+type ThemePalette = (typeof themePalettes)[number];
+function isThemePalette(value: unknown): value is ThemePalette {
+  return themePalettes.some((palette) => palette === value);
+}
 export interface SiteConfig {
   title: string;
   bigTitle?: string;
@@ -29,7 +34,7 @@ export interface SiteConfig {
   footer?: string;
   clarityId?: string;
   about?: string;
-  themePalette?: 'ink' | 'neutral';
+  themePalette?: ThemePalette;
 }
 export interface Release {
   schema_version: 1;
@@ -120,8 +125,7 @@ export function validateSite(input: unknown): SiteConfig {
       throw new HttpError(400, '统计项目格式不正确。');
   }
   if (v.themePalette !== undefined) {
-    if (v.themePalette !== 'ink' && v.themePalette !== 'neutral')
-      throw new HttpError(400, '请选择支持的主题色。');
+    if (!isThemePalette(v.themePalette)) throw new HttpError(400, '请选择支持的主题色。');
     appearance.themePalette = v.themePalette;
   }
   return {

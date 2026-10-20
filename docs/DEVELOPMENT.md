@@ -37,14 +37,15 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 正式前台的 HTML 在 `crates/blog-core/src/render.rs`，共享样式和交互在同目录的 `assets/styles.css` 与 `assets/client.js`。原生构建和浏览器 WASM 发布使用相同模板；后台文章预览也使用这份样式。
 
-前后台与预览共享 `assets/design-tokens.css` 的明暗主题与墨绿/中性灰蓝主题色，
+前后台与预览共享 `assets/design-tokens.css` 的明暗主题与六套作者主题色（含棕褐 Brown），
 `assets/design-foundation.css` 提供按钮、输入、焦点与表面规则。
 Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复制颜色表。
 首页、阅读页、后台壳与写作工作流共享同一设计系统；[升级与验收](design/UI-2.0-RELEASE.md)记录最终回归、资源预算与回滚。
 
 唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
 后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
-作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral）。
+作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral/brown/blue/violet/rose）。
+后台通过有可访问名称、选中标记及焦点环的原生单选色块选择，强制颜色模式显示名称和原生控件。
 保存影响后台与预览，发布后应用到所有公开页；SSR 直接输出配色，Swup 同步后续页面配色。
 后台缓存不覆盖公开页面。文章预览同步明暗与主题色到禁用脚本的 iframe，沿用公开字体与样式。
 CSS 提供无脚本系统主题、普通圆角与不支持 color-mix 的回退，减少动态效果关闭过渡。

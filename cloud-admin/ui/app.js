@@ -91,9 +91,8 @@ async function startWorkspace({ focus = false } = {}) {
   }
 }
 function applySiteAppearance(config) {
-  const palette = config?.themePalette === 'neutral' ? 'neutral' : 'ink';
-  if (site) site.themePalette = palette;
-  window.CloudInkTheme?.setPalette(palette);
+  window.CloudInkTheme?.setPalette(config?.themePalette || 'ink');
+  if (site) site.themePalette = document.documentElement.dataset.palette || 'ink';
 }
 function notice(message, tone = 'info') {
   $('notice').dataset.tone = tone;
@@ -1252,7 +1251,9 @@ configureBackup({
   getSettingsEtag: () => settingsEtag,
   restored: (result) => {
     settingsEtag = result.etag;
-    for (const input of $('site-form').querySelectorAll('input,textarea,select[name]'))
+    for (const input of $('site-form').querySelectorAll(
+      'input:not([type=radio]),textarea,select[name]',
+    ))
       input.value = '';
     $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
     applySiteAppearance(result.site);

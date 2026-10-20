@@ -1,6 +1,12 @@
 /* Single source for public pages, the admin, and Rust/WASM previews. */
 :root {
   color-scheme: light;
+  --ci-palette-ink: #24594f;
+  --ci-palette-neutral: #40536b;
+  --ci-palette-brown: #805232;
+  --ci-palette-blue: #315bb5;
+  --ci-palette-violet: #6d4993;
+  --ci-palette-rose: #934760;
   --ci-light-bg: #f3f5f1;
   --ci-dark-bg: #141b17;
   --ci-light-surface: #fbfcf9;
@@ -17,7 +23,7 @@
   --ci-dark-outline: #88998b;
   --ci-light-divider: #dce3da;
   --ci-dark-divider: #3b4a3e;
-  --ci-light-primary: #24594f;
+  --ci-light-primary: var(--ci-palette-ink);
   --ci-dark-primary: #a4d3be;
   --ci-light-on-primary: #ffffff;
   --ci-dark-on-primary: #123c30;
@@ -146,7 +152,7 @@
   --ease: var(--ci-ease);
 }
 :root[data-palette='neutral'] {
-  --ci-light-primary: #40536b;
+  --ci-light-primary: var(--ci-palette-neutral);
   --ci-light-on-primary: #ffffff;
   --ci-light-primary-strong: #31445d;
   --ci-light-primary-container: #e0e7f0;
@@ -156,6 +162,70 @@
   --ci-dark-primary-strong: #d0def3;
   --ci-dark-primary-container: #2e4057;
   --ci-dark-on-primary-container: #d6e3f5;
+}
+:root[data-palette='brown'] {
+  --ci-light-bg: #f7f3ee;
+  --ci-dark-bg: #211a16;
+  --ci-light-surface: #fffcf8;
+  --ci-dark-surface: #2a211c;
+  --ci-light-elevated: #ffffff;
+  --ci-dark-elevated: #342a23;
+  --ci-light-container: #f0e8dd;
+  --ci-dark-container: #403329;
+  --ci-light-text: #30251e;
+  --ci-dark-text: #f3e5d8;
+  --ci-light-muted: #716052;
+  --ci-dark-muted: #d1bcaa;
+  --ci-light-outline: #968375;
+  --ci-dark-outline: #ad9580;
+  --ci-light-divider: #e5d9cd;
+  --ci-dark-divider: #57483c;
+  --ci-light-hover: #eee5da;
+  --ci-dark-hover: #44362b;
+  --ci-light-pressed: #e4d7c9;
+  --ci-dark-pressed: #503f31;
+  --ci-light-primary: var(--ci-palette-brown);
+  --ci-light-primary-strong: #6d4327;
+  --ci-light-primary-container: #f3e4d7;
+  --ci-light-on-primary-container: #5e391f;
+  --ci-dark-primary: #ebbc97;
+  --ci-dark-on-primary: #4b2c17;
+  --ci-dark-primary-strong: #f4ccae;
+  --ci-dark-primary-container: #4a3325;
+  --ci-dark-on-primary-container: #ffdcc1;
+}
+:root[data-palette='blue'] {
+  --ci-light-primary: var(--ci-palette-blue);
+  --ci-light-primary-strong: #254a9b;
+  --ci-light-primary-container: #e2eaff;
+  --ci-light-on-primary-container: #203e83;
+  --ci-dark-primary: #b6c8ff;
+  --ci-dark-on-primary: #142e65;
+  --ci-dark-primary-strong: #cbd7ff;
+  --ci-dark-primary-container: #293e70;
+  --ci-dark-on-primary-container: #dce5ff;
+}
+:root[data-palette='violet'] {
+  --ci-light-primary: var(--ci-palette-violet);
+  --ci-light-primary-strong: #5b397e;
+  --ci-light-primary-container: #eee3f8;
+  --ci-light-on-primary-container: #4e306d;
+  --ci-dark-primary: #d9baff;
+  --ci-dark-on-primary: #39224f;
+  --ci-dark-primary-strong: #e6d1ff;
+  --ci-dark-primary-container: #45305e;
+  --ci-dark-on-primary-container: #efdcff;
+}
+:root[data-palette='rose'] {
+  --ci-light-primary: var(--ci-palette-rose);
+  --ci-light-primary-strong: #7d3650;
+  --ci-light-primary-container: #f8e0e8;
+  --ci-light-on-primary-container: #702e46;
+  --ci-dark-primary: #ffb1c9;
+  --ci-dark-on-primary: #542033;
+  --ci-dark-primary-strong: #ffcbda;
+  --ci-dark-primary-container: #5c2d40;
+  --ci-dark-on-primary-container: #ffdae5;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {

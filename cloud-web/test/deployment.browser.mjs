@@ -43,19 +43,19 @@ try {
   await expect(page.locator('#deployment-form')).toHaveCount(0);
   await page.locator('#site-form input[name=title]').fill('Browser deployed blog');
   await page.locator('#site-form input[name=author]').fill('Reader');
-  await page.locator('#site-form select[name=themePalette]').selectOption('neutral');
+  await page.locator('#site-form input[name=themePalette][value=brown]').check();
   await page.locator('#site-form button[type=submit]').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
-  await expect(page.locator('html')).toHaveAttribute('data-palette', 'neutral');
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-palette', 'neutral');
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   const beforeThemePublish = await browser.newPage();
   await beforeThemePublish.goto('http://localhost:8791/');
   await expect(beforeThemePublish.locator('html')).toHaveAttribute('data-palette', 'ink');
   await beforeThemePublish.close();
   await page.locator('#settings').click();
-  await expect(page.locator('#site-form select[name=themePalette]')).toHaveValue('neutral');
+  await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#publish-banner')).toContainText('已上线');
@@ -66,7 +66,7 @@ try {
   );
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.hero h1')).toHaveText('Browser deployed blog');
-  await expect(live.locator('html')).toHaveAttribute('data-palette', 'neutral');
+  await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.locator('#new-post').click();
   await page.locator('#title').fill('Browser published mathematics');
   const body =
@@ -85,14 +85,14 @@ try {
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
   await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
     'data-palette',
-    'neutral',
+    'brown',
   );
   assert.equal(
     await page
       .frameLocator('#preview-frame')
       .locator('html')
       .evaluate((node) => getComputedStyle(node).getPropertyValue('--ci-primary').trim()),
-    '#40536b',
+    '#805232',
   );
   await expect
     .poll(() =>
@@ -107,6 +107,15 @@ try {
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
+  const noScript = await browser.newContext({ javaScriptEnabled: false, colorScheme: 'dark' });
+  const staticPage = await noScript.newPage();
+  await staticPage.goto('http://localhost:8791/');
+  await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
+  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(33, 26, 22)');
+  await staticPage.goto(`http://localhost:8791/posts/${slug}/`);
+  await expect(staticPage.locator('article h1')).toHaveText('Browser published mathematics');
+  await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
+  await noScript.close();
   // The preview embeds the same Rust stylesheet; headings must remain visible.
   await expect(page.frameLocator('#preview-frame').locator('.article-heading h1')).toBeVisible();
   const readingStyle = (node) => {
@@ -190,7 +199,7 @@ try {
   await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await live.setViewportSize({ width: 1280, height: 900 });
   await live.locator('#theme-toggle-btn').click();
-  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(243, 245, 241)');
+  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(247, 243, 238)');
   await live.screenshot({ path: resolve('cloud-web/dist/article.desktop.png'), fullPage: true });
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.post-card')).toHaveCount(1);
@@ -256,21 +265,35 @@ try {
   await expect(page.locator('#account-form')).toBeVisible();
   await expect(page.locator('#backup-card')).toBeVisible();
   await page.screenshot({ path: resolve('cloud-web/dist/settings.browser.png'), fullPage: true });
-  await page.locator('#site-form select[name=themePalette]').selectOption('ink');
+  await page.locator('#site-form input[name=themePalette][value=ink]').check();
   await page.locator('#site-form button[type=submit]').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'ink');
   await live.reload();
-  await expect(live.locator('html')).toHaveAttribute('data-palette', 'neutral');
+  await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
+  await page.locator('#site-form input[name=themePalette][value=brown]').check();
+  await page.locator('#save-site').click();
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   const downloaded = page.waitForEvent('download');
   await page.locator('#download-backup').click();
   const backup = await downloaded;
   const backupPath = resolve('cloud-web/dist/browser-backup.zip');
   await backup.saveAs(backupPath);
   await expect(page.locator('#backup-status')).toContainText('1 张图片');
+  await page.locator('#site-form input[name=themePalette][value=blue]').check();
+  await page.locator('#save-site').click();
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'blue');
   await page.locator('#backup-file').setInputFiles(backupPath);
   await acceptConfirmation(page);
   await expect(page.locator('#backup-status')).toContainText('已恢复');
+  await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
+  assert.deepEqual(
+    await page
+      .locator('#site-form input[name=themePalette]')
+      .evaluateAll((inputs) => inputs.map((input) => input.value)),
+    ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose'],
+  );
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

@@ -251,7 +251,10 @@ fn page(
     // Build the document in segments to avoid a 500-line format! string with
     // escaped braces.  Each segment is a distinct format! call or a raw push.
     let mut html = String::with_capacity(16_384);
-    let palette = if config.theme_palette.as_deref() == Some("neutral") { "neutral" } else { "ink" };
+    let palette = match config.theme_palette.as_deref() {
+        Some(value @ ("ink" | "neutral" | "brown" | "blue" | "violet" | "rose")) => value,
+        _ => "ink",
+    };
 
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(

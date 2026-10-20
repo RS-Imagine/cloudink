@@ -150,7 +150,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
     await page.evaluate((theme) => CloudInkTheme.setMode(theme), theme);
     await page.evaluate(() => CloudInkTheme.setEffects('auto'));
     await expect(root).toHaveAttribute('data-effects', enabled);
-    for (const palette of ['ink', 'neutral']) {
+    for (const palette of ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose']) {
       await page.evaluate((palette) => CloudInkTheme.setPalette(palette), palette);
       await openReaderMenu(page);
       if (supported) {

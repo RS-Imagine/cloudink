@@ -58,3 +58,23 @@ test('author palette is validated, concurrency guarded and published independent
   assert.equal((await (await f.request('/api/posts')).json()).appearance.themePalette, 'ink');
   assert.match(await (await f.request('/')).text(), /data-palette="neutral"/);
 });
+
+test('all six author palettes persist without changing published settings', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  let current = await (await f.request('/api/settings')).json();
+  for (const themePalette of ['ink', 'neutral', 'blue', 'violet', 'rose', 'brown']) {
+    const response = await f.request('/api/settings', 'PUT', {
+      site: { ...current.site, themePalette },
+      etag: current.etag,
+    });
+    assert.equal(response.status, 200);
+    current = await response.json();
+    assert.equal(current.site.themePalette, themePalette);
+    const posts = await (await f.request('/api/posts')).json();
+    assert.equal(posts.appearance.themePalette, themePalette);
+    assert.equal(posts.site.themePalette, undefined);
+  }
+  const release = await f.prepare({ settings: true });
+  assert.equal(release.browser_release.site.themePalette, 'brown');
+});
