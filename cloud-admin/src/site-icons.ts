@@ -365,7 +365,7 @@ async function validateIconPng(
     }
     offset = next;
   }
-  invalid();
+  return invalid();
 }
 async function validateIco(bytes: Uint8Array): Promise<void> {
   let decoded = 0;
