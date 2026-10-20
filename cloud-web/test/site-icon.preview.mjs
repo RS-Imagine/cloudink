@@ -56,7 +56,7 @@ try {
   } else {
     const urls = [...new Set(result.stdout.match(/https:\/\/[A-Za-z0-9.-]+\.workers\.dev/g) || [])];
     const url = urls.find((value) => new URL(value).hostname.startsWith('feat-custom-site-icon-'));
-    assert.ok(url, 'Preview URL missing from Wrangler JSON');
+    assert.ok(url, 'Enable Preview URLs for the existing Worker before running this test');
     console.log(JSON.stringify({ deployedPreview: url, isolatedStorage: true }));
     const smoke = spawnSync('node', ['cloud-web/test/site-icon.remote.mjs'], {
       env: {

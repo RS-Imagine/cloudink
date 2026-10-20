@@ -168,3 +168,21 @@ test('SVG and ICO backups restore across buckets without changing live settings 
     assert.equal((await (await target.request('/api/posts')).json()).site.siteIcon, undefined);
   }
 });
+
+test('backup icon restore stores canonical sanitized bytes even for an active SVG payload', async (t) => {
+  const source = await fixture(t);
+  await source.login();
+  const icon = await upload(source);
+  const clean = await (await source.request(icon.url)).text();
+  const active = clean.replace('</svg>', '<script>alert(1)</script></svg>');
+  const target = await fixture(t);
+  await target.login();
+  const path = '/api/backup/image?key=' + encodeURIComponent(icon.key);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const restored = await target.request(path, 'PUT', new TextEncoder().encode(active));
+    assert.equal(restored.status, 200, await restored.clone().text());
+    const stored = await (await target.request(icon.url)).text();
+    assert.equal(stored, clean);
+    assert.doesNotMatch(stored, /<script/i);
+  }
+});

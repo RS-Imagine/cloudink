@@ -19,10 +19,16 @@ const token = process.env.CLOUDINK_ICON_PREVIEW_SETUP;
 assert.ok(token && token.length >= 16, 'Dedicated Preview setup token required');
 const email = 'icon-preview@example.invalid';
 const password = 'CloudInk-icon-preview-only-2026';
+const access = {};
+if (process.env.CF_ACCESS_CLIENT_ID || process.env.CF_ACCESS_CLIENT_SECRET) {
+  assert.ok(process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET, 'Both CI Access credentials are required');
+  access['CF-Access-Client-Id'] = process.env.CF_ACCESS_CLIENT_ID;
+  access['CF-Access-Client-Secret'] = process.env.CF_ACCESS_CLIENT_SECRET;
+}
 let cookie = '',
   csrf = '';
 async function request(path, method = 'GET', body) {
-  const headers = new Headers({ Origin: target.origin });
+  const headers = new Headers({ ...access, Origin: target.origin });
   if (cookie) headers.set('Cookie', cookie);
   if (csrf) headers.set('X-CSRF-Token', csrf);
   if (body !== undefined)
@@ -51,12 +57,15 @@ async function request(path, method = 'GET', body) {
   );
   return response;
 }
-const config = await (await request('/api/config')).json();
+const ready = await request('/api/config');
+assert.match(ready.headers.get('Content-Type') || '', /application\/json/, 'Preview API is protected or unavailable; configure CI Access service credentials when required');
+const config = await ready.json();
 let session;
 if (!config.initialized) {
   session = await fetch(new URL('/api/setup', target), {
     method: 'POST',
     headers: {
+      ...access,
       Origin: target.origin,
       Authorization: 'Bearer ' + token,
       'Content-Type': 'application/json',

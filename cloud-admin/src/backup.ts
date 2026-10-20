@@ -219,7 +219,8 @@ export async function backupRoute(
       (!('key' in type) || type.key !== key || bytes.length > MAX_SITE_ICON)
     )
       throw new HttpError(400, '备份图标与其内容地址不一致。');
-    const saved = await env.STORAGE.put(key, bytes, {
+    const content = 'bytes' in type ? type.bytes : bytes;
+    const saved = await env.STORAGE.put(key, content, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
@@ -227,9 +228,9 @@ export async function backupRoute(
       const old = await env.STORAGE.get(key);
       if (
         !old ||
-        old.size !== bytes.byteLength ||
+        old.size !== content.byteLength ||
         !crypto.subtle.timingSafeEqual(
-          await crypto.subtle.digest('SHA-256', bytes),
+          await crypto.subtle.digest('SHA-256', content),
           await crypto.subtle.digest('SHA-256', await old.arrayBuffer()),
         )
       )
