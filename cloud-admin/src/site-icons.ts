@@ -165,49 +165,74 @@ async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
   if (output.length > MAX_SITE_ICON) throw new HttpError(413, '网站图标最多 256 KB。');
   return output;
 }
+const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
+  for (let bit = 0; bit < 8; bit++) value = (value >>> 1) ^ ((value & 1) ? 0xedb88320 : 0);
+  return value >>> 0;
+});
+function pngCrc(bytes: Uint8Array): number {
+  let value = 0xffffffff;
+  for (const byte of bytes) value = (value >>> 8) ^ crcTable[(value ^ byte) & 255];
+  return (value ^ 0xffffffff) >>> 0;
+}
+function validateIconPng(payload: Uint8Array, width: number, height: number): void {
+  const invalid = () => { throw new HttpError(400, 'ICO 中的 PNG 图像不完整或校验失败。'); };
+  const data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  let offset = 8, chunks = 0, imageData = false, endedData = false, palette = false, color = -1;
+  while (offset + 12 <= payload.length) {
+    if (++chunks > 4096) invalid();
+    const length = data.getUint32(offset), next = offset + length + 12;
+    if (next > payload.length) invalid();
+    const type = String.fromCharCode(...payload.subarray(offset + 4, offset + 8));
+    if (!/^[A-Za-z]{4}$/.test(type) || pngCrc(payload.subarray(offset + 4, next - 4)) !== data.getUint32(next - 4)) invalid();
+    if (chunks === 1) {
+      if (type !== 'IHDR' || length !== 13 || data.getUint32(offset + 8) !== width || data.getUint32(offset + 12) !== height) invalid();
+      const depth = payload[offset + 16];
+      color = payload[offset + 17];
+      const depths: Record<number, number[]> = { 0: [1,2,4,8,16], 2: [8,16], 3: [1,2,4,8], 4: [8,16], 6: [8,16] };
+      if (!depths[color]?.includes(depth) || payload[offset + 18] !== 0 || payload[offset + 19] !== 0 || payload[offset + 20] > 1) invalid();
+    } else if (type === 'IHDR') invalid();
+    else if (type === 'PLTE') {
+      if (palette || imageData || !length || length > 768 || length % 3 !== 0 || color === 0 || color === 4) invalid();
+      palette = true;
+    } else if (type === 'IDAT') {
+      if (endedData || (color === 3 && !palette)) invalid();
+      if (length) imageData = true;
+    } else if (type === 'IEND') {
+      if (length !== 0 || !imageData || next !== payload.length) invalid();
+      return;
+    } else {
+      if (type[0] === type[0].toUpperCase()) invalid();
+      if (imageData) endedData = true;
+    }
+    offset = next;
+  }
+  invalid();
+}
 function validateIco(bytes: Uint8Array): void {
-  const invalid = () => {
-    throw new HttpError(400, 'ICO 文件结构无效，请重新导出图标。');
-  };
+  const invalid = () => { throw new HttpError(400, 'ICO 文件结构无效或图像数据不完整，请重新导出图标。'); };
   if (bytes.length < 22) invalid();
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const count = view.getUint16(4, true);
-  if (
-    view.getUint16(0, true) !== 0 ||
-    view.getUint16(2, true) !== 1 ||
-    count < 1 ||
-    count > 64 ||
-    6 + count * 16 > bytes.length
-  )
-    invalid();
+  if (view.getUint16(0, true) !== 0 || view.getUint16(2, true) !== 1 || count < 1 || count > 64 || 6 + count * 16 > bytes.length) invalid();
   for (let i = 0; i < count; i++) {
-    const entry = 6 + i * 16,
-      size = view.getUint32(entry + 8, true),
-      offset = view.getUint32(entry + 12, true);
-    if (offset < 6 + count * 16 || size < 24 || offset + size > bytes.length) invalid();
-    const payload = bytes.subarray(offset, offset + size),
-      data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
-    const width = bytes[entry] || 256,
-      height = bytes[entry + 1] || 256;
-    const png = [137, 80, 78, 71, 13, 10, 26, 10].every((v, n) => payload[n] === v);
+    const entry = 6 + i * 16, size = view.getUint32(entry + 8, true), offset = view.getUint32(entry + 12, true);
+    if (bytes[entry + 3] !== 0 || offset < 6 + count * 16 || size < 24 || offset + size > bytes.length) invalid();
+    const payload = bytes.subarray(offset, offset + size), data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+    const width = bytes[entry] || 256, height = bytes[entry + 1] || 256;
+    const png = [137,80,78,71,13,10,26,10].every((v, n) => payload[n] === v);
     if (png) {
-      if (
-        data.getUint32(8) !== 13 ||
-        data.getUint32(12) !== 0x49484452 ||
-        data.getUint32(16) !== width ||
-        data.getUint32(20) !== height
-      )
-        invalid();
+      validateIconPng(payload, width, height);
     } else {
-      if (
-        size < 40 ||
-        ![40, 108, 124].includes(data.getUint32(0, true)) ||
-        data.getInt32(4, true) !== width ||
-        data.getInt32(8, true) !== height * 2 ||
-        data.getUint16(12, true) !== 1 ||
-        ![1, 4, 8, 16, 24, 32].includes(data.getUint16(14, true))
-      )
-        invalid();
+      if (size < 40) invalid();
+      const header = data.getUint32(0, true), depth = data.getUint16(14, true), compression = data.getUint32(16, true), colors = data.getUint32(32, true);
+      if (![40,108,124].includes(header) || size < header || data.getInt32(4, true) !== width || data.getInt32(8, true) !== height * 2 || data.getUint16(12, true) !== 1 || ![1,4,8,16,24,32].includes(depth) || ![0,3,6].includes(compression) || (compression !== 0 && ![16,32].includes(depth))) invalid();
+      if (colors > 256 || (depth <= 8 && colors > 2 ** depth)) invalid();
+      const palette = colors || (depth <= 8 ? 2 ** depth : 0);
+      const masks = header === 40 && compression !== 0 ? (compression === 6 ? 16 : 12) : 0;
+      const pixels = Math.ceil(width * depth / 32) * 4 * height;
+      const mask = Math.ceil(width / 32) * 4 * height;
+      const imageSize = data.getUint32(20, true);
+      if (header + masks + palette * 4 + pixels + mask > size || (imageSize !== 0 && (imageSize < pixels || imageSize > size - header - masks - palette * 4))) invalid();
     }
   }
 }

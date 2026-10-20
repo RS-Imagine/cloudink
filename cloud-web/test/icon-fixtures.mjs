@@ -1,14 +1,30 @@
 import { Buffer } from 'node:buffer';
+import { crc32, deflateSync } from 'node:zlib';
 export const svgIcon =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ink"><stop offset="0" stop-color="#805232"/><stop offset="1" stop-color="#24594f"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#ink)"/><path d="M16 44 42 18 48 24 22 50H16Z" fill="white"/></svg>';
 export const svgBytes = new TextEncoder().encode(svgIcon);
 export function pngIcoBytes() {
-  const png = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=',
-    'base64',
-  );
-  const bytes = new Uint8Array(22 + png.length),
-    view = new DataView(bytes.buffer);
+  function chunk(type, content) {
+    const bytes = Buffer.alloc(content.length + 12);
+    bytes.writeUInt32BE(content.length, 0);
+    bytes.write(type, 4, 4, 'ascii');
+    bytes.set(content, 8);
+    bytes.writeUInt32BE(crc32(bytes.subarray(4, content.length + 8)), content.length + 8);
+    return bytes;
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(1, 0);
+  header.writeUInt32BE(1, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const png = Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(Buffer.from([0, 128, 82, 50, 255]))),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+  const bytes = new Uint8Array(22 + png.length);
+  const view = new DataView(bytes.buffer);
   view.setUint16(2, 1, true);
   view.setUint16(4, 1, true);
   bytes[6] = 1;
@@ -20,7 +36,6 @@ export function pngIcoBytes() {
   bytes.set(png, 22);
   return bytes;
 }
-
 export function icoBytes() {
   const size = 32;
   const pixels = size * size * 4;

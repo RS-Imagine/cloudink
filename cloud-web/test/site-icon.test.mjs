@@ -187,3 +187,22 @@ test('backup icon restore stores canonical sanitized bytes even for an active SV
     assert.doesNotMatch(stored, /<script/i);
   }
 });
+
+test('ICO validation rejects header-only payloads, missing bitmap masks and incomplete or corrupted PNG chunks', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const truncatedDib = icoBytes().slice(0, 62);
+  const truncatedPng = pngIcoBytes().slice(0, 46);
+  const missingMask = icoBytes().slice(0, -1);
+  const missingEnd = pngIcoBytes().slice(0, -12);
+  for (const bytes of [truncatedDib, truncatedPng, missingMask, missingEnd])
+    new DataView(bytes.buffer, bytes.byteOffset).setUint32(14, bytes.length - 22, true);
+  const badCrc = pngIcoBytes();
+  badCrc[badCrc.length - 1] ^= 1;
+  for (const bytes of [truncatedDib, truncatedPng, missingMask, missingEnd, badCrc]) {
+    const response = await f.request('/api/site-icon', 'POST', bytes);
+    assert.equal(response.status, 400, await response.clone().text());
+  }
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  assert.equal((await bucket.list({ prefix: 'uploads/icons/' })).objects.length, 0);
+});

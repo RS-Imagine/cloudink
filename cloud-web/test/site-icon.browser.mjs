@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 import { owner, password } from './fixture.mjs';
-import { svgBytes, icoBytes } from './icon-fixtures.mjs';
+import { svgBytes, icoBytes, pngIcoBytes } from './icon-fixtures.mjs';
 
 export async function verifySiteIcons(browser, origin, output, engine) {
   const context = await browser.newContext({
@@ -22,10 +22,12 @@ export async function verifySiteIcons(browser, origin, output, engine) {
   await expect(page.locator('#home-view')).toBeVisible();
   await page.locator('#settings').click();
   const uploaded = new Set();
-  for (const [ext, bytes, mimeType] of [
+  for (const [kind, bytes, mimeType] of [
     ['svg', svgBytes, 'image/svg+xml'],
     ['ico', icoBytes(), 'image/x-icon'],
+    ['ico-png', pngIcoBytes(), 'image/x-icon'],
   ]) {
+    const ext = kind === 'svg' ? 'svg' : 'ico';
     const chooser = page.waitForEvent('filechooser');
     await page.locator('#upload-site-icon').click();
     await (await chooser).setFiles({ name: 'site.' + ext, mimeType, buffer: Buffer.from(bytes) });
@@ -35,7 +37,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
     assert.match(key, new RegExp('^uploads/icons/[a-f0-9]{64}\\.' + ext + '$'));
     console.log(
       JSON.stringify({
-        iconDecode: { engine, ext, key },
+        iconDecode: { engine, kind, key },
         image: await page.locator('#site-icon-preview').evaluate((image) => ({
           src: image.getAttribute('src'),
           currentSrc: image.currentSrc,
@@ -76,7 +78,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
         false,
       );
       await page.screenshot({
-        path: resolve(output, 'site-icon-' + ext + '-' + width + '-' + engine + '.png'),
+        path: resolve(output, 'site-icon-' + kind + '-' + width + '-' + engine + '.png'),
         fullPage: true,
       });
     }
