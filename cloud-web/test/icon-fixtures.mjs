@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 export const svgIcon =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ink"><stop offset="0" stop-color="#805232"/><stop offset="1" stop-color="#24594f"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#ink)"/><path d="M16 44 42 18 48 24 22 50H16Z" fill="white"/></svg>';
 export const svgBytes = new TextEncoder().encode(svgIcon);
-export function icoBytes() {
+export function pngIcoBytes() {
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=',
     'base64',
@@ -18,5 +18,35 @@ export function icoBytes() {
   view.setUint32(14, png.length, true);
   view.setUint32(18, 22, true);
   bytes.set(png, 22);
+  return bytes;
+}
+
+export function icoBytes() {
+  const size = 32;
+  const pixels = size * size * 4;
+  const mask = size * 4;
+  const bytes = new Uint8Array(22 + 40 + pixels + mask);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = size;
+  bytes[7] = size;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, 32, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, 40, true);
+  view.setInt32(26, size, true);
+  view.setInt32(30, size * 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, 32, true);
+  view.setUint32(42, pixels, true);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = 62 + (y * size + x) * 4;
+      const pen = x >= 8 && x <= 24 && Math.abs(x + y - 31) <= 2;
+      bytes.set(pen ? [248, 252, 255, 255] : [50, 82, 128, 255], offset);
+    }
+  }
   return bytes;
 }

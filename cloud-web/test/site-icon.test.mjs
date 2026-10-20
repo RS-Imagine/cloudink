@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
-import { svgBytes, icoBytes } from './icon-fixtures.mjs';
+import { svgBytes, icoBytes, pngIcoBytes } from './icon-fixtures.mjs';
 
 async function upload(f, bytes = svgBytes) {
   const response = await f.request('/api/site-icon', 'POST', bytes);
@@ -43,6 +43,7 @@ test('site icons require authentication/CSRF and validate actual SVG/ICO bytes a
     broken = ico.slice();
   new DataView(broken.buffer).setUint32(18, 0xffffffff, true);
   assert.equal((await f.request('/api/site-icon', 'POST', broken)).status, 400);
+  await upload(f, pngIcoBytes());
   const icon = await upload(f, ico);
   assert.match(icon.key, /^uploads\/icons\/[a-f0-9]{64}\.ico$/);
   assert.equal((await f.request(icon.url)).headers.get('Content-Type'), 'image/x-icon');

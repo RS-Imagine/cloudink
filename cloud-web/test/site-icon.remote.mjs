@@ -21,7 +21,10 @@ const email = 'icon-preview@example.invalid';
 const password = 'CloudInk-icon-preview-only-2026';
 const access = {};
 if (process.env.CF_ACCESS_CLIENT_ID || process.env.CF_ACCESS_CLIENT_SECRET) {
-  assert.ok(process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET, 'Both CI Access credentials are required');
+  assert.ok(
+    process.env.CF_ACCESS_CLIENT_ID && process.env.CF_ACCESS_CLIENT_SECRET,
+    'Both CI Access credentials are required',
+  );
   access['CF-Access-Client-Id'] = process.env.CF_ACCESS_CLIENT_ID;
   access['CF-Access-Client-Secret'] = process.env.CF_ACCESS_CLIENT_SECRET;
 }
@@ -58,7 +61,11 @@ async function request(path, method = 'GET', body) {
   return response;
 }
 const ready = await request('/api/config');
-assert.match(ready.headers.get('Content-Type') || '', /application\/json/, 'Preview API is protected or unavailable; configure CI Access service credentials when required');
+assert.match(
+  ready.headers.get('Content-Type') || '',
+  /application\/json/,
+  'Preview API is protected or unavailable; configure CI Access service credentials when required',
+);
 const config = await ready.json();
 let session;
 if (!config.initialized) {
