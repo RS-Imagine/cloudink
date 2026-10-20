@@ -88,7 +88,7 @@ function safeValue(name: string, value: string): boolean {
 async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
   let input: string;
   try {
-    input = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    input = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes);
   } catch {
     throw new HttpError(400, 'SVG 必须使用 UTF-8 编码。');
   }

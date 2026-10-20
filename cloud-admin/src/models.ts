@@ -115,7 +115,7 @@ export function parseSource(source: string): Draft {
 export function serializeDraft(draft: Draft): string {
   return `+++\n${stringify({ ...draft.front_matter })}+++\n\n${draft.body_markdown}`;
 }
-export function validSiteIconKey(value: unknown): value is string {
+export function validSiteIconKey(value: unknown): boolean {
   return typeof value === 'string' && /^uploads\/icons\/[a-f0-9]{64}\.(?:svg|ico)$/.test(value);
 }
 export function validateSite(input: unknown): SiteConfig {
@@ -133,7 +133,7 @@ export function validateSite(input: unknown): SiteConfig {
     appearance.themePalette = v.themePalette;
   }
   if (v.siteIcon !== undefined) {
-    if (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon))
+    if (typeof v.siteIcon !== 'string' || (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon)))
       throw new HttpError(400, '网站图标地址不正确。');
     appearance.siteIcon = v.siteIcon;
   }

@@ -1,0 +1,27 @@
+name: Format icon feature sources
+on:
+  pull_request:
+    branches: [master]
+permissions:
+  contents: read
+jobs:
+  format-sources:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Return canonical formatting for changed project files
+        run: |
+          node --input-type=module <<'NODE'
+          import prettier from 'prettier';
+          import { readFile } from 'node:fs/promises';
+          const files = ["cloud-admin/src/site-icons.ts","cloud-admin/src/models.ts","cloud-admin/src/media.ts","cloud-admin/src/index.ts","cloud-admin/src/image-library.ts","cloud-web/src/index.ts","cloud-admin/src/publishing.ts","cloud-admin/src/backup.ts","cloud-admin/ui/site-icon.js","cloud-admin/ui/app.js","cloud-admin/ui/index.html","cloud-admin/ui/workflows.css","cloud-web/test/icon-fixtures.mjs","cloud-web/test/site-icon.test.mjs","cloud-web/test/site-icon.browser.mjs","cloud-web/test/theme.browser.mjs","cloud-web/test/deployment.browser.mjs","scripts/ui-audit.mjs","README.md","docs/DEVELOPMENT.md","cloud-web/test/site-icon.remote.mjs"];
+          for (const path of files) {
+            const source = await readFile(path, 'utf8');
+            const formatted = await prettier.format(source, { ...await prettier.resolveConfig(path), filepath: path });
+            if (source !== formatted) console.log('CLOUDINK_FORMAT_FILE ' + path + ' ' + Buffer.from(formatted).toString('base64'));
+          }
+          NODE
