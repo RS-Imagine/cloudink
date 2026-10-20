@@ -7,19 +7,20 @@
     "ui": "node build-ui.mjs"
   },
   "dependencies": {
-    "smol-toml": "^1.4.2",
+    "fflate": "^0.8.2",
     "highlight.js": "^11.11.1",
-    "fflate": "^0.8.2"
+    "saxes": "6.0.0",
+    "smol-toml": "^1.4.2"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
-    "wrangler": "latest",
-    "typescript": "latest",
-    "tsx": "latest",
-    "esbuild": "latest",
-    "wasm-pack": "latest",
+    "@playwright/test": "latest",
     "@types/node": "latest",
+    "esbuild": "latest",
     "miniflare": "latest",
-    "@playwright/test": "latest"
+    "tsx": "latest",
+    "typescript": "latest",
+    "wasm-pack": "latest",
+    "wrangler": "latest"
   }
 }

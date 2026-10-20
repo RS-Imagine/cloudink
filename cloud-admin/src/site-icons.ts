@@ -87,14 +87,18 @@ function safeValue(name: string, value: string): boolean {
   return /^[A-Za-z0-9.,%()+:\-\s]*$/.test(value);
 }
 function validateSvgDocument(source: string): void {
-  let depth = 0, nodes = 0;
+  let depth = 0,
+    nodes = 0;
   try {
     const parser = new SaxesParser({ xmlns: true });
     parser.on('opentag', (tag) => {
-      if (++depth > 128 || ++nodes > 5000) throw new HttpError(413, 'SVG 图标过于复杂，请简化后上传。');
+      if (++depth > 128 || ++nodes > 5000)
+        throw new HttpError(413, 'SVG 图标过于复杂，请简化后上传。');
       if (depth === 1 && tag.name !== 'svg') throw new HttpError(400, 'SVG 需要一个完整的根元素。');
     });
-    parser.on('closetag', () => { depth--; });
+    parser.on('closetag', () => {
+      depth--;
+    });
     parser.write(source).close();
   } catch (error) {
     if (error instanceof HttpError) throw error;
@@ -194,28 +198,65 @@ function pngCrc(bytes: Uint8Array): number {
   return (value ^ 0xffffffff) >>> 0;
 }
 async function validatePngPixels(
-  chunks: Uint8Array[], width: number, height: number, depth: number, color: number,
-  interlace: number, remaining: number,
+  chunks: Uint8Array[],
+  width: number,
+  height: number,
+  depth: number,
+  color: number,
+  interlace: number,
+  remaining: number,
 ): Promise<number> {
-  const invalid = (): never => { throw new HttpError(400, 'ICO 中的 PNG 压缩数据或扫描行无效。'); };
+  const invalid = (): never => {
+    throw new HttpError(400, 'ICO 中的 PNG 压缩数据或扫描行无效。');
+  };
   const channels: Record<number, number> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
   const bits = channels[color] * depth;
   const rows: number[] = [];
-  const passes = interlace ? [[0,0,8,8],[4,0,8,8],[0,4,4,8],[2,0,4,4],[0,2,2,4],[1,0,2,2],[0,1,1,2]] : [[0,0,1,1]];
+  const passes = interlace
+    ? [
+        [0, 0, 8, 8],
+        [4, 0, 8, 8],
+        [0, 4, 4, 8],
+        [2, 0, 4, 4],
+        [0, 2, 2, 4],
+        [1, 0, 2, 2],
+        [0, 1, 1, 2],
+      ]
+    : [[0, 0, 1, 1]];
   for (const [x, y, dx, dy] of passes) {
     const w = width > x ? Math.ceil((width - x) / dx) : 0;
     const h = height > y ? Math.ceil((height - y) / dy) : 0;
-    if (w) for (let row = 0; row < h; row++) rows.push(1 + Math.ceil(w * bits / 8));
+    if (w) for (let row = 0; row < h; row++) rows.push(1 + Math.ceil((w * bits) / 8));
   }
   const expected = rows.reduce((sum, length) => sum + length, 0);
-  if (expected > remaining) throw new HttpError(413, '图标解码后的内容过大，请减少图标尺寸或数量。');
+  if (expected > remaining)
+    throw new HttpError(413, '图标解码后的内容过大，请减少图标尺寸或数量。');
   const compressed = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
   let offset = 0;
-  for (const chunk of chunks) { compressed.set(chunk, offset); offset += chunk.length; }
-  const body = new Response(compressed).body;
-  if (!body) invalid();
+  for (const chunk of chunks) {
+    compressed.set(chunk, offset);
+    offset += chunk.length;
+  }
+  let position = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (position === compressed.length) {
+        controller.close();
+        return;
+      }
+      const end = Math.min(position + 256, compressed.length);
+      controller.enqueue(compressed.subarray(position, end));
+      position = end;
+    },
+    cancel() {
+      position = compressed.length;
+    },
+  });
   const reader = body.pipeThrough(new DecompressionStream('deflate')).getReader();
-  let count = 0, row = 0, column = 0, finished = false;
+  let count = 0,
+    row = 0,
+    column = 0,
+    finished = false;
   try {
     for (;;) {
       const item = await reader.read();
@@ -223,7 +264,10 @@ async function validatePngPixels(
       if (item.value.length > expected - count) invalid();
       for (const byte of item.value) {
         if (!column && byte > 4) invalid();
-        if (++column === rows[row]) { row++; column = 0; }
+        if (++column === rows[row]) {
+          row++;
+          column = 0;
+        }
       }
       count += item.value.length;
     }
@@ -238,13 +282,19 @@ async function validatePngPixels(
   if (count !== expected || row !== rows.length || column !== 0) invalid();
   return expected;
 }
-async function validateIconPng(payload: Uint8Array, width: number, height: number, remaining: number): Promise<number> {
+async function validateIconPng(
+  payload: Uint8Array,
+  width: number,
+  height: number,
+  remaining: number,
+): Promise<number> {
   const invalid = (): never => {
     throw new HttpError(400, 'ICO 中的 PNG 图像不完整或校验失败。');
   };
   const data = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
   const compressed: Uint8Array[] = [];
-  let depth = 0, interlace = 0;
+  let depth = 0,
+    interlace = 0;
   let offset = 8,
     chunks = 0,
     imageData = false,
