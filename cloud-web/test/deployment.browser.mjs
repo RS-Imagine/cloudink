@@ -342,8 +342,10 @@ try {
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#publish-banner')).toContainText('已上线');
-  await live.reload();
+  await live.locator('.post-card h2 a').first().click();
+  await expect(live.locator('article h1')).toBeVisible();
   await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
+  await expect(live.locator('.site-mark img')).toHaveAttribute('src', '/favicon.svg');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

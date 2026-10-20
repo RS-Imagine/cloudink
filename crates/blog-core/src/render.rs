@@ -349,7 +349,7 @@ fn page(
         </div>
       </div>
     </header>
-    <main id="swup" class="transition-fade" data-palette="{palette}" data-page="{page_kind}" tabindex="-1">
+    <main id="swup" class="transition-fade" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
       {body}
     </main>
     <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div><div class="reader-preferences"><label class="theme-mode">外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label class="theme-mode" data-effects-control hidden>视觉效果<select data-effects-mode aria-label="视觉效果"><option value="auto">自动</option><option value="off">简洁（不透明）</option></select></label></div></footer>

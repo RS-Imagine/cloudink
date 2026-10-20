@@ -51,7 +51,7 @@ test('SVG icons are sanitized and immutable, with GET/HEAD/304 and no arbitrary 
   const f = await fixture(t);
   await f.login();
   const raw =
-    '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)" viewBox="0 0 24 24"><script>alert(1)</script><foreignObject><iframe src="https://evil.test"/></foreignObject><style>path{fill:url(https://evil.test)}</style><path d="M0 0h24v24H0Z" fill="url(https://evil.test)" style="background:url(https://evil.test)"/><use href="https://evil.test/x.svg#x"/><rect id="safe" width="2" height="2" fill="#805232"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)" viewBox="0 0 24 24"><script>alert(1)</script><foreignObject><iframe src="https://evil.test"></iframe></foreignObject><style>path{fill:url(https://evil.test)}</style><path d="M0 0h24v24H0Z" fill="url(https://evil.test)" style="background:url(https://evil.test)"/><use href="https://evil.test/x.svg#x"/><rect id="safe" width="2" height="2" fill="#805232"/></svg>';
   const icon = await upload(f, new TextEncoder().encode(raw));
   const response = await f.request(icon.url),
     text = await response.text();
