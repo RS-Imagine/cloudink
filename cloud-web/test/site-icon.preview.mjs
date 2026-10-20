@@ -6,7 +6,10 @@ import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 const bucket = process.env.CLOUDINK_PREVIEW_STORAGE;
-assert.ok(bucket && /^[a-z0-9-]+-test$/.test(bucket), 'A dedicated bucket ending in -test is required');
+assert.ok(
+  bucket && /^[a-z0-9-]+-test$/.test(bucket),
+  'A dedicated bucket ending in -test is required',
+);
 const worker = process.env.CLOUDINK_PREVIEW_WORKER || 'cloudink';
 const token = randomBytes(24).toString('hex');
 const path = resolve('build-work/icon-preview.wrangler.json');
@@ -25,7 +28,9 @@ const config = {
   previews: {
     vars: { SETUP_TOKEN: token },
     r2_buckets: [{ binding: 'STORAGE', bucket_name: bucket }],
-    ratelimits: [{ name: 'LOGIN_LIMITER', namespace_id: '2021', simple: { limit: 50, period: 60 } }],
+    ratelimits: [
+      { name: 'LOGIN_LIMITER', namespace_id: '2021', simple: { limit: 50, period: 60 } },
+    ],
     observability: { enabled: true },
   },
 };
@@ -33,7 +38,16 @@ await writeFile(path, JSON.stringify(config), { mode: 0o600 });
 try {
   const result = spawnSync(
     'npx',
-    ['wrangler', 'preview', '--config', path, '--name', 'feat/custom-site-icon', '--ignore-base-config', '--json'],
+    [
+      'wrangler',
+      'preview',
+      '--config',
+      path,
+      '--name',
+      'feat/custom-site-icon',
+      '--ignore-base-config',
+      '--json',
+    ],
     { encoding: 'utf8', maxBuffer: 8_000_000 },
   );
   if (result.status !== 0) {
