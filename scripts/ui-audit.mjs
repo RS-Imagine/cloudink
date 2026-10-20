@@ -36,7 +36,7 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: 'ad1b86a2099dfe9ea3a1998a6ad416c5e4e1ad79',
+  upstream: '0350efa2594d013c289076e8f02bac2d3a551b97',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
