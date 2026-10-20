@@ -21,6 +21,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
   await page.locator('#settings').click();
+  const uploaded = new Set();
   for (const [ext, bytes, mimeType] of [
     ['svg', svgBytes, 'image/svg+xml'],
     ['ico', icoBytes(), 'image/x-icon'],
@@ -30,6 +31,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
     await (await chooser).setFiles({ name: 'site.' + ext, mimeType, buffer: Buffer.from(bytes) });
     await expect(page.locator('#site-icon-status')).toHaveAttribute('data-tone', 'success');
     const key = await page.locator('#site-icon-value').inputValue();
+    uploaded.add(key);
     assert.match(key, new RegExp('^uploads/icons/[a-f0-9]{64}\\.' + ext + '$'));
     await expect
       .poll(() =>
@@ -72,6 +74,18 @@ export async function verifySiteIcons(browser, origin, output, engine) {
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('.sidebar .brand-mark img')).toHaveAttribute('src', '/favicon.svg');
+  const session = await (await context.request.get(origin + '/api/session')).json();
+  const catalog = await (await context.request.get(origin + '/api/images')).json();
+  for (const image of catalog.images.filter((image) => uploaded.has(image.key))) {
+    assert.deepEqual(image.references, [], 'Reset icons are unused and removable');
+    const response = await context.request.delete(origin + '/api/images', {
+      headers: { Origin: origin, 'X-CSRF-Token': session.csrf },
+      data: { key: image.key, etag: image.etag },
+    });
+    assert.equal(response.status(), 200);
+    uploaded.delete(image.key);
+  }
+  assert.equal(uploaded.size, 0, 'The icon test cleans up its own uploads');
   await context.close();
   assert.deepEqual(errors, [], engine + ' custom site icons');
 }
