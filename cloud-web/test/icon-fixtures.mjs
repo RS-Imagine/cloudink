@@ -12,7 +12,8 @@ export function pngIcoBytes(options = {}) {
     bytes.writeUInt32BE(crc32(bytes.subarray(4, content.length + 8)), content.length + 8);
     return bytes;
   }
-  const width = options.width ?? 1, height = options.height ?? 1;
+  const width = options.width ?? 1,
+    height = options.height ?? 1;
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
@@ -23,7 +24,11 @@ export function pngIcoBytes(options = {}) {
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', header),
     ...(options.palette ? [chunk('PLTE', Buffer.from(options.palette.flat()))] : []),
-    chunk('IDAT', options.compressed ?? deflateSync(Buffer.from(options.palette ? [0, 0] : [0, 128, 82, 50, 255]))),
+    chunk(
+      'IDAT',
+      options.compressed ??
+        deflateSync(Buffer.from(options.palette ? [0, 0] : [0, 128, 82, 50, 255])),
+    ),
     chunk('IEND', Buffer.alloc(0)),
   ]);
   const bytes = new Uint8Array(22 + png.length);

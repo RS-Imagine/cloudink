@@ -246,7 +246,10 @@ test('ICO PNG validation rejects invalid deflate streams, filters, row sizes and
 test('indexed ICO PNGs validate reconstructed palette samples for packed pixels, filters and Adam7 passes', async (t) => {
   const f = await fixture(t);
   await f.login();
-  const palette = [[128, 82, 50], [255, 255, 255]];
+  const palette = [
+    [128, 82, 50],
+    [255, 255, 255],
+  ];
   const valid = [
     { width: 2, raw: [1, 1, 255] },
     { height: 2, raw: [0, 1, 2, 255] },
@@ -256,7 +259,10 @@ test('indexed ICO PNGs validate reconstructed palette samples for packed pixels,
     { width: 2, height: 2, interlaced: true, raw: [0, 1, 2, 0, 0, 0, 1] },
   ];
   for (const { raw, ...options } of valid)
-    await upload(f, pngIcoBytes({ palette, ...options, compressed: deflateSync(new Uint8Array(raw)) }));
+    await upload(
+      f,
+      pngIcoBytes({ palette, ...options, compressed: deflateSync(new Uint8Array(raw)) }),
+    );
   const invalid = [
     { palette: palette.slice(0, 1), raw: [0, 255] },
     { width: 2, raw: [1, 1, 254] },
@@ -268,7 +274,11 @@ test('indexed ICO PNGs validate reconstructed palette samples for packed pixels,
     { width: 2, height: 2, interlaced: true, raw: [0, 1, 2, 255, 0, 0, 1] },
   ];
   for (const { raw, ...options } of invalid) {
-    const response = await f.request('/api/site-icon', 'POST', pngIcoBytes({ palette, ...options, compressed: deflateSync(new Uint8Array(raw)) }));
+    const response = await f.request(
+      '/api/site-icon',
+      'POST',
+      pngIcoBytes({ palette, ...options, compressed: deflateSync(new Uint8Array(raw)) }),
+    );
     assert.equal(response.status, 400, await response.clone().text());
   }
 });

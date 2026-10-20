@@ -266,10 +266,13 @@ async function validatePngPixels(
     column = 0,
     finished = false,
     filter = 0;
-  let previous = new Uint8Array(0), current = new Uint8Array(0);
+  let previous = new Uint8Array(0),
+    current = new Uint8Array(0);
   const paeth = (left: number, above: number, corner: number): number => {
     const prediction = left + above - corner;
-    const a = Math.abs(prediction - left), b = Math.abs(prediction - above), c = Math.abs(prediction - corner);
+    const a = Math.abs(prediction - left),
+      b = Math.abs(prediction - above),
+      c = Math.abs(prediction - corner);
     return a <= b && a <= c ? left : b <= c ? above : corner;
   };
   try {
@@ -290,7 +293,16 @@ async function validatePngPixels(
           const left = index ? current[index - 1] : 0;
           const above = previous[index];
           const corner = index ? previous[index - 1] : 0;
-          const predictor = filter === 1 ? left : filter === 2 ? above : filter === 3 ? Math.floor((left + above) / 2) : filter === 4 ? paeth(left, above, corner) : 0;
+          const predictor =
+            filter === 1
+              ? left
+              : filter === 2
+                ? above
+                : filter === 3
+                  ? Math.floor((left + above) / 2)
+                  : filter === 4
+                    ? paeth(left, above, corner)
+                    : 0;
           current[index] = (byte + predictor) & 255;
         }
         if (++column === rows[row]) {
@@ -400,7 +412,16 @@ async function validateIconPng(
       }
     } else if (type === 'IEND') {
       if (length !== 0 || !imageData || next !== payload.length) invalid();
-      return validatePngPixels(compressed, width, height, depth, color, interlace, remaining, paletteSize);
+      return validatePngPixels(
+        compressed,
+        width,
+        height,
+        depth,
+        color,
+        interlace,
+        remaining,
+        paletteSize,
+      );
     } else {
       if (type[0] === type[0].toUpperCase()) invalid();
       if (imageData) endedData = true;
