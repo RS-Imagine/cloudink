@@ -70,7 +70,7 @@ export function configureMarkdownImport({
     list.replaceChildren();
     close.disabled = false;
     close.textContent = '取消后续导入';
-    dialog.setAttribute('aria-busy', 'true');
+    list.setAttribute('aria-busy', 'true');
     window.CloudInkMotion.openDialog(dialog);
     const today = new Date();
     const date = [
@@ -173,7 +173,7 @@ export function configureMarkdownImport({
       button.disabled = false;
       close.disabled = false;
       close.textContent = '完成';
-      dialog.removeAttribute('aria-busy');
+      list.removeAttribute('aria-busy');
       list.querySelectorAll('button').forEach((node) => {
         node.disabled = false;
       });

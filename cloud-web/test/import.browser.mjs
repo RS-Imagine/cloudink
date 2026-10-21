@@ -75,7 +75,7 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
     await expect(page.locator('#markdown-import-status')).toContainText(
       '已导入 2 篇草稿，失败 3 个',
     );
-    await expect(page.locator('#markdown-import-dialog')).not.toHaveAttribute('aria-busy', 'true');
+    await expect(page.locator('#markdown-import-results')).not.toHaveAttribute('aria-busy', 'true');
     await expect(page.locator('#markdown-import-results [data-state=success]')).toHaveCount(2);
     await expect(page.locator('#markdown-import-results [data-state=error]')).toHaveCount(3);
     const after = await (await context.request.get(origin + '/api/posts')).json();
@@ -101,6 +101,8 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => window.CloudInkTheme.setMode('dark'));
+    await expect(page.locator('#markdown-import-close')).toBeInViewport();
+    await expect(page.locator('#markdown-import-status')).toBeInViewport();
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
@@ -159,7 +161,7 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
     await input.setInputFiles(file('must-not-import.md', '不会导入'));
     await expect(page.locator('#markdown-import-status')).toContainText('尚未开始导入');
     await expect(page.locator('#body')).toHaveValue('不要丢失当前原稿');
-    await expect(page.locator('#markdown-import-dialog')).not.toHaveAttribute('aria-busy', 'true');
+    await expect(page.locator('#markdown-import-results')).not.toHaveAttribute('aria-busy', 'true');
     const blocked = await (await context.request.get(origin + '/api/posts')).json();
     assert.equal(blocked.posts.filter((p) => !initialKeys.has(p.slug)).length, 4);
     await page.locator('#markdown-import-close').click();

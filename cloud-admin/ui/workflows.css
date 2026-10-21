@@ -956,11 +956,16 @@ body:has(dialog[open]) {
   max-height: 85vh;
   max-height: 85dvh;
   padding: clamp(16px, 4vw, 28px);
-  overflow: auto;
+  overflow: hidden;
   color: var(--ci-text);
   background: var(--ci-surface);
   border: 1px solid var(--ci-divider);
   border-radius: var(--ci-radius-lg);
+}
+.markdown-import-dialog[open] {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
 }
 .markdown-import-dialog::backdrop {
   background: rgb(0 0 0 / 35%);
@@ -972,7 +977,11 @@ body:has(dialog[open]) {
   overflow-wrap: anywhere;
 }
 #markdown-import-results {
+  min-height: 0;
+  max-height: 50dvh;
+  margin: 0;
   padding-left: 1.4rem;
+  overflow: auto;
 }
 #markdown-import-results li {
   padding: 12px 0;
