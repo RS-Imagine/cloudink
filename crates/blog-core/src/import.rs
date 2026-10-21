@@ -103,11 +103,11 @@ pub fn import_markdown(raw: &str, filename: &str, today: &str, slug: &str) -> Re
     let mut body = source;
     let mut lines = source.split_inclusive('\n');
     let first = lines.next().unwrap_or("");
-    if first.trim() == "+++" {
+    if first.trim_end() == "+++" {
         let mut offset = first.len();
         let mut closed = false;
         for line in lines {
-            if line.trim() == "+++" {
+            if line.trim_end() == "+++" {
                 table = source[first.len()..offset]
                     .parse()
                     .context("无法解析 +++ 文章信息，请检查 TOML 格式。")?;

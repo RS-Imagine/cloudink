@@ -100,3 +100,19 @@ fn rich_or_oversized_headings_are_not_silently_discarded() {
         assert_eq!(result.body_markdown, source);
     }
 }
+
+#[test]
+fn indented_delimiters_are_code_not_metadata() {
+    for source in [
+        "    +++\n    title = 'example'\n    +++\n\n# Later\n",
+        "\t+++\n\ttitle = 'example'\n\t+++\n\nbody\n",
+        " +++\n title = 'example'\n +++\n",
+    ] {
+        let result = import(source);
+        assert_eq!(result.front_matter.title, "普通文章");
+        assert_eq!(result.body_markdown, source);
+    }
+    let result = import("+++\ntitle = '''\n    +++\n'''\n+++\n\nbody");
+    assert!(result.front_matter.title.contains("+++"));
+    assert_eq!(result.body_markdown, "body");
+}
