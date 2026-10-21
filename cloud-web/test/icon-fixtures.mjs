@@ -20,7 +20,8 @@ export function pngIcoBytes(options = {}) {
   header[8] = options.depth ?? 8;
   header[9] = options.color ?? (options.palette ? 3 : 6);
   header[12] = options.interlaced ? 1 : 0;
-  const extras = (name) => (options[name] || []).map(({ type, data }) => chunk(type, Buffer.from(data)));
+  const extras = (name) =>
+    (options[name] || []).map(({ type, data }) => chunk(type, Buffer.from(data)));
   const png = Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', header),
@@ -119,10 +120,16 @@ export function indexedDibIcoBytes(options = {}) {
 }
 
 export function bitfieldDibIcoBytes(options = {}) {
-  const header = options.header ?? 40, depth = options.depth ?? 32, compression = options.compression ?? 3;
-  const channels = options.masks ?? (depth === 16
-    ? compression === 6 ? [0x7c00, 0x3e0, 0x1f, 0x8000] : [0xf800, 0x7e0, 0x1f, 0]
-    : [0xff0000, 0xff00, 0xff, compression === 6 ? 0xff000000 : 0]);
+  const header = options.header ?? 40,
+    depth = options.depth ?? 32,
+    compression = options.compression ?? 3;
+  const channels =
+    options.masks ??
+    (depth === 16
+      ? compression === 6
+        ? [0x7c00, 0x3e0, 0x1f, 0x8000]
+        : [0xf800, 0x7e0, 0x1f, 0]
+      : [0xff0000, 0xff00, 0xff, compression === 6 ? 0xff000000 : 0]);
   const count = header === 40 && compression === 3 ? 3 : 4;
   const external = header === 40 ? count * 4 : 0;
   const bytes = new Uint8Array(22 + header + external + 8);

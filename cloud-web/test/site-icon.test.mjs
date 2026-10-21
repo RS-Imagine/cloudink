@@ -2,7 +2,14 @@ import { deflateSync } from 'node:zlib';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
-import { svgBytes, svgIcon, icoBytes, pngIcoBytes, indexedDibIcoBytes, bitfieldDibIcoBytes } from './icon-fixtures.mjs';
+import {
+  svgBytes,
+  svgIcon,
+  icoBytes,
+  pngIcoBytes,
+  indexedDibIcoBytes,
+  bitfieldDibIcoBytes,
+} from './icon-fixtures.mjs';
 
 async function upload(f, bytes = svgBytes) {
   const response = await f.request('/api/site-icon', 'POST', bytes);
@@ -308,7 +315,10 @@ test('indexed DIB icons validate visible 1/4/8-bit samples and ignore row paddin
 test('ICO PNG transparency accepts valid samples and rejects invalid sizes, color types and ordering', async (t) => {
   const f = await fixture(t);
   await f.login();
-  const palette = [[128, 82, 50], [255, 255, 255]];
+  const palette = [
+    [128, 82, 50],
+    [255, 255, 255],
+  ];
   const trns = (data) => ({ type: 'tRNS', data });
   const raw = (bytes) => deflateSync(new Uint8Array(bytes));
   for (const options of [
@@ -318,7 +328,8 @@ test('ICO PNG transparency accepts valid samples and rejects invalid sizes, colo
     { color: 0, compressed: raw([0, 128]), beforeData: [trns([0, 128])] },
     { color: 0, depth: 16, compressed: raw([0, 18, 52]), beforeData: [trns([18, 52])] },
     { color: 2, compressed: raw([0, 128, 82, 50]), beforeData: [trns([0, 128, 0, 82, 0, 50])] },
-  ]) await upload(f, pngIcoBytes(options));
+  ])
+    await upload(f, pngIcoBytes(options));
   for (const options of [
     { palette: palette.slice(0, 1), beforeData: [trns([0, 255])] },
     { palette, afterData: [trns([0])] },
@@ -355,9 +366,16 @@ test('ICO bitfield masks validate RGB and optional or required alpha across DIB 
       { compression: 6, masks: [0xff0000, 0xff00, 0xff, 0xa0000000] },
       { depth: 16, compression: 6, masks: [0x7c00, 0x3e0, 0x1f, 0x10000] },
     ]) {
-      const response = await f.request('/api/site-icon', 'POST', bitfieldDibIcoBytes({ header, ...options }));
+      const response = await f.request(
+        '/api/site-icon',
+        'POST',
+        bitfieldDibIcoBytes({ header, ...options }),
+      );
       assert.equal(response.status, 400, await response.clone().text());
     }
   }
-  await upload(f, bitfieldDibIcoBytes({ header: 108, masks: [0xff0000, 0xff00, 0xff, 0xff000000] }));
+  await upload(
+    f,
+    bitfieldDibIcoBytes({ header: 108, masks: [0xff0000, 0xff00, 0xff, 0xff000000] }),
+  );
 });
