@@ -68,5 +68,9 @@ pub fn import_markdown(input: &str) -> Result<String, JsValue> {
         &request.slug,
     )
     .map_err(|e| JsValue::from_str(&format!("{e:#}")))?;
-    serde_json::to_string(&draft).map_err(|e| JsValue::from_str(&e.to_string()))
+    serde_json::to_string(&EditorDraft {
+        front_matter: draft.front_matter,
+        body_markdown: draft.body_markdown,
+    })
+    .map_err(|e| JsValue::from_str(&e.to_string()))
 }
