@@ -75,7 +75,9 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
     await expect(page.locator('#notice')).toContainText('正在处理当前文章');
     await expect(page.locator('#markdown-import-dialog')).toBeHidden();
     releaseImage();
-    await expect(page.locator('#body')).toHaveValue(/https:\/\/image\.example\.invalid\/inflight\.png/);
+    await expect(page.locator('#body')).toHaveValue(
+      /https:\/\/image\.example\.invalid\/inflight\.png/,
+    );
     await expect(page.locator('#upload-image')).not.toHaveAttribute('aria-busy', 'true');
     await page.locator('#body').fill(source.slice(source.indexOf('\n') + 1));
     await page.locator('#save-post').click();
