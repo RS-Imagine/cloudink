@@ -1,3 +1,4 @@
+import { verifyMarkdownImport } from './import.browser.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
 import {
@@ -168,6 +169,10 @@ try {
     ),
   });
   await expect(page.locator('#notice')).toContainText('已导入 1 篇');
+  await expect(page.locator('#title')).toHaveValue('Imported');
+  await openPostSwitcher(page);
+  await page.locator('.post-item').filter({ hasText: 'beta' }).click();
+  await expect(page.locator('#title')).toHaveValue('beta');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('#search')).toBeVisible();
@@ -254,6 +259,7 @@ try {
   await expect(publicPage.locator('#search-results a')).toHaveCount(1);
   await publicPage.close();
   console.log(JSON.stringify({ typingBeforeSearchIndexLoads: true }));
+  await verifyMarkdownImport(browser, 'http://localhost:8788', resolve('cloud-web/dist'), 'chromium');
 } finally {
   await browser?.close();
   await mf.dispose();

@@ -30,3 +30,14 @@ pub fn render_release(input: &str) -> Result<String, JsValue> {
     let files = blog_core::bundle::render_release(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
     serde_json::to_string(&files).map_err(|e| JsValue::from_str(&e.to_string()))
 }
+
+#[derive(Deserialize)]
+struct ImportRequest { source: String, filename: String, date: String, slug: String }
+
+#[wasm_bindgen]
+pub fn import_markdown(input: &str) -> Result<String, JsValue> {
+    let request: ImportRequest = serde_json::from_str(input).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let draft = blog_core::import::import_markdown(&request.source, &request.filename, &request.date, &request.slug)
+        .map_err(|e| JsValue::from_str(&format!("{e:#}")))?;
+    serde_json::to_string(&draft).map_err(|e| JsValue::from_str(&e.to_string()))
+}
