@@ -48,6 +48,39 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
       ].join('-');
     });
     await expect(page.locator('#date')).toHaveValue(today);
+    // An active image upload must finish inserting its link before imports can start.
+    let releaseImage,
+      imageEntered = false;
+    const imageGate = new Promise((resolve) => {
+      releaseImage = resolve;
+    });
+    await page.route('**/api/upload', async (route) => {
+      imageEntered = true;
+      await imageGate;
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ url: 'https://image.example.invalid/inflight.png' }),
+      });
+    });
+    await page.locator('#image-files').setInputFiles({
+      name: 'pixel.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    });
+    await expect.poll(() => imageEntered).toBe(true);
+    await input.setInputFiles(file('blocked-during-upload.md', '不应导入'));
+    await expect(page.locator('#notice')).toContainText('正在处理当前文章');
+    await expect(page.locator('#markdown-import-dialog')).toBeHidden();
+    releaseImage();
+    await expect(page.locator('#body')).toHaveValue(/https:\/\/image\.example\.invalid\/inflight\.png/);
+    await expect(page.locator('#upload-image')).not.toHaveAttribute('aria-busy', 'true');
+    await page.locator('#body').fill(source.slice(source.indexOf('\n') + 1));
+    await page.locator('#save-post').click();
+    await expect(page.locator('#notice')).toContainText('草稿已保存');
+    await page.unroute('**/api/upload');
     const original = await (await context.request.get(origin + '/api/posts/' + first)).json();
     const legacy =
       '+++\ntitle = "旧原稿副本"\nslug = "' +

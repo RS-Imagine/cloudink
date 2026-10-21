@@ -54,8 +54,10 @@ fn heading(body: &str) -> Option<(String, usize)> {
             first,
             Event::Start(Tag::Heading {
                 level: HeadingLevel::H1,
-                ..
-            })
+                id: None,
+                ref classes,
+                ref attrs,
+            }) if classes.is_empty() && attrs.is_empty()
         )
     {
         return None;
@@ -65,16 +67,13 @@ fn heading(body: &str) -> Option<(String, usize)> {
         match event {
             Event::Text(value) | Event::Code(value) => title.push_str(&value),
             Event::SoftBreak | Event::HardBreak => title.push(' '),
-            Event::Start(Tag::Image { .. } | Tag::Link { .. })
-            | Event::InlineHtml(_)
-            | Event::Html(_)
-            | Event::InlineMath(_)
-            | Event::DisplayMath(_) => return None,
+            Event::Start(Tag::Emphasis | Tag::Strong | Tag::Strikethrough)
+            | Event::End(TagEnd::Emphasis | TagEnd::Strong | TagEnd::Strikethrough) => {}
             Event::End(TagEnd::Heading(HeadingLevel::H1)) => {
                 let title = title.trim().to_string();
                 return (!title.is_empty()).then_some((title, range.end));
             }
-            _ => {}
+            _ => return None,
         }
     }
     None

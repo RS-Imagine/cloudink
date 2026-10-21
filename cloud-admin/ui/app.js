@@ -1111,7 +1111,7 @@ configureMarkdownImport({
   api,
   engineTask,
   flush,
-  locked: () => editorLocked || publishingBusy || publishRequest,
+  locked: () => editorLocked || publishingBusy || publishRequest || !!uploading,
   lock: lockEditor,
   saved: localSaved,
   open: openPost,

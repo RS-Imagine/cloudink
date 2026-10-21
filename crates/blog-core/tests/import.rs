@@ -88,6 +88,8 @@ fn rich_or_oversized_headings_are_not_silently_discarded() {
         "# [Link](https://example.com)\n\nbody",
         "# <span>HTML</span>\n\nbody",
         "# $x^2$ Formula\n\nbody",
+        "# Title[^note]\n\n[^note]: Footnote\n",
+        "# Anchored {#intro}\n\n[Jump](#intro)\n",
     ]
     .into_iter()
     .map(str::to_string)
