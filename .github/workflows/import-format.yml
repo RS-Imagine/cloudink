@@ -11,6 +11,8 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      - run: rustup component add rustfmt
+      - run: npm --prefix cloud-admin ci
       - run: rustfmt --edition 2021 crates/blog-core/src/import.rs crates/blog-core/tests/import.rs crates/blog-wasm/src/lib.rs
       - name: Emit canonical source
         run: |
@@ -18,6 +20,10 @@ jobs:
           import { readFile } from 'node:fs/promises';
           import { execFileSync } from 'node:child_process';
           import prettier from 'prettier';
+          import { gzipSync } from 'node:zlib';
+          import { build } from './cloud-admin/node_modules/esbuild/lib/main.js';
+          const bundle = await build({ entryPoints: ['cloud-admin/ui/app.js'], bundle: true, format: 'esm', target: 'es2022', minify: true, external: ['/blog_wasm.js'], write: false });
+          console.log('IMPORT_GZIP_BUDGET', JSON.stringify({ adminJS: gzipSync(bundle.outputFiles[0].contents).length }));
           const normal = ["cloud-admin/ui/preview.worker.js","cloud-admin/ui/markdown-import.js","cloud-admin/ui/app.js","cloud-admin/ui/index.html","cloud-admin/ui/workflows.css","cloud-web/test/import.browser.mjs","cloud-web/test/editor.browser.mjs","scripts/ui-audit.mjs","README.md","docs/DEVELOPMENT.md"];
           const rust = ["crates/blog-core/src/import.rs","crates/blog-core/tests/import.rs","crates/blog-wasm/src/lib.rs"];
           for (const path of [...normal, ...rust]) {

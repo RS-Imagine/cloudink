@@ -57,3 +57,12 @@ fn bounded_titles_files_and_unicode_filenames() {
     assert!(import_markdown(&"a".repeat(1_000_001), "file.md", "2026-10-21", "new").is_err());
     assert!(import_markdown("body", "file.md", "2026-10-21", "../bad").is_err());
 }
+
+#[test]
+fn rich_or_oversized_headings_are_not_silently_discarded() {
+    for source in ["# ![logo](logo.png) Title\n\nbody", "# [Link](https://example.com)\n\nbody", "# <span>HTML</span>\n\nbody", "# $x^2$ Formula\n\nbody"].into_iter().map(str::to_string).chain(std::iter::once(format!("# {}\n\nbody", "x".repeat(301)))) {
+        let result = import(&source);
+        assert_eq!(result.front_matter.title, "普通文章");
+        assert_eq!(result.body_markdown, source);
+    }
+}

@@ -39,6 +39,7 @@ fn heading(body: &str) -> Option<(String, usize)> {
         match event {
             Event::Text(value) | Event::Code(value) => title.push_str(&value),
             Event::SoftBreak | Event::HardBreak => title.push(' '),
+            Event::Start(Tag::Image { .. } | Tag::Link { .. }) | Event::InlineHtml(_) | Event::Html(_) | Event::InlineMath(_) | Event::DisplayMath(_) => return None,
             Event::End(TagEnd::Heading(HeadingLevel::H1)) => {
                 let title = title.trim().to_string();
                 return (!title.is_empty()).then_some((title, range.end));
@@ -91,8 +92,12 @@ pub fn import_markdown(raw: &str, filename: &str, today: &str, slug: &str) -> Re
         if value.encode_utf16().count() > 300 { bail!("标题最多 300 个字符。"); }
         value
     } else if let Some((value, end)) = inferred {
-        body = &body[end..];
-        shortened(&value, 300)
+        if value.encode_utf16().count() <= 300 {
+            body = &body[end..];
+            value
+        } else {
+            shortened(if stem.is_empty() { "未命名文章" } else { stem }, 300)
+        }
     } else {
         shortened(if stem.is_empty() { "未命名文章" } else { stem }, 300)
     };
