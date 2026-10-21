@@ -259,7 +259,12 @@ try {
   await expect(publicPage.locator('#search-results a')).toHaveCount(1);
   await publicPage.close();
   console.log(JSON.stringify({ typingBeforeSearchIndexLoads: true }));
-  await verifyMarkdownImport(browser, 'http://localhost:8788', resolve('cloud-web/dist'), 'chromium');
+  await verifyMarkdownImport(
+    browser,
+    'http://localhost:8788',
+    resolve('cloud-web/dist'),
+    'chromium',
+  );
 } finally {
   await browser?.close();
   await mf.dispose();

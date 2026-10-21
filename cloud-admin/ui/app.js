@@ -1108,9 +1108,14 @@ $('body').addEventListener('drop', (e) => {
   void uploadFiles(images);
 });
 configureMarkdownImport({
-  api, engineTask, flush,
+  api,
+  engineTask,
+  flush,
   locked: () => editorLocked || publishingBusy || publishRequest,
-  lock: lockEditor, saved: localSaved, open: openPost, notice,
+  lock: lockEditor,
+  saved: localSaved,
+  open: openPost,
+  notice,
   closeMenu: () => shell.close(),
 });
 $('export-posts').addEventListener('click', async () => {

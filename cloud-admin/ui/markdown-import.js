@@ -1,12 +1,29 @@
 const $ = (id) => document.getElementById(id);
 
-export function configureMarkdownImport({ api, engineTask, flush, locked, lock, saved, open, notice, closeMenu }) {
-  const input = $('import-files'), button = $('import-posts');
-  const dialog = $('markdown-import-dialog'), list = $('markdown-import-results');
-  const status = $('markdown-import-status'), close = $('markdown-import-close');
-  let busy = false, stopped = false, trigger = null;
+export function configureMarkdownImport({
+  api,
+  engineTask,
+  flush,
+  locked,
+  lock,
+  saved,
+  open,
+  notice,
+  closeMenu,
+}) {
+  const input = $('import-files'),
+    button = $('import-posts');
+  const dialog = $('markdown-import-dialog'),
+    list = $('markdown-import-results');
+  const status = $('markdown-import-status'),
+    close = $('markdown-import-close');
+  let busy = false,
+    stopped = false,
+    trigger = null;
   async function openDraft(slug) {
-    const closed = new Promise((resolve) => dialog.addEventListener('close', resolve, { once: true }));
+    const closed = new Promise((resolve) =>
+      dialog.addEventListener('close', resolve, { once: true }),
+    );
     window.CloudInkMotion.closeDialog(dialog);
     await closed;
     await open(slug);
@@ -20,14 +37,19 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
     } else window.CloudInkMotion.closeDialog(dialog);
   }
   close.addEventListener('click', dismiss);
-  dialog.addEventListener('cancel', (event) => {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    dismiss();
-  }, true);
+  dialog.addEventListener(
+    'cancel',
+    (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      dismiss();
+    },
+    true,
+  );
   dialog.addEventListener('close', () => {
     if (busy) stopped = true;
-    if (trigger?.isConnected && !trigger.closest('[hidden]')) trigger.focus({ preventScroll: true });
+    if (trigger?.isConnected && !trigger.closest('[hidden]'))
+      trigger.focus({ preventScroll: true });
   });
   button.addEventListener('click', () => {
     if (busy || locked()) return notice('正在处理当前文章，请稍等。');
@@ -51,11 +73,21 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
     dialog.setAttribute('aria-busy', 'true');
     window.CloudInkMotion.openDialog(dialog);
     const today = new Date();
-    const date = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
-    let count = 0, failed = 0, skipped = 0, single = null;
-    const summary = () => '已导入 ' + count + ' 篇草稿，失败 ' + failed + ' 个，跳过 ' + skipped + ' 个。';
+    const date = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+    let count = 0,
+      failed = 0,
+      skipped = 0,
+      single = null;
+    const summary = () =>
+      '已导入 ' + count + ' 篇草稿，失败 ' + failed + ' 个，跳过 ' + skipped + ' 个。';
     const items = files.map((file) => {
-      const row = document.createElement('li'), name = document.createElement('strong'), message = document.createElement('span');
+      const row = document.createElement('li'),
+        name = document.createElement('strong'),
+        message = document.createElement('span');
       name.textContent = file.name;
       message.textContent = '等待导入';
       row.append(name, message);
@@ -66,7 +98,8 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
       // Flush the current editor before any import writes; a conflict keeps it intact.
       await flush();
       for (let index = 0; index < files.length; index++) {
-        const file = files[index], { row, message } = items[index];
+        const file = files[index],
+          { row, message } = items[index];
         if (stopped) {
           skipped++;
           message.textContent = '已跳过：导入已取消';
@@ -77,7 +110,8 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
         message.textContent = '正在读取并保存…';
         status.textContent = '正在导入 ' + (index + 1) + ' / ' + files.length + '：' + file.name;
         try {
-          if (!/\.(md|markdown)$/i.test(file.name)) throw new Error('请选择 .md 或 .markdown 文件。');
+          if (!/\.(md|markdown)$/i.test(file.name))
+            throw new Error('请选择 .md 或 .markdown 文件。');
           if (file.size > 1_000_000) throw new Error('Markdown 文件最多 1 MB。');
           let source;
           try {
@@ -99,7 +133,10 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
             row.dataset.state = 'skipped';
             continue;
           }
-          const result = await api('/api/posts/' + slug, { method: 'PUT', body: { draft, etag: null } });
+          const result = await api('/api/posts/' + slug, {
+            method: 'PUT',
+            body: { draft, etag: null },
+          });
           saved(result.draft, result);
           single = result;
           count++;
@@ -110,7 +147,11 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
           edit.textContent = '打开草稿';
           edit.disabled = true;
           edit.addEventListener('click', async () => {
-            try { await openDraft(slug); } catch (error) { notice(error.message, 'error'); }
+            try {
+              await openDraft(slug);
+            } catch (error) {
+              notice(error.message, 'error');
+            }
           });
           row.append(edit);
         } catch (error) {
@@ -133,10 +174,17 @@ export function configureMarkdownImport({ api, engineTask, flush, locked, lock, 
       close.disabled = false;
       close.textContent = '完成';
       dialog.removeAttribute('aria-busy');
-      list.querySelectorAll('button').forEach((node) => { node.disabled = false; });
+      list.querySelectorAll('button').forEach((node) => {
+        node.disabled = false;
+      });
     }
     if (files.length === 1 && count === 1 && !stopped) {
-      try { await openDraft(single.draft.front_matter.slug); } catch (error) { notice(error.message, 'error'); return; }
+      try {
+        await openDraft(single.draft.front_matter.slug);
+      } catch (error) {
+        notice(error.message, 'error');
+        return;
+      }
       notice('已导入 1 篇原稿，已保存为新草稿。检查后可手动发布。', 'success');
     } else close.focus({ preventScroll: true });
   });

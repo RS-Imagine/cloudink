@@ -240,7 +240,6 @@ completion.browser.mjs 补充启动、配置/会话/首次读取失败重试、�
 测试每次清空生成的 build-work/ui-audit 输出，避免把旧截图当作当前提交的结果。
 真实终端、辅助技术及能耗没有使用模拟结果替代；边界与人工清单见 UI 升级指南。
 
-
 ## Markdown 导入
 
 导入转换位于 blog-core 的 import 模块，通过既有浏览器 Worker / WASM 执行；保存仍提交结构化 draft 并使用现有认证、CSRF 和 ETag。持久化原稿、备份及发布继续使用严格的 TOML 格式，不迁移 R2 数据，也不放宽备份解析。
