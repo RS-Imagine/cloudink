@@ -75,10 +75,12 @@ export function icoBytes() {
 }
 
 export function indexedDibIcoBytes(options = {}) {
-  const depth = options.depth ?? 8, width = options.width ?? 1, height = options.height ?? 1;
+  const depth = options.depth ?? 8,
+    width = options.width ?? 1,
+    height = options.height ?? 1;
   const palette = options.palette ?? 1;
   const indices = options.indices ?? Array(width * height).fill(0);
-  const stride = Math.ceil(width * depth / 32) * 4;
+  const stride = Math.ceil((width * depth) / 32) * 4;
   const pixels = stride * height;
   const mask = Math.ceil(width / 32) * 4 * height;
   const start = 22 + 40 + palette * 4;
@@ -102,8 +104,10 @@ export function indexedDibIcoBytes(options = {}) {
   bytes.fill(255, start, start + pixels);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const bit = x * depth, offset = start + y * stride + (bit >>> 3);
-      const shift = 8 - depth - (bit & 7), mask = ((1 << depth) - 1) << shift;
+      const bit = x * depth,
+        offset = start + y * stride + (bit >>> 3);
+      const shift = 8 - depth - (bit & 7),
+        mask = ((1 << depth) - 1) << shift;
       bytes[offset] = (bytes[offset] & ~mask) | (indices[y * width + x] << shift);
     }
   }

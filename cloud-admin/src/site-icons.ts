@@ -498,7 +498,9 @@ async function validateIco(bytes: Uint8Array): Promise<void> {
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const bit = x * depth;
-            const sample = (payload[start + y * stride + (bit >>> 3)] >>> (8 - depth - (bit & 7))) & ((1 << depth) - 1);
+            const sample =
+              (payload[start + y * stride + (bit >>> 3)] >>> (8 - depth - (bit & 7))) &
+              ((1 << depth) - 1);
             if (sample >= palette) invalid();
           }
         }

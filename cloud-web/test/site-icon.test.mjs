@@ -291,7 +291,8 @@ test('indexed DIB icons validate visible 1/4/8-bit samples and ignore row paddin
     { depth: 4, width: 3, palette: 2, indices: [0, 1, 0] },
     { depth: 8, width: 2, height: 2, palette: 2, indices: [1, 0, 0, 1] },
     { depth: 8, palette: 256, indices: [255] },
-  ]) await upload(f, indexedDibIcoBytes(options));
+  ])
+    await upload(f, indexedDibIcoBytes(options));
   for (const options of [
     { depth: 1, indices: [1] },
     { depth: 1, width: 9, indices: [0, 0, 0, 0, 0, 0, 0, 0, 1] },
