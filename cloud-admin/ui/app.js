@@ -5,6 +5,7 @@ import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
+import { configureSiteIcon } from './site-icon.js';
 import {
   engineTask,
   renderPreview,
@@ -90,9 +91,14 @@ async function startWorkspace({ focus = false } = {}) {
     booting = false;
   }
 }
+const iconPicker = configureSiteIcon({ api, notice });
 function applySiteAppearance(config) {
   window.CloudInkTheme?.setPalette(config?.themePalette || 'ink');
-  if (site) site.themePalette = document.documentElement.dataset.palette || 'ink';
+  iconPicker.apply(config);
+  if (site) {
+    site.themePalette = document.documentElement.dataset.palette || 'ink';
+    site.siteIcon = config?.siteIcon || '';
+  }
 }
 function notice(message, tone = 'info') {
   $('notice').dataset.tone = tone;
@@ -1158,6 +1164,7 @@ $('settings').addEventListener('click', async () => {
     const data = await api('/api/settings');
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
+    iconPicker.load(data.site);
     $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
     applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
@@ -1179,6 +1186,7 @@ $('site-form').addEventListener('submit', (event) => {
     'save-site',
     '正在保存…',
     async () => {
+      await iconPicker.ready();
       const values = Object.fromEntries(new FormData(form));
       const data = await api('/api/settings', {
         method: 'PUT',
@@ -1192,6 +1200,7 @@ $('site-form').addEventListener('submit', (event) => {
 });
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {
+    await iconPicker.ready();
     const values = Object.fromEntries(new FormData($('site-form')));
     const saved = await api('/api/settings', {
       method: 'PUT',
@@ -1211,6 +1220,8 @@ $('logout').addEventListener('click', async () => {
     doc = null;
     dirty = 0;
     savedVersion = 0;
+    iconPicker.load(null);
+    iconPicker.apply(null);
     showLogin({ focus: true });
   } catch (error) {
     notice(error.message);
@@ -1256,6 +1267,7 @@ configureBackup({
     ))
       input.value = '';
     $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
+    iconPicker.load(result.site);
     applySiteAppearance(result.site);
     for (const [key, value] of Object.entries(result.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;

@@ -44,6 +44,14 @@ Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复
 
 唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
 后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
+网站图标使用可选的 `siteIcon` 字段，值仅接受 `uploads/icons/<SHA-256>.svg|ico` 内容地址。
+`POST /api/site-icon` 沿用会话和 CSRF，限制 256 KiB；服务器校验 ICO 目录、像素/遮罩长度、PNG 数据块 CRC 和解压后的扫描行（总解码预算 4 MiB），并使用仅在 Worker 内打包的 `saxes` 校验 SVG XML 结构，再用静态 SVG 元素/属性白名单重写 SVG，移除脚本、样式表、事件、外部链接和嵌入内容。
+SVG 的局部渐变/裁剪引用可保留；复杂 SVG 建议先导出为基本图形。公开 `/site-icon/<hash>.<ext>` 只映射图标专用键，使用正确 MIME、nosniff、sandbox CSP、ETag 和 immutable 缓存，不依赖 Referer。
+后台、Rust/WASM 页面共用内容地址，更新图标即更新 URL；保存与公开发布仍分离。图标纳入既有图片库的设置/发布引用保护与 ZIP 备份，不新增存储桶或配置变量。
+加入图标上传控件后的后台 JS gzip 护栏为 29 KiB；其他资源护栏不变，实测增量见对应 PR 的 CI 报告。
+
+可选的云端真实运行检查：先在现有 Worker 的 Domains / Worker URL 中开启 Preview 网址并构建项目，在已认证的 Cloudflare Builds / CI 中设置专用的 `CLOUDINK_PREVIEW_STORAGE`（桶名必须以 `-test` 结尾），运行 `npm run test:icons:preview`。它只调用 `wrangler preview`，目标为既有 `cloudink` Worker 下的 `feat/custom-site-icon` 预览，不执行生产部署。更名的 Worker 可通过测试专用的 `CLOUDINK_PREVIEW_WORKER` 指定。临时配置仅写入被忽略的 `build-work/`，结束后删除；初始化口令随机生成并隐藏。真实边缘测试覆盖 SVG/ICO 上传、WASM 发布、保存隔离、恢复默认与备份恢复。如果 Preview 使用 Cloudflare Access，CI 还需注入已获授权的 `CF_ACCESS_CLIENT_ID` / `CF_ACCESS_CLIENT_SECRET` 服务凭据；未授权访问返回登录页时测试会明确失败。上述变量仅供可选 CI 测试，不是网站部署所需配置。
+
 作者配色保存在既有网站设置的可选 `themePalette` 字段（ink/neutral/brown/blue/violet/rose）。
 后台通过有可访问名称、选中标记及焦点环的原生单选色块选择，强制颜色模式显示名称和原生控件。
 保存影响后台与预览，发布后应用到所有公开页；SSR 直接输出配色，Swup 同步后续页面配色。

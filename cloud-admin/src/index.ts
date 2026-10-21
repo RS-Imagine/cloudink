@@ -19,6 +19,7 @@ import {
   type SiteConfig,
 } from './models';
 
+import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
 import { imageLibraryRoute, imageReferenceMetadata, ensureManagedImages } from './image-library';
@@ -83,6 +84,8 @@ async function apiRoute(
   path: string,
   session: Session,
 ): Promise<Response> {
+  if (path === '/api/site-icon' && request.method === 'POST')
+    return uploadSiteIcon(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
   if (images) return images;
   const backup = await backupRoute(request, env, path);
@@ -133,7 +136,10 @@ async function apiRoute(
     return json({
       posts: [...posts.values()],
       site: release.site,
-      appearance: { themePalette: (savedSite || release.site).themePalette || 'ink' },
+      appearance: {
+        themePalette: (savedSite || release.site).themePalette || 'ink',
+        siteIcon: (savedSite || release.site).siteIcon || '',
+      },
       publishing,
       email: session.email,
       csrf: session.csrf,
@@ -253,6 +259,7 @@ async function apiRoute(
       site = validateSite(data.site),
       old = await env.STORAGE.head('draft-site.json');
     await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
+    await ensureSiteIcon(env.STORAGE, site);
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {

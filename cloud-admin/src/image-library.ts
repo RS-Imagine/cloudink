@@ -23,7 +23,7 @@ export function managedImageKeys(source: string): string[] {
   // Conservatively protect literal mentions as well as rendered references.
   const normalized = normalizePaths(source);
   const matches =
-    normalized.match(/uploads\/[A-Za-z0-9_./-]+\.(?:jpeg|jpg|png|webp|gif|avif)\b/g) || [];
+    normalized.match(/uploads\/[A-Za-z0-9_./-]+\.(?:jpeg|jpg|png|webp|gif|avif|svg|ico)\b/g) || [];
   return [...new Set(matches.filter(validImageKey))];
 }
 export function imageReferenceMetadata(source: string): Record<string, string> {
@@ -226,7 +226,9 @@ export async function imageLibraryRoute(
     const remaining = catalog.filter(
       (object) =>
         validImageKey(object.key) &&
-        /^image\/(?:jpeg|png|webp|gif|avif)$/.test(object.httpMetadata?.contentType || '') &&
+        /^image\/(?:jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(
+          object.httpMetadata?.contentType || '',
+        ) &&
         (!after ||
           object.uploaded.getTime() < after[0] ||
           (object.uploaded.getTime() === after[0] && object.key > after[1])),

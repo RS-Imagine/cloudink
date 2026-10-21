@@ -28,6 +28,20 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
+
+fn site_icon(config: &SiteConfig) -> (String, &'static str) {
+    if let Some(key) = config.site_icon.as_deref() {
+        if let Some(name) = key.strip_prefix("uploads/icons/") {
+            if let Some((hash, ext)) = name.rsplit_once('.') {
+                if hash.len() == 64 && hash.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c)) && matches!(ext, "svg" | "ico") {
+                    return (format!("/site-icon/{name}"), if ext == "ico" { "image/x-icon" } else { "image/svg+xml" });
+                }
+            }
+        }
+    }
+    ("/favicon.svg".into(), "image/svg+xml")
+}
+
 pub fn client_script() -> &'static str {
     concat!(
         include_str!("../../../assets/motion.js"), "\n",
@@ -256,6 +270,8 @@ fn page(
         _ => "ink",
     };
 
+    let (icon_url, icon_type) = site_icon(config);
+
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(
         r#"<!doctype html>
@@ -267,7 +283,7 @@ fn page(
   <meta name="author" content="{author}">
   <title>{title}</title>
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="{icon_type}" href="{icon_url}">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="none" id="hljs-light">
@@ -315,7 +331,7 @@ fn page(
   <div class="wrapper reader-layout">
     <header class="site-header reader-header">
       <a class="site-brand" href="/" title="{site_title}">
-        <span class="site-mark"><img src="/favicon.svg" width="26" height="26" alt=""></span>
+        <span class="site-mark"><img src="{icon_url}" width="26" height="26" alt=""></span>
         <span class="site-title">{site_title}</span>
       </a>
       <div class="reader-navigation">
@@ -333,7 +349,7 @@ fn page(
         </div>
       </div>
     </header>
-    <main id="swup" class="transition-fade" data-palette="{palette}" data-page="{page_kind}" tabindex="-1">
+    <main id="swup" class="transition-fade" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
       {body}
     </main>
     <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div><div class="reader-preferences"><label class="theme-mode">外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label class="theme-mode" data-effects-control hidden>视觉效果<select data-effects-mode aria-label="视觉效果"><option value="auto">自动</option><option value="off">简洁（不透明）</option></select></label></div></footer>

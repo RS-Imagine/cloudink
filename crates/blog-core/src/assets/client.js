@@ -242,6 +242,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!swupContainer) return;
         syncReaderNavigation();
         window.CloudInkTheme?.setPalette(swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink');
+        const iconURL = swupContainer.dataset.siteIcon;
+        if (iconURL === '/favicon.svg' || /^\/site-icon\/[a-f0-9]{64}\.(?:svg|ico)$/.test(iconURL || '')) {
+          const favicon = document.querySelector('link[rel="icon"]');
+          if (favicon) {
+            favicon.setAttribute('href', iconURL);
+            favicon.setAttribute('type', iconURL.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml');
+          }
+          document.querySelectorAll('.site-mark img').forEach(image => image.setAttribute('src', iconURL));
+        }
 
         const images = document.querySelectorAll('.article-body img');
         const dialogs = new Set();

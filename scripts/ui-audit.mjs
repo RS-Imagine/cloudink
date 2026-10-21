@@ -36,7 +36,7 @@ const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: '0350efa2594d013c289076e8f02bac2d3a551b97',
+  upstream: 'db7bf42ad5a67753c4c387d2d01dc71e5141a5b8',
   revision: process.env.GITHUB_SHA || 'local',
   method:
     'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; system fonts; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
@@ -685,7 +685,7 @@ try {
   const releaseBudgets = {
     'build-work/web-public/client.js': 74 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
-    'cloud-admin/ui/app.generated.js': 27 * 1024,
+    'cloud-admin/ui/app.generated.js': 29 * 1024,
     'served/admin/style.css': 15 * 1024,
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
@@ -702,6 +702,7 @@ try {
     '360px overflow guard on production and prototype',
     'six native color swatches: keyboard, saved choice, Brown preview, 12 palette/mode contrast combinations and responsive screenshots',
     'light/dark palette contrast pairs',
+    'three-engine SVG/ICO upload, decoded image preview, saved icon reload, default reset, mobile/desktop screenshots; full publication and backup round-trip in Chromium',
     'three-engine bounded glass/opaque comparisons, worst-backdrop text contrast, effect opt-out/sync, storage/CSS denial, system preferences and low-resource fallback; Chromium CPU4x scroll samples',
     'reduced motion',
     'three-engine mobile detents, drag/cancel, keyboard alternatives, modal menu identity, rotation and viewport simulation; Chromium touch cancellation',

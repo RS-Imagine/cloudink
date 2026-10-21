@@ -1,3 +1,4 @@
+import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { digest } from './auth';
 import { currentRelease } from './publishing';
@@ -10,6 +11,7 @@ import {
   serializeDraft,
   validateSite,
   type SiteConfig,
+  validSiteIconKey,
 } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
 import { imageReferenceMetadata, ensureManagedImages } from './image-library';
@@ -142,6 +144,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
+  await ensureSiteIcon(env.STORAGE, site);
   await ensureManagedImages(
     env.STORAGE,
     [site.about || '', ...drafts.values()],
@@ -210,8 +213,14 @@ export async function backupRoute(
     const key = new URL(request.url).searchParams.get('key') || '';
     if (!validImageKey(key)) throw new HttpError(400, '图片路径不正确。');
     const bytes = new Uint8Array(await limitedBody(request, MAX_IMAGE)),
-      type = imageType(bytes);
-    const saved = await env.STORAGE.put(key, bytes, {
+      type = validSiteIconKey(key) ? await inspectSiteIcon(bytes) : imageType(bytes);
+    if (
+      validSiteIconKey(key) &&
+      (!('key' in type) || type.key !== key || bytes.length > MAX_SITE_ICON)
+    )
+      throw new HttpError(400, '备份图标与其内容地址不一致。');
+    const content = 'bytes' in type ? type.bytes : bytes;
+    const saved = await env.STORAGE.put(key, content, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
@@ -219,9 +228,9 @@ export async function backupRoute(
       const old = await env.STORAGE.get(key);
       if (
         !old ||
-        old.size !== bytes.byteLength ||
+        old.size !== content.byteLength ||
         !crypto.subtle.timingSafeEqual(
-          await crypto.subtle.digest('SHA-256', bytes),
+          await crypto.subtle.digest('SHA-256', content),
           await crypto.subtle.digest('SHA-256', await old.arrayBuffer()),
         )
       )

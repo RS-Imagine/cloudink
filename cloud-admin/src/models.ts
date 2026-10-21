@@ -35,6 +35,7 @@ export interface SiteConfig {
   clarityId?: string;
   about?: string;
   themePalette?: ThemePalette;
+  siteIcon?: string;
 }
 export interface Release {
   schema_version: 1;
@@ -114,10 +115,13 @@ export function parseSource(source: string): Draft {
 export function serializeDraft(draft: Draft): string {
   return `+++\n${stringify({ ...draft.front_matter })}+++\n\n${draft.body_markdown}`;
 }
+export function validSiteIconKey(value: unknown): boolean {
+  return typeof value === 'string' && /^uploads\/icons\/[a-f0-9]{64}\.(?:svg|ico)$/.test(value);
+}
 export function validateSite(input: unknown): SiteConfig {
   if (!input || typeof input !== 'object') throw new HttpError(400, '网站信息格式不正确。');
   const v = input as Record<string, unknown>;
-  const appearance: Pick<SiteConfig, 'footer' | 'clarityId' | 'themePalette'> = {};
+  const appearance: Pick<SiteConfig, 'footer' | 'clarityId' | 'themePalette' | 'siteIcon'> = {};
   if (v.footer !== undefined) appearance.footer = text(v.footer, '页脚', 2000, false);
   if (v.clarityId !== undefined) {
     appearance.clarityId = text(v.clarityId, '统计项目', 64, false);
@@ -127,6 +131,11 @@ export function validateSite(input: unknown): SiteConfig {
   if (v.themePalette !== undefined) {
     if (!isThemePalette(v.themePalette)) throw new HttpError(400, '请选择支持的主题色。');
     appearance.themePalette = v.themePalette;
+  }
+  if (v.siteIcon !== undefined) {
+    if (typeof v.siteIcon !== 'string' || (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon)))
+      throw new HttpError(400, '网站图标地址不正确。');
+    appearance.siteIcon = v.siteIcon;
   }
   return {
     title: text(v.title, '网站标题', 300),

@@ -1,0 +1,154 @@
+import { Buffer } from 'node:buffer';
+import { crc32, deflateSync } from 'node:zlib';
+export const svgIcon =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="ink"><stop offset="0" stop-color="#805232"/><stop offset="1" stop-color="#24594f"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#ink)"/><path d="M16 44 42 18 48 24 22 50H16Z" fill="white"/></svg>';
+export const svgBytes = new TextEncoder().encode(svgIcon);
+export function pngIcoBytes(options = {}) {
+  function chunk(type, content) {
+    const bytes = Buffer.alloc(content.length + 12);
+    bytes.writeUInt32BE(content.length, 0);
+    bytes.write(type, 4, 4, 'ascii');
+    bytes.set(content, 8);
+    bytes.writeUInt32BE(crc32(bytes.subarray(4, content.length + 8)), content.length + 8);
+    return bytes;
+  }
+  const width = options.width ?? 1,
+    height = options.height ?? 1;
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = options.depth ?? 8;
+  header[9] = options.color ?? (options.palette ? 3 : 6);
+  header[12] = options.interlaced ? 1 : 0;
+  const extras = (name) =>
+    (options[name] || []).map(({ type, data }) => chunk(type, Buffer.from(data)));
+  const png = Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', header),
+    ...extras('beforePalette'),
+    ...(options.palette ? [chunk('PLTE', Buffer.from(options.palette.flat()))] : []),
+    ...extras('beforeData'),
+    chunk(
+      'IDAT',
+      options.compressed ??
+        deflateSync(Buffer.from(options.palette ? [0, 0] : [0, 128, 82, 50, 255])),
+    ),
+    ...extras('afterData'),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+  const bytes = new Uint8Array(22 + png.length);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = width === 256 ? 0 : width;
+  bytes[7] = height === 256 ? 0 : height;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, 32, true);
+  view.setUint32(14, png.length, true);
+  view.setUint32(18, 22, true);
+  bytes.set(png, 22);
+  return bytes;
+}
+export function icoBytes() {
+  const size = 32;
+  const pixels = size * size * 4;
+  const mask = size * 4;
+  const bytes = new Uint8Array(22 + 40 + pixels + mask);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = size;
+  bytes[7] = size;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, 32, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, 40, true);
+  view.setInt32(26, size, true);
+  view.setInt32(30, size * 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, 32, true);
+  view.setUint32(42, pixels, true);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = 62 + (y * size + x) * 4;
+      const pen = x >= 8 && x <= 24 && Math.abs(x + y - 31) <= 2;
+      bytes.set(pen ? [248, 252, 255, 255] : [50, 82, 128, 255], offset);
+    }
+  }
+  return bytes;
+}
+
+export function indexedDibIcoBytes(options = {}) {
+  const depth = options.depth ?? 8,
+    width = options.width ?? 1,
+    height = options.height ?? 1;
+  const palette = options.palette ?? 1;
+  const indices = options.indices ?? Array(width * height).fill(0);
+  const stride = Math.ceil((width * depth) / 32) * 4;
+  const pixels = stride * height;
+  const mask = Math.ceil(width / 32) * 4 * height;
+  const start = 22 + 40 + palette * 4;
+  const bytes = new Uint8Array(start + pixels + mask);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = width;
+  bytes[7] = height;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, depth, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, 40, true);
+  view.setInt32(26, width, true);
+  view.setInt32(30, height * 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, depth, true);
+  view.setUint32(42, pixels, true);
+  view.setUint32(54, palette, true);
+  bytes.fill(255, start, start + pixels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const bit = x * depth,
+        offset = start + y * stride + (bit >>> 3);
+      const shift = 8 - depth - (bit & 7),
+        mask = ((1 << depth) - 1) << shift;
+      bytes[offset] = (bytes[offset] & ~mask) | (indices[y * width + x] << shift);
+    }
+  }
+  return bytes;
+}
+
+export function bitfieldDibIcoBytes(options = {}) {
+  const header = options.header ?? 40,
+    depth = options.depth ?? 32,
+    compression = options.compression ?? 3;
+  const channels =
+    options.masks ??
+    (depth === 16
+      ? compression === 6
+        ? [0x7c00, 0x3e0, 0x1f, 0x8000]
+        : [0xf800, 0x7e0, 0x1f, 0]
+      : [0xff0000, 0xff00, 0xff, compression === 6 ? 0xff000000 : 0]);
+  const count = header === 40 && compression === 3 ? 3 : 4;
+  const external = header === 40 ? count * 4 : 0;
+  const bytes = new Uint8Array(22 + header + external + 8);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = 1;
+  bytes[7] = 1;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, depth, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, header, true);
+  view.setInt32(26, 1, true);
+  view.setInt32(30, 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, depth, true);
+  view.setUint32(38, compression, true);
+  view.setUint32(42, 4, true);
+  for (let i = 0; i < count; i++) view.setUint32(62 + i * 4, channels[i], true);
+  return bytes;
+}

@@ -1,3 +1,4 @@
+import { svgBytes, icoBytes } from './icon-fixtures.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 import {
   Miniflare,
@@ -44,6 +45,12 @@ try {
   await page.locator('#site-form input[name=title]').fill('Browser deployed blog');
   await page.locator('#site-form input[name=author]').fill('Reader');
   await page.locator('#site-form input[name=themePalette][value=brown]').check();
+  await page
+    .locator('#site-icon-file')
+    .setInputFiles({ name: 'site.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svgBytes) });
+  await expect(page.locator('#site-icon-status')).toHaveAttribute('data-tone', 'success');
+  const svgIconKey = await page.locator('#site-icon-value').inputValue();
+  const svgIconURL = '/site-icon/' + svgIconKey.split('/').pop();
   await page.locator('#site-form button[type=submit]').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
@@ -53,6 +60,10 @@ try {
   const beforeThemePublish = await browser.newPage();
   await beforeThemePublish.goto('http://localhost:8791/');
   await expect(beforeThemePublish.locator('html')).toHaveAttribute('data-palette', 'ink');
+  await expect(beforeThemePublish.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/favicon.svg',
+  );
   await beforeThemePublish.close();
   await page.locator('#settings').click();
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
@@ -66,6 +77,13 @@ try {
   );
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.hero h1')).toHaveText('Browser deployed blog');
+  await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
+  await expect(live.locator('.site-mark img')).toHaveAttribute('src', svgIconURL);
+  await expect
+    .poll(() =>
+      live.locator('.site-mark img').evaluate((image) => image.complete && image.naturalWidth > 0),
+    )
+    .toBe(true);
   await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.locator('#new-post').click();
   await page.locator('#title').fill('Browser published mathematics');
@@ -112,8 +130,10 @@ try {
   await staticPage.goto('http://localhost:8791/');
   await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
   await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(33, 26, 22)');
+  await expect(staticPage.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
   await staticPage.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(staticPage.locator('article h1')).toHaveText('Browser published mathematics');
+  await expect(staticPage.locator('.site-mark img')).toHaveAttribute('src', svgIconURL);
   await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
   await noScript.close();
   // The preview embeds the same Rust stylesheet; headings must remain visible.
@@ -274,18 +294,34 @@ try {
   await page.locator('#site-form input[name=themePalette][value=brown]').check();
   await page.locator('#save-site').click();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
+  await page
+    .locator('#site-icon-file')
+    .setInputFiles({ name: 'site.ico', mimeType: 'image/x-icon', buffer: Buffer.from(icoBytes()) });
+  await expect(page.locator('#site-icon-status')).toHaveAttribute('data-tone', 'success');
+  const icoIconKey = await page.locator('#site-icon-value').inputValue();
+  await page.locator('#save-site').click();
+  await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
   const downloaded = page.waitForEvent('download');
   await page.locator('#download-backup').click();
   const backup = await downloaded;
   const backupPath = resolve('cloud-web/dist/browser-backup.zip');
   await backup.saveAs(backupPath);
-  await expect(page.locator('#backup-status')).toContainText('1 张图片');
+  await expect(page.locator('#backup-status')).toContainText('3 张图片');
+  await page.locator('#reset-site-icon').click();
   await page.locator('#site-form input[name=themePalette][value=blue]').check();
   await page.locator('#save-site').click();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'blue');
   await page.locator('#backup-file').setInputFiles(backupPath);
   await acceptConfirmation(page);
   await expect(page.locator('#backup-status')).toContainText('已恢复');
+  await expect(page.locator('#site-icon-value')).toHaveValue(icoIconKey);
+  await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
   await expect(page.locator('html')).toHaveAttribute('data-palette', 'brown');
   assert.deepEqual(
@@ -294,6 +330,22 @@ try {
       .evaluateAll((inputs) => inputs.map((input) => input.value)),
     ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose'],
   );
+  await page.locator('#publish-settings').click();
+  await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('#publish-banner')).toContainText('已上线');
+  await live.goto('http://localhost:8791/');
+  await expect(live.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
+  await page.locator('#reset-site-icon').click();
+  await page.locator('#publish-settings').click();
+  await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('#publish-banner')).toContainText('已上线');
+  await live.locator('.post-card h2 a').first().click();
+  await expect(live.locator('article h1')).toBeVisible();
+  await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
+  await expect(live.locator('.site-mark img')).toHaveAttribute('src', '/favicon.svg');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

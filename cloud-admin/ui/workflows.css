@@ -920,3 +920,33 @@ body:has(dialog[open]) {
     border-radius: var(--ci-radius-lg);
   }
 }
+
+.site-icon-settings {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.site-icon-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.site-icon-sample {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  flex: 0 0 68px;
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-md, 16px);
+  background: var(--ci-surface);
+}
+.site-icon-sample img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+.site-icon-settings p {
+  margin: 0;
+}
