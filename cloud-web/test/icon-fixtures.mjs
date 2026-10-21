@@ -18,17 +18,21 @@ export function pngIcoBytes(options = {}) {
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
   header[8] = options.depth ?? 8;
-  header[9] = options.palette ? 3 : 6;
+  header[9] = options.color ?? (options.palette ? 3 : 6);
   header[12] = options.interlaced ? 1 : 0;
+  const extras = (name) => (options[name] || []).map(({ type, data }) => chunk(type, Buffer.from(data)));
   const png = Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     chunk('IHDR', header),
+    ...extras('beforePalette'),
     ...(options.palette ? [chunk('PLTE', Buffer.from(options.palette.flat()))] : []),
+    ...extras('beforeData'),
     chunk(
       'IDAT',
       options.compressed ??
         deflateSync(Buffer.from(options.palette ? [0, 0] : [0, 128, 82, 50, 255])),
     ),
+    ...extras('afterData'),
     chunk('IEND', Buffer.alloc(0)),
   ]);
   const bytes = new Uint8Array(22 + png.length);
@@ -111,5 +115,33 @@ export function indexedDibIcoBytes(options = {}) {
       bytes[offset] = (bytes[offset] & ~mask) | (indices[y * width + x] << shift);
     }
   }
+  return bytes;
+}
+
+export function bitfieldDibIcoBytes(options = {}) {
+  const header = options.header ?? 40, depth = options.depth ?? 32, compression = options.compression ?? 3;
+  const channels = options.masks ?? (depth === 16
+    ? compression === 6 ? [0x7c00, 0x3e0, 0x1f, 0x8000] : [0xf800, 0x7e0, 0x1f, 0]
+    : [0xff0000, 0xff00, 0xff, compression === 6 ? 0xff000000 : 0]);
+  const count = header === 40 && compression === 3 ? 3 : 4;
+  const external = header === 40 ? count * 4 : 0;
+  const bytes = new Uint8Array(22 + header + external + 8);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = 1;
+  bytes[7] = 1;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, depth, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, header, true);
+  view.setInt32(26, 1, true);
+  view.setInt32(30, 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, depth, true);
+  view.setUint32(38, compression, true);
+  view.setUint32(42, 4, true);
+  for (let i = 0; i < count; i++) view.setUint32(62 + i * 4, channels[i], true);
   return bytes;
 }

@@ -350,6 +350,8 @@ async function validateIconPng(
   let offset = 8,
     chunks = 0,
     imageData = false,
+    startedData = false,
+    transparency = false,
     endedData = false,
     palette = false,
     color = -1;
@@ -393,7 +395,8 @@ async function validateIconPng(
     else if (type === 'PLTE') {
       if (
         palette ||
-        imageData ||
+        transparency ||
+        startedData ||
         !length ||
         length > 768 ||
         length % 3 !== 0 ||
@@ -404,8 +407,19 @@ async function validateIconPng(
       paletteSize = length / 3;
       if (color === 3 && paletteSize > 2 ** depth) invalid();
       palette = true;
+    } else if (type === 'tRNS') {
+      if (transparency || startedData) invalid();
+      if (color === 3) {
+        if (!palette || length < 1 || length > paletteSize) invalid();
+      } else if (color === 0 || color === 2) {
+        if (length !== (color === 0 ? 2 : 6)) invalid();
+        for (let i = 0; i < length; i += 2)
+          if (data.getUint16(offset + 8 + i) > 2 ** depth - 1) invalid();
+      } else invalid();
+      transparency = true;
     } else if (type === 'IDAT') {
       if (endedData || (color === 3 && !palette)) invalid();
+      startedData = true;
       if (length) {
         imageData = true;
         compressed.push(payload.subarray(offset + 8, offset + 8 + length));
@@ -424,7 +438,7 @@ async function validateIconPng(
       );
     } else {
       if (type[0] === type[0].toUpperCase()) invalid();
-      if (imageData) endedData = true;
+      if (startedData) endedData = true;
     }
     offset = next;
   }
@@ -492,6 +506,22 @@ async function validateIco(bytes: Uint8Array): Promise<void> {
         (imageSize !== 0 && (imageSize < pixels || imageSize > size - header - masks - palette * 4))
       )
         invalid();
+      if (compression !== 0) {
+        const channels = header === 40 && compression === 3 ? 3 : 4;
+        let occupied = 0;
+        for (let channel = 0; channel < channels; channel++) {
+          const value = data.getUint32(40 + channel * 4, true);
+          if (!value) {
+            if (channel < 3 || compression === 6) invalid();
+            continue;
+          }
+          if ((depth === 16 && value > 0xffff) || (value & occupied) !== 0) invalid();
+          let normalized = value;
+          while ((normalized & 1) === 0) normalized >>>= 1;
+          if ((normalized & (normalized + 1)) !== 0) invalid();
+          occupied = (occupied | value) >>> 0;
+        }
+      }
       if (depth <= 8) {
         const start = header + masks + palette * 4;
         const stride = pixels / height;

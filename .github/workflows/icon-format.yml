@@ -1,0 +1,25 @@
+name: Icon source formatting
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Emit canonical source
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import prettier from 'prettier';
+          const files = ["cloud-admin/src/site-icons.ts","cloud-web/test/icon-fixtures.mjs","cloud-web/test/site-icon.test.mjs"];
+          for (const path of files) {
+            const before = await readFile(path, 'utf8');
+            const after = await prettier.format(before, { ...(await prettier.resolveConfig(path)), filepath: path });
+            if (before !== after) console.log('CLOUDINK_FORMAT_FILE', path, Buffer.from(after).toString('base64'));
+          }
+          NODE
