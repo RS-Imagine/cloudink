@@ -73,3 +73,39 @@ export function icoBytes() {
   }
   return bytes;
 }
+
+export function indexedDibIcoBytes(options = {}) {
+  const depth = options.depth ?? 8, width = options.width ?? 1, height = options.height ?? 1;
+  const palette = options.palette ?? 1;
+  const indices = options.indices ?? Array(width * height).fill(0);
+  const stride = Math.ceil(width * depth / 32) * 4;
+  const pixels = stride * height;
+  const mask = Math.ceil(width / 32) * 4 * height;
+  const start = 22 + 40 + palette * 4;
+  const bytes = new Uint8Array(start + pixels + mask);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(2, 1, true);
+  view.setUint16(4, 1, true);
+  bytes[6] = width;
+  bytes[7] = height;
+  view.setUint16(10, 1, true);
+  view.setUint16(12, depth, true);
+  view.setUint32(14, bytes.length - 22, true);
+  view.setUint32(18, 22, true);
+  view.setUint32(22, 40, true);
+  view.setInt32(26, width, true);
+  view.setInt32(30, height * 2, true);
+  view.setUint16(34, 1, true);
+  view.setUint16(36, depth, true);
+  view.setUint32(42, pixels, true);
+  view.setUint32(54, palette, true);
+  bytes.fill(255, start, start + pixels);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const bit = x * depth, offset = start + y * stride + (bit >>> 3);
+      const shift = 8 - depth - (bit & 7), mask = ((1 << depth) - 1) << shift;
+      bytes[offset] = (bytes[offset] & ~mask) | (indices[y * width + x] << shift);
+    }
+  }
+  return bytes;
+}

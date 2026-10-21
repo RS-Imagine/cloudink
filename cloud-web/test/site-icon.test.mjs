@@ -2,7 +2,7 @@ import { deflateSync } from 'node:zlib';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture } from './fixture.mjs';
-import { svgBytes, svgIcon, icoBytes, pngIcoBytes } from './icon-fixtures.mjs';
+import { svgBytes, svgIcon, icoBytes, pngIcoBytes, indexedDibIcoBytes } from './icon-fixtures.mjs';
 
 async function upload(f, bytes = svgBytes) {
   const response = await f.request('/api/site-icon', 'POST', bytes);
@@ -279,6 +279,27 @@ test('indexed ICO PNGs validate reconstructed palette samples for packed pixels,
       'POST',
       pngIcoBytes({ palette, ...options, compressed: deflateSync(new Uint8Array(raw)) }),
     );
+    assert.equal(response.status, 400, await response.clone().text());
+  }
+});
+
+test('indexed DIB icons validate visible 1/4/8-bit samples and ignore row padding', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  for (const options of [
+    { depth: 1, width: 1 },
+    { depth: 4, width: 3, palette: 2, indices: [0, 1, 0] },
+    { depth: 8, width: 2, height: 2, palette: 2, indices: [1, 0, 0, 1] },
+    { depth: 8, palette: 256, indices: [255] },
+  ]) await upload(f, indexedDibIcoBytes(options));
+  for (const options of [
+    { depth: 1, indices: [1] },
+    { depth: 1, width: 9, indices: [0, 0, 0, 0, 0, 0, 0, 0, 1] },
+    { depth: 4, width: 3, palette: 2, indices: [0, 1, 15] },
+    { depth: 8, indices: [255] },
+    { depth: 8, width: 2, height: 2, palette: 2, indices: [1, 0, 0, 2] },
+  ]) {
+    const response = await f.request('/api/site-icon', 'POST', indexedDibIcoBytes(options));
     assert.equal(response.status, 400, await response.clone().text());
   }
 });

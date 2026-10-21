@@ -492,6 +492,17 @@ async function validateIco(bytes: Uint8Array): Promise<void> {
         (imageSize !== 0 && (imageSize < pixels || imageSize > size - header - masks - palette * 4))
       )
         invalid();
+      if (depth <= 8) {
+        const start = header + masks + palette * 4;
+        const stride = pixels / height;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const bit = x * depth;
+            const sample = (payload[start + y * stride + (bit >>> 3)] >>> (8 - depth - (bit & 7))) & ((1 << depth) - 1);
+            if (sample >= palette) invalid();
+          }
+        }
+      }
     }
   }
 }
