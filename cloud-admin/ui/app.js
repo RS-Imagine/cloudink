@@ -1017,7 +1017,7 @@ async function upload(file) {
   if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  insertImage(result);
+  insertImage({ ...result, name: file.name });
 }
 function insertImage(image) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');

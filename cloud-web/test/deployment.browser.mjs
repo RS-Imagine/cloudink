@@ -309,7 +309,7 @@ try {
   const backup = await downloaded;
   const backupPath = resolve('cloud-web/dist/browser-backup.zip');
   await backup.saveAs(backupPath);
-  await expect(page.locator('#backup-status')).toContainText('3 张图片');
+  await expect(page.locator('#backup-status')).toContainText('3 个图片文件');
   await page.locator('#reset-site-icon').click();
   await page.locator('#site-form input[name=themePalette][value=blue]').check();
   await page.locator('#save-site').click();
