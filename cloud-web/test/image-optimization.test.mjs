@@ -39,12 +39,17 @@ async function upload(f, variant = webp(), width = 2048) {
   const cookie = auth.headers.get('Set-Cookie').split(';')[0],
     session = await auth.json();
   const body = new FormData();
-  body.append('file', new Blob([png(width, width * 3 / 4)], { type: 'image/png' }), 'photo.png');
+  body.append('file', new Blob([png(width, (width * 3) / 4)], { type: 'image/png' }), 'photo.png');
   body.append('w640', new Blob([variant], { type: 'image/webp' }), '640.webp');
   const encoded = new Response(body);
   return f.mf.dispatchFetch(origin + '/api/upload', {
     method: 'POST',
-    headers: { Origin: origin, Cookie: cookie, 'X-CSRF-Token': session.csrf, 'Content-Type': encoded.headers.get('Content-Type') },
+    headers: {
+      Origin: origin,
+      Cookie: cookie,
+      'X-CSRF-Token': session.csrf,
+      'Content-Type': encoded.headers.get('Content-Type'),
+    },
     body: new Uint8Array(await encoded.arrayBuffer()),
   });
 }
@@ -147,30 +152,39 @@ test('unreferenced image deletion removes original and derivatives, and rejects 
 });
 
 test('narrow images retain the original as a sharper responsive candidate', async (t) => {
-  const f = await fixture(t); await f.login();
+  const f = await fixture(t);
+  await f.login();
   const response = await upload(f, webp(), 1200);
   assert.equal(response.status, 201, await response.clone().text());
   const image = await response.json();
-  assert.match(image.srcset, /640w/); assert.match(image.srcset, /1200w/);
+  assert.match(image.srcset, /640w/);
+  assert.match(image.srcset, /1200w/);
   assert.equal(image.displayUrl, image.url);
 });
 test('501 complete image families retain backup and restore capacity below the byte budget', async (t) => {
-  const f = await fixture(t); await f.login();
+  const f = await fixture(t);
+  await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
   for (let start = 0; start < 501; start += 25) {
     const writes = [];
     for (let n = start; n < Math.min(start + 25, 501); n++) {
       const key = 'uploads/family-' + n + '.png';
-      writes.push(bucket.put(key, png(4,3).slice(0,40), { httpMetadata: { contentType: 'image/png' } }));
-      for (const width of [640,1280,1920])
-        writes.push(bucket.put(key + '.w' + width + '.webp', webp(width,width*3/4), { httpMetadata: { contentType: 'image/webp' } }));
+      writes.push(
+        bucket.put(key, png(4, 3).slice(0, 40), { httpMetadata: { contentType: 'image/png' } }),
+      );
+      for (const width of [640, 1280, 1920])
+        writes.push(
+          bucket.put(key + '.w' + width + '.webp', webp(width, (width * 3) / 4), {
+            httpMetadata: { contentType: 'image/webp' },
+          }),
+        );
     }
     await Promise.all(writes);
   }
   const response = await f.request('/api/backup');
-  assert.equal(response.status,200,await response.clone().text());
+  assert.equal(response.status, 200, await response.clone().text());
   const backup = await response.json();
-  assert.equal(backup.images.length,2004);
-  const restored = await f.request('/api/backup/restore','POST',{backup,settings_etag:null});
-  assert.equal(restored.status,200,await restored.clone().text());
+  assert.equal(backup.images.length, 2004);
+  const restored = await f.request('/api/backup/restore', 'POST', { backup, settings_etag: null });
+  assert.equal(restored.status, 200, await restored.clone().text());
 });

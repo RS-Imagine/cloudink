@@ -130,7 +130,12 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   }
   let total = 0;
   const families = new Set<string>();
-  const available = new Map((await objects(env.STORAGE, 'uploads/', MAX_IMAGE_OBJECTS)).map((object) => [object.key, object]));
+  const available = new Map(
+    (await objects(env.STORAGE, 'uploads/', MAX_IMAGE_OBJECTS)).map((object) => [
+      object.key,
+      object,
+    ]),
+  );
   for (const raw of value.images) {
     if (
       !raw ||

@@ -25,7 +25,9 @@ export function imagePresentation(object: R2Object, variants: R2Object[]) {
     )
     .sort((a, b) => Number(a.customMetadata?.width) - Number(b.customMetadata?.width));
   const normal = choices.find((item) => Number(item.customMetadata?.width) >= 1280);
-  const candidates = choices.map((item) => '/images/' + item.key + ' ' + item.customMetadata?.width + 'w');
+  const candidates = choices.map(
+    (item) => '/images/' + item.key + ' ' + item.customMetadata?.width + 'w',
+  );
   if (choices.length && width > Number(choices.at(-1)?.customMetadata?.width))
     candidates.push('/images/' + object.key + ' ' + width + 'w');
   return {
