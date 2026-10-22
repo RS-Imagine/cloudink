@@ -23,7 +23,10 @@ await build({
 await build({
   entryPoints: [new URL('ui/image.worker.js', root).pathname],
   outfile: new URL('ui/image.worker.generated.js', root).pathname,
-  bundle: true, format: 'esm', target: 'es2022', minify: true,
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  minify: true,
 });
 const paths = [
   ['/image.worker.js', 'ui/image.worker.generated.js', 'text/javascript; charset=utf-8'],

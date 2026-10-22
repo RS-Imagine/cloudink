@@ -220,7 +220,10 @@ export async function imageLibraryRoute(
         include: ['httpMetadata', 'customMetadata'],
       });
       catalog.push(...page.objects);
-      if (catalog.length > 8000)
+      if (
+        catalog.length > 8000 ||
+        catalog.filter((item) => parentImageKey(item.key) === item.key).length > 2000
+      )
         throw new HttpError(413, '当前图片超过 2000 张，暂时无法在网页图片库完整管理。');
       storageCursor = page.truncated ? page.cursor : undefined;
     } while (storageCursor);
@@ -262,7 +265,12 @@ export async function imageLibraryRoute(
         name: object.customMetadata?.name || object.key.split('/').pop(),
         url: `/images/${object.key}`,
         size: object.size,
-        ...imagePresentation(object, catalog.filter((item) => parentImageKey(item.key) === object.key && item.key !== object.key)),
+        ...imagePresentation(
+          object,
+          catalog.filter(
+            (item) => parentImageKey(item.key) === object.key && item.key !== object.key,
+          ),
+        ),
         uploaded: object.uploaded.toISOString(),
         etag: object.etag,
         references: refs.get(object.key) || [],
@@ -276,7 +284,8 @@ export async function imageLibraryRoute(
     const input = await jsonInput(request, 4096);
     if (typeof input.key !== 'string' || !validImageKey(input.key))
       throw new HttpError(400, '图片路径不正确。');
-    if (parentImageKey(input.key) !== input.key) throw new HttpError(400, '请从图片库删除整张图片。');
+    if (parentImageKey(input.key) !== input.key)
+      throw new HttpError(400, '请从图片库删除整张图片。');
     const object = await env.STORAGE.head(input.key);
     if (!object) throw new HttpError(404, '图片已经不存在，请刷新图片库。');
     if (input.etag !== object.etag) throw new HttpError(409, '图片已变化，请刷新图片库后重试。');
@@ -286,7 +295,10 @@ export async function imageLibraryRoute(
     const refs = (await references(env.STORAGE, [input.key])).get(input.key) || [];
     if (refs.length)
       return json({ error: '图片仍被文章或网站设置引用，请先处理引用。', references: refs }, 409);
-    await env.STORAGE.delete([...IMAGE_WIDTHS.map((width) => input.key + '.w' + width + '.webp'), input.key]);
+    await env.STORAGE.delete([
+      ...IMAGE_WIDTHS.map((width) => input.key + '.w' + width + '.webp'),
+      input.key,
+    ]);
     return json({ deleted: true, key: input.key });
   }
   throw new HttpError(405, '请求方式不正确。');

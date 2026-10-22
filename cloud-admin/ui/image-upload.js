@@ -5,14 +5,20 @@ export async function imageUploadForm(file) {
   form.append('file', file);
   const variants = await new Promise((resolve) => {
     let worker, timer;
-    const finish = (value) => { clearTimeout(timer); worker?.terminate(); resolve(value); };
+    const finish = (value) => {
+      clearTimeout(timer);
+      worker?.terminate();
+      resolve(value);
+    };
     try {
       worker = new Worker('/image.worker.js', { type: 'module' });
       timer = setTimeout(() => finish([]), 30000);
       worker.onmessage = ({ data }) => finish(data);
       worker.onerror = () => finish([]);
       worker.postMessage(file);
-    } catch { finish([]); }
+    } catch {
+      finish([]);
+    }
   });
   for (const { width, blob } of variants) form.append('w' + width, blob, width + '.webp');
   return form;

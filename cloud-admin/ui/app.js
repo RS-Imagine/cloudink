@@ -1032,7 +1032,9 @@ function insertImage(image) {
     image.width > 0 &&
     Number.isInteger(image.height) &&
     image.height > 0;
-  const responsive = image.srcset ? ` srcset="${escape(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${escape(image.fullUrl)}"` : '';
+  const responsive = image.srcset
+    ? ` srcset="${escape(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${escape(image.fullUrl)}"`
+    : '';
   const text = sized
     ? `\n\n<img src="${escape(image.displayUrl || image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
     : `\n\n![${name}](${image.url})\n\n`;

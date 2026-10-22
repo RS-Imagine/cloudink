@@ -161,7 +161,12 @@ export async function stageBrowserPage(
     }
     if (marker.id !== id) throw new HttpError(400, '发布标记与当前版本不一致。');
   }
-  if (path.endsWith('.html')) body = await responsiveImages(await sanitizePublicHtml(body), env.STORAGE, new URL(request.url).origin);
+  if (path.endsWith('.html'))
+    body = await responsiveImages(
+      await sanitizePublicHtml(body),
+      env.STORAGE,
+      new URL(request.url).origin,
+    );
   // An already staged page stays immutable, including after commit begins.
   await env.STORAGE.put(`public/${id}/${path}`, body, {
     onlyIf: { etagDoesNotMatch: '*' },
