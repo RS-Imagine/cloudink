@@ -26,6 +26,7 @@ import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
 import { verifyHome } from '../cloud-web/test/home.browser.mjs';
 import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
+import { verifyMarkdownImport } from '../cloud-web/test/import.browser.mjs';
 import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
 
 const output = resolve('build-work/ui-audit');
@@ -444,6 +445,7 @@ try {
     await verifyRelease(localBrowser, origin, output, engine);
     await verifyCompletion(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
+    await verifyMarkdownImport(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])

@@ -6,6 +6,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
 import { configureSiteIcon } from './site-icon.js';
+import { configureMarkdownImport } from './markdown-import.js';
 import {
   engineTask,
   renderPreview,
@@ -1106,38 +1107,16 @@ $('body').addEventListener('drop', (e) => {
   e.preventDefault();
   void uploadFiles(images);
 });
-$('import-posts').addEventListener('click', () => $('import-files').click());
-$('import-files').addEventListener('change', async (e) => {
-  try {
-    await flush();
-    let count = 0;
-    for (const file of e.target.files) {
-      const source = await file.text(),
-        draft = await engineTask('parse', { source });
-      const existing = posts.find((p) => p.slug === draft.front_matter.slug);
-      if (
-        existing?.has_draft &&
-        !(await confirmAction(`“${draft.front_matter.title}”已经有在线草稿。用这个文件替换吗？`, {
-          title: '替换已有草稿？',
-          accept: '替换草稿',
-          danger: true,
-        }))
-      )
-        continue;
-      const old = existing?.has_draft ? await api(`/api/posts/${draft.front_matter.slug}`) : null;
-      await api(`/api/posts/${draft.front_matter.slug}`, {
-        method: 'PUT',
-        body: { source, etag: old?.etag || null },
-      });
-      count++;
-    }
-    await refresh();
-    notice(`已导入 ${count} 篇原稿，作为草稿保存。需要点击发布才能更新线上内容。`);
-  } catch (error) {
-    notice(error.message);
-  } finally {
-    e.target.value = '';
-  }
+configureMarkdownImport({
+  api,
+  engineTask,
+  flush,
+  locked: () => editorLocked || publishingBusy || publishRequest || !!uploading,
+  lock: lockEditor,
+  saved: localSaved,
+  open: openPost,
+  notice,
+  closeMenu: () => shell.close(),
 });
 $('export-posts').addEventListener('click', async () => {
   try {

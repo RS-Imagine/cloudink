@@ -950,3 +950,54 @@ body:has(dialog[open]) {
 .site-icon-settings p {
   margin: 0;
 }
+
+.markdown-import-dialog {
+  width: min(42rem, calc(100% - 2rem));
+  max-height: 85vh;
+  max-height: 85dvh;
+  padding: clamp(16px, 4vw, 28px);
+  overflow: hidden;
+  color: var(--ci-text);
+  background: var(--ci-surface);
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-lg);
+}
+.markdown-import-dialog[open] {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
+}
+.markdown-import-dialog::backdrop {
+  background: rgb(0 0 0 / 35%);
+}
+.markdown-import-dialog h2 {
+  margin: 0;
+}
+.markdown-import-dialog p {
+  overflow-wrap: anywhere;
+}
+#markdown-import-results {
+  min-height: 0;
+  max-height: 50dvh;
+  margin: 0;
+  padding-left: 1.4rem;
+  overflow: auto;
+}
+#markdown-import-results li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--ci-divider);
+  overflow-wrap: anywhere;
+}
+#markdown-import-results strong,
+#markdown-import-results span {
+  display: block;
+}
+#markdown-import-results span {
+  margin-top: 6px;
+}
+#markdown-import-results button {
+  margin-top: 8px;
+}
+#markdown-import-results [data-state='error'] span {
+  color: var(--ci-error);
+}
