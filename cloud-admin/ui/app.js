@@ -1,3 +1,4 @@
+import { imageUploadForm } from './image-upload.js';
 import '../../assets/motion.js';
 import '../../assets/mobile.js';
 import { mountStudioShell } from './shell.js';
@@ -1012,24 +1013,11 @@ window.addEventListener('online', () => {
 
 async function upload(file) {
   const target = doc;
-  const form = new FormData();
-  form.append('file', file);
+  const form = await imageUploadForm(file);
+  if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  let dimensions = {};
-  const localURL = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    image.src = localURL;
-    await image.decode();
-    dimensions = { width: image.naturalWidth, height: image.naturalHeight };
-  } catch {
-    // Unsupported image formats still upload and remain readable.
-  } finally {
-    URL.revokeObjectURL(localURL);
-  }
-  if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  insertImage({ url: result.url, name: file.name, ...dimensions });
+  insertImage(result);
 }
 function insertImage(image) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
@@ -1044,8 +1032,9 @@ function insertImage(image) {
     image.width > 0 &&
     Number.isInteger(image.height) &&
     image.height > 0;
+  const responsive = image.srcset ? ` srcset="${escape(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${escape(image.fullUrl)}"` : '';
   const text = sized
-    ? `\n\n<img src="${escape(image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}">\n\n`
+    ? `\n\n<img src="${escape(image.displayUrl || image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
     : `\n\n![${name}](${image.url})\n\n`;
   view('editor');
   textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');

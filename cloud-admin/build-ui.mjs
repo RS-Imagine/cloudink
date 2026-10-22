@@ -20,7 +20,13 @@ await build({
   minify: true,
   external: ['/blog_wasm.js'],
 });
+await build({
+  entryPoints: [new URL('ui/image.worker.js', root).pathname],
+  outfile: new URL('ui/image.worker.generated.js', root).pathname,
+  bundle: true, format: 'esm', target: 'es2022', minify: true,
+});
 const paths = [
+  ['/image.worker.js', 'ui/image.worker.generated.js', 'text/javascript; charset=utf-8'],
   ['/admin-theme.js', '../assets/theme.js', 'text/javascript; charset=utf-8'],
   ['/', 'ui/index.html', 'text/html; charset=utf-8'],
   ['/favicon.svg', '../assets/cloudink.svg', 'image/svg+xml'],

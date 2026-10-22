@@ -1,3 +1,4 @@
+import { verifyImagePerformance } from './image-performance.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 import {
   Miniflare,
@@ -91,7 +92,7 @@ try {
   await expect(page.locator('#body')).toHaveValue(/Original text/);
   assert.match(
     await page.locator('#body').inputValue(),
-    /!\[Reusable photo.png\]\(\/images\/uploads\//,
+    /<img src="\/images\/uploads\/[^"]+" alt="Reusable photo.png" width="1" height="1">/,
   );
   await page.locator('#save-post').click();
   await expect(page.locator('#notice')).toContainText('草稿已保存');
@@ -127,6 +128,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });
+  await verifyImagePerformance(browser, context, page, mf, origin);
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({

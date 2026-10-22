@@ -1,3 +1,4 @@
+import { imageDimensions } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { digest } from './auth';
@@ -222,6 +223,7 @@ export async function backupRoute(
     const content = 'bytes' in type ? type.bytes : bytes;
     const saved = await env.STORAGE.put(key, content, {
       onlyIf: { etagDoesNotMatch: '*' },
+      customMetadata: imageDimensions(content),
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
     if (!saved) {

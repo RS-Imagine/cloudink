@@ -293,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
           img.setAttribute('aria-label', 'Enlarge image / 放大图片' + (img.alt ? ': ' + img.alt : ''));
           const open = () => {
             const clone = document.createElement('img');
-            clone.src = img.currentSrc || img.src;
+            clone.src = img.dataset.fullSrc || img.currentSrc || img.src;
             clone.alt = img.alt;
             showDialog(clone, img.alt || 'Image preview / 图片预览', img);
           };
