@@ -24,16 +24,16 @@ export function imagePresentation(object: R2Object, variants: R2Object[]) {
         Number(item.customMetadata?.width) > 0,
     )
     .sort((a, b) => Number(a.customMetadata?.width) - Number(b.customMetadata?.width));
-  const normal =
-    choices.find((item) => Number(item.customMetadata?.width) >= 1280) || choices.at(-1);
+  const normal = choices.find((item) => Number(item.customMetadata?.width) >= 1280);
+  const candidates = choices.map((item) => '/images/' + item.key + ' ' + item.customMetadata?.width + 'w');
+  if (choices.length && width > Number(choices.at(-1)?.customMetadata?.width))
+    candidates.push('/images/' + object.key + ' ' + width + 'w');
   return {
     ...(width > 0 && height > 0 ? { width, height } : {}),
     displayUrl: '/images/' + (normal?.key || object.key),
     thumbnailKey: choices[0]?.key || object.key,
     fullUrl: '/images/' + object.key,
-    srcset: choices
-      .map((item) => '/images/' + item.key + ' ' + item.customMetadata?.width + 'w')
-      .join(', '),
+    srcset: candidates.join(', '),
     displaySize: normal?.size || object.size,
     totalSize: object.size + choices.reduce((sum, item) => sum + item.size, 0),
   };
