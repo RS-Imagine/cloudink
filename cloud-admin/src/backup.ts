@@ -1,3 +1,4 @@
+import { imageDimensions, parentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { digest } from './auth';
@@ -20,6 +21,7 @@ const MAX_TEXT = 8_000_000;
 const MAX_MANIFEST = 18_000_000;
 const MAX_BACKUP = 100 * 1024 * 1024;
 const MAX_FILES = 2000;
+const MAX_IMAGE_OBJECTS = MAX_FILES * 4;
 interface BackupImage {
   key: string;
   size: number;
@@ -33,13 +35,13 @@ interface Backup {
   files: Record<string, string>;
   images: BackupImage[];
 }
-async function objects(bucket: R2Bucket, prefix: string): Promise<R2Object[]> {
+async function objects(bucket: R2Bucket, prefix: string, limit = MAX_FILES): Promise<R2Object[]> {
   const result: R2Object[] = [];
   let cursor: string | undefined;
   do {
     const page = await bucket.list({ prefix, cursor, include: ['customMetadata'], limit: 1000 });
     result.push(...page.objects);
-    if (result.length > MAX_FILES)
+    if (result.length > limit)
       throw new HttpError(413, '当前数据超过网页备份的数量限制，请通过 Cloudflare R2 备份。');
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
@@ -75,8 +77,11 @@ async function createBackup(env: CloudInkEnv): Promise<Backup> {
   }
   const images: BackupImage[] = [];
   let imageBytes = 0;
-  for (const object of await objects(env.STORAGE, 'uploads/')) {
+  const families = new Set<string>();
+  for (const object of await objects(env.STORAGE, 'uploads/', MAX_IMAGE_OBJECTS)) {
     if (!validImageKey(object.key)) continue;
+    families.add(parentImageKey(object.key));
+    if (families.size > MAX_FILES) throw new HttpError(413, '备份图片超过 2000 张。');
     imageBytes += object.size;
     if (object.size > MAX_IMAGE || textBytes + imageBytes > MAX_BACKUP)
       throw new HttpError(413, '图片与文字超过 100 MB 网页备份限制，请通过 Cloudflare R2 备份。');
@@ -108,7 +113,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     throw new HttpError(400, '不支持这份备份，请使用 CloudInk 的“下载网站备份”。');
   const site = validateSite(value.site);
   const files = Object.entries(value.files);
-  if (files.length > MAX_FILES || value.images.length > MAX_FILES)
+  if (files.length > MAX_FILES || value.images.length > MAX_IMAGE_OBJECTS)
     throw new HttpError(413, '备份文件数量过多。');
   const drafts = new Map<string, string>();
   // Validate the whole manifest before writing. Drafts take precedence over
@@ -124,6 +129,13 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     drafts.set(slug, serializeDraft(draft));
   }
   let total = 0;
+  const families = new Set<string>();
+  const available = new Map(
+    (await objects(env.STORAGE, 'uploads/', MAX_IMAGE_OBJECTS)).map((object) => [
+      object.key,
+      object,
+    ]),
+  );
   for (const raw of value.images) {
     if (
       !raw ||
@@ -138,9 +150,11 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       raw.size > MAX_IMAGE
     )
       throw new HttpError(400, '备份图片信息不正确。');
+    families.add(parentImageKey(raw.key));
+    if (families.size > MAX_FILES) throw new HttpError(413, '备份图片超过 2000 张。');
     total += raw.size;
     if (total > MAX_BACKUP) throw new HttpError(413, '备份图片超过 100 MB。');
-    const object = await env.STORAGE.head(raw.key);
+    const object = available.get(raw.key);
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
@@ -222,6 +236,7 @@ export async function backupRoute(
     const content = 'bytes' in type ? type.bytes : bytes;
     const saved = await env.STORAGE.put(key, content, {
       onlyIf: { etagDoesNotMatch: '*' },
+      customMetadata: imageDimensions(content),
       httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
     });
     if (!saved) {

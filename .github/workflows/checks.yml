@@ -52,7 +52,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: browser-screenshots
-          path: cloud-web/dist/*.png
+          path: |
+            cloud-web/dist/*.png
+            cloud-web/dist/image-performance.json
           if-no-files-found: ignore
 
   ui-audit:

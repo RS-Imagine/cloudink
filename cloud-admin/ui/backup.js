@@ -58,7 +58,7 @@ export function configureBackup({
         'application/zip',
       );
       status(
-        `备份已下载，包含 ${Object.keys(manifest.files).length} 份原稿、${manifest.images.length} 张图片。`,
+        `备份已下载，包含 ${Object.keys(manifest.files).length} 份原稿、${manifest.images.length} 个图片文件（含压缩版本）。`,
       );
     }),
   );
@@ -76,14 +76,14 @@ export function configureBackup({
         return;
       await action('restore-backup', '正在恢复…', async () => {
         await flush();
-        if (file.size > MAX_ARCHIVE + 2_000_000)
+        if (file.size > MAX_ARCHIVE + 8_000_000)
           throw new Error('这份备份超过网页恢复限制，请通过 Cloudflare R2 恢复。');
         let total = 0,
           count = 0;
         const archive = unzipSync(new Uint8Array(await file.arrayBuffer()), {
           filter(entry) {
             total += entry.originalSize;
-            if (++count > 5000 || total > MAX_ARCHIVE + 2_000_000)
+            if (++count > 10001 || total > MAX_ARCHIVE + 8_000_000)
               throw new Error('备份解压后的大小或文件数量超过限制。');
             // Older backups may contain content/history/, which the server skips.
             if (

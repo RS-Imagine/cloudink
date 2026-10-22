@@ -1,3 +1,4 @@
+import { imageUploadForm } from './image-upload.js';
 import { confirmAction } from './workflows.js';
 const $ = (id) => document.getElementById(id);
 const kinds = {
@@ -43,7 +44,7 @@ export function configureImages({
         (!unused || (image.referencesChecked && !image.references.length)),
     );
     $('image-library-summary').textContent =
-      `${images.length} 张已加载 · ${size(images.reduce((total, image) => total + image.size, 0))}`;
+      `${images.length} 张已加载 · ${size(images.reduce((total, image) => total + (image.totalSize || image.size), 0))}`;
     for (const image of visible) {
       const card = document.createElement('article');
       card.className = 'image-card';
@@ -53,14 +54,14 @@ export function configureImages({
       preview.className = 'image-thumbnail';
       preview.setAttribute('aria-label', `预览 ${image.name}`);
       const thumbnail = document.createElement('img');
-      thumbnail.src = `/api/image?key=${encodeURIComponent(image.key)}&version=${encodeURIComponent(image.etag)}`;
+      thumbnail.src = `/api/image?key=${encodeURIComponent(image.thumbnailKey || image.key)}&version=${encodeURIComponent(image.etag)}`;
       thumbnail.alt = image.name;
       thumbnail.loading = 'lazy';
       thumbnail.decoding = 'async';
       preview.append(thumbnail);
       preview.addEventListener('click', () => {
         $('image-preview-title').textContent = image.name;
-        $('image-preview-full').src = thumbnail.src;
+        $('image-preview-full').src = '/api/image?key=' + encodeURIComponent(image.key);
         window.CloudInkMotion.openDialog($('image-preview-dialog'));
       });
       const body = document.createElement('div');
@@ -70,7 +71,7 @@ export function configureImages({
       name.title = image.key;
       const meta = document.createElement('p');
       meta.className = 'muted';
-      meta.textContent = `${size(image.size)} · ${new Date(image.uploaded).toLocaleDateString()}`;
+      meta.textContent = `${image.srcset ? '网页 ' + size(image.displaySize) + ' / 原图 ' : ''}${size(image.size)} · ${new Date(image.uploaded).toLocaleDateString()}`;
       const badge = document.createElement('span');
       badge.className =
         'badge' + (image.referencesChecked && !image.references.length ? ' draft' : '');
@@ -264,8 +265,7 @@ export function configureImages({
         await flush();
         let done = 0;
         for (const file of files) {
-          const body = new FormData();
-          body.append('file', file);
+          const body = await imageUploadForm(file);
           await api('/api/upload', { method: 'POST', body });
           status(`已上传 ${++done} / ${files.length} 张…`);
         }

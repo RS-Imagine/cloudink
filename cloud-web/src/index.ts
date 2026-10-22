@@ -7,6 +7,7 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
+  '/image.worker.js',
   '/admin-theme.js',
   '/app.js',
   '/style.css',

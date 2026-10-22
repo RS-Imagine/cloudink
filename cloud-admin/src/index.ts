@@ -21,7 +21,8 @@ import {
 
 import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
-import { MAX_IMAGE, imageType, validImageKey } from './media';
+import { validImageKey } from './media';
+import { uploadImage } from './image-variants';
 import { imageLibraryRoute, imageReferenceMetadata, ensureManagedImages } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 function editorial(draft: Draft): string {
@@ -193,35 +194,7 @@ async function apiRoute(
       return json({ ok: true });
     }
   }
-  if (path === '/api/upload' && request.method === 'POST') {
-    const body = await limitedBody(request, MAX_IMAGE + 64 * 1024);
-    const form = await new Response(body, {
-      headers: { 'Content-Type': request.headers.get('Content-Type') || '' },
-    }).formData();
-    const file = form.get('file');
-    if (!file || typeof file === 'string') throw new HttpError(400, '请选择图片。');
-    if (file.size > MAX_IMAGE) throw new HttpError(413, '每张图片最多 10 MB。');
-    const bytes = new Uint8Array(await file.arrayBuffer()),
-      type = imageType(bytes);
-    const basename =
-      file.name
-        .replace(/\.[^.]*$/, '')
-        .replace(/[^A-Za-z0-9_-]/g, '-')
-        .slice(0, 50) || 'image';
-    const key = `uploads/${new Date().toISOString().slice(0, 7).replace('-', '/')}/${crypto.randomUUID()}-${basename}.${type.ext}`;
-    await env.STORAGE.put(key, bytes, {
-      customMetadata: { name: file.name.slice(0, 160) },
-      httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
-    });
-    return json(
-      {
-        key,
-        url: `/images/${key}`,
-        name: file.name,
-      },
-      201,
-    );
-  }
+  if (path === '/api/upload' && request.method === 'POST') return uploadImage(request, env.STORAGE);
   if (path === '/api/image' && request.method === 'GET') {
     const key = new URL(request.url).searchParams.get('key');
     if (

@@ -17,3 +17,4 @@ deployment.json
 .deploy/
 .DS_Store
 Thumbs.db
+cloud-admin/ui/image.worker.generated.js
