@@ -244,7 +244,8 @@ async function verifyProgressivePreview(browser, origin, output, engine) {
     await image.scrollIntoViewIfNeeded();
     await image.evaluate((img) => img.decode());
     const preview = await image.evaluate((img) => img.currentSrc);
-    const response = await context.request.get(preview);
+    const response = await context.request.get(preview, { headers: { Referer: origin + '/' } });
+    assert.equal(response.status(), 200);
     const bytes = await response.body();
     let finish,
       fail = false;

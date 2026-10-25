@@ -148,7 +148,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
                 path: 'cloud-web/dist/image-after-' + viewport.width + '.png',
               });
               await first.click();
-              await expect(tab.locator('dialog img')).toHaveAttribute('src', '/images/' + key);
+              await expect(tab.locator('.image-lightbox a')).toHaveAttribute('href', origin + '/images/' + key);
               await tab.keyboard.press('Escape');
             }
           } else if (repeat === 0)

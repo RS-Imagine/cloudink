@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pending.onload = pending.onerror = null;
                 loader = null;
               };
-              timer = setTimeout(failed, 20000);
+              timer = setTimeout(failed, 60000);
               pending.src = full;
             };
             retry.addEventListener('click', load);
