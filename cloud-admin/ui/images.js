@@ -30,11 +30,24 @@ export function configureImages({
     loading = false,
     referenceError = '',
     loadError = '';
-  for (const [id, operation] of [['image-library-optimize', 'optimize'], ['image-library-republish', 'republish']])
-    $(id).addEventListener('click', () => action(id, '正在处理…', async () => {
-      const { maintainImages } = await import('/image-maintenance.js');
-      await maintainImages(operation, { api, flush, notice, load, rebuild, imageUploadForm, confirmAction });
-    }));
+  for (const [id, operation] of [
+    ['image-library-optimize', 'optimize'],
+    ['image-library-republish', 'republish'],
+  ])
+    $(id).addEventListener('click', () =>
+      action(id, '正在处理…', async () => {
+        const { maintainImages } = await import('/image-maintenance.js');
+        await maintainImages(operation, {
+          api,
+          flush,
+          notice,
+          load,
+          rebuild,
+          imageUploadForm,
+          confirmAction,
+        });
+      }),
+    );
   function status(message) {
     $('image-library-status').textContent = message;
   }

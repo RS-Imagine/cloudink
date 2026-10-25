@@ -44,6 +44,7 @@ export function changesContentReferences(path: string, method: string): boolean 
     /^\/api\/publish\/[a-f0-9-]{36}\/(?:commit|cancel)$/.test(path) ||
     path === '/api/backup/restore' ||
     path === '/api/backup/image' ||
-    (path === '/api/images' || path === '/api/images/optimize')
+    path === '/api/images' ||
+    path === '/api/images/optimize'
   );
 }

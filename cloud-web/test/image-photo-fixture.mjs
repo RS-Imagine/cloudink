@@ -10,7 +10,9 @@ let bytes;
 for (let attempt = 0; attempt < 3; attempt++) {
   try {
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'CloudInk image regression (https://github.com/RS-Imagine/cloudink)' },
+      headers: {
+        'User-Agent': 'CloudInk image regression (https://github.com/RS-Imagine/cloudink)',
+      },
       signal: AbortSignal.timeout(30000),
     });
     assert.ok(response.ok, 'Photo fixture HTTP ' + response.status);
@@ -26,6 +28,12 @@ for (let attempt = 0; attempt < 3; attempt++) {
 }
 await mkdir(directory, { recursive: true });
 await writeFile(directory + '/apollo17.jpg', bytes);
-const provenance = { url, author: 'NASA / Apollo 17 crew', license: 'Public domain (NASA)', sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length };
+const provenance = {
+  url,
+  author: 'NASA / Apollo 17 crew',
+  license: 'Public domain (NASA)',
+  sha256: createHash('sha256').update(bytes).digest('hex'),
+  bytes: bytes.length,
+};
 await writeFile(directory + '/source.json', JSON.stringify(provenance, null, 2));
 console.log('IMAGE_PHOTO_SOURCE ' + JSON.stringify(provenance));

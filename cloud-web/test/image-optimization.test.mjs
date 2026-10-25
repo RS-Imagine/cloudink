@@ -191,25 +191,37 @@ test('501 complete image families retain backup and restore capacity below the b
 
 async function optimize(f, key, etag, variant = webp()) {
   const auth = await f.request('/api/login', 'POST', {
-    email: 'reader@example.net', password: 'first-private-password-26',
+    email: 'reader@example.net',
+    password: 'first-private-password-26',
   });
-  const cookie = auth.headers.get('Set-Cookie').split(';')[0], session = await auth.json();
+  const cookie = auth.headers.get('Set-Cookie').split(';')[0],
+    session = await auth.json();
   const body = new FormData();
-  body.append('key', key); body.append('etag', etag);
+  body.append('key', key);
+  body.append('etag', etag);
   if (variant) body.append('w640', new Blob([variant], { type: 'image/webp' }), '640.webp');
   const encoded = new Response(body);
   return f.mf.dispatchFetch(origin + '/api/images/optimize', {
     method: 'POST',
-    headers: { Origin: origin, Cookie: cookie, 'X-CSRF-Token': session.csrf, 'Content-Type': encoded.headers.get('Content-Type') },
+    headers: {
+      Origin: origin,
+      Cookie: cookie,
+      'X-CSRF-Token': session.csrf,
+      'Content-Type': encoded.headers.get('Content-Type'),
+    },
     body: new Uint8Array(await encoded.arrayBuffer()),
   });
 }
 test('existing image optimization preserves source bytes and URL, validates before writes, and is idempotent', async (t) => {
-  const f = await fixture(t); await f.login();
-  const bucket = await f.mf.getR2Bucket('STORAGE'), key = 'uploads/existing.png';
-  const source = png(), original = await bucket.put(key, source, {
-    httpMetadata: { contentType: 'image/png' }, customMetadata: { name: 'Existing photo', custom: 'preserve' },
-  });
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE'),
+    key = 'uploads/existing.png';
+  const source = png(),
+    original = await bucket.put(key, source, {
+      httpMetadata: { contentType: 'image/png' },
+      customMetadata: { name: 'Existing photo', custom: 'preserve' },
+    });
   assert.equal((await optimize(f, key, 'stale')).status, 409);
   assert.equal((await optimize(f, key, original.etag, webp(320, 240))).status, 400);
   assert.equal((await bucket.list({ prefix: key })).objects.length, 1);
@@ -231,20 +243,40 @@ test('existing image optimization preserves source bytes and URL, validates befo
   assert.match(library.images[0].srcset, /640w/);
 });
 test('rebuilding optimized article images never publishes changed drafts or pending settings', async (t) => {
-  const f = await fixture(t); await f.login();
-  const bucket = await f.mf.getR2Bucket('STORAGE'), key = 'uploads/live.png';
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE'),
+    key = 'uploads/live.png';
   const original = await bucket.put(key, png(), { httpMetadata: { contentType: 'image/png' } });
-  const saved = await (await f.request('/api/posts/existing', 'PUT', { draft: draft('existing', 'LIVE ![photo](/images/' + key + ')'), etag: null })).json();
+  const saved = await (
+    await f.request('/api/posts/existing', 'PUT', {
+      draft: draft('existing', 'LIVE ![photo](/images/' + key + ')'),
+      etag: null,
+    })
+  ).json();
   const initial = await f.prepare({ slug: 'existing', etag: saved.etag });
-  await f.stage(initial); assert.equal((await f.commit(initial)).status, 200);
-  await f.request('/api/posts/existing', 'PUT', { draft: draft('existing', 'DO NOT PUBLISH'), etag: saved.etag });
+  await f.stage(initial);
+  assert.equal((await f.commit(initial)).status, 200);
+  await f.request('/api/posts/existing', 'PUT', {
+    draft: draft('existing', 'DO NOT PUBLISH'),
+    etag: saved.etag,
+  });
   const settings = await (await f.request('/api/settings')).json();
-  await f.request('/api/settings', 'PUT', { site: { ...settings.site, title: 'DO NOT PUBLISH SETTINGS' }, etag: settings.etag });
+  await f.request('/api/settings', 'PUT', {
+    site: { ...settings.site, title: 'DO NOT PUBLISH SETTINGS' },
+    etag: settings.etag,
+  });
   assert.equal((await optimize(f, key, original.etag)).status, 200);
   const rebuilt = await f.prepare({ rebuild: true });
   assert.match(rebuilt.browser_release.markdown_posts.existing, /LIVE/);
   assert.doesNotMatch(JSON.stringify(rebuilt.browser_release), /DO NOT PUBLISH/);
-  await f.stage(rebuilt, [], '<html><head></head><body><div class="article-body"><img src="/images/' + key + '"></div></body></html>');
+  await f.stage(
+    rebuilt,
+    [],
+    '<html><head></head><body><div class="article-body"><img src="/images/' +
+      key +
+      '"></div></body></html>',
+  );
   assert.equal((await f.commit(rebuilt)).status, 200);
   assert.match(await (await f.request('/posts/existing/')).text(), /srcset=/);
 });
