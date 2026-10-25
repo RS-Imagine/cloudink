@@ -1,3 +1,4 @@
+import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
 import { verifyImageOptimizer } from '../cloud-web/test/image-optimizer.browser.mjs';
 // Isolated production theme and approved prototype review. Never uses Wrangler remote mode.
 import { createServer } from 'node:http';
@@ -448,6 +449,7 @@ try {
     await verifyThemes(localBrowser, origin, output, engine);
     await verifyMarkdownImport(localBrowser, origin, output, engine);
     await verifyImageOptimizer(localBrowser, origin);
+    await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
     for (const width of engine === 'chromium' ? widths : [390])
@@ -574,6 +576,7 @@ try {
     'cloud-admin/ui/workflows.css',
     'cloud-admin/ui/preview.worker.generated.js',
     'cloud-admin/ui/image.worker.generated.js',
+    'cloud-admin/ui/image-maintenance.generated.js',
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm',
     'assets/design-tokens.css',
     'assets/design-foundation.css',
@@ -694,6 +697,7 @@ try {
     'served/admin/style.css': 15 * 1024,
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
     'cloud-admin/ui/image.worker.generated.js': 4 * 1024,
+    'cloud-admin/ui/image-maintenance.generated.js': 4 * 1024,
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
   };
   report.releaseBudgets = releaseBudgets;

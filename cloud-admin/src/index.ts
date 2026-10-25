@@ -22,7 +22,7 @@ import {
 import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
-import { uploadImage } from './image-variants';
+import { uploadImage, optimizeImage } from './image-variants';
 import { imageLibraryRoute, imageReferenceMetadata, ensureManagedImages } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 function editorial(draft: Draft): string {
@@ -87,6 +87,8 @@ async function apiRoute(
 ): Promise<Response> {
   if (path === '/api/site-icon' && request.method === 'POST')
     return uploadSiteIcon(request, env.STORAGE);
+  if (path === '/api/images/optimize' && request.method === 'POST')
+    return optimizeImage(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
   if (images) return images;
   const backup = await backupRoute(request, env, path);

@@ -1,3 +1,4 @@
+import { verifyImageMaintenance } from './image-maintenance.browser.mjs';
 import { verifyImagePerformance } from './image-performance.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 import {
@@ -129,6 +130,7 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });
   await verifyImagePerformance(browser, context, page, mf, origin);
+  await verifyImageMaintenance(context, page, mf, origin);
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({

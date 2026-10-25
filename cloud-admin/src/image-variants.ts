@@ -40,6 +40,36 @@ export function imagePresentation(object: R2Object, variants: R2Object[]) {
     totalSize: object.size + choices.reduce((sum, item) => sum + item.size, 0),
   };
 }
+async function prepareVariants(form: FormData, info: ReturnType<typeof imageInfo>, sourceSize: number, key: string) {
+  const prepared: { key: string; bytes: Uint8Array; metadata: Record<string, string> }[] = [];
+  for (const width of IMAGE_WIDTHS) {
+    const part = form.get('w' + width);
+    if (!part) continue;
+    if (typeof part === 'string' || part.size > 2_000_000 || part.size >= sourceSize)
+      throw new HttpError(400, '压缩图片大小不正确。');
+    const data = new Uint8Array(await part.arrayBuffer()),
+      variant = imageInfo(data);
+    if (
+      imageType(data).type !== 'image/webp' ||
+      variant.animated ||
+      variant.width !== width ||
+      !info.width ||
+      !info.height ||
+      info.animated ||
+      width > info.width ||
+      !variant.height ||
+      Math.abs(variant.height - (info.height * width) / info.width) > 1
+    )
+      throw new HttpError(400, '压缩图片的格式或尺寸不正确。');
+    prepared.push({
+      key: key + '.w' + width + '.webp',
+      bytes: data,
+      metadata: imageDimensions(data),
+    });
+  }
+  return prepared;
+}
+
 export async function uploadImage(request: Request, storage: R2Bucket): Promise<Response> {
   const body = await limitedBody(request, MAX_IMAGE + 6_000_000 + 64 * 1024);
   const form = await new Response(body, {
@@ -65,32 +95,7 @@ export async function uploadImage(request: Request, storage: R2Bucket): Promise<
     basename +
     '.' +
     type.ext;
-  const prepared: { key: string; bytes: Uint8Array; metadata: Record<string, string> }[] = [];
-  for (const width of IMAGE_WIDTHS) {
-    const part = form.get('w' + width);
-    if (!part) continue;
-    if (typeof part === 'string' || part.size > 2_000_000 || part.size >= file.size)
-      throw new HttpError(400, '压缩图片大小不正确。');
-    const data = new Uint8Array(await part.arrayBuffer()),
-      variant = imageInfo(data);
-    if (
-      imageType(data).type !== 'image/webp' ||
-      variant.animated ||
-      variant.width !== width ||
-      !info.width ||
-      !info.height ||
-      info.animated ||
-      width > info.width ||
-      !variant.height ||
-      Math.abs(variant.height - (info.height * width) / info.width) > 1
-    )
-      throw new HttpError(400, '压缩图片的格式或尺寸不正确。');
-    prepared.push({
-      key: key + '.w' + width + '.webp',
-      bytes: data,
-      metadata: imageDimensions(data),
-    });
-  }
+  const prepared = await prepareVariants(form, info, file.size, key);
   const written: string[] = [],
     variants: R2Object[] = [];
   try {
@@ -178,4 +183,50 @@ export async function responsiveImages(
     })
     .transform(new Response(html))
     .text();
+}
+
+/** Optimize an existing immutable original under the content-mutation lease. */
+export async function optimizeImage(request: Request, storage: R2Bucket): Promise<Response> {
+  const body = await limitedBody(request, 6_000_000 + 64 * 1024);
+  const form = await new Response(body, {
+    headers: { 'Content-Type': request.headers.get('Content-Type') || '' },
+  }).formData();
+  const key = form.get('key'), etag = form.get('etag');
+  if (typeof key !== 'string' || !validImageKey(key) || parentImageKey(key) !== key || !/\.(?:png|jpe?g|webp)$/.test(key))
+    throw new HttpError(400, '请选择可优化的 JPEG、PNG 或 WebP 原图。');
+  const original = await storage.get(key);
+  if (!original) throw new HttpError(404, '原图已不存在，请刷新图片库。');
+  if (etag !== original.etag) {
+    await original.body.cancel();
+    throw new HttpError(409, '原图已变化，请刷新后重新优化。');
+  }
+  if (original.size > MAX_IMAGE) {
+    await original.body.cancel();
+    throw new HttpError(413, '这张原图超过 10 MB，请先在外部处理。');
+  }
+  const bytes = new Uint8Array(await original.arrayBuffer()), info = imageInfo(bytes);
+  const prepared = await prepareVariants(form, info, original.size, key);
+  const created: string[] = [];
+  try {
+    for (const part of prepared) {
+      const saved = await storage.put(part.key, part.bytes, {
+        onlyIf: { etagDoesNotMatch: '*' },
+        customMetadata: part.metadata,
+        httpMetadata: { contentType: 'image/webp', cacheControl: 'public, max-age=31536000, immutable' },
+      });
+      if (saved) created.push(part.key);
+    }
+    const variants = (await Promise.all(IMAGE_WIDTHS.map((width) => storage.head(key + '.w' + width + '.webp'))))
+      .filter((item): item is R2Object => !!item);
+    const updated = await storage.put(key, bytes, {
+      onlyIf: { etagMatches: original.etag },
+      httpMetadata: original.httpMetadata,
+      customMetadata: { ...original.customMetadata, ...imageDimensions(bytes), optimization: variants.length ? 'complete' : 'skipped' },
+    });
+    if (!updated) throw new HttpError(409, '原图已变化，请刷新后重新优化。');
+    return json({ key, optimized: !!variants.length, addedBytes: variants.filter((item) => created.includes(item.key)).reduce((sum, item) => sum + item.size, 0) });
+  } catch (error) {
+    if (created.length) await storage.delete(created);
+    throw error;
+  }
 }
