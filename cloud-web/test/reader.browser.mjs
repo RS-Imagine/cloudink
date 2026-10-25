@@ -246,14 +246,19 @@ async function verifyProgressivePreview(browser, origin, output, engine) {
     const preview = await image.evaluate((img) => img.currentSrc);
     const response = await context.request.get(preview);
     const bytes = await response.body();
-    let finish, fail = false;
+    let finish,
+      fail = false;
     await page.route('**/images/lightbox-original.png*', async (route) => {
       if (fail) return route.fulfill({ status: 503, body: 'Unavailable' });
-      await new Promise((resolve) => { finish = resolve; });
+      await new Promise((resolve) => {
+        finish = resolve;
+      });
       await route.fulfill({ contentType: 'image/png', body: bytes }).catch(() => {});
     });
     const full = origin + '/images/lightbox-original.png?attempt=1';
-    await image.evaluate((img, url) => { img.dataset.fullSrc = url; }, full);
+    await image.evaluate((img, url) => {
+      img.dataset.fullSrc = url;
+    }, full);
     await image.focus();
     await page.keyboard.press('Enter');
     const dialog = page.locator('dialog.reader-dialog');
@@ -261,7 +266,9 @@ async function verifyProgressivePreview(browser, origin, output, engine) {
     await expect(dialog.locator('[role=status]')).toContainText('正在加载原图');
     await expect(dialog.locator('img')).toBeVisible();
     await expect(dialog.locator('a')).toHaveAttribute('href', full);
-    await page.screenshot({ path: resolve(output, 'image-progressive-loading-' + engine + '.png') });
+    await page.screenshot({
+      path: resolve(output, 'image-progressive-loading-' + engine + '.png'),
+    });
     await expect.poll(() => typeof finish).toBe('function');
     finish();
     await expect(dialog.locator('img')).toHaveAttribute('src', full);
@@ -271,7 +278,9 @@ async function verifyProgressivePreview(browser, origin, output, engine) {
 
     fail = true;
     finish = undefined;
-    await image.evaluate((img) => { img.dataset.fullSrc += '&retry=1'; });
+    await image.evaluate((img) => {
+      img.dataset.fullSrc += '&retry=1';
+    });
     await image.click();
     await expect(dialog.locator('[role=status]')).toContainText('暂时无法加载');
     await expect(dialog.locator('img')).toHaveAttribute('src', preview);
