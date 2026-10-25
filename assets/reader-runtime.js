@@ -94,23 +94,34 @@
     });
     return promise;
   }
+  async function retryMathStyles() {
+    const response = await fetch(path + 'katex.css', {
+      cache: 'reload',
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error('公式样式暂时无法重新加载。');
+    const css = await response.text();
+    const token = crypto.randomUUID();
+    const style = document.createElement('style');
+    style.dataset.readerStyle = 'math';
+    style.textContent = css.replace(/url\(fonts\/(KaTeX_[A-Za-z0-9_-]+\.woff2)\)/g,
+      (_, name) => 'url("' + path + 'fonts/' + name + '?retry=' + token + '")');
+    const previous = document.querySelectorAll('[data-reader-style="math"]');
+    document.head.append(style);
+    // Keep the last usable CSS until the replacement is attached.
+    previous.forEach((node) => node.remove());
+    styles.set('math', Promise.resolve());
+  }
   async function prepare(doc, warm = false) {
     const math = doc.querySelector('.article-body .katex');
     if (math && retryMathFonts) {
-      const previous = document.querySelector('link[data-reader-style="math"]');
-      if (previous) {
-        previous.setAttribute('data-reader-math-stale', '');
-        previous.removeAttribute('data-reader-style');
-      }
-      styles.delete('math');
+      await retryMathStyles();
       retryMathFonts = false;
     }
     await Promise.all([
       ...(math ? [stylesheet('math')] : []),
       ...(doc.querySelector('.article-body pre code') ? [stylesheet('code')] : []),
     ]);
-    if (math)
-      document.querySelectorAll('link[data-reader-math-stale]').forEach((node) => node.remove());
     if (math && document.fonts) {
       let probe, timer;
       try {
