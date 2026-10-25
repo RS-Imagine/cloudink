@@ -257,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cleanupFunctions.push(() => {
           for (const dialog of dialogs) if (dialog.open) dialog.close();
         });
-        const showDialog = (content, label, trigger) => {
+        const showDialog = (content, label, trigger, dispose = () => {}) => {
           const dialog = document.createElement('dialog');
           dialog.className = 'reader-dialog';
           dialog.dataset.sheet = 'compact';
@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.append(dialog);
           const overflow = document.body.style.overflow;
           const finish = () => {
+            dispose();
             document.body.style.overflow = overflow;
             dialog.remove();
             dialogs.delete(dialog);
@@ -292,10 +293,75 @@ document.addEventListener('DOMContentLoaded', () => {
           img.setAttribute('role', 'button');
           img.setAttribute('aria-label', 'Enlarge image / 放大图片' + (img.alt ? ': ' + img.alt : ''));
           const open = () => {
+            const content = document.createElement('figure');
+            content.className = 'image-lightbox';
             const clone = document.createElement('img');
-            clone.src = img.dataset.fullSrc || img.currentSrc || img.src;
+            const preview = img.currentSrc || img.src;
+            const full = new URL(img.dataset.fullSrc || preview, location.href).href;
+            clone.src = preview;
             clone.alt = img.alt;
-            showDialog(clone, img.alt || 'Image preview / 图片预览', img);
+            const feedback = document.createElement('figcaption');
+            feedback.setAttribute('role', 'status');
+            feedback.setAttribute('aria-live', 'polite');
+            const message = document.createElement('span');
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.textContent = '重试原图';
+            retry.hidden = true;
+            const original = document.createElement('a');
+            original.textContent = '打开原图';
+            original.href = full;
+            original.target = '_blank';
+            original.rel = 'noopener';
+            feedback.append(message, retry, original);
+            content.append(clone, feedback);
+            let loader = null, timer = 0, generation = 0, disposed = false;
+            const cancel = () => {
+              generation++;
+              clearTimeout(timer);
+              if (loader) {
+                loader.onload = loader.onerror = null;
+                loader.removeAttribute('src');
+                loader = null;
+              }
+            };
+            const load = () => {
+              cancel();
+              const current = generation;
+              retry.hidden = true;
+              message.textContent = '正在加载原图，当前显示预览…';
+              content.setAttribute('aria-busy', 'true');
+              const pending = new Image();
+              loader = pending;
+              const failed = () => {
+                if (disposed || current !== generation) return;
+                cancel();
+                content.setAttribute('aria-busy', 'false');
+                message.textContent = '原图暂时无法加载，预览仍可查看。';
+                retry.hidden = false;
+              };
+              pending.onerror = failed;
+              pending.onload = async () => {
+                try { await pending.decode(); } catch { failed(); return; }
+                if (disposed || current !== generation) return;
+                clearTimeout(timer);
+                clone.src = full;
+                content.setAttribute('aria-busy', 'false');
+                message.textContent = '原图已加载';
+                pending.onload = pending.onerror = null;
+                loader = null;
+              };
+              timer = setTimeout(failed, 20000);
+              pending.src = full;
+            };
+            retry.addEventListener('click', load);
+            showDialog(content, img.alt || 'Image preview / 图片预览', img, () => {
+              disposed = true;
+              cancel();
+            });
+            if (full === new URL(preview, location.href).href) {
+              message.textContent = '原图已加载';
+            } else load();
           };
           img.addEventListener('click', open);
           img.addEventListener('keydown', e => {

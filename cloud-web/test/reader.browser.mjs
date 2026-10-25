@@ -222,5 +222,72 @@ export async function verifyReader(browser, origin, output, engine) {
   await plain.locator('.article-back').click();
   await expect(plain.locator('.home-layout')).toBeVisible();
   await native.close();
+  await verifyProgressivePreview(browser, origin, output, engine);
   assert.deepEqual(errors, [], engine + ' reader interactions must not produce errors');
+}
+
+async function verifyProgressivePreview(browser, origin, output, engine) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    reducedMotion: 'reduce',
+    colorScheme: 'dark',
+  });
+  const errors = [];
+  const page = await context.newPage();
+  page.on('pageerror', (error) => errors.push(error.message));
+  await context.route('https://cdn.jsdelivr.net/**', (route) =>
+    route.fulfill({ contentType: 'text/css', body: '' }),
+  );
+  try {
+    await page.goto(origin + '/posts/slow-days/');
+    const image = page.locator('.article-body img').first();
+    await image.scrollIntoViewIfNeeded();
+    await image.evaluate((img) => img.decode());
+    const preview = await image.evaluate((img) => img.currentSrc);
+    const response = await context.request.get(preview);
+    const bytes = await response.body();
+    let finish, fail = false;
+    await page.route('**/images/lightbox-original.png*', async (route) => {
+      if (fail) return route.fulfill({ status: 503, body: 'Unavailable' });
+      await new Promise((resolve) => { finish = resolve; });
+      await route.fulfill({ contentType: 'image/png', body: bytes }).catch(() => {});
+    });
+    const full = origin + '/images/lightbox-original.png?attempt=1';
+    await image.evaluate((img, url) => { img.dataset.fullSrc = url; }, full);
+    await image.focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.locator('dialog.reader-dialog');
+    await expect(dialog.locator('img')).toHaveAttribute('src', preview);
+    await expect(dialog.locator('[role=status]')).toContainText('正在加载原图');
+    await expect(dialog.locator('img')).toBeVisible();
+    await expect(dialog.locator('a')).toHaveAttribute('href', full);
+    await page.screenshot({ path: resolve(output, 'image-progressive-loading-' + engine + '.png') });
+    await expect.poll(() => typeof finish).toBe('function');
+    finish();
+    await expect(dialog.locator('img')).toHaveAttribute('src', full);
+    await expect(dialog.locator('[role=status]')).toContainText('原图已加载');
+    await page.keyboard.press('Escape');
+    await expect(image).toBeFocused();
+
+    fail = true;
+    finish = undefined;
+    await image.evaluate((img) => { img.dataset.fullSrc += '&retry=1'; });
+    await image.click();
+    await expect(dialog.locator('[role=status]')).toContainText('暂时无法加载');
+    await expect(dialog.locator('img')).toHaveAttribute('src', preview);
+    await expect(dialog.getByRole('button', { name: '重试原图' })).toBeVisible();
+    await page.screenshot({ path: resolve(output, 'image-progressive-error-' + engine + '.png') });
+    fail = false;
+    await dialog.getByRole('button', { name: '重试原图' }).click();
+    await expect.poll(() => typeof finish).toBe('function');
+    // Closing during loading must dispose callbacks and retain keyboard focus.
+    await page.keyboard.press('Escape');
+    finish();
+    await expect(dialog).toHaveCount(0);
+    await expect(image).toBeFocused();
+    await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+    assert.deepEqual(errors, [], 'progressive preview must not leak late callbacks');
+  } finally {
+    await context.close();
+  }
 }
