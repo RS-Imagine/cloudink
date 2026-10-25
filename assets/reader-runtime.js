@@ -197,7 +197,9 @@
   }
   function attach(swup) {
     if (!swup) return;
-    let controller = null, pending = null, delayed = 0;
+    let controller = null,
+      pending = null,
+      delayed = 0;
     const clear = () => {
       clearTimeout(delayed);
       document.getElementById('swup')?.removeAttribute('aria-busy');
@@ -226,8 +228,9 @@
       try {
         const cache = options.cache;
         if (cache !== undefined) {
-          visit.cache.read = typeof cache === 'object' ? cache.read ?? visit.cache.read : !!cache;
-          visit.cache.write = typeof cache === 'object' ? cache.write ?? visit.cache.write : !!cache;
+          visit.cache.read = typeof cache === 'object' ? (cache.read ?? visit.cache.read) : !!cache;
+          visit.cache.write =
+            typeof cache === 'object' ? (cache.write ?? visit.cache.write) : !!cache;
         }
         let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
         if (!page) {
@@ -244,7 +247,10 @@
             return;
           }
           const url = new URL(response.url);
-          if (url.origin !== location.origin) { native(); return; }
+          if (url.origin !== location.origin) {
+            native();
+            return;
+          }
           page = { url: url.pathname + url.search, html: await response.text() };
         }
         const doc = new DOMParser().parseFromString(page.html, 'text/html');
@@ -262,19 +268,36 @@
         if (pending !== visit) return;
         clear();
         visit.abort();
-        if (visit.history.popstate) { native(); return; }
-        show('reader-navigation-status',
-          navigator.onLine ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。' : '网络已断开，当前文章已保留；联网后可重试。',
-          () => swup.navigate(target, { cache: { read: false, write: true } }), target);
+        if (visit.history.popstate) {
+          native();
+          return;
+        }
+        show(
+          'reader-navigation-status',
+          navigator.onLine
+            ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。'
+            : '网络已断开，当前文章已保留；联网后可重试。',
+          () => swup.navigate(target, { cache: { read: false, write: true } }),
+          target,
+        );
         visit.trigger.el?.focus({ preventScroll: true });
-      } finally { clearTimeout(timeout); }
+      } finally {
+        clearTimeout(timeout);
+      }
     };
-    swup.hooks.replace('page:load', (visit, args, original) =>
-      visit.meta.readerPage || original(visit, args));
+    swup.hooks.replace(
+      'page:load',
+      (visit, args, original) => visit.meta.readerPage || original(visit, args),
+    );
     swup.hooks.on('visit:abort', (visit) => {
-      if (pending === visit) { controller?.abort(); clear(); }
+      if (pending === visit) {
+        controller?.abort();
+        clear();
+      }
     });
-    swup.hooks.on('visit:end', () => { if (!swup.navigating || pending === swup.visit) clear(); });
+    swup.hooks.on('visit:end', () => {
+      if (!swup.navigating || pending === swup.visit) clear();
+    });
     window.addEventListener('online', () => {
       const node = document.getElementById('reader-navigation-status');
       if (node && !node.hidden && node.querySelector('button'))

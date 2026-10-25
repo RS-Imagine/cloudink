@@ -60,9 +60,18 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       if (url.pathname === '/native-json')
         return route.fulfill({ contentType: 'application/json', body: '{"native":true}' });
       if (url.pathname === '/native-page')
-        return route.fulfill({ contentType: 'text/html', body: '<html><body><h1>普通页面</h1></body></html>' });
+        return route.fulfill({
+          contentType: 'text/html',
+          body: '<html><body><h1>普通页面</h1></body></html>',
+        });
       if (url.pathname === '/native-image.png')
-        return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=', 'base64') });
+        return route.fulfill({
+          contentType: 'image/png',
+          body: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=',
+            'base64',
+          ),
+        });
       const match = url.pathname.match(/^\/posts\/reader-(plain|code|math)\/$/);
       if (match) {
         if (holdPage)
