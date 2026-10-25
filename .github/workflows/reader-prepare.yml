@@ -1,0 +1,33 @@
+name: Reader dependency preparation
+on:
+  push:
+    branches: [perf/reader-loading-and-navigation]
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm --prefix cloud-admin ci
+      - name: Record current public JavaScript baseline
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { gzipSync } from 'node:zlib';
+          import { build } from './cloud-admin/node_modules/esbuild/lib/main.js';
+          const source = (await Promise.all(['assets/motion.js','assets/mobile.js','crates/blog-core/src/assets/client.js'].map(path => readFile(path,'utf8')))).join('\n');
+          const result = await build({stdin:{contents:"import Swup from 'swup';import hljs from './cloud-admin/node_modules/highlight.js/lib/common';window.Swup=Swup;window.hljs=hljs;"+source,resolveDir:process.cwd()},bundle:true,minify:true,format:'iife',target:'es2022',write:false});
+          console.log('READER_BASELINE '+JSON.stringify({bytes:result.outputFiles[0].contents.length,gzip:gzipSync(result.outputFiles[0].contents).length}));
+          NODE
+      - run: npm --prefix cloud-admin install --save-dev --save-exact --package-lock-only katex@0.16.11
+      - run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          for (const path of ['cloud-admin/package.json','cloud-admin/package-lock.json'])
+            console.log('READER_PREP_FILE '+path+' '+(await readFile(path)).toString('base64'));
+          NODE
