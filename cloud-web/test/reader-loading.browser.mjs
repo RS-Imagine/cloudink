@@ -17,6 +17,7 @@ export async function readerFixtures(context, origin) {
         plain: '<p>这是一篇只包含普通文字的文章。</p>'.repeat(20),
         code: '<pre><code class="language-javascript">const greeting = "hello";\nconsole.log(greeting);</code></pre>',
         math: '<p>公式阅读示例：</p>' + formula,
+      'math-extra': '<span class="katex" style="font-family:KaTeX_Size4">()</span>',
       })) {
         const doc = template.cloneNode(true);
         doc.querySelector('.article-heading h1').textContent = 'Reader ' + kind;
@@ -25,8 +26,8 @@ export async function readerFixtures(context, origin) {
         for (const type of kind === 'plain' ? [] : [kind]) {
           const link = doc.createElement('link');
           link.rel = 'stylesheet';
-          link.dataset.readerStyle = type === 'math' ? 'math' : 'code';
-          link.href = '/reader-assets/' + (type === 'math' ? 'katex.css' : 'code.css');
+          link.dataset.readerStyle = type.startsWith('math') ? 'math' : 'code';
+          link.href = '/reader-assets/' + (type.startsWith('math') ? 'katex.css' : 'code.css');
           doc.head.append(link);
         }
         outputs[kind] = '<!doctype html>' + doc.documentElement.outerHTML;
@@ -51,6 +52,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     let failPage = false,
       failScript = true,
       failFont = true,
+      failExtraFont = false,
       holdStyle = false,
       releaseStyle,
       holdPage = false,
@@ -73,7 +75,11 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
             'base64',
           ),
         });
-      const match = url.pathname.match(/^\/posts\/reader-(plain|code|math)\/$/);
+      if (url.pathname.endsWith('KaTeX_Size4-Regular.woff2') && failExtraFont) {
+        failExtraFont = false;
+        return route.abort();
+      }
+      const match = url.pathname.match(/^\/posts\/reader-(plain|code|math|math-extra)\/$/);
       if (match) {
         if (holdPage)
           await new Promise((resolve) => {
@@ -171,6 +177,22 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       path: resolve(output, 'reader-math-local-' + engine + '.png'),
       fullPage: true,
     });
+
+    failExtraFont = true;
+    await page.evaluate(() => {
+      const link = document.createElement('a');
+      link.id = 'math-next';
+      link.href = '/posts/reader-math-extra/';
+      link.textContent = '另一篇公式文章';
+      document.querySelector('.article-body').prepend(link);
+    });
+    await page.locator('#math-next').click();
+    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', { timeout: 15000 });
+    await expect(page.locator('.article-heading h1')).toHaveText('Reader math');
+    assert.match(await page.locator('.article-body .katex').evaluate((node) => getComputedStyle(node).fontFamily), /KaTeX_Main/);
+    await page.screenshot({ path: resolve(output, 'reader-math-font-retry-' + engine + '.png'), fullPage: true });
+    await page.locator('#reader-navigation-status').getByRole('button', { name: '重试', exact: true }).click();
+    await expect(page.locator('.article-heading h1')).toHaveText('Reader math-extra', { timeout: 15000 });
 
     await home();
     failPage = true;
