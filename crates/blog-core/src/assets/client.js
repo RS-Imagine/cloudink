@@ -297,7 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
             content.className = 'image-lightbox';
             const clone = document.createElement('img');
             const preview = img.currentSrc || img.src;
-            const full = new URL(img.dataset.fullSrc || preview, location.href).href;
+            const fullUrl = new URL(img.dataset.fullSrc || preview, location.href);
+            const full = /^https?:$/.test(fullUrl.protocol) ? fullUrl.href : preview;
             clone.src = preview;
             clone.alt = img.alt;
             const feedback = document.createElement('figcaption');
@@ -311,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const original = document.createElement('a');
             original.textContent = '打开原图';
             original.href = full;
+            original.hidden = !/^https?:/.test(full);
             original.target = '_blank';
             original.rel = 'noopener';
             feedback.append(message, retry, original);
@@ -345,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { await pending.decode(); } catch { failed(); return; }
                 if (disposed || current !== generation) return;
                 clearTimeout(timer);
-                clone.src = full;
+                clone.src = img.dataset.fullSrc && /^https?:$/.test(fullUrl.protocol) ? img.dataset.fullSrc : full;
                 content.setAttribute('aria-busy', 'false');
                 message.textContent = '原图已加载';
                 pending.onload = pending.onerror = null;
