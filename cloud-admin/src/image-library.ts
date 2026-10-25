@@ -269,9 +269,10 @@ export async function imageLibraryRoute(
           object.size >= 80_000 &&
           /^image\/(?:jpeg|png|webp)$/.test(object.httpMetadata?.contentType || '') &&
           object.customMetadata?.optimization !== 'skipped' &&
-          !catalog.some(
-            (item) => parentImageKey(item.key) === object.key && item.key !== object.key,
-          ),
+          (object.customMetadata?.optimization === 'processing' ||
+            !catalog.some(
+              (item) => parentImageKey(item.key) === object.key && item.key !== object.key,
+            )),
         optimization: object.customMetadata?.optimization || '',
         ...imagePresentation(
           object,

@@ -189,7 +189,7 @@ test('501 complete image families retain backup and restore capacity below the b
   assert.equal(restored.status, 200, await restored.clone().text());
 });
 
-async function optimize(f, key, etag, variant = webp()) {
+async function optimize(f, key, etag, variant = webp(), width = 640) {
   const auth = await f.request('/api/login', 'POST', {
     email: 'reader@example.net',
     password: 'first-private-password-26',
@@ -199,7 +199,8 @@ async function optimize(f, key, etag, variant = webp()) {
   const body = new FormData();
   body.append('key', key);
   body.append('etag', etag);
-  if (variant) body.append('w640', new Blob([variant], { type: 'image/webp' }), '640.webp');
+  if (variant)
+    body.append('w' + width, new Blob([variant], { type: 'image/webp' }), width + '.webp');
   const encoded = new Response(body);
   return f.mf.dispatchFetch(origin + '/api/images/optimize', {
     method: 'POST',
@@ -279,4 +280,28 @@ test('rebuilding optimized article images never publishes changed drafts or pend
   );
   assert.equal((await f.commit(rebuilt)).status, 200);
   assert.match(await (await f.request('/posts/existing/')).text(), /srcset=/);
+});
+
+test('an interrupted image family remains eligible and resumes without overwriting existing variants', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const key = 'uploads/interrupted.png';
+  const original = await bucket.put(key, png(), {
+    httpMetadata: { contentType: 'image/png' },
+    customMetadata: { optimization: 'processing' },
+  });
+  const first = await bucket.put(key + '.w640.webp', webp(), {
+    httpMetadata: { contentType: 'image/webp' },
+    customMetadata: { width: '640', height: '480' },
+  });
+  const before = await (await f.request('/api/images')).json();
+  assert.equal(before.images[0].canOptimize, true);
+  const response = await optimize(f, key, original.etag, webp(1280, 960), 1280);
+  assert.equal(response.status, 200, await response.clone().text());
+  assert.equal((await bucket.head(first.key)).etag, first.etag);
+  assert.ok(await bucket.head(key + '.w1280.webp'));
+  const after = await (await f.request('/api/images')).json();
+  assert.equal(after.images[0].canOptimize, false);
+  assert.equal(after.images[0].optimization, 'complete');
 });

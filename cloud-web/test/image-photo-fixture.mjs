@@ -26,6 +26,11 @@ for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt === 2) throw error;
   }
 }
+assert.equal(
+  createHash('sha256').update(bytes).digest('hex'),
+  '51049ed4e34514880bfbe39d34e2dd2c56e31f55919e7f4f0b34ef1698cb9f50',
+  'The reviewed photo fixture changed; review provenance before updating the digest.',
+);
 await mkdir(directory, { recursive: true });
 await writeFile(directory + '/apollo17.jpg', bytes);
 const provenance = {

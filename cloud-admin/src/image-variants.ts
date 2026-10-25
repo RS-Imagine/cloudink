@@ -218,6 +218,17 @@ export async function optimizeImage(request: Request, storage: R2Bucket): Promis
   const bytes = new Uint8Array(await original.arrayBuffer()),
     info = imageInfo(bytes);
   const prepared = await prepareVariants(form, info, original.size, key);
+  // Mark the original before writing derivatives so an interrupted request is resumable.
+  const marked = await storage.put(key, bytes, {
+    onlyIf: { etagMatches: original.etag },
+    httpMetadata: original.httpMetadata,
+    customMetadata: {
+      ...original.customMetadata,
+      ...imageDimensions(bytes),
+      optimization: 'processing',
+    },
+  });
+  if (!marked) throw new HttpError(409, '原图已变化，请刷新后重新优化。');
   const created: string[] = [];
   try {
     for (const part of prepared) {
