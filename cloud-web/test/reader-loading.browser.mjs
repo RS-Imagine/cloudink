@@ -152,7 +152,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       .locator('.hljs-string')
       .first()
       .evaluate((node) => getComputedStyle(node).color);
-    await page.locator('[data-theme-mode]').selectOption('dark');
+    await page.locator('select[data-theme-mode]').selectOption('dark');
     await expect
       .poll(() =>
         page
@@ -161,7 +161,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
           .evaluate((node) => getComputedStyle(node).color),
       )
       .not.toBe(color);
-    await page.locator('[data-theme-mode]').selectOption('light');
+    await page.locator('select[data-theme-mode]').selectOption('light');
     await page.screenshot({
       path: resolve(output, 'reader-code-lazy-' + engine + '.png'),
       fullPage: true,
@@ -236,11 +236,17 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     assert.equal(new URL(page.url()).pathname, '/');
     await expect(page.locator('#reader-navigation-status a')).toHaveAttribute('data-no-swup', '');
     failPage = false;
+    const retryCount = requests.filter((url) => url.endsWith('/posts/reader-plain/')).length;
     await page
       .locator('#reader-navigation-status')
       .getByRole('button', { name: '重试', exact: true })
       .click();
     await expect(page.locator('.article-heading h1')).toHaveText('Reader plain');
+    assert.equal(
+      requests.filter((url) => url.endsWith('/posts/reader-plain/')).length,
+      retryCount + 1,
+      'A retry must use the prepared response without a second request',
+    );
     await page.goBack();
     await expect(page.locator('.home-layout')).toBeVisible();
     await page.goForward();

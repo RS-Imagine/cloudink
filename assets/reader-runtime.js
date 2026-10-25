@@ -272,10 +272,9 @@
         }
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
-        visit.meta.readerPage = page;
         if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
         clear();
-        return perform(visit, options);
+        return perform(visit, { ...options, meta: { ...options.meta, readerPage: page } });
       } catch {
         if (pending !== visit) return;
         clear();
