@@ -22,6 +22,7 @@ export function configureImages({
   canInsert,
   siteUrl,
   beginNavigation,
+  rebuild,
 }) {
   let images = [],
     cursor = null,
@@ -29,6 +30,24 @@ export function configureImages({
     loading = false,
     referenceError = '',
     loadError = '';
+  for (const [id, operation] of [
+    ['image-library-optimize', 'optimize'],
+    ['image-library-republish', 'republish'],
+  ])
+    $(id).addEventListener('click', () =>
+      action(id, '正在处理…', async () => {
+        const { maintainImages } = await import('/image-maintenance.js');
+        await maintainImages(operation, {
+          api,
+          flush,
+          notice,
+          load,
+          rebuild,
+          imageUploadForm,
+          confirmAction,
+        });
+      }),
+    );
   function status(message) {
     $('image-library-status').textContent = message;
   }
@@ -81,6 +100,12 @@ export function configureImages({
           ? '正在使用'
           : '未发现引用';
       body.append(name, meta, badge);
+      if (image.optimization === 'skipped') {
+        const skipped = document.createElement('p');
+        skipped.className = 'muted';
+        skipped.textContent = '已检查：无需转换或当前浏览器无法优化。';
+        body.append(skipped);
+      }
       if (image.references.length) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');

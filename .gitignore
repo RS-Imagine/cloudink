@@ -18,3 +18,4 @@ deployment.json
 .DS_Store
 Thumbs.db
 cloud-admin/ui/image.worker.generated.js
+cloud-admin/ui/image-maintenance.generated.js

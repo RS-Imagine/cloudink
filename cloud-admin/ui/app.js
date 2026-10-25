@@ -1044,6 +1044,7 @@ function insertImage(image) {
   changed();
 }
 configureImages({
+  rebuild: () => startPublish({ rebuild: true }),
   api,
   flush,
   notice,

@@ -541,6 +541,34 @@
             >
             <span id="image-library-summary" class="muted"></span>
           </div>
+
+          <details id="image-maintenance" class="settings-card">
+            <summary>优化已有图片</summary>
+            <p class="muted">
+              保留原图和现有链接，为 JPEG、PNG、WebP
+              生成更小版本。请保持后台页面打开；可暂停，重新运行会跳过已完成的图片。
+            </p>
+            <label
+              ><input id="image-optimize-recheck" type="checkbox" />重新检查之前跳过的图片</label
+            >
+            <div class="toolbar-actions">
+              <button id="image-library-optimize">扫描并优化</button>
+              <button id="image-library-pause" hidden>完成当前图片后暂停</button>
+              <button id="image-library-republish">更新已发布文章的图片</button>
+            </div>
+            <progress
+              id="image-optimize-progress"
+              value="0"
+              max="1"
+              hidden
+              aria-label="图片优化进度"
+            ></progress>
+            <p id="image-optimize-status" class="muted" role="status" aria-live="polite"></p>
+            <ul id="image-optimize-errors" class="error"></ul>
+            <p class="muted">
+              更新文章会重建全部已发布页面，不发布草稿或未发布的网站设置。原图仍占用存储空间，小尺寸版本会增加存储量。
+            </p>
+          </details>
           <p id="image-library-status" class="muted" role="status" aria-live="polite"></p>
           <p id="image-library-warning" class="error" role="alert" hidden></p>
           <div id="image-library-grid" class="image-library-grid" aria-busy="false"></div>

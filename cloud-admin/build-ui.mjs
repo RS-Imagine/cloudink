@@ -9,7 +9,7 @@ await build({
   format: 'esm',
   target: 'es2022',
   minify: true,
-  external: ['/blog_wasm.js'],
+  external: ['/blog_wasm.js', '/image-maintenance.js'],
 });
 await build({
   entryPoints: [new URL('ui/preview.worker.js', root).pathname],
@@ -28,7 +28,16 @@ await build({
   target: 'es2022',
   minify: true,
 });
+await build({
+  entryPoints: [new URL('ui/image-maintenance.js', root).pathname],
+  outfile: new URL('ui/image-maintenance.generated.js', root).pathname,
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  minify: true,
+});
 const paths = [
+  ['/image-maintenance.js', 'ui/image-maintenance.generated.js', 'text/javascript; charset=utf-8'],
   ['/image.worker.js', 'ui/image.worker.generated.js', 'text/javascript; charset=utf-8'],
   ['/admin-theme.js', '../assets/theme.js', 'text/javascript; charset=utf-8'],
   ['/', 'ui/index.html', 'text/html; charset=utf-8'],
