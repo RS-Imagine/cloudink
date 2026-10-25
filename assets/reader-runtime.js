@@ -2,6 +2,7 @@
 (() => {
   const styles = new Map();
   let highlighter = null;
+  let retryMathFonts = false;
   const path = '/reader-assets/';
   function feedback(id) {
     let node = document.getElementById(id);
@@ -95,10 +96,21 @@
   }
   async function prepare(doc, warm = false) {
     const math = doc.querySelector('.article-body .katex');
+    if (math && retryMathFonts) {
+      const previous = document.querySelector('link[data-reader-style="math"]');
+      if (previous) {
+        previous.setAttribute('data-reader-math-stale', '');
+        previous.removeAttribute('data-reader-style');
+      }
+      styles.delete('math');
+      retryMathFonts = false;
+    }
     await Promise.all([
       ...(math ? [stylesheet('math')] : []),
       ...(doc.querySelector('.article-body pre code') ? [stylesheet('code')] : []),
     ]);
+    if (math)
+      document.querySelectorAll('link[data-reader-math-stale]').forEach((node) => node.remove());
     if (math && document.fonts) {
       let probe, timer;
       try {
@@ -124,8 +136,8 @@
           if (font.family.includes('KaTeX_') && font.status === 'error')
             throw new Error('公式字体暂时无法加载。');
       } catch (error) {
-        document.querySelector('link[data-reader-style="math"]')?.remove();
-        styles.delete('math');
+        // Keep usable layout CSS while retrying failed font faces on the next attempt.
+        retryMathFonts = true;
         throw error;
       } finally {
         clearTimeout(timer);

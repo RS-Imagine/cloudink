@@ -50,6 +50,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     const fixtures = await readerFixtures(context, origin);
     let failPage = false,
       failScript = true,
+      failFont = true,
       holdStyle = false,
       releaseStyle,
       holdPage = false,
@@ -85,6 +86,10 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
         return route
           .fulfill({ contentType: 'text/html', body: fixtures[match[1]] })
           .catch(() => {});
+      }
+      if (url.pathname.endsWith('.woff2') && failFont) {
+        failFont = false;
+        return route.abort();
       }
       if (url.pathname === '/reader-assets/highlight.js' && failScript) {
         failScript = false;
@@ -137,6 +142,10 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       .click();
     await expect(page.locator('.article-body code.hljs')).toBeVisible();
     assert.ok(!requests.some((url) => url.includes('katex.css') || url.endsWith('.woff2')));
+    const color = await page.locator('.hljs-string').first().evaluate((node) => getComputedStyle(node).color);
+    await page.locator('[data-theme-mode]').selectOption('dark');
+    await expect.poll(() => page.locator('.hljs-string').first().evaluate((node) => getComputedStyle(node).color)).not.toBe(color);
+    await page.locator('[data-theme-mode]').selectOption('light');
     await page.screenshot({
       path: resolve(output, 'reader-code-lazy-' + engine + '.png'),
       fullPage: true,
@@ -151,6 +160,9 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     await expect(page.locator('#reader-navigation-status')).toContainText('当前内容仍可阅读');
     holdStyle = false;
     releaseStyle();
+    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', { timeout: 15000 });
+    assert.equal(await page.locator('link[data-reader-style="math"]').evaluate((link) => !!link.sheet), true, 'font failure must retain usable formula CSS');
+    await page.locator('#reader-navigation-status').getByRole('button', { name: '重试', exact: true }).click();
     await expect(page.locator('.article-heading h1')).toHaveText('Reader math', { timeout: 15000 });
     await expect(page.locator('.article-body .katex')).toBeVisible();
     assert.equal(await page.evaluate(() => window.readerNavigationToken), 'same-document');

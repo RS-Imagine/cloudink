@@ -109,10 +109,10 @@ try {
     'data-theme',
     'dark',
   );
-  await expect(page.frameLocator('#preview-frame').locator('#preview-highlight')).toHaveAttribute(
-    'href',
-    /github-dark.min.css$/,
-  );
+  await expect(page.frameLocator('#preview-frame').locator('#preview-highlight')).toHaveCount(0);
+  await expect(
+    page.frameLocator('#preview-frame').locator('link[href="/reader-assets/katex.css"]'),
+  ).toHaveCount(1);
   await expect(page.locator('#title')).toHaveValue('alpha');
   await page.screenshot({
     path: resolve('cloud-web/dist/editor-dark.browser.png'),

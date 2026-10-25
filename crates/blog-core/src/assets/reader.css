@@ -563,3 +563,12 @@ dialog.search-modal .search-input {
   background: var(--ci-container);
   color: var(--ci-text);
 }
+
+/* Reserve the copy toolbar before JavaScript enhances a code block. */
+.article-shell article .article-body pre code {
+  display: block;
+}
+.article-shell article .article-body pre:not(.code-block pre) {
+  margin: 1.5em 0;
+  border-top: 53px solid var(--ci-container);
+}
