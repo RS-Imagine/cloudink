@@ -297,6 +297,7 @@ test('an interrupted image family remains eligible and resumes without overwriti
   });
   const before = await (await f.request('/api/images')).json();
   assert.equal(before.images[0].canOptimize, true);
+  assert.equal((await optimize(f, key, original.etag, null)).status, 409);
   const response = await optimize(f, key, original.etag, webp(1280, 960), 1280);
   assert.equal(response.status, 200, await response.clone().text());
   assert.equal((await bucket.head(first.key)).etag, first.etag);

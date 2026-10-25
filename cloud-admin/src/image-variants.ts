@@ -218,6 +218,8 @@ export async function optimizeImage(request: Request, storage: R2Bucket): Promis
   const bytes = new Uint8Array(await original.arrayBuffer()),
     info = imageInfo(bytes);
   const prepared = await prepareVariants(form, info, original.size, key);
+  if (original.customMetadata?.optimization === 'processing' && !prepared.length)
+    throw new HttpError(409, '未能重新生成这张图片的版本，请重试或更换浏览器；已有版本仍保留。');
   // Mark the original before writing derivatives so an interrupted request is resumable.
   const marked = await storage.put(key, bytes, {
     onlyIf: { etagMatches: original.etag },
