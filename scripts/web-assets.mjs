@@ -59,10 +59,10 @@ if (process.argv[2] === 'seed') {
   await writeFile(resolve(vendor, 'code.css'), themed.code);
   const mathRoot = resolve(root, 'cloud-admin/node_modules/katex');
   let mathCSS = await readFile(resolve(mathRoot, 'dist/katex.min.css'), 'utf8');
-  mathCSS = mathCSS.replace(/src:[^;}]+;/g, (declaration) => {
+  mathCSS = mathCSS.replace(/src:[^;}]+(?=;|})/g, (declaration) => {
     const source = declaration.match(/url\(([^)]+\.woff2)\)/);
     if (!source) throw new Error('A KaTeX font has no WOFF2 source');
-    return 'src:url(' + source[1] + ') format("woff2");';
+    return 'src:url(' + source[1] + ') format("woff2")';
   });
   await writeFile(resolve(vendor, 'katex.css'), mathCSS);
   for (const file of await readdir(resolve(mathRoot, 'dist/fonts'))) {

@@ -57,6 +57,12 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     await context.route('**/*', async (route) => {
       const url = new URL(route.request().url());
       if (url.origin !== origin) return route.abort();
+      if (url.pathname === '/native-json')
+        return route.fulfill({ contentType: 'application/json', body: '{"native":true}' });
+      if (url.pathname === '/native-page')
+        return route.fulfill({ contentType: 'text/html', body: '<html><body><h1>普通页面</h1></body></html>' });
+      if (url.pathname === '/native-image.png')
+        return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=', 'base64') });
       const match = url.pathname.match(/^\/posts\/reader-(plain|code|math)\/$/);
       if (match) {
         if (holdPage)
@@ -207,6 +213,20 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       path: resolve(output, 'reader-navigation-retry-' + engine + '.png'),
       fullPage: true,
     });
+    for (const path of ['/native-json', '/native-page', '/native-image.png', '/admin']) {
+      await home();
+      await page.evaluate((path) => {
+        const link = document.createElement('a');
+        link.id = 'native-destination';
+        link.href = path;
+        link.textContent = '正常链接';
+        document.querySelector('#swup').prepend(link);
+      }, path);
+      await page.locator('#native-destination').click();
+      await page.waitForURL(origin + path);
+      assert.equal(await page.evaluate(() => window.readerNavigationToken), undefined);
+      if (path === '/admin') await expect(page.locator('#login-view')).toBeVisible();
+    }
     assert.deepEqual(errors, [], 'reader loading and cancellation must not leak errors');
   } finally {
     await context.close();

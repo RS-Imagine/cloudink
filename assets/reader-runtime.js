@@ -197,86 +197,84 @@
   }
   function attach(swup) {
     if (!swup) return;
-    let controller = null,
-      pending = null,
-      delayed = 0;
+    let controller = null, pending = null, delayed = 0;
     const clear = () => {
       clearTimeout(delayed);
       document.getElementById('swup')?.removeAttribute('aria-busy');
       hide('reader-navigation-status');
     };
-    swup.hooks.on(
-      'visit:start',
-      async (visit) => {
-        controller?.abort();
-        controller = new AbortController();
-        const current = controller;
-        pending = visit;
-        clear();
-        delayed = setTimeout(() => {
-          if (swup.visit === visit)
-            show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
-        }, 500);
-        document.getElementById('swup')?.setAttribute('aria-busy', 'true');
-        const timeout = setTimeout(() => current.abort(), 12000);
-        try {
-          let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
-          if (!page) {
-            const response = await fetch(visit.to.url, {
-              headers: swup.options.requestHeaders,
-              signal: current.signal,
-            });
-            if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html'))
-              throw new Error('文章暂时无法读取。');
-            const url = new URL(response.url);
-            if (url.origin !== location.origin) throw new Error('文章地址已变化。');
-            page = { url: url.pathname + url.search, html: await response.text() };
-          }
-          const doc = new DOMParser().parseFromString(page.html, 'text/html');
-          if (!doc.getElementById('swup')) throw new Error('页面暂时无法平滑打开。');
-          await untilAbort(prepare(doc, true), current.signal);
-          if (current.signal.aborted || visit.done || swup.visit !== visit)
-            throw new Error('请求已中断。');
-          visit.meta.readerPage = page;
-          if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
-        } catch (error) {
-          if (visit.done || swup.visit !== visit) throw Object.assign(error, { aborted: true });
-          visit.meta.readerFailedBeforeHistory = true;
-          throw error;
-        } finally {
-          clearTimeout(timeout);
-        }
-      },
-      { priority: -100 },
-    );
-    swup.hooks.replace(
-      'page:load',
-      (visit, args, original) => visit.meta.readerPage || original(visit, args),
-    );
-    swup.hooks.replace('visit:fail', (visit, args, original) => {
-      if (swup.visit !== visit) return;
+    // Swup 4.10.0 catches errors from ordinary hooks. Prepare before its
+    // navigation pipeline so failures cannot create an incomplete history entry.
+    const perform = swup.performNavigation.bind(swup);
+    swup.performNavigation = async (visit, options = {}) => {
+      controller?.abort();
+      controller = new AbortController();
+      const current = controller;
+      pending = visit;
       clear();
-      if (!visit.meta.readerFailedBeforeHistory || visit.history.popstate)
-        return original(visit, args);
-      swup.classes.clear();
+      delayed = setTimeout(() => {
+        if (pending === visit) show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
+      }, 500);
+      document.getElementById('swup')?.setAttribute('aria-busy', 'true');
+      const timeout = setTimeout(() => current.abort(), 12000);
       const target = visit.to.url + (visit.to.hash || '');
-      show(
-        'reader-navigation-status',
-        navigator.onLine
-          ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。'
-          : '网络已断开，当前文章已保留；联网后可重试。',
-        () => swup.navigate(target, { cache: { read: false, write: true } }),
-        target,
-      );
-      visit.trigger.el?.focus({ preventScroll: true });
-    });
-    swup.hooks.on('visit:abort', (visit) => {
-      if (pending === visit) {
-        controller?.abort();
+      const native = () => {
         clear();
-      }
+        if (visit.history.popstate || options.history === 'replace') location.replace(target);
+        else location.assign(target);
+      };
+      try {
+        const cache = options.cache;
+        if (cache !== undefined) {
+          visit.cache.read = typeof cache === 'object' ? cache.read ?? visit.cache.read : !!cache;
+          visit.cache.write = typeof cache === 'object' ? cache.write ?? visit.cache.write : !!cache;
+        }
+        let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
+        if (!page) {
+          const response = await fetch(visit.to.url, {
+            method: options.method || 'GET',
+            body: options.body,
+            headers: { ...swup.options.requestHeaders, ...options.headers },
+            signal: current.signal,
+          });
+          if (!response.ok) throw new Error('文章暂时无法读取。');
+          if (!response.headers.get('Content-Type')?.includes('text/html')) {
+            await response.body?.cancel();
+            if (pending === visit && !current.signal.aborted) native();
+            return;
+          }
+          const url = new URL(response.url);
+          if (url.origin !== location.origin) { native(); return; }
+          page = { url: url.pathname + url.search, html: await response.text() };
+        }
+        const doc = new DOMParser().parseFromString(page.html, 'text/html');
+        if (!doc.getElementById('swup')) {
+          if (pending === visit && !current.signal.aborted) native();
+          return;
+        }
+        await untilAbort(prepare(doc, true), current.signal);
+        if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
+        visit.meta.readerPage = page;
+        if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
+        clear();
+        return perform(visit, options);
+      } catch {
+        if (pending !== visit) return;
+        clear();
+        visit.abort();
+        if (visit.history.popstate) { native(); return; }
+        show('reader-navigation-status',
+          navigator.onLine ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。' : '网络已断开，当前文章已保留；联网后可重试。',
+          () => swup.navigate(target, { cache: { read: false, write: true } }), target);
+        visit.trigger.el?.focus({ preventScroll: true });
+      } finally { clearTimeout(timeout); }
+    };
+    swup.hooks.replace('page:load', (visit, args, original) =>
+      visit.meta.readerPage || original(visit, args));
+    swup.hooks.on('visit:abort', (visit) => {
+      if (pending === visit) { controller?.abort(); clear(); }
     });
-    swup.hooks.on('visit:end', clear);
+    swup.hooks.on('visit:end', () => { if (!swup.navigating || pending === swup.visit) clear(); });
     window.addEventListener('online', () => {
       const node = document.getElementById('reader-navigation-status');
       if (node && !node.hidden && node.querySelector('button'))
