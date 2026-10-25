@@ -99,14 +99,17 @@
       cache: 'reload',
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) throw new Error('公式样式暂时无法重新加载。');
+    if (!response.ok || !response.headers.get('Content-Type')?.includes('text/css'))
+      throw new Error('公式样式暂时无法重新加载。');
     const css = await response.text();
     const token = crypto.randomUUID();
     const style = document.createElement('style');
     style.dataset.readerStyle = 'math';
-    style.textContent = css.replace(/url\(fonts\/(KaTeX_[A-Za-z0-9_-]+\.woff2)\)/g,
-      (_, name) => 'url("' + path + 'fonts/' + name + '?retry=' + token + '")');
-    const previous = document.querySelectorAll('[data-reader-style="math"]');
+    style.textContent = css.replace(
+      /url\(fonts\/(KaTeX_[A-Za-z0-9_-]+\.woff2)\)/g,
+      (_, name) => 'url("' + path + 'fonts/' + name + '?retry=' + token + '")',
+    );
+    const previous = document.querySelectorAll('head [data-reader-style="math"]');
     document.head.append(style);
     // Keep the last usable CSS until the replacement is attached.
     previous.forEach((node) => node.remove());
