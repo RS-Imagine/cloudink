@@ -17,7 +17,7 @@ export async function readerFixtures(context, origin) {
         plain: '<p>这是一篇只包含普通文字的文章。</p>'.repeat(20),
         code: '<pre><code class="language-javascript">const greeting = "hello";\nconsole.log(greeting);</code></pre>',
         math: '<p>公式阅读示例：</p>' + formula,
-      'math-extra': '<span class="katex" style="font-family:KaTeX_Size4">()</span>',
+        'math-extra': '<span class="katex" style="font-family:KaTeX_Size4">()</span>',
       })) {
         const doc = template.cloneNode(true);
         doc.querySelector('.article-heading h1').textContent = 'Reader ' + kind;
@@ -148,9 +148,19 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       .click();
     await expect(page.locator('.article-body code.hljs')).toBeVisible();
     assert.ok(!requests.some((url) => url.includes('katex.css') || url.endsWith('.woff2')));
-    const color = await page.locator('.hljs-string').first().evaluate((node) => getComputedStyle(node).color);
+    const color = await page
+      .locator('.hljs-string')
+      .first()
+      .evaluate((node) => getComputedStyle(node).color);
     await page.locator('[data-theme-mode]').selectOption('dark');
-    await expect.poll(() => page.locator('.hljs-string').first().evaluate((node) => getComputedStyle(node).color)).not.toBe(color);
+    await expect
+      .poll(() =>
+        page
+          .locator('.hljs-string')
+          .first()
+          .evaluate((node) => getComputedStyle(node).color),
+      )
+      .not.toBe(color);
     await page.locator('[data-theme-mode]').selectOption('light');
     await page.screenshot({
       path: resolve(output, 'reader-code-lazy-' + engine + '.png'),
@@ -166,9 +176,18 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     await expect(page.locator('#reader-navigation-status')).toContainText('当前内容仍可阅读');
     holdStyle = false;
     releaseStyle();
-    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', { timeout: 15000 });
-    assert.equal(await page.locator('link[data-reader-style="math"]').evaluate((link) => !!link.sheet), true, 'font failure must retain usable formula CSS');
-    await page.locator('#reader-navigation-status').getByRole('button', { name: '重试', exact: true }).click();
+    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', {
+      timeout: 15000,
+    });
+    assert.equal(
+      await page.locator('link[data-reader-style="math"]').evaluate((link) => !!link.sheet),
+      true,
+      'font failure must retain usable formula CSS',
+    );
+    await page
+      .locator('#reader-navigation-status')
+      .getByRole('button', { name: '重试', exact: true })
+      .click();
     await expect(page.locator('.article-heading h1')).toHaveText('Reader math', { timeout: 15000 });
     await expect(page.locator('.article-body .katex')).toBeVisible();
     assert.equal(await page.evaluate(() => window.readerNavigationToken), 'same-document');
@@ -187,12 +206,27 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       document.querySelector('.article-body').prepend(link);
     });
     await page.locator('#math-next').click();
-    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', { timeout: 15000 });
+    await expect(page.locator('#reader-navigation-status')).toContainText('打开失败', {
+      timeout: 15000,
+    });
     await expect(page.locator('.article-heading h1')).toHaveText('Reader math');
-    assert.match(await page.locator('.article-body .katex').evaluate((node) => getComputedStyle(node).fontFamily), /KaTeX_Main/);
-    await page.screenshot({ path: resolve(output, 'reader-math-font-retry-' + engine + '.png'), fullPage: true });
-    await page.locator('#reader-navigation-status').getByRole('button', { name: '重试', exact: true }).click();
-    await expect(page.locator('.article-heading h1')).toHaveText('Reader math-extra', { timeout: 15000 });
+    assert.match(
+      await page
+        .locator('.article-body .katex')
+        .evaluate((node) => getComputedStyle(node).fontFamily),
+      /KaTeX_Main/,
+    );
+    await page.screenshot({
+      path: resolve(output, 'reader-math-font-retry-' + engine + '.png'),
+      fullPage: true,
+    });
+    await page
+      .locator('#reader-navigation-status')
+      .getByRole('button', { name: '重试', exact: true })
+      .click();
+    await expect(page.locator('.article-heading h1')).toHaveText('Reader math-extra', {
+      timeout: 15000,
+    });
 
     await home();
     failPage = true;

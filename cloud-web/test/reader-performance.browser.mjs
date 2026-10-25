@@ -166,7 +166,10 @@ export async function verifyReaderPerformance(browser, origin, output) {
                   assert.ok(!paths.some((p) => p.includes('katex') || p.endsWith('.woff2')));
                 if (kind === 'math') assert.ok(!paths.includes('/reader-assets/highlight.js'));
               }
-              assert.ok(sample.cls < 0.03, JSON.stringify({ kind, mode, width, repeat, ...sample }));
+              assert.ok(
+                sample.cls < 0.03,
+                JSON.stringify({ kind, mode, width, repeat, ...sample }),
+              );
               samples.push({ width, kind, repeat, mode, ...sample });
               if (repeat === 0)
                 await page.screenshot({
