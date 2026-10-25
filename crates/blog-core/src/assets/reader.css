@@ -548,8 +548,12 @@ dialog.search-modal .search-input {
   font: 13px/1.7 var(--ci-font-ui);
   pointer-events: auto;
 }
-.reader-feedback[hidden] { display: none; }
-.reader-feedback > span { flex: 1 1 220px; }
+.reader-feedback[hidden] {
+  display: none;
+}
+.reader-feedback > span {
+  flex: 1 1 220px;
+}
 .reader-feedback button,
 .reader-feedback a {
   min-height: 44px;

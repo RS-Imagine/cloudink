@@ -34,18 +34,34 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
     site = '',
     image = '',
     imageAlt = '';
-  let images = 0, hasMath = false, hasCode = false;
+  let images = 0,
+    hasMath = false,
+    hasCode = false;
   // The first image remains eager; later images do not compete with initial text.
   const html = await new HTMLRewriter()
-    .on('.article-body .katex', { element() { hasMath = true; } })
-    .on('.article-body pre code', { element() { hasCode = true; } })
+    .on('.article-body .katex', {
+      element() {
+        hasMath = true;
+      },
+    })
+    .on('.article-body pre code', {
+      element() {
+        hasCode = true;
+      },
+    })
     .on('head link', {
       element(el) {
         const href = el.getAttribute('href') || '';
         const id = el.getAttribute('id');
-        if (el.hasAttribute('data-reader-style') || id === 'hljs-light' || id === 'hljs-dark' ||
-            /^https:\/\/cdn\.jsdelivr\.net\/(?:npm\/katex@[^/]+\/dist\/katex(?:\.min)?\.css|gh\/highlightjs\/cdn-release@[^/]+\/build\/styles\/github(?:-dark)?(?:\.min)?\.css)(?:[?#]|$)/.test(href) ||
-            (el.getAttribute('rel') === 'preconnect' && href === 'https://cdn.jsdelivr.net'))
+        if (
+          el.hasAttribute('data-reader-style') ||
+          id === 'hljs-light' ||
+          id === 'hljs-dark' ||
+          /^https:\/\/cdn\.jsdelivr\.net\/(?:npm\/katex@[^/]+\/dist\/katex(?:\.min)?\.css|gh\/highlightjs\/cdn-release@[^/]+\/build\/styles\/github(?:-dark)?(?:\.min)?\.css)(?:[?#]|$)/.test(
+            href,
+          ) ||
+          (el.getAttribute('rel') === 'preconnect' && href === 'https://cdn.jsdelivr.net')
+        )
           el.remove();
       },
     })
@@ -104,8 +120,12 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
   site = decode(site);
   imageAlt = decode(imageAlt);
   const tags = [
-    ...(hasMath ? ['<link rel="stylesheet" data-reader-style="math" href="/reader-assets/katex.css">'] : []),
-    ...(hasCode ? ['<link rel="stylesheet" data-reader-style="code" href="/reader-assets/code.css">'] : []),
+    ...(hasMath
+      ? ['<link rel="stylesheet" data-reader-style="math" href="/reader-assets/katex.css">']
+      : []),
+    ...(hasCode
+      ? ['<link rel="stylesheet" data-reader-style="code" href="/reader-assets/code.css">']
+      : []),
     `<link rel="canonical" href="${escape(canonical.href)}">`,
     `<meta property="og:url" content="${escape(canonical.href)}">`,
     `<meta property="og:title" content="${escape(title.trim())}">`,

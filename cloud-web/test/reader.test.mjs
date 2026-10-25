@@ -98,12 +98,18 @@ test('reader resources are conditional, same-origin and available to native navi
     ['<span class="katex">x</span><pre><code>test</code></pre>', true, true],
   ]) {
     const release = await f.prepare();
-    await f.stage(release, [], '<html><head><title>Reader</title>' +
-      '<link rel="preconnect" href="https://cdn.jsdelivr.net">' +
-      '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">' +
-      '<link rel="stylesheet" id="hljs-light" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">' +
-      '<link rel="stylesheet" id="hljs-dark" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">' +
-      '</head><body><div class="article-body">' + body + '</div></body></html>');
+    await f.stage(
+      release,
+      [],
+      '<html><head><title>Reader</title>' +
+        '<link rel="preconnect" href="https://cdn.jsdelivr.net">' +
+        '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">' +
+        '<link rel="stylesheet" id="hljs-light" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">' +
+        '<link rel="stylesheet" id="hljs-dark" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">' +
+        '</head><body><div class="article-body">' +
+        body +
+        '</div></body></html>',
+    );
     assert.equal((await f.commit(release)).status, 200);
     const html = await (await f.request('/')).text();
     assert.equal(html.includes('data-reader-style="math"'), math);

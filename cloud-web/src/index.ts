@@ -87,8 +87,11 @@ export default {
         );
       if (
         compiledAssets.has(path) ||
-        /^\/reader-assets\/(?:highlight\.js|katex\.css|code\.css|(?:katex|highlight)-LICENSE\.txt|fonts\/KaTeX_[A-Za-z0-9_-]+\.woff2)$/.test(path)
-      ) return staticAsset(request, env, path);
+        /^\/reader-assets\/(?:highlight\.js|katex\.css|code\.css|(?:katex|highlight)-LICENSE\.txt|fonts\/KaTeX_[A-Za-z0-9_-]+\.woff2)$/.test(
+          path,
+        )
+      )
+        return staticAsset(request, env, path);
       const key = publicPath(path);
       const pointer = await env.STORAGE.get('state/published.json');
       const published = pointer ? await pointer.json<{ id: string; clarityId?: string }>() : null;

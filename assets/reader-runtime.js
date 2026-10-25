@@ -46,16 +46,24 @@
       const close = document.createElement('button');
       close.type = 'button';
       close.textContent = '关闭提示';
-      close.onclick = () => { node.hidden = true; };
+      close.onclick = () => {
+        node.hidden = true;
+      };
       node.append(close);
     }
   }
-  function hide(id) { const node = document.getElementById(id); if (node) node.hidden = true; }
+  function hide(id) {
+    const node = document.getElementById(id);
+    if (node) node.hidden = true;
+  }
   function stylesheet(kind) {
     if (styles.has(kind)) return styles.get(kind);
     const promise = new Promise((resolve, reject) => {
       let link = document.querySelector('link[data-reader-style="' + kind + '"]');
-      if (link?.sheet) { resolve(); return; }
+      if (link?.sheet) {
+        resolve();
+        return;
+      }
       const fresh = !link;
       if (fresh) {
         link = document.createElement('link');
@@ -67,7 +75,10 @@
         clearTimeout(timer);
         link.removeEventListener('load', loaded);
         link.removeEventListener('error', failed);
-        if (error) { link.remove(); reject(error); } else resolve();
+        if (error) {
+          link.remove();
+          reject(error);
+        } else resolve();
       };
       const loaded = () => done();
       const failed = () => done(new Error('阅读样式暂时无法加载。'));
@@ -77,7 +88,9 @@
       if (fresh) document.head.append(link);
     });
     styles.set(kind, promise);
-    promise.catch(() => { if (styles.get(kind) === promise) styles.delete(kind); });
+    promise.catch(() => {
+      if (styles.get(kind) === promise) styles.delete(kind);
+    });
     return promise;
   }
   async function prepare(doc, warm = false) {
@@ -93,7 +106,8 @@
           probe = document.createElement('div');
           probe.setAttribute('aria-hidden', 'true');
           probe.inert = true;
-          probe.style.cssText = 'position:fixed;left:-10000px;top:0;visibility:hidden;contain:layout style';
+          probe.style.cssText =
+            'position:fixed;left:-10000px;top:0;visibility:hidden;contain:layout style';
           for (const formula of [...doc.querySelectorAll('.article-body .katex')].slice(0, 30))
             probe.append(formula.cloneNode(true));
           document.body.append(probe);
@@ -102,7 +116,9 @@
         }
         await Promise.race([
           document.fonts.ready,
-          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('公式字体加载超时。')), 10000); }),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error('公式字体加载超时。')), 10000);
+          }),
         ]);
         for (const font of document.fonts)
           if (font.family.includes('KaTeX_') && font.status === 'error')
@@ -111,7 +127,10 @@
         document.querySelector('link[data-reader-style="math"]')?.remove();
         styles.delete('math');
         throw error;
-      } finally { clearTimeout(timer); probe?.remove(); }
+      } finally {
+        clearTimeout(timer);
+        probe?.remove();
+      }
     }
   }
   function loadHighlighter() {
@@ -129,18 +148,23 @@
       script.onerror = fail;
       script.onload = () => {
         clearTimeout(timer);
-        if (window.CloudInkHighlighter) resolve(window.CloudInkHighlighter); else fail();
+        if (window.CloudInkHighlighter) resolve(window.CloudInkHighlighter);
+        else fail();
       };
       document.head.append(script);
     });
-    highlighter.catch(() => { highlighter = null; });
+    highlighter.catch(() => {
+      highlighter = null;
+    });
     return highlighter;
   }
   async function activate() {
     const root = document.getElementById('swup');
     try {
       await prepare(document);
-      const codes = [...(root?.querySelectorAll('pre code:not(.hljs):not([data-highlighted])') || [])];
+      const codes = [
+        ...(root?.querySelectorAll('pre code:not(.hljs):not([data-highlighted])') || []),
+      ];
       if (codes.length) {
         const hljs = await loadHighlighter();
         if (root !== document.getElementById('swup')) return;
@@ -149,76 +173,108 @@
       if (root === document.getElementById('swup')) hide('reader-resource-status');
     } catch (error) {
       if (root === document.getElementById('swup'))
-        show('reader-resource-status', error.message, () => { void activate(); });
+        show('reader-resource-status', error.message, () => {
+          void activate();
+        });
     }
   }
   function untilAbort(work, signal) {
     return new Promise((resolve, reject) => {
       const abort = () => reject(new Error('请求已中断。'));
-      work.then(value => { signal.removeEventListener('abort', abort); resolve(value); },
-        error => { signal.removeEventListener('abort', abort); reject(error); });
-      if (signal.aborted) abort(); else signal.addEventListener('abort', abort, { once: true });
+      work.then(
+        (value) => {
+          signal.removeEventListener('abort', abort);
+          resolve(value);
+        },
+        (error) => {
+          signal.removeEventListener('abort', abort);
+          reject(error);
+        },
+      );
+      if (signal.aborted) abort();
+      else signal.addEventListener('abort', abort, { once: true });
     });
   }
   function attach(swup) {
     if (!swup) return;
-    let controller = null, pending = null, delayed = 0;
+    let controller = null,
+      pending = null,
+      delayed = 0;
     const clear = () => {
       clearTimeout(delayed);
       document.getElementById('swup')?.removeAttribute('aria-busy');
       hide('reader-navigation-status');
     };
-    swup.hooks.on('visit:start', async (visit) => {
-      controller?.abort();
-      controller = new AbortController();
-      const current = controller;
-      pending = visit;
-      clear();
-      delayed = setTimeout(() => {
-        if (swup.visit === visit) show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
-      }, 500);
-      document.getElementById('swup')?.setAttribute('aria-busy', 'true');
-      const timeout = setTimeout(() => current.abort(), 12000);
-      try {
-        let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
-        if (!page) {
-          const response = await fetch(visit.to.url, {
-            headers: swup.options.requestHeaders,
-            signal: current.signal,
-          });
-          if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html'))
-            throw new Error('文章暂时无法读取。');
-          const url = new URL(response.url);
-          if (url.origin !== location.origin) throw new Error('文章地址已变化。');
-          page = { url: url.pathname + url.search, html: await response.text() };
+    swup.hooks.on(
+      'visit:start',
+      async (visit) => {
+        controller?.abort();
+        controller = new AbortController();
+        const current = controller;
+        pending = visit;
+        clear();
+        delayed = setTimeout(() => {
+          if (swup.visit === visit)
+            show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
+        }, 500);
+        document.getElementById('swup')?.setAttribute('aria-busy', 'true');
+        const timeout = setTimeout(() => current.abort(), 12000);
+        try {
+          let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
+          if (!page) {
+            const response = await fetch(visit.to.url, {
+              headers: swup.options.requestHeaders,
+              signal: current.signal,
+            });
+            if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html'))
+              throw new Error('文章暂时无法读取。');
+            const url = new URL(response.url);
+            if (url.origin !== location.origin) throw new Error('文章地址已变化。');
+            page = { url: url.pathname + url.search, html: await response.text() };
+          }
+          const doc = new DOMParser().parseFromString(page.html, 'text/html');
+          if (!doc.getElementById('swup')) throw new Error('页面暂时无法平滑打开。');
+          await untilAbort(prepare(doc, true), current.signal);
+          if (current.signal.aborted || visit.done || swup.visit !== visit)
+            throw new Error('请求已中断。');
+          visit.meta.readerPage = page;
+          if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
+        } catch (error) {
+          if (visit.done || swup.visit !== visit) throw Object.assign(error, { aborted: true });
+          visit.meta.readerFailedBeforeHistory = true;
+          throw error;
+        } finally {
+          clearTimeout(timeout);
         }
-        const doc = new DOMParser().parseFromString(page.html, 'text/html');
-        if (!doc.getElementById('swup')) throw new Error('页面暂时无法平滑打开。');
-        await untilAbort(prepare(doc, true), current.signal);
-        if (current.signal.aborted || visit.done || swup.visit !== visit) throw new Error('请求已中断。');
-        visit.meta.readerPage = page;
-        if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
-      } catch (error) {
-        if (visit.done || swup.visit !== visit) throw Object.assign(error, { aborted: true });
-        visit.meta.readerFailedBeforeHistory = true;
-        throw error;
-      } finally { clearTimeout(timeout); }
-    }, { priority: -100 });
-    swup.hooks.replace('page:load', (visit, args, original) =>
-      visit.meta.readerPage || original(visit, args));
+      },
+      { priority: -100 },
+    );
+    swup.hooks.replace(
+      'page:load',
+      (visit, args, original) => visit.meta.readerPage || original(visit, args),
+    );
     swup.hooks.replace('visit:fail', (visit, args, original) => {
       if (swup.visit !== visit) return;
       clear();
-      if (!visit.meta.readerFailedBeforeHistory || visit.history.popstate) return original(visit, args);
+      if (!visit.meta.readerFailedBeforeHistory || visit.history.popstate)
+        return original(visit, args);
       swup.classes.clear();
       const target = visit.to.url + (visit.to.hash || '');
-      show('reader-navigation-status',
-        navigator.onLine ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。' : '网络已断开，当前文章已保留；联网后可重试。',
-        () => swup.navigate(target, { cache: { read: false, write: true } }), target);
+      show(
+        'reader-navigation-status',
+        navigator.onLine
+          ? '打开失败，当前文章已保留。可以重试或使用普通方式打开。'
+          : '网络已断开，当前文章已保留；联网后可重试。',
+        () => swup.navigate(target, { cache: { read: false, write: true } }),
+        target,
+      );
       visit.trigger.el?.focus({ preventScroll: true });
     });
     swup.hooks.on('visit:abort', (visit) => {
-      if (pending === visit) { controller?.abort(); clear(); }
+      if (pending === visit) {
+        controller?.abort();
+        clear();
+      }
     });
     swup.hooks.on('visit:end', clear);
     window.addEventListener('online', () => {

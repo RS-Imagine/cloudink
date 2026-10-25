@@ -35,18 +35,27 @@ if (process.argv[2] === 'seed') {
   await mkdir(resolve(vendor, 'fonts'), { recursive: true });
   await build({
     stdin: {
-      contents: "import hljs from './cloud-admin/node_modules/highlight.js/lib/common'; window.CloudInkHighlighter = hljs;",
+      contents:
+        "import hljs from './cloud-admin/node_modules/highlight.js/lib/common'; window.CloudInkHighlighter = hljs;",
       resolveDir: root,
     },
     outfile: resolve(vendor, 'highlight.js'),
-    bundle: true, format: 'iife', target: 'es2022', minify: true,
+    bundle: true,
+    format: 'iife',
+    target: 'es2022',
+    minify: true,
   });
   const highlightRoot = resolve(root, 'cloud-admin/node_modules/highlight.js');
   const light = await readFile(resolve(highlightRoot, 'styles/github.min.css'), 'utf8');
   const dark = await readFile(resolve(highlightRoot, 'styles/github-dark.min.css'), 'utf8');
-  const themed = await transform(':root:not([data-theme="dark"]) {' + light + '}\n:root[data-theme="dark"] {' + dark + '}', {
-    loader: 'css', minify: true, target: ['chrome100', 'firefox100', 'safari15'],
-  });
+  const themed = await transform(
+    ':root:not([data-theme="dark"]) {' + light + '}\n:root[data-theme="dark"] {' + dark + '}',
+    {
+      loader: 'css',
+      minify: true,
+      target: ['chrome100', 'firefox100', 'safari15'],
+    },
+  );
   await writeFile(resolve(vendor, 'code.css'), themed.code);
   const mathRoot = resolve(root, 'cloud-admin/node_modules/katex');
   let mathCSS = await readFile(resolve(mathRoot, 'dist/katex.min.css'), 'utf8');
