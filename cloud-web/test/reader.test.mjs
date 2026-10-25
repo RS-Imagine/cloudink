@@ -87,3 +87,38 @@ test('new reader masthead preserves the full site name in response metadata', as
   const response = await (await f.request('/')).text();
   assert.match(response, /property="og:site_name" content="Notes &amp; Ideas"/);
 });
+
+test('reader resources are conditional, same-origin and available to native navigation', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  for (const [body, math, code] of [
+    ['<p>Ordinary prose</p>', false, false],
+    ['<pre><code class="language-js">const n = 1;</code></pre>', false, true],
+    ['<span class="katex">x</span>', true, false],
+    ['<span class="katex">x</span><pre><code>test</code></pre>', true, true],
+  ]) {
+    const release = await f.prepare();
+    await f.stage(release, [], '<html><head><title>Reader</title>' +
+      '<link rel="preconnect" href="https://cdn.jsdelivr.net">' +
+      '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">' +
+      '<link rel="stylesheet" id="hljs-light" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">' +
+      '<link rel="stylesheet" id="hljs-dark" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">' +
+      '</head><body><div class="article-body">' + body + '</div></body></html>');
+    assert.equal((await f.commit(release)).status, 200);
+    const html = await (await f.request('/')).text();
+    assert.equal(html.includes('data-reader-style="math"'), math);
+    assert.equal(html.includes('data-reader-style="code"'), code);
+    assert.ok(!html.includes('cdn.jsdelivr.net'));
+  }
+  const css = await f.request('/reader-assets/katex.css');
+  assert.equal(css.status, 200);
+  const text = await css.text();
+  assert.ok(!text.includes('.ttf') && !text.includes('.woff)'));
+  const font = text.match(/url\(fonts\/([^)]*\.woff2)\)/)[1];
+  const response = await f.request('/reader-assets/fonts/' + font);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('Content-Type'), /font\/woff2/);
+  assert.equal((await f.request('/reader-assets/highlight.js')).status, 200);
+  assert.equal((await f.request('/reader-assets/katex-LICENSE.txt')).status, 200);
+  assert.equal((await f.request('/reader-assets/fonts/account.json')).status, 404);
+});

@@ -17,6 +17,7 @@
     "@playwright/test": "latest",
     "@types/node": "latest",
     "esbuild": "latest",
+    "katex": "0.16.11",
     "miniflare": "latest",
     "tsx": "latest",
     "typescript": "latest",

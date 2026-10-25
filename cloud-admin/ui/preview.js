@@ -7,9 +7,7 @@ function applyPreviewTheme(page) {
   page.documentElement.dataset.palette = document.documentElement.dataset.palette || 'ink';
   const highlight = page.getElementById('preview-highlight');
   if (highlight)
-    highlight.href =
-      'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/' +
-      (dark ? 'github-dark.min.css' : 'github.min.css');
+    highlight.href = '/reader-assets/code.css';
 }
 document.addEventListener('cloudink:theme', () => {
   if (frame.contentDocument) applyPreviewTheme(frame.contentDocument);
@@ -150,11 +148,17 @@ async function pump() {
       css +
       '\n .site-header,.site-footer,.share-container,.article-back{display:none!important}.wrapper{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}.reader-article{display:block!important;max-width:720px!important;margin-inline:auto!important}.reader-toc-slot{display:none!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
     page.head.append(style);
-    page.querySelectorAll('#hljs-light,#hljs-dark').forEach((node) => node.remove());
+    page.querySelectorAll('#hljs-light,#hljs-dark,link[href*="katex"]').forEach((node) => node.remove());
+    if (page.querySelector('.katex')) {
+      const math = page.createElement('link');
+      math.rel = 'stylesheet';
+      math.href = '/reader-assets/katex.css';
+      page.head.append(math);
+    }
     const highlight = page.createElement('link');
     highlight.id = 'preview-highlight';
     highlight.rel = 'stylesheet';
-    page.head.append(highlight);
+    if (page.querySelector('pre code')) page.head.append(highlight);
     applyPreviewTheme(page);
     page.querySelectorAll('img').forEach((image) => {
       const src = image.getAttribute('src') || '';
