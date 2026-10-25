@@ -494,3 +494,31 @@ dialog.search-modal .search-input {
     transition: none;
   }
 }
+
+.image-lightbox {
+  margin: 0;
+  min-width: 0;
+}
+.image-lightbox > img {
+  display: block;
+  margin-inline: auto;
+}
+.image-lightbox figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 14px;
+  color: var(--ci-muted);
+  font: 13px/1.7 var(--ci-font-ui);
+}
+.image-lightbox figcaption button,
+.image-lightbox figcaption a {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-container);
+  color: var(--ci-text);
+}
