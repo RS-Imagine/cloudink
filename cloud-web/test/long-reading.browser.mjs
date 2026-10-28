@@ -142,6 +142,9 @@ export async function verifyLongReading(browser, origin, output, engine) {
           });
           await page.keyboard.press('ArrowRight');
           await expect.poll(() => region.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+          await region.evaluate((node) => {
+            node.scrollLeft = 0;
+          });
         }
         const short = page.locator('.katex-display').last();
         const centered = await short.evaluate((node) => {
