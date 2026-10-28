@@ -68,6 +68,16 @@ try {
               fullPage: true,
             });
           }
+          if (name === 'chromium' && width === 1440 && theme === 'light') {
+            await page.locator('#illustration').selectOption('on');
+            console.log(
+              'EDITORIAL_PREVIEW ' +
+                JSON.stringify({
+                  name: prefix + '-home',
+                  image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
+                }),
+            );
+          }
           await page.locator('#search-open').click();
           await page.locator('#query').fill('空白');
           assert.equal(await page.locator('#results li').count(), 1);
@@ -91,6 +101,15 @@ try {
             prefix + ': article overflow',
           );
           await page.screenshot({ path: output + '/' + prefix + '-article.png', fullPage: true });
+          if (name === 'chromium' && [1440, 390].includes(width) && theme === 'light') {
+            console.log(
+              'EDITORIAL_PREVIEW ' +
+                JSON.stringify({
+                  name: prefix + '-article',
+                  image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
+                }),
+            );
+          }
           await page.goBack();
           await page.waitForFunction(() => !document.querySelector('#home').hidden);
           await page.goto(origin + '#about');
