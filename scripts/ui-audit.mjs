@@ -1,3 +1,4 @@
+import { verifyLongReading } from '../cloud-web/test/long-reading.browser.mjs';
 import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mjs';
 import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
 import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
@@ -441,6 +442,7 @@ try {
     const localBrowser = {
       newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
     };
+    await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
     await verifyStudio(localBrowser, origin, output, engine);
