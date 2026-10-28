@@ -172,9 +172,13 @@ export async function verifyLongReading(browser, origin, output, engine) {
         }
         const short = page.locator('.katex-display').last();
         const centered = await short.evaluate((node) => {
-          const a = node.getBoundingClientRect(),
-            b = node.querySelector('.base').getBoundingClientRect();
-          return Math.abs((a.left + a.right) / 2 - (b.left + b.right) / 2);
+          const a = node.getBoundingClientRect();
+          const parts = [...node.querySelectorAll('.katex-html > .base')].map((part) =>
+            part.getBoundingClientRect(),
+          );
+          const left = Math.min(...parts.map((part) => part.left));
+          const right = Math.max(...parts.map((part) => part.right));
+          return Math.abs((a.left + a.right) / 2 - (left + right) / 2);
         });
         assert.ok(centered < 3, 'A fitting formula must remain centered');
         samples.push({ engine, width, theme, before, after, typography });
