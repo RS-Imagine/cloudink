@@ -684,6 +684,6 @@ dialog input {
   }
 }
 
-main:focus {
+main[tabindex]:focus-visible {
   outline: none;
 }
