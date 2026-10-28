@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (swup) swup.options.animationSelector = reducedMotion.matches ? false : '[class*="transition-"]';
       });
       window.swup = swup;
+      window.CloudInkReader?.attach(swup);
       let cleanupFunctions = [];
       
       const readerMenu = document.getElementById('reader-menu');
@@ -237,7 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
         cleanupFunctions.forEach(fn => fn());
         cleanupFunctions = [];
 
-        if (typeof hljs !== 'undefined') { hljs.highlightAll(); }
+        if (window.CloudInkReader) void window.CloudInkReader.activate();
+        else if (typeof hljs !== 'undefined') hljs.highlightAll();
         const swupContainer = document.getElementById('swup');
         if (!swupContainer) return;
         syncReaderNavigation();

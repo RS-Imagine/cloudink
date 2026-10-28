@@ -522,3 +522,53 @@ dialog.search-modal .search-input {
   background: var(--ci-container);
   color: var(--ci-text);
 }
+
+#reader-feedbacks {
+  position: fixed;
+  z-index: 900;
+  inset-inline: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+  margin-inline: auto;
+  pointer-events: none;
+}
+.reader-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-md);
+  background: var(--ci-elevated);
+  color: var(--ci-text);
+  box-shadow: var(--ci-shadow-floating);
+  font: 13px/1.7 var(--ci-font-ui);
+  pointer-events: auto;
+}
+.reader-feedback[hidden] {
+  display: none;
+}
+.reader-feedback > span {
+  flex: 1 1 220px;
+}
+.reader-feedback button,
+.reader-feedback a {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-sm);
+  background: var(--ci-container);
+  color: var(--ci-text);
+}
+
+/* Reserve the copy toolbar before JavaScript enhances a code block. */
+.article-shell article .article-body pre code {
+  display: block;
+}
+.article-shell article .article-body pre:not(.code-block pre) {
+  margin: 1.5em 0;
+  border-top: 53px solid var(--ci-container);
+}

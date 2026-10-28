@@ -1,3 +1,5 @@
+import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mjs';
+import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
 import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
 import { verifyImageOptimizer } from '../cloud-web/test/image-optimizer.browser.mjs';
 // Isolated production theme and approved prototype review. Never uses Wrangler remote mode.
@@ -439,6 +441,8 @@ try {
     const localBrowser = {
       newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
     };
+    await verifyReaderLoading(localBrowser, origin, output, engine);
+    if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
     await verifyStudio(localBrowser, origin, output, engine);
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
@@ -569,6 +573,9 @@ try {
   }
   for (const path of [
     'build-work/web-public/client.js',
+    'build-work/web-public/reader-assets/highlight.js',
+    'build-work/web-public/reader-assets/code.css',
+    'build-work/web-public/reader-assets/katex.css',
     'build-work/web-public/styles.css',
     'cloud-admin/ui/app.generated.js',
     'cloud-admin/ui/style.css',
@@ -691,7 +698,10 @@ try {
   );
   // Aggregate guards complement the per-module budgets: no hidden growth between releases.
   const releaseBudgets = {
-    'build-work/web-public/client.js': 74 * 1024,
+    'build-work/web-public/client.js': 40 * 1024,
+    'build-work/web-public/reader-assets/highlight.js': 56 * 1024,
+    'build-work/web-public/reader-assets/code.css': 4 * 1024,
+    'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 29 * 1024,
     'served/admin/style.css': 15 * 1024,
