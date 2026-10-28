@@ -37,3 +37,30 @@ jobs:
           for (const path of ['cloud-web/test/long-reading.browser.mjs'])
             console.log('READER_FORMAT_FILE ' + path + ' ' + readFileSync(path).toString('base64'));
           JS
+      - name: Install browser tools for a read-only public page check
+        run: |
+          npm --prefix cloud-admin ci
+          cd cloud-admin
+          npx playwright install --with-deps chromium
+      - name: Open the selected article with a normal browser
+        env:
+          READER_SAMPLE_CONTEXT: ${{ github.event.pull_request.body }}
+        run: |
+          node --input-type=module <<'JS'
+          import {chromium} from './cloud-admin/node_modules/@playwright/test/index.mjs';
+          const url = process.env.READER_SAMPLE_CONTEXT.match(/<!-- reader-sample-url: (https:\/\/[^\s]+) -->/)?.[1];
+          const browser = await chromium.launch();
+          try {
+            const context = await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});
+            await context.route('**/*', route => ['GET','HEAD'].includes(route.request().method()) ? route.continue() : route.abort());
+            const page = await context.newPage();
+            const response = await page.goto(url, {waitUntil:'domcontentloaded',timeout:30000});
+            await page.waitForTimeout(5000);
+            const present = await page.locator('.article-body').count();
+            console.log('READER_BROWSER_RESPONSE ' + JSON.stringify({status:response.status(),title:await page.title(),article:!!present}));
+            if (present) {
+              console.log('READER_SAMPLE_HTML ' + Buffer.from(await page.content()).toString('base64'));
+              console.log('READER_ARTICLE_LAYOUT ' + JSON.stringify(await page.evaluate(() => ({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,headings:document.querySelectorAll('.article-body h2,.article-body h3,.article-body h4').length,images:document.querySelectorAll('.article-body img').length,code:document.querySelectorAll('.article-body pre').length,tables:document.querySelectorAll('.article-body table').length,formulas:document.querySelectorAll('.katex-display').length}))));
+            }
+          } finally {await browser.close();}
+          JS
