@@ -114,6 +114,8 @@ jobs:
       - name: Install browser engines
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Chinese serif fonts for review
+        run: sudo apt-get install -y fonts-noto-cjk
       - name: Verify editorial study
         run: node scripts/editorial-study.mjs
       - name: Save screenshots and portable study

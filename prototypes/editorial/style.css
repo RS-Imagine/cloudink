@@ -683,3 +683,7 @@ dialog input {
     animation: none !important;
   }
 }
+
+main:focus {
+  outline: none;
+}
