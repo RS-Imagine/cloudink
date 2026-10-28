@@ -442,13 +442,13 @@ try {
     const localBrowser = {
       newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
     };
+    await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
     await verifyStudio(localBrowser, origin, output, engine);
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
-    await verifyLongReading(localBrowser, origin, output, engine);
     await verifyMobile(localBrowser, origin, output, engine);
     await verifyRelease(localBrowser, origin, output, engine);
     await verifyCompletion(localBrowser, origin, output, engine);
