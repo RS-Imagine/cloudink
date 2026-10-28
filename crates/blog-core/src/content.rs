@@ -11,7 +11,7 @@
 /// | `slugify`                      | [`crate::utils`]  |
 pub use crate::models::{FrontMatter, Page, PageFrontMatter, Post, PostDraft, SiteConfig};
 pub use crate::store::{
-    delete_post, load_page_file, load_post_by_slug, load_post_file, load_posts,
-    load_site_config, parse_post, parse_page, post_path, save_post, validate_slug,
+    delete_post, load_page_file, load_post_by_slug, load_post_file, load_posts, load_site_config,
+    parse_page, parse_post, post_path, save_post, validate_slug,
 };
 pub use crate::utils::slugify;

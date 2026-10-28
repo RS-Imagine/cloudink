@@ -34,7 +34,7 @@
 
 正式页面由 Rust blog-core 生成，并通过 blog-wasm 使用同一套模板和样式。新增交互使用必要的原生 JavaScript/CSS，不引入前端框架、数据库、新 Worker 或必填环境变量。
 
-自动化验证在 GitHub Actions 的隔离环境运行，使用临时 R2 与通用样张，不连接生产数据。覆盖 Rust/Node 测试、格式和类型检查、构建、dry-run、三浏览器、窄屏、主题、搜索、发布和图片引用保护。修改过的 Rust 文件运行 rustfmt 检查，并执行 Clippy；未把历史上其他模块的格式整理夹带进本次改造。
+自动化验证在 GitHub Actions 的隔离环境运行，使用临时 R2 与通用样张，不连接生产数据。覆盖 Rust/Node 测试、格式和类型检查、构建、dry-run、三浏览器、窄屏、主题、搜索、发布和图片引用保护。Rust 工作区统一通过 cargo fmt 格式检查，并执行 Clippy；原有业务语义保持不变，Clippy 的历史告警不在本次 UI 改造中顺带修复。
 
 CI 截图使用安装的中文衬线字体；字体差异与真实触屏设备仍需后续实机确认。独立原型位于 prototypes/editorial，专业参考网站的在线研究状态见 EDITORIAL-SYSTEM.md，不能把未完成的外部研究或实验室数据称为真机验收。
 

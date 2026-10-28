@@ -144,29 +144,3 @@ jobs:
             prototypes/editorial
             assets/design-tokens.css
           if-no-files-found: error
-
-  editorial-rust-format:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-      - run: npm ci
-      - run: |
-          rustup component add rustfmt
-          cargo fmt --all
-          npx prettier --write cloud-web/test/home-illustration.browser.mjs docs/design/EDITORIAL-RELEASE.md
-      - name: Export normalized project sources
-        run: |
-          node --input-type=module <<'JS'
-          import {readFile} from 'node:fs/promises';
-          import {execFileSync} from 'node:child_process';
-          const paths = execFileSync('git',['ls-files','*.rs'],{encoding:'utf8'}).trim().split('\n').concat(["cloud-web/test/home-illustration.browser.mjs","docs/design/EDITORIAL-RELEASE.md"]);
-          for (const path of paths) {
-            const content = await readFile(path,'utf8');
-            for (let i=0;i<content.length;i+=6000)
-              console.log('RUST_FORMAT_SOURCE '+JSON.stringify({path,offset:i,length:content.length,content:content.slice(i,i+6000)}));
-          }
-          JS

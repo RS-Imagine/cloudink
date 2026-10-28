@@ -45,7 +45,10 @@ mod tests {
 
     #[test]
     fn escape_html_encodes_special_chars() {
-        assert_eq!(escape_html("<b>\"hi\" & 'you'</b>"), "&lt;b&gt;&quot;hi&quot; &amp; &#39;you&#39;&lt;/b&gt;");
+        assert_eq!(
+            escape_html("<b>\"hi\" & 'you'</b>"),
+            "&lt;b&gt;&quot;hi&quot; &amp; &#39;you&#39;&lt;/b&gt;"
+        );
     }
 
     #[test]
