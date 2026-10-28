@@ -122,3 +122,10 @@ const observer = new IntersectionObserver(
 document.querySelectorAll('.prose h2').forEach((heading) => observer.observe(heading));
 window.addEventListener('hashchange', route);
 route();
+
+document.querySelector('#search').addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    document.querySelector('#search').close();
+  }
+});
