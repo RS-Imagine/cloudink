@@ -13,7 +13,7 @@ export async function verifyLongReading(browser, origin, output, engine) {
   try {
     const template = await (await context.request.get(origin + '/posts/slow-days/')).text();
     const builder = await context.newPage();
-    await builder.goto(origin + '/');
+    await builder.goto(origin + '/admin');
     const paragraph =
       '长文章应该保持舒适的阅读节奏。图片、代码和公式各自占据合适的空间，阅读位置不会因为切换页面而丢失。';
     const markdown = [
