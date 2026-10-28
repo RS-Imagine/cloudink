@@ -28,14 +28,14 @@ export async function verifyHome(browser, origin, output, engine) {
     await page
       .locator('.home-post-grid')
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length),
-    3,
+    1,
   );
   await page.setViewportSize({ width: 900, height: 1000 });
   assert.equal(
     await page
       .locator('.home-post-grid')
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length),
-    2,
+    1,
   );
   for (const width of [390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 });

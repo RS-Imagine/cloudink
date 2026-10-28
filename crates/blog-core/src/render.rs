@@ -64,9 +64,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         let updated = post.updated().map(|date| format!(
             "<span>更新 <time datetime=\"{date}\">{date}</time></span>", date = escape_html(date)
         )).unwrap_or_default();
-        let art = if featured {
-            r#"<div class="home-feature-art" aria-hidden="true"><span class="landscape-sun"></span><span class="landscape-label">NOTES, NOT NOISE.</span></div>"#
-        } else { "" };
+        let art = "";
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
@@ -101,7 +99,6 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
     <p>{subtitle}</p>
     <div class="home-author"><span class="home-avatar" aria-hidden="true">{initial}</span><span>{author}</span></div>
   </div>
-  <aside class="home-note" aria-hidden="true"><span class="home-note-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m4 16 12-12 4 4L8 20H4Zm9-9 4 4"/></svg></span><p>让想法落笔，<br>让文字生长。</p><small>NOTES, NOT NOISE.</small></aside>
 </section>
 <section id="posts" aria-labelledby="posts-heading">
   <div class="home-section-heading"><h2 id="posts-heading">最近的文字</h2><span>{count} 篇文章</span></div>
