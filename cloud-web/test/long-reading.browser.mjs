@@ -30,7 +30,7 @@ export async function verifyLongReading(browser, origin, output, engine) {
           .join(' | ') +
         ' |',
       '## 公式与继续阅读',
-      '$$\nf(x) = ' + Array.from({ length: 18 }, (_, i) => 'x_{' + i + '}^2').join(' + ') + '\n$$',
+      '$$\nf(x) = ' + Array.from({ length: 48 }, (_, i) => 'x_{' + i + '}^2').join(' + ') + '\n$$',
       '$$\nx^2 + y^2\n$$',
       ...Array(12).fill(paragraph),
     ]
@@ -115,7 +115,10 @@ export async function verifyLongReading(browser, origin, output, engine) {
         await expect(page.locator('.article-body code.hljs')).toBeVisible();
         await expect(page.locator('.katex-display')).toHaveCount(2);
         const after = await measure();
-        assert.ok(after.scrollWidth > after.width + 100, 'The formula must actually overflow');
+        assert.ok(
+          after.scrollWidth > after.width + 100,
+          JSON.stringify({ engine, width, theme, before, after }),
+        );
         assert.ok(
           after.start >= -2 && after.end >= -2,
           JSON.stringify({ engine, width, theme, after }),
