@@ -80,11 +80,11 @@ fn home_illustration(config: &SiteConfig) -> String {
         return String::new();
     };
     if key == "default" {
-        return format!(
-            "<figure class=\"home-illustration\" aria-hidden=\"true\">{}</figure>",
-            include_str!("../../../assets/editorial-botanical.svg")
+        return String::from(
+            r#"<figure class="home-illustration" aria-hidden="true"><img src="/editorial-botanical.svg" width="360" height="420" alt="" decoding="async"></figure>"#,
         );
     }
+
     let svg = key
         .strip_prefix("uploads/icons/")
         .and_then(|name| name.strip_suffix(".svg"))
