@@ -109,10 +109,8 @@ jobs:
         run: |
           npm ci
           npm --prefix cloud-admin ci
-      - name: Format review sources for downloadable prototype
-        run: npx prettier --write prototypes/editorial scripts/editorial-study.mjs
-      - name: Export formatted review sources
-        run: node --input-type=module -e 'import {readFile} from "node:fs/promises"; for (const p of ["prototypes/editorial/index.html", "prototypes/editorial/style.css", "prototypes/editorial/app.js", "prototypes/editorial/botanical.svg", "scripts/editorial-study.mjs"]) console.log("FORMATTED_SOURCE " + JSON.stringify({path:p,content:await readFile(p,"utf8")}))'
+      - name: Check editorial source formatting
+        run: npx prettier --check prototypes/editorial scripts/editorial-study.mjs
       - name: Install browser engines
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium firefox webkit

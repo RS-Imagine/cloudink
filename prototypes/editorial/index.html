@@ -1,48 +1,224 @@
 <!doctype html>
 <html lang="zh-CN" data-palette="brown" data-theme="light">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CloudInk · 棕褐书刊设计原型</title>
-<link rel="stylesheet" href="../../assets/design-tokens.css"><link rel="stylesheet" href="style.css">
-<script src="app.js" defer></script>
-</head>
-<body>
-<a class="skip" href="#main">跳到正文</a>
-<div class="study-bar"><span>CloudInk / 棕褐书刊 · 设计原型 01</span><label>首页插画 <select id="illustration"><option value="on">显示</option><option value="off">关闭</option></select></label></div>
-<header class="site-header">
-<a class="brand" href="#home" aria-label="CloudInk 首页">CloudInk <span aria-hidden="true">❧</span></a>
-<nav aria-label="主导航"><a href="#home" data-nav="home">文章</a><a href="#about" data-nav="about">关于</a></nav>
-<div class="tools"><button id="search-open" aria-label="搜索文章"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button><button id="theme" aria-label="切换为深色主题"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z"/></svg></button><button id="menu" aria-label="打开导航" aria-expanded="false" aria-controls="mobile-menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
-</header>
-<div id="mobile-menu" hidden><nav aria-label="手机导航"><a href="#home">文章</a><a href="#about">关于</a></nav></div>
-<main id="main" tabindex="-1">
-<section id="home">
-<div class="hero">
-<div class="hero-copy"><p class="eyebrow">CLOUDINK JOURNAL · 云砚手记</p><h1>在日常里，<br>写下回响。</h1><p class="english" lang="en">Notes on a considered life.</p><p class="intro">记录生活的细微，也保存技术的思考。<br>在喧嚣的世界里，留下一些慢下来的文字。</p></div>
-<figure class="hero-art"><img src="botanical.svg" width="360" height="420" alt=""><figcaption>在平凡的日子里<br>看见细小而确定的美。</figcaption></figure>
-</div>
-<section class="writing" aria-labelledby="writing-title"><div class="section-heading"><h2 id="writing-title">最近的文章</h2><span>三篇示例 · 原型内容</span></div>
-<article class="post-row"><div class="post-meta"><time datetime="2026-10-28">2026.10.28</time><span>生活随笔</span></div><a class="post-link" href="#article"><h3>把日子过成喜欢的样子</h3><p>有些答案，藏在那些不赶时间的日子里。在日常的缝隙中，我们或许能找到生活本来的模样。</p></a><span class="arrow" aria-hidden="true">↗</span></article>
-<article class="post-row"><div class="post-meta"><time datetime="2026-10-16">2026.10.16</time><span>技术思考</span></div><a class="post-link" href="#space"><h3>为自己的博客，留一点空白</h3><p>在信息过载的时代，空白不是缺席，而是一种选择。让思想发酵，也让文字更有呼吸感。</p></a><span class="arrow" aria-hidden="true">↗</span></article>
-<article class="post-row"><div class="post-meta"><time datetime="2026-10-03">2026.10.03</time><span>日常记录</span></div><a class="post-link" href="#rain"><h3>雨停之后，去走一走</h3><p>城市被雨水洗过，空气格外清澈。走一段熟悉又陌生的路，看看季节的转角，和重新开始的可能。</p></a><span class="arrow" aria-hidden="true">↗</span></article>
-</section>
-</section>
-<section id="article" hidden class="reading-layout">
-<article class="reading"><a class="back" href="#home">← 所有文章</a><header class="article-heading"><p class="eyebrow" id="article-meta">生活随笔 · 2026.10.28</p><h1 id="article-title">把日子过成<br>喜欢的样子</h1><p class="deck" id="article-deck">有些答案，藏在那些不赶时间的日子里。</p><div class="byline"><span class="avatar" aria-hidden="true">砚</span><span>云砚 <span class="muted">／ 示例文章</span></span></div></header>
-<div class="prose"><p>有一段时间，我总觉得生活需要更有效率。把每一天排得很满，好像只有不断向前，才算没有辜负时间。可后来我渐渐意识到，真正让人感到踏实的，往往不是完成了多少，而是是否认真地经历了这些日子。</p>
-<h2 id="moments">在日常的缝隙里</h2><p>早晨打开窗，风吹动书页。还没喝完的茶在桌边慢慢变凉。那些没有被记录的片刻，并不是空白。</p><blockquote><p>生活的美好，常常藏在那些不赶时间的时刻里。<br>它可能是一阵风、一本书，或是一次不为目的的散步。</p></blockquote>
-<h2 id="slow">慢下来的力量</h2><p>上周的一个傍晚，雨刚停，我出门走了走。空气里有泥土的味道，树叶上还挂着水珠，路灯已经亮起。那一刻我忽然觉得，生活其实不需要太多宏大的叙事，这些细小的瞬间，就足以构成一段值得珍藏的时光。</p>
-<figure class="article-illustration"><img src="botanical.svg" alt="细线描绘的枝叶插画" width="360" height="420" loading="lazy"><figcaption>给日常留一点空间，让思绪自然生长。</figcaption></figure>
-<h2 id="practice">一些具体的生活</h2><p>我们无法总是掌控生活的节奏，但至少可以选择如何看待它。把日子过成自己喜欢的样子，也许就是在平凡中发现值得珍惜的事物，然后愿意一次次地停下来，认真感受。</p><ul><li>留下一段不安排任务的时间。</li><li>在一天结束前，写下一个记得的片刻。</li><li>为喜欢的事情，保留一点耐心。</li></ul>
-<h3>也给技术留一点清晰</h3><p>书刊式排版也应容纳技术内容。下面的示例用于检查代码和表格的阅读体验。</p>
-<pre tabindex="0" aria-label="代码示例，可横向滚动"><code>const journal = { title: 'CloudInk', intention: 'Keep a little room for thoughtful writing and everyday life.' };
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CloudInk · 棕褐书刊设计原型</title>
+    <link rel="stylesheet" href="../../assets/design-tokens.css" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <div class="study-bar">
+      <span>CloudInk / 棕褐书刊 · 设计原型 01</span
+      ><label
+        >首页插画
+        <select id="illustration">
+          <option value="on">显示</option>
+          <option value="off">关闭</option>
+        </select></label
+      >
+    </div>
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="CloudInk 首页"
+        >CloudInk <span aria-hidden="true">❧</span></a
+      >
+      <nav aria-label="主导航">
+        <a href="#home" data-nav="home">文章</a><a href="#about" data-nav="about">关于</a>
+      </nav>
+      <div class="tools">
+        <button id="search-open" aria-label="搜索文章">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m16 16 5 5" />
+          </svg></button
+        ><button id="theme" aria-label="切换为深色主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z" />
+          </svg></button
+        ><button id="menu" aria-label="打开导航" aria-expanded="false" aria-controls="mobile-menu">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+      </div>
+    </header>
+    <div id="mobile-menu" hidden>
+      <nav aria-label="手机导航"><a href="#home">文章</a><a href="#about">关于</a></nav>
+    </div>
+    <main id="main" tabindex="-1">
+      <section id="home">
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">CLOUDINK JOURNAL · 云砚手记</p>
+            <h1>在日常里，<br />写下回响。</h1>
+            <p class="english" lang="en">Notes on a considered life.</p>
+            <p class="intro">
+              记录生活的细微，也保存技术的思考。<br />在喧嚣的世界里，留下一些慢下来的文字。
+            </p>
+          </div>
+          <figure class="hero-art">
+            <img src="botanical.svg" width="360" height="420" alt="" />
+            <figcaption>在平凡的日子里<br />看见细小而确定的美。</figcaption>
+          </figure>
+        </div>
+        <section class="writing" aria-labelledby="writing-title">
+          <div class="section-heading">
+            <h2 id="writing-title">最近的文章</h2>
+            <span>三篇示例 · 原型内容</span>
+          </div>
+          <article class="post-row">
+            <div class="post-meta">
+              <time datetime="2026-10-28">2026.10.28</time><span>生活随笔</span>
+            </div>
+            <a class="post-link" href="#article"
+              ><h3>把日子过成喜欢的样子</h3>
+              <p>
+                有些答案，藏在那些不赶时间的日子里。在日常的缝隙中，我们或许能找到生活本来的模样。
+              </p></a
+            ><span class="arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="post-row">
+            <div class="post-meta">
+              <time datetime="2026-10-16">2026.10.16</time><span>技术思考</span>
+            </div>
+            <a class="post-link" href="#space"
+              ><h3>为自己的博客，留一点空白</h3>
+              <p>
+                在信息过载的时代，空白不是缺席，而是一种选择。让思想发酵，也让文字更有呼吸感。
+              </p></a
+            ><span class="arrow" aria-hidden="true">↗</span>
+          </article>
+          <article class="post-row">
+            <div class="post-meta">
+              <time datetime="2026-10-03">2026.10.03</time><span>日常记录</span>
+            </div>
+            <a class="post-link" href="#rain"
+              ><h3>雨停之后，去走一走</h3>
+              <p>
+                城市被雨水洗过，空气格外清澈。走一段熟悉又陌生的路，看看季节的转角，和重新开始的可能。
+              </p></a
+            ><span class="arrow" aria-hidden="true">↗</span>
+          </article>
+        </section>
+      </section>
+      <section id="article" hidden class="reading-layout">
+        <article class="reading">
+          <a class="back" href="#home">← 所有文章</a>
+          <header class="article-heading">
+            <p class="eyebrow" id="article-meta">生活随笔 · 2026.10.28</p>
+            <h1 id="article-title">把日子过成<br />喜欢的样子</h1>
+            <p class="deck" id="article-deck">有些答案，藏在那些不赶时间的日子里。</p>
+            <div class="byline">
+              <span class="avatar" aria-hidden="true">砚</span
+              ><span>云砚 <span class="muted">／ 示例文章</span></span>
+            </div>
+          </header>
+          <div class="prose">
+            <p>
+              有一段时间，我总觉得生活需要更有效率。把每一天排得很满，好像只有不断向前，才算没有辜负时间。可后来我渐渐意识到，真正让人感到踏实的，往往不是完成了多少，而是是否认真地经历了这些日子。
+            </p>
+            <h2 id="moments">在日常的缝隙里</h2>
+            <p>
+              早晨打开窗，风吹动书页。还没喝完的茶在桌边慢慢变凉。那些没有被记录的片刻，并不是空白。
+            </p>
+            <blockquote>
+              <p>
+                生活的美好，常常藏在那些不赶时间的时刻里。<br />它可能是一阵风、一本书，或是一次不为目的的散步。
+              </p>
+            </blockquote>
+            <h2 id="slow">慢下来的力量</h2>
+            <p>
+              上周的一个傍晚，雨刚停，我出门走了走。空气里有泥土的味道，树叶上还挂着水珠，路灯已经亮起。那一刻我忽然觉得，生活其实不需要太多宏大的叙事，这些细小的瞬间，就足以构成一段值得珍藏的时光。
+            </p>
+            <figure class="article-illustration">
+              <img
+                src="botanical.svg"
+                alt="细线描绘的枝叶插画"
+                width="360"
+                height="420"
+                loading="lazy"
+              />
+              <figcaption>给日常留一点空间，让思绪自然生长。</figcaption>
+            </figure>
+            <h2 id="practice">一些具体的生活</h2>
+            <p>
+              我们无法总是掌控生活的节奏，但至少可以选择如何看待它。把日子过成自己喜欢的样子，也许就是在平凡中发现值得珍惜的事物，然后愿意一次次地停下来，认真感受。
+            </p>
+            <ul>
+              <li>留下一段不安排任务的时间。</li>
+              <li>在一天结束前，写下一个记得的片刻。</li>
+              <li>为喜欢的事情，保留一点耐心。</li>
+            </ul>
+            <h3>也给技术留一点清晰</h3>
+            <p>书刊式排版也应容纳技术内容。下面的示例用于检查代码和表格的阅读体验。</p>
+            <pre
+              tabindex="0"
+              aria-label="代码示例，可横向滚动"
+            ><code>const journal = { title: 'CloudInk', intention: 'Keep a little room for thoughtful writing and everyday life.' };
 console.log(journal.title);</code></pre>
-<div class="table-wrap" tabindex="0" role="region" aria-label="阅读设置表，可横向滚动"><table><thead><tr><th>内容</th><th>设计原则</th><th>实际表现</th></tr></thead><tbody><tr><td>正文</td><td>舒适的行宽与行距</td><td>优先保证长文阅读</td></tr><tr><td>交互</td><td>清晰、轻巧、可中断</td><td>尊重减少动态效果</td></tr></tbody></table></div>
-<h2 id="ending">写在最后</h2><p>慢慢写，认真生活。让每一篇文章，都有属于自己的呼吸。</p></div><footer class="article-end"><a href="#home">← 返回文章列表</a><button id="copy-link">复制文章链接</button><span id="copy-status" role="status"></span></footer>
-</article><aside class="toc" aria-label="文章目录"><p>文章目录</p><a href="#moments">在日常的缝隙里</a><a href="#slow">慢下来的力量</a><a href="#practice">一些具体的生活</a><a href="#ending">写在最后</a></aside>
-</section>
-<section id="about" hidden class="about"><p class="eyebrow">ABOUT THIS STUDY</p><h1>给文字，<br>一点呼吸的空间。</h1><p>这是 CloudInk「棕褐书刊」设计原型。页面中的文章、作者和插画都是通用示例，正式网站将读取站点自己的内容与设置。</p><p>你可以切换明暗主题、关闭首页插画、搜索示例文章，也可以在手机尺寸下查看导航与阅读布局。</p><a href="#home">回到文章列表 ↗</a></section>
-</main>
-<footer class="site-footer"><p>慢慢写，认真生活。</p><span>CloudInk / 云砚</span></footer>
-<dialog id="search" aria-labelledby="search-title"><div class="search-heading"><h2 id="search-title">寻找一段文字</h2><button id="search-close" aria-label="关闭搜索">×</button></div><label for="query">搜索示例文章</label><input id="query" type="search" autocomplete="off" placeholder="标题、摘要中的关键词"><p id="search-status" role="status"></p><ul id="results"></ul></dialog>
-</body></html>
+            <div class="table-wrap" tabindex="0" role="region" aria-label="阅读设置表，可横向滚动">
+              <table>
+                <thead>
+                  <tr>
+                    <th>内容</th>
+                    <th>设计原则</th>
+                    <th>实际表现</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>正文</td>
+                    <td>舒适的行宽与行距</td>
+                    <td>优先保证长文阅读</td>
+                  </tr>
+                  <tr>
+                    <td>交互</td>
+                    <td>清晰、轻巧、可中断</td>
+                    <td>尊重减少动态效果</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h2 id="ending">写在最后</h2>
+            <p>慢慢写，认真生活。让每一篇文章，都有属于自己的呼吸。</p>
+          </div>
+          <footer class="article-end">
+            <a href="#home">← 返回文章列表</a><button id="copy-link">复制文章链接</button
+            ><span id="copy-status" role="status"></span>
+          </footer>
+        </article>
+        <aside class="toc" aria-label="文章目录">
+          <p>文章目录</p>
+          <a href="#moments">在日常的缝隙里</a><a href="#slow">慢下来的力量</a
+          ><a href="#practice">一些具体的生活</a><a href="#ending">写在最后</a>
+        </aside>
+      </section>
+      <section id="about" hidden class="about">
+        <p class="eyebrow">ABOUT THIS STUDY</p>
+        <h1>给文字，<br />一点呼吸的空间。</h1>
+        <p>
+          这是
+          CloudInk「棕褐书刊」设计原型。页面中的文章、作者和插画都是通用示例，正式网站将读取站点自己的内容与设置。
+        </p>
+        <p>
+          你可以切换明暗主题、关闭首页插画、搜索示例文章，也可以在手机尺寸下查看导航与阅读布局。
+        </p>
+        <a href="#home">回到文章列表 ↗</a>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>慢慢写，认真生活。</p>
+      <span>CloudInk / 云砚</span>
+    </footer>
+    <dialog id="search" aria-labelledby="search-title">
+      <div class="search-heading">
+        <h2 id="search-title">寻找一段文字</h2>
+        <button id="search-close" aria-label="关闭搜索">×</button>
+      </div>
+      <label for="query">搜索示例文章</label
+      ><input id="query" type="search" autocomplete="off" placeholder="标题、摘要中的关键词" />
+      <p id="search-status" role="status"></p>
+      <ul id="results"></ul>
+    </dialog>
+  </body>
+</html>
