@@ -50,6 +50,13 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
       'src',
       '/editorial-botanical.svg',
     );
+    await expect
+      .poll(() =>
+        reader
+          .locator('.home-illustration img')
+          .evaluate((image) => image.complete && image.naturalWidth > 0),
+      )
+      .toBe(true);
     await expect(reader.locator('html')).toHaveAttribute('data-palette', 'brown');
     for (const theme of ['light', 'dark']) {
       await reader.locator('select[data-theme-mode]').selectOption(theme);
