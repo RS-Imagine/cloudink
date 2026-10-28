@@ -95,3 +95,37 @@ jobs:
           retention-days: 90
           path: build-work/ui-audit
           if-no-files-found: ignore
+
+  editorial-study:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install isolated design tools
+        run: |
+          npm ci
+          npm --prefix cloud-admin ci
+      - name: Check editorial source formatting
+        run: npx prettier --check prototypes/editorial scripts/editorial-study.mjs
+      - name: Install browser engines
+        working-directory: cloud-admin
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Chinese serif fonts for review
+        run: sudo apt-get install -y fonts-noto-cjk
+      - name: Verify editorial study
+        run: node scripts/editorial-study.mjs
+      - name: Save screenshots and portable study
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-design-review
+          retention-days: 90
+          path: |
+            build-work/editorial-review
+            prototypes/editorial
+            assets/design-tokens.css
+          if-no-files-found: error
