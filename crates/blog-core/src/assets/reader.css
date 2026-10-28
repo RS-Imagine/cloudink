@@ -572,3 +572,14 @@ dialog.search-modal .search-input {
   margin: 1.5em 0;
   border-top: 53px solid var(--ci-container);
 }
+
+/* Long formulas keep both ends reachable inside their own scroll region. */
+.article-shell article .katex-display > .katex {
+  width: max-content;
+  min-width: 100%;
+}
+.article-shell article .katex-display:focus-visible {
+  outline: 2px solid var(--ci-primary);
+  outline-offset: 4px;
+}
+/* End long formula containment. */

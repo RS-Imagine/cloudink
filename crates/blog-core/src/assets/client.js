@@ -401,6 +401,11 @@ document.addEventListener('DOMContentLoaded', () => {
           table.tabIndex = 0;
           table.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
         });
+        document.querySelectorAll('.article-body .katex-display').forEach(formula => {
+          formula.tabIndex = 0;
+          formula.setAttribute('role', 'region');
+          formula.setAttribute('aria-label', 'Math formula, scroll horizontally / 公式，可横向滚动');
+        });
         const copyLink = document.getElementById('copy-link');
         copyLink?.addEventListener('click', async () => {
           const status = document.getElementById('share-status');

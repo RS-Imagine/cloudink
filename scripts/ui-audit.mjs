@@ -1,3 +1,4 @@
+import { verifyLongReading } from '../cloud-web/test/long-reading.browser.mjs';
 import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mjs';
 import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
 import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
@@ -447,6 +448,7 @@ try {
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
+    await verifyLongReading(localBrowser, origin, output, engine);
     await verifyMobile(localBrowser, origin, output, engine);
     await verifyRelease(localBrowser, origin, output, engine);
     await verifyCompletion(localBrowser, origin, output, engine);
