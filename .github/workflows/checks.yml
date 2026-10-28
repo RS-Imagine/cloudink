@@ -88,6 +88,8 @@ jobs:
       - name: Install three browser engines
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Chinese serif fonts for public review
+        run: sudo apt-get install -y fonts-noto-cjk
       - name: Prepare public-domain real photo fixture
         run: node cloud-web/test/image-photo-fixture.mjs
       - name: Capture production themes and approved design reference
