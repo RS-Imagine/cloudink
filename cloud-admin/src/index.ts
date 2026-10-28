@@ -1,3 +1,4 @@
+import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
 import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './browser-publishing';
 import { ASSETS } from './assets.generated';
@@ -234,6 +235,7 @@ async function apiRoute(
       site = validateSite(data.site),
       old = await env.STORAGE.head('draft-site.json');
     await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
+    await ensureHomeIllustration(env.STORAGE, site);
     await ensureSiteIcon(env.STORAGE, site);
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');

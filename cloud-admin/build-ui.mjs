@@ -37,6 +37,7 @@ await build({
   minify: true,
 });
 const paths = [
+  ['/editorial-botanical.svg', '../assets/editorial-botanical.svg', 'image/svg+xml'],
   ['/image-maintenance.js', 'ui/image-maintenance.generated.js', 'text/javascript; charset=utf-8'],
   ['/image.worker.js', 'ui/image.worker.generated.js', 'text/javascript; charset=utf-8'],
   ['/admin-theme.js', '../assets/theme.js', 'text/javascript; charset=utf-8'],

@@ -41,6 +41,11 @@ jobs:
         run: |
           npm test
           cargo test --workspace --locked
+      - name: Check touched Rust formatting and Clippy
+        run: |
+          rustup component add rustfmt clippy
+          rustfmt --check --edition 2021 crates/blog-core/src/models.rs crates/blog-core/src/render.rs crates/blog-core/tests/home.rs
+          cargo clippy --workspace --all-targets --locked
       - name: Install Chromium
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium

@@ -1,3 +1,4 @@
+import { configureHomeIllustration } from './home-illustration.js';
 import { imageUploadForm } from './image-upload.js';
 import '../../assets/motion.js';
 import '../../assets/mobile.js';
@@ -93,6 +94,7 @@ async function startWorkspace({ focus = false } = {}) {
     booting = false;
   }
 }
+const illustrationPicker = configureHomeIllustration({ api, notice });
 const iconPicker = configureSiteIcon({ api, notice });
 function applySiteAppearance(config) {
   window.CloudInkTheme?.setPalette(config?.themePalette || 'ink');
@@ -100,6 +102,7 @@ function applySiteAppearance(config) {
   if (site) {
     site.themePalette = document.documentElement.dataset.palette || 'ink';
     site.siteIcon = config?.siteIcon || '';
+    site.homeIllustration = config?.homeIllustration || '';
   }
 }
 function notice(message, tone = 'info') {
@@ -1136,6 +1139,7 @@ $('settings').addEventListener('click', async () => {
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
     iconPicker.load(data.site);
+    illustrationPicker.load(data.site);
     $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
     applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
@@ -1157,6 +1161,7 @@ $('site-form').addEventListener('submit', (event) => {
     'save-site',
     '正在保存…',
     async () => {
+      await illustrationPicker.ready();
       await iconPicker.ready();
       const values = Object.fromEntries(new FormData(form));
       const data = await api('/api/settings', {
@@ -1171,6 +1176,7 @@ $('site-form').addEventListener('submit', (event) => {
 });
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {
+    await illustrationPicker.ready();
     await iconPicker.ready();
     const values = Object.fromEntries(new FormData($('site-form')));
     const saved = await api('/api/settings', {
@@ -1192,6 +1198,7 @@ $('logout').addEventListener('click', async () => {
     dirty = 0;
     savedVersion = 0;
     iconPicker.load(null);
+    illustrationPicker.load(null);
     iconPicker.apply(null);
     showLogin({ focus: true });
   } catch (error) {
@@ -1239,6 +1246,7 @@ configureBackup({
       input.value = '';
     $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
     iconPicker.load(result.site);
+    illustrationPicker.load(result.site);
     applySiteAppearance(result.site);
     for (const [key, value] of Object.entries(result.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
