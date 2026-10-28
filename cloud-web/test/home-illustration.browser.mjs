@@ -17,6 +17,13 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
   await page.locator('#login-form input[name=password]').fill(password);
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
+  await context.route(origin + '/home-illustration.js', (route) => route.abort('failed'));
+  await page.locator('#settings').click();
+  await expect(page.locator('#notice')).toContainText('请刷新后台后重试');
+  await expect(page.locator('#home-view')).toBeVisible();
+  await context.unroute(origin + '/home-illustration.js');
+  await page.reload();
+  await expect(page.locator('#home-view')).toBeVisible();
   await page.locator('#settings').click();
   const originalPalette = await page.locator('input[name=themePalette]:checked').inputValue();
   await page.getByRole('radio', { name: '棕褐 Brown', exact: true }).check();
