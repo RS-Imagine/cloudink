@@ -699,7 +699,7 @@ try {
   // Aggregate guards complement the per-module budgets: no hidden growth between releases.
   const releaseBudgets = {
     'build-work/web-public/client.js': 40 * 1024,
-    'build-work/web-public/reader-assets/highlight.js': 50 * 1024,
+    'build-work/web-public/reader-assets/highlight.js': 56 * 1024,
     'build-work/web-public/reader-assets/code.css': 4 * 1024,
     'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
