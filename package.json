@@ -13,8 +13,8 @@
     "dev": "wrangler dev",
     "test:icons:preview": "node cloud-web/test/site-icon.preview.mjs",
     "test:ui:audit": "node scripts/ui-audit.mjs",
-    "format:ui": "prettier --write prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css assets/expressive.css assets/reader-runtime.js scripts/web-assets.mjs crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css",
-    "format:ui:check": "prettier --check prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css assets/expressive.css assets/reader-runtime.js scripts/web-assets.mjs crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css"
+    "format:ui": "prettier --write prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css assets/expressive.css assets/reader-runtime.js crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css",
+    "format:ui:check": "prettier --check prototypes/ui-2.0 docs/design scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js cloud-admin/build-ui.mjs scripts/web-assets.mjs assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css assets/expressive.css assets/reader-runtime.js crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css"
   },
   "devDependencies": {
     "prettier": "3.9.9",
