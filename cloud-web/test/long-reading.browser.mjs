@@ -102,6 +102,9 @@ export async function verifyLongReading(browser, origin, output, engine) {
             scrollWidth: node.scrollWidth,
             tableHeight: table.clientHeight,
             columnWidth: table.querySelector('td').getBoundingClientRect().width,
+            preWidth: document.querySelector('.article-body pre').clientWidth,
+            preScrollWidth: document.querySelector('.article-body pre').scrollWidth,
+            codeScrollWidth: document.querySelector('.article-body pre code').scrollWidth,
           };
         });
     for (const width of [1440, 390, 360]) {
@@ -111,6 +114,7 @@ export async function verifyLongReading(browser, origin, output, engine) {
         baseline = true;
         await page.goto(origin + '/posts/long-reading-check/');
         await page.evaluate(() => document.fonts.ready);
+        await expect(page.locator('.article-body code.hljs')).toBeVisible();
         const before = await measure();
         if (width === 390 && theme === 'light')
           await page.screenshot({
@@ -148,6 +152,15 @@ export async function verifyLongReading(browser, origin, output, engine) {
           const region = page.locator('.article-body ' + selector).first();
           await expect(region).toHaveAttribute('tabindex', '0');
           await region.focus();
+          const scrollArea = await region.evaluate((node) => ({
+            client: node.clientWidth,
+            content: node.scrollWidth,
+            focused: node === document.activeElement,
+          }));
+          assert.ok(
+            scrollArea.content > scrollArea.client && scrollArea.focused,
+            JSON.stringify({ engine, width, theme, selector, scrollArea }),
+          );
           await region.evaluate((node) => {
             node.scrollLeft = 0;
           });

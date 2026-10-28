@@ -573,10 +573,10 @@ dialog.search-modal .search-input {
   border-top: 53px solid var(--ci-container);
 }
 
-/* Wide content reading: keep formulas reachable and table words intact. */
-.article-shell article .katex-display > .katex {
-  width: max-content;
-  min-width: 100%;
+/* Wide content reading: one code scroll region and natural table words. */
+.article-shell article .article-body pre code.hljs {
+  overflow: visible;
+  padding: 0;
 }
 .article-shell article .katex-display:focus-visible {
   outline: 2px solid var(--ci-primary);
