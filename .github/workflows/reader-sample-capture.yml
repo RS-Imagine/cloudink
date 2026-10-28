@@ -1,0 +1,35 @@
+name: Reader sample capture
+on:
+  pull_request:
+    paths:
+      - .github/workflows/reader-sample-capture.yml
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Read the explicitly selected public article
+        env:
+          READER_SAMPLE_CONTEXT: ${{ github.event.pull_request.body }}
+        run: |
+          node --input-type=module <<'JS'
+          const match = process.env.READER_SAMPLE_CONTEXT.match(/<!-- reader-sample-url: (https:\/\/[^\s]+) -->/);
+          if (!match) throw new Error('Missing public reader sample URL');
+          const base = new URL(match[1]);
+          const indexResponse = await fetch(new URL('/search_index.json', base), {signal: AbortSignal.timeout(15000)});
+          if (!indexResponse.ok) throw new Error('Cannot read public article index: ' + indexResponse.status);
+          const posts = await indexResponse.json();
+          console.log('READER_PUBLIC_INDEX ' + JSON.stringify(posts.map(p => ({slug:p.slug,title:p.title,characters:p.body?.length}))));
+          const post = posts[0];
+          if (!post || !/^[A-Za-z0-9_-]{1,100}$/.test(post.slug)) throw new Error('No valid public article');
+          const response = await fetch(new URL('/posts/' + post.slug + '/', base), {signal: AbortSignal.timeout(15000)});
+          if (!response.ok) throw new Error('Cannot read public article: ' + response.status);
+          const html = await response.text();
+          if (html.length > 2000000) throw new Error('Article exceeds fixture limit');
+          console.log('READER_SAMPLE_HTML ' + Buffer.from(html).toString('base64'));
+          JS
