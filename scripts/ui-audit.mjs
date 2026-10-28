@@ -171,6 +171,15 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
     };
   });
   report.samples.push({ version: name, screen, theme, width, engine, ...data });
+  if (name === 'production' && engine === 'chromium' && screen === 'home' && theme === 'light') {
+    console.log(
+      'READER_PREVIEW ' +
+        JSON.stringify({
+          width,
+          image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
+        }),
+    );
+  }
   console.log(JSON.stringify({ capture: name, screen, theme, width, engine }));
   const overflow = data.scrollWidth > width + 1;
   if (name === 'production' && overflow)
