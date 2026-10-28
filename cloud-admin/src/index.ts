@@ -143,6 +143,7 @@ async function apiRoute(
       appearance: {
         themePalette: (savedSite || release.site).themePalette || 'ink',
         siteIcon: (savedSite || release.site).siteIcon || '',
+        homeIllustration: (savedSite || release.site).homeIllustration || '',
       },
       publishing,
       email: session.email,
