@@ -45,7 +45,11 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
   for (const width of [1440, 390]) {
     await reader.setViewportSize({ width, height: 960 });
     await reader.goto(origin + '/');
-    await expect(reader.locator('.home-illustration svg')).toBeVisible();
+    await expect(reader.locator('.home-illustration img')).toBeVisible();
+    await expect(reader.locator('.home-illustration img')).toHaveAttribute(
+      'src',
+      '/editorial-botanical.svg',
+    );
     await expect(reader.locator('html')).toHaveAttribute('data-palette', 'brown');
     for (const theme of ['light', 'dark']) {
       await reader.locator('select[data-theme-mode]').selectOption(theme);

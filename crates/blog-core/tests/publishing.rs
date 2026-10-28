@@ -23,6 +23,7 @@ fn drafts_are_absent_from_direct_urls_and_stale_output() {
     content::save_post(&input,&draft("visible",false)).unwrap();
     content::save_post(&input,&draft("private",false)).unwrap();
     build_site(&input,&output).unwrap();assert!(output.join("posts/private/index.html").exists());
+    assert!(fs::read_to_string(output.join("editorial-botanical.svg")).unwrap().contains("<svg"));
     content::save_post(&input,&draft("private",true)).unwrap();
     build_site(&input,&output).unwrap();
     assert!(!output.join("posts/private").exists());
