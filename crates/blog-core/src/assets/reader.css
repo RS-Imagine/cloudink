@@ -573,7 +573,7 @@ dialog.search-modal .search-input {
   border-top: 53px solid var(--ci-container);
 }
 
-/* Long formulas keep both ends reachable inside their own scroll region. */
+/* Wide content reading: keep formulas reachable and table words intact. */
 .article-shell article .katex-display > .katex {
   width: max-content;
   min-width: 100%;
@@ -582,4 +582,7 @@ dialog.search-modal .search-input {
   outline: 2px solid var(--ci-primary);
   outline-offset: 4px;
 }
-/* End long formula containment. */
+.article-shell article table {
+  overflow-wrap: normal;
+}
+/* End wide content reading. */

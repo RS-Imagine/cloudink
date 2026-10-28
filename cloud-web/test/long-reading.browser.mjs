@@ -67,10 +67,10 @@ export async function verifyLongReading(browser, origin, output, engine) {
     await builder.close();
     const css = await readFile('build-work/web-public/styles.css', 'utf8');
     const beforeCSS = css.replace(
-      /\/\* Long formulas keep both ends reachable[\s\S]*?\/\* End long formula containment\. \*\//,
+      /\/\* Wide content reading:[\s\S]*?\/\* End wide content reading\. \*\//,
       '',
     );
-    assert.notEqual(beforeCSS, css, 'The comparison must remove exactly the new formula CSS');
+    assert.notEqual(beforeCSS, css, 'The comparison must remove exactly the new wide-content CSS');
     let baseline = false;
     await context.route('**/styles.css*', (route) =>
       route.fulfill({ contentType: 'text/css', body: baseline ? beforeCSS : css }),
