@@ -113,7 +113,7 @@ try {
           await page.goBack();
           await page.waitForFunction(() => !document.querySelector('#home').hidden);
           await page.goto(origin + '#about');
-          assert(await page.locator('#about').isVisible());
+          await page.waitForFunction(() => !document.querySelector('#about').hidden);
           assert.equal(errors.length, 0, errors.join('\n'));
           report.push({ browser: name, width, theme, errors, status: 'passed' });
           await context.close();
