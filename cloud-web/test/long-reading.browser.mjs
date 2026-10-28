@@ -110,9 +110,10 @@ export async function verifyLongReading(browser, origin, output, engine) {
     for (const width of [1440, 390, 360]) {
       await page.setViewportSize({ width, height: 844 });
       for (const theme of ['light', 'dark']) {
-        await page.addInitScript((theme) => localStorage.setItem('theme', theme), theme);
         baseline = true;
         await page.goto(origin + '/posts/long-reading-check/');
+        await page.locator('select[data-theme-mode]').selectOption(theme);
+        await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
         await page.evaluate(() => document.fonts.ready);
         await expect(page.locator('.article-body code.hljs')).toBeVisible();
         const before = await measure();
