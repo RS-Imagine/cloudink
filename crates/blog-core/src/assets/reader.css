@@ -27,7 +27,7 @@
 }
 .article-shell article h1 {
   margin: 24px 0 22px;
-  font: 650 clamp(2rem, 4vw, 3.25rem)/1.23 var(--ci-font-ui);
+  font: 500 clamp(2rem, 4vw, 3.25rem)/1.3 var(--ci-font-reading);
   letter-spacing: -0.035em;
 }
 .article-shell article .article-description {
@@ -65,7 +65,7 @@
 .article-shell article .article-body h2,
 .article-shell article .article-body h3,
 .article-shell article .article-body h4 {
-  font-family: var(--ci-font-ui);
+  font-family: var(--ci-font-reading);
   scroll-margin-top: 32px;
 }
 .article-shell article .article-body h2 {
@@ -87,9 +87,9 @@
   margin: 28px 0;
   padding: 18px 24px;
   border-inline-start: 3px solid var(--ci-primary);
-  border-radius: 0 var(--ci-radius-md) var(--ci-radius-md) 0;
-  background: var(--ci-primary-container);
-  color: var(--ci-on-primary-container);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ci-primary);
 }
 .article-shell article .article-body blockquote p {
   margin-block: 4px;
@@ -104,7 +104,7 @@
   font: 12px/1.7 var(--ci-font-ui);
 }
 .article-shell article img {
-  border-radius: var(--ci-radius-lg);
+  border-radius: 4px;
 }
 .article-shell article code,
 .article-shell article pre {
@@ -160,7 +160,7 @@
 .article-end .share-button {
   min-height: 44px;
   padding: 10px 16px;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--ci-surface);
   color: var(--ci-text);
   border: 1px solid var(--ci-divider);
@@ -235,7 +235,7 @@
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
   padding: 64px 20px 20px;
-  border-radius: var(--ci-radius-xl);
+  border-radius: 8px;
   border: 1px solid var(--ci-divider);
   color: var(--ci-text);
   background: var(--ci-elevated);
@@ -250,7 +250,7 @@ dialog.search-modal::backdrop {
   min-width: 44px;
   padding: 10px 14px;
   border: 1px solid var(--ci-divider);
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--ci-container);
   color: var(--ci-text);
 }
@@ -265,7 +265,7 @@ dialog.search-modal::backdrop {
   min-height: 44px;
   color: var(--ci-on-primary-container);
   background: var(--ci-primary-container);
-  border-radius: 999px;
+  border-radius: 4px;
   text-decoration: none;
 }
 /* Native dialog supplies background inertness and focus containment. */
@@ -279,7 +279,7 @@ dialog.search-modal {
   margin: min(10vh, 80px) auto auto;
   padding: 0;
   border: 1px solid var(--ci-divider);
-  border-radius: var(--ci-radius-xl);
+  border-radius: 8px;
   color: var(--ci-text);
   background: var(--ci-elevated);
   box-shadow: var(--ci-shadow-overlay);
@@ -404,7 +404,7 @@ dialog.search-modal .search-input {
   dialog.search-modal,
   .article-shell article img,
   .code-block {
-    corner-shape: squircle;
+    corner-shape: round;
   }
 }
 @media (max-width: 1099px) {
@@ -442,7 +442,7 @@ dialog.search-modal .search-input {
   .toc-close {
     display: block;
     min-height: 44px;
-    border-radius: 999px;
+    border-radius: 4px;
     padding: 10px 16px;
     margin-top: 16px;
     background: var(--ci-container);
