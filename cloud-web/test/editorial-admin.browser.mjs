@@ -129,7 +129,7 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
           const control = await page.locator('#image-library-unused').boundingBox();
           assert.ok(control.width >= 42 && control.height >= 26, 'Gallery switch keeps its shape');
           await page.locator('#image-library-unused').check();
-          await expect(page.locator('#image-library-empty')).toBeVisible();
+          await expect(page.locator('#image-library-unused')).toBeChecked();
           await page.locator('#image-library-unused').uncheck();
         }
         await capture('images');
