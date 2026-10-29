@@ -37,6 +37,8 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         });
         context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
         await context.addInitScript((mode) => {
+          // Preview frames have opaque origins; only seed the top-level app.
+          if (window.top !== window) return;
           localStorage.setItem('theme', mode);
           localStorage.setItem('cloudink-admin-palette', 'brown');
         }, theme);
