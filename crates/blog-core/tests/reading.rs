@@ -1,12 +1,20 @@
-use blog_core::{models::{FrontMatter, Post, SiteConfig}, render};
+use blog_core::{
+    models::{FrontMatter, Post, SiteConfig},
+    render,
+};
 
 fn article() -> Post {
     Post {
         front_matter: FrontMatter {
-            title: "A title & a thought".into(), slug: "reading".into(), date: "2026-10-01".into(),
-            updated: Some("2026-10-02".into()), description: "A <description>".into(), draft: false,
+            title: "A title & a thought".into(),
+            slug: "reading".into(),
+            date: "2026-10-01".into(),
+            updated: Some("2026-10-02".into()),
+            description: "A <description>".into(),
+            draft: false,
         },
-        body_markdown: String::new(), body_html: "<h2>Reading</h2><p>Words</p>".into(),
+        body_markdown: String::new(),
+        body_html: "<h2>Reading</h2><p>Words</p>".into(),
         body_plain_text: format!("{} {}", "字".repeat(800), "word ".repeat(400)),
     }
 }

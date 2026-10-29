@@ -52,7 +52,7 @@ jobs:
       - name: Check touched Rust formatting and Clippy
         run: |
           rustup component add rustfmt clippy
-          rustfmt --check --edition 2021 crates/blog-core/src/models.rs crates/blog-core/src/render.rs crates/blog-core/tests/home.rs
+          cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --locked
       - name: Install Chromium
         working-directory: cloud-admin
@@ -96,6 +96,8 @@ jobs:
       - name: Install three browser engines
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install Chinese serif fonts for public review
+        run: sudo apt-get install -y fonts-noto-cjk
       - name: Prepare public-domain real photo fixture
         run: node cloud-web/test/image-photo-fixture.mjs
       - name: Capture production themes and approved design reference

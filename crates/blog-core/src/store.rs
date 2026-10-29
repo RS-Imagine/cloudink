@@ -17,10 +17,8 @@ pub fn load_site_config(content_root: impl AsRef<Path>) -> Result<SiteConfig> {
         return Ok(SiteConfig::default());
     }
 
-    let raw = fs::read_to_string(&path)
-        .with_context(|| format!("read {}", path.display()))?;
-    let config = toml::from_str(&raw)
-        .with_context(|| format!("parse {}", path.display()))?;
+    let raw = fs::read_to_string(&path).with_context(|| format!("read {}", path.display()))?;
+    let config = toml::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
     Ok(config)
 }
 
@@ -40,8 +38,8 @@ pub fn load_posts(content_root: impl AsRef<Path>) -> Result<Vec<Post>> {
         return Ok(posts);
     }
 
-    for entry in fs::read_dir(&posts_dir)
-        .with_context(|| format!("read {}", posts_dir.display()))?
+    for entry in
+        fs::read_dir(&posts_dir).with_context(|| format!("read {}", posts_dir.display()))?
     {
         let entry = entry?;
         let path = entry.path();
@@ -63,16 +61,15 @@ pub fn load_posts(content_root: impl AsRef<Path>) -> Result<Vec<Post>> {
 /// Parses and renders a single post file.
 pub fn load_post_file(path: impl AsRef<Path>) -> Result<Post> {
     let path = path.as_ref();
-    let raw = fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     parse_post(&raw).with_context(|| format!("parse {}", path.display()))
 }
 
 /// Parses an original Markdown document without filesystem access.
 pub fn parse_post(raw: &str) -> Result<Post> {
     let (front_matter_src, body_markdown) = split_front_matter(raw)?;
-    let front_matter: FrontMatter = toml::from_str(&front_matter_src)
-        .context("parse post front matter")?;
+    let front_matter: FrontMatter =
+        toml::from_str(&front_matter_src).context("parse post front matter")?;
     validate_slug(&front_matter.slug)?;
     let body_html = markdown_to_html(&body_markdown);
     let body_plain_text = markdown_to_plain_text(&body_markdown);
@@ -102,15 +99,14 @@ pub fn load_post_by_slug(content_root: impl AsRef<Path>, slug: &str) -> Result<O
 /// Parses and renders a standalone Markdown page (e.g. `about.md`).
 pub fn load_page_file(path: impl AsRef<Path>) -> Result<Page> {
     let path = path.as_ref();
-    let raw = fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     parse_page(&raw).with_context(|| format!("parse {}", path.display()))
 }
 
 pub fn parse_page(raw: &str) -> Result<Page> {
     let (front_matter_src, body_markdown) = split_front_matter(raw)?;
-    let front_matter: PageFrontMatter = toml::from_str(&front_matter_src)
-        .context("parse page front matter")?;
+    let front_matter: PageFrontMatter =
+        toml::from_str(&front_matter_src).context("parse page front matter")?;
     let body_html = markdown_to_html(&body_markdown);
 
     Ok(Page {
@@ -176,7 +172,12 @@ pub fn post_path(content_root: impl AsRef<Path>, slug: &str) -> PathBuf {
 /// The file must begin with `+++`, followed by TOML lines, and then a closing
 /// `+++`.  The body is everything after the closing fence.
 pub fn validate_slug(slug: &str) -> Result<()> {
-    if slug.is_empty() || slug.len() > 100 || !slug.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_') {
+    if slug.is_empty()
+        || slug.len() > 100
+        || !slug
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
+    {
         bail!("slug must contain 1–100 ASCII letters, digits, hyphens or underscores");
     }
     Ok(())

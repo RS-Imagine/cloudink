@@ -34,7 +34,8 @@ fn author_palette_is_safe_and_shared_by_every_page() {
         assert!(render::render_404(&site, "test").contains(&marker));
     }
     site.theme_palette = Some("\"><script>bad()</script>".into());
-    assert!(render::render_index(&site, &[], "test").contains("<html lang=\"en\" data-palette=\"ink\">"));
+    assert!(render::render_index(&site, &[], "test")
+        .contains("<html lang=\"en\" data-palette=\"ink\">"));
 }
 
 #[test]
@@ -47,16 +48,27 @@ fn shared_tokens_and_foundations_are_in_the_rust_stylesheet() {
 #[test]
 fn custom_icons_use_only_valid_content_addresses_on_all_pages() {
     let mut site = SiteConfig::default();
-    assert!(serde_json::to_value(&site).unwrap().get("siteIcon").is_none());
+    assert!(serde_json::to_value(&site)
+        .unwrap()
+        .get("siteIcon")
+        .is_none());
     for (ext, mime) in [("svg", "image/svg+xml"), ("ico", "image/x-icon")] {
         let name = format!("{}.{}", "a".repeat(64), ext);
         site.site_icon = Some(format!("uploads/icons/{name}"));
-        for html in [render::render_index(&site, &[], "test"), render::render_404(&site, "test")] {
+        for html in [
+            render::render_index(&site, &[], "test"),
+            render::render_404(&site, "test"),
+        ] {
             assert!(html.contains(&format!("type=\"{mime}\" href=\"/site-icon/{name}\"")));
             assert!(html.contains(&format!("<img src=\"/site-icon/{name}\"")));
         }
     }
-    for value in ["https://example.com/a.svg", "\"><script>alert(1)</script>", "uploads/icons/../auth/account.json", "uploads/icons/a.svg"] {
+    for value in [
+        "https://example.com/a.svg",
+        "\"><script>alert(1)</script>",
+        "uploads/icons/../auth/account.json",
+        "uploads/icons/a.svg",
+    ] {
         site.site_icon = Some(value.into());
         let html = render::render_index(&site, &[], "test");
         assert!(html.contains("type=\"image/svg+xml\" href=\"/favicon.svg\""));

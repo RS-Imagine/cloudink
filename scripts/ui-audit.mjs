@@ -1,3 +1,4 @@
+import { verifyHomeIllustrations } from '../cloud-web/test/home-illustration.browser.mjs';
 import { verifyLongReading } from '../cloud-web/test/long-reading.browser.mjs';
 import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mjs';
 import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
@@ -171,7 +172,12 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
     };
   });
   report.samples.push({ version: name, screen, theme, width, engine, ...data });
-  if (name === 'production' && engine === 'chromium' && screen === 'home' && theme === 'light') {
+  if (
+    name === 'production' &&
+    engine === 'chromium' &&
+    ['home', 'article'].includes(screen) &&
+    [1440, 390].includes(width)
+  ) {
     console.log(
       'READER_PREVIEW ' +
         JSON.stringify({
@@ -462,6 +468,7 @@ try {
     await verifyRelease(localBrowser, origin, output, engine);
     await verifyCompletion(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
+    await verifyHomeIllustrations(localBrowser, origin, output, engine);
     await verifyMarkdownImport(localBrowser, origin, output, engine);
     await verifyImageOptimizer(localBrowser, origin);
     await verifyImageQuality(localBrowser, origin, output, engine);

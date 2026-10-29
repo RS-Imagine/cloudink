@@ -103,7 +103,11 @@ pub(crate) fn preprocess_math(markdown: &str) -> (String, Vec<MathSegment>) {
         }
 
         // Inline math `$...$` anywhere on the line.
-        output.push_str(&render_inline_math(line, &mut math_segments, &mut math_counter));
+        output.push_str(&render_inline_math(
+            line,
+            &mut math_segments,
+            &mut math_counter,
+        ));
         output.push('\n');
     }
 

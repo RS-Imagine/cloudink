@@ -1,6 +1,6 @@
+pub mod bundle;
 pub mod content;
 pub mod import;
-pub mod bundle;
 pub mod models;
 pub mod render;
 pub mod utils;
@@ -42,7 +42,12 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     let mut posts = content::load_posts(content_root)?;
     // Drafts must never be written to public output, including direct URLs.
     posts.retain(|post| !post.draft());
-    posts.sort_by(|a, b| b.updated().unwrap_or(b.date()).cmp(a.updated().unwrap_or(a.date())).then_with(|| b.slug().cmp(a.slug())));
+    posts.sort_by(|a, b| {
+        b.updated()
+            .unwrap_or(b.date())
+            .cmp(a.updated().unwrap_or(a.date()))
+            .then_with(|| b.slug().cmp(a.slug()))
+    });
 
     fs::create_dir_all(output_root.join("posts"))?;
 
@@ -74,11 +79,11 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     let about_dir = output_root.join("about");
     if about_path.exists() {
         let about_page = content::load_page_file(&about_path)?;
-            fs::create_dir_all(&about_dir)?;
-            write_if_changed(
-                about_dir.join("index.html"),
-                render::render_page(&config, &about_page, &css_hash),
-            )?;
+        fs::create_dir_all(&about_dir)?;
+        write_if_changed(
+            about_dir.join("index.html"),
+            render::render_page(&config, &about_page, &css_hash),
+        )?;
     } else if about_dir.exists() {
         fs::remove_dir_all(&about_dir)?;
     }
@@ -111,7 +116,10 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     }
 
     // 404 page.
-    write_if_changed(output_root.join("404.html"), render::render_404(&config, &css_hash))?;
+    write_if_changed(
+        output_root.join("404.html"),
+        render::render_404(&config, &css_hash),
+    )?;
 
     // Client-side search index.
     let search_index: Vec<_> = posts
@@ -141,7 +149,11 @@ pub fn render_preview(config: &models::SiteConfig, draft: &models::PostDraft) ->
         body_html: markdown::markdown_to_html(&draft.body_markdown),
         body_plain_text: markdown::markdown_to_plain_text(&draft.body_markdown),
     };
-    Ok(render::render_post(config, &post, &content_hash(render::stylesheet())))
+    Ok(render::render_post(
+        config,
+        &post,
+        &content_hash(render::stylesheet()),
+    ))
 }
 
 // ---------------------------------------------------------------------------
@@ -184,8 +196,7 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {
                 let src_meta = entry.metadata()?;
                 let dst_meta = fs::metadata(&dest_path)?;
                 if src_meta.len() == dst_meta.len() {
-                    if let (Ok(src_time), Ok(dst_time)) =
-                        (src_meta.modified(), dst_meta.modified())
+                    if let (Ok(src_time), Ok(dst_time)) = (src_meta.modified(), dst_meta.modified())
                     {
                         if dst_time >= src_time {
                             continue;

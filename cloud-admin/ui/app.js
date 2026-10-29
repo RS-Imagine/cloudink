@@ -100,9 +100,9 @@ function loadIllustrationPicker() {
       illustrationPicker = module.configureHomeIllustration({ api, notice });
       return illustrationPicker;
     })
-    .catch((error) => {
+    .catch(() => {
       illustrationLoader = null;
-      throw error;
+      throw new Error('网站设置组件暂时无法加载，请刷新后台后重试。');
     });
   return illustrationLoader;
 }
