@@ -1,3 +1,4 @@
+import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
@@ -158,6 +159,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (!object || object.size !== raw.size)
       throw new HttpError(409, '备份图片尚未恢复完整，请重新选择备份重试。');
   }
+  await ensureHomeIllustration(env.STORAGE, site);
   await ensureSiteIcon(env.STORAGE, site);
   await ensureManagedImages(
     env.STORAGE,

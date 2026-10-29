@@ -1,20 +1,35 @@
-use blog_core::{models::{FrontMatter, Page, PageFrontMatter, Post, SiteConfig}, render};
+use blog_core::{
+    models::{FrontMatter, Page, PageFrontMatter, Post, SiteConfig},
+    render,
+};
 
 fn post(slug: &str, title: &str, draft: bool) -> Post {
     Post {
         front_matter: FrontMatter {
-            title: title.into(), slug: slug.into(), date: "2026-10-01".into(),
-            updated: None, description: "A description & a thought".into(), draft,
+            title: title.into(),
+            slug: slug.into(),
+            date: "2026-10-01".into(),
+            updated: None,
+            description: "A description & a thought".into(),
+            draft,
         },
-        body_markdown: String::new(), body_html: "<p>Article</p>".into(), body_plain_text: "Article".into(),
+        body_markdown: String::new(),
+        body_html: "<p>Article</p>".into(),
+        body_plain_text: "Article".into(),
     }
 }
 
 #[test]
 fn home_keeps_each_published_url_once_and_features_first_visible_post() {
-    let html = render::render_index(&SiteConfig::default(), &[
-        post("private", "PRIVATE", true), post("first", "First", false), post("next", "Next", false),
-    ], "test");
+    let html = render::render_index(
+        &SiteConfig::default(),
+        &[
+            post("private", "PRIVATE", true),
+            post("first", "First", false),
+            post("next", "Next", false),
+        ],
+        "test",
+    );
     assert!(!html.contains("/posts/private/"));
     assert_eq!(html.matches("href=\"/posts/first/\"").count(), 1);
     assert_eq!(html.matches("href=\"/posts/next/\"").count(), 1);
@@ -44,7 +59,11 @@ fn home_escapes_author_text_and_uses_configured_title_without_html_injection() {
     site.title = "Notes & ideas".into();
     site.big_title = Some("<img src=x onerror=BAD>\n第二行".into());
     site.author = "<Writer>".into();
-    let html = render::render_index(&site, &[post("safe", "<script>BAD</script>", false)], "test");
+    let html = render::render_index(
+        &site,
+        &[post("safe", "<script>BAD</script>", false)],
+        "test",
+    );
     assert!(html.contains("&lt;img src=x onerror=BAD&gt;"));
     assert!(html.contains("&lt;script&gt;BAD&lt;/script&gt;"));
     assert!(html.contains("&lt;Writer&gt;"));
@@ -61,10 +80,40 @@ fn navigation_state_is_present_in_ssr_on_every_page_kind() {
     let article = render::render_post(&site, &post("safe", "Post", false), "test");
     assert!(article.contains("data-page=\"post\""));
     assert!(!article.contains("data-reader-nav=\"posts\" aria-current="));
-    let about = render::render_page(&site, &Page {
-        front_matter: PageFrontMatter { title: "About".into(), description: String::new() },
-        body_markdown: String::new(), body_html: "<p>About</p>".into(),
-    }, "test");
+    let about = render::render_page(
+        &site,
+        &Page {
+            front_matter: PageFrontMatter {
+                title: "About".into(),
+                description: String::new(),
+            },
+            body_markdown: String::new(),
+            body_html: "<p>About</p>".into(),
+        },
+        "test",
+    );
     assert!(about.contains("data-reader-nav=\"about\" aria-current=\"page\""));
     assert!(render::render_404(&site, "test").contains("data-page=\"not-found\""));
+}
+
+#[test]
+fn home_illustrations_are_optional_and_only_use_managed_sources() {
+    let mut site = SiteConfig::default();
+    assert!(!render::render_index(&site, &[], "test").contains("class=\"home-illustration\""));
+    site.home_illustration = Some("default".into());
+    let default = render::render_index(&site, &[], "test");
+    assert!(default.contains("home-hero has-illustration"));
+    assert!(default.contains("class=\"home-illustration\""));
+    for key in [
+        "https://example.com/image.svg",
+        "uploads/../private.png",
+        "uploads/x.svg",
+        "uploads/icons/not-a-hash.svg",
+    ] {
+        site.home_illustration = Some(key.into());
+        assert!(!render::render_index(&site, &[], "test").contains("class=\"home-illustration\""));
+    }
+    site.home_illustration = Some("uploads/photo.webp".into());
+    let custom = render::render_index(&site, &[], "test");
+    assert!(custom.contains("src=\"/images/uploads/photo.webp\""));
 }

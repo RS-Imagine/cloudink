@@ -36,6 +36,7 @@ export interface SiteConfig {
   about?: string;
   themePalette?: ThemePalette;
   siteIcon?: string;
+  homeIllustration?: string;
 }
 export interface Release {
   schema_version: 1;
@@ -118,10 +119,23 @@ export function serializeDraft(draft: Draft): string {
 export function validSiteIconKey(value: unknown): boolean {
   return typeof value === 'string' && /^uploads\/icons\/[a-f0-9]{64}\.(?:svg|ico)$/.test(value);
 }
+export function validHomeIllustration(value: unknown): value is string {
+  if (value === '' || value === 'default') return true;
+  return (
+    typeof value === 'string' &&
+    value.length <= 1024 &&
+    (/^uploads\/icons\/[a-f0-9]{64}\.svg$/.test(value) ||
+      /^uploads\/[A-Za-z0-9_./-]+\.(?:jpg|jpeg|png|webp|gif|avif)$/.test(value)) &&
+    !value.split('/').some((part) => !part || part === '.' || part === '..')
+  );
+}
 export function validateSite(input: unknown): SiteConfig {
   if (!input || typeof input !== 'object') throw new HttpError(400, '网站信息格式不正确。');
   const v = input as Record<string, unknown>;
-  const appearance: Pick<SiteConfig, 'footer' | 'clarityId' | 'themePalette' | 'siteIcon'> = {};
+  const appearance: Pick<
+    SiteConfig,
+    'footer' | 'clarityId' | 'themePalette' | 'siteIcon' | 'homeIllustration'
+  > = {};
   if (v.footer !== undefined) appearance.footer = text(v.footer, '页脚', 2000, false);
   if (v.clarityId !== undefined) {
     appearance.clarityId = text(v.clarityId, '统计项目', 64, false);
@@ -131,6 +145,11 @@ export function validateSite(input: unknown): SiteConfig {
   if (v.themePalette !== undefined) {
     if (!isThemePalette(v.themePalette)) throw new HttpError(400, '请选择支持的主题色。');
     appearance.themePalette = v.themePalette;
+  }
+  if (v.homeIllustration !== undefined) {
+    if (!validHomeIllustration(v.homeIllustration))
+      throw new HttpError(400, '首页插画需要选择默认、关闭或图片库中的有效图片。');
+    appearance.homeIllustration = v.homeIllustration;
   }
   if (v.siteIcon !== undefined) {
     if (typeof v.siteIcon !== 'string' || (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon)))

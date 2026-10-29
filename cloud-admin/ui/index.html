@@ -756,6 +756,50 @@
                       aria-live="polite"
                     ></p>
                   </div>
+                  <div
+                    class="site-icon-settings"
+                    role="group"
+                    aria-labelledby="home-illustration-label"
+                  >
+                    <label id="home-illustration-label" for="home-illustration-mode"
+                      >首页插画</label
+                    >
+                    <select id="home-illustration-mode">
+                      <option value="off">不显示 · 纯文字首页</option>
+                      <option value="default">默认枝叶插画</option>
+                      <option value="custom">自定义插画</option>
+                    </select>
+                    <input
+                      id="home-illustration-value"
+                      name="homeIllustration"
+                      type="hidden"
+                      value=""
+                    />
+                    <div id="home-illustration-custom" hidden>
+                      <label for="home-illustration-choices">图片库中的图片</label>
+                      <select id="home-illustration-choices">
+                        <option value="">选择图片库中的图片</option>
+                      </select>
+                      <button id="home-illustration-library" type="button">加载图片库</button>
+                      <button id="home-illustration-upload" type="button">上传 SVG 插画</button>
+                      <input
+                        id="home-illustration-file"
+                        type="file"
+                        accept=".svg,image/svg+xml"
+                        hidden
+                      />
+                      <p>SVG 最多 256 KB，上传时校验；普通图片请先在图片库上传，然后在这里选择。</p>
+                    </div>
+                    <img
+                      id="home-illustration-preview"
+                      width="180"
+                      height="210"
+                      alt="首页插画预览"
+                      style="object-fit: contain; max-width: 100%"
+                      hidden
+                    />
+                    <p id="home-illustration-status" role="status" class="operation-feedback"></p>
+                  </div>
                   <fieldset class="palette-picker" aria-describedby="palette-help">
                     <legend>主题色</legend>
                     <div class="palette-options">

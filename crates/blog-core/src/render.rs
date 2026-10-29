@@ -12,13 +12,20 @@ use crate::utils::escape_html;
 /// code.  The returned `&'static str` is zero-copy.
 pub fn stylesheet() -> &'static str {
     concat!(
-        include_str!("../../../assets/design-tokens.css"), "\n",
-        include_str!("assets/styles.css"), "\n",
-        include_str!("../../../assets/design-foundation.css"), "\n",
-        include_str!("../../../assets/motion.css"), "\n",
-        include_str!("assets/home.css"), "\n",
-        include_str!("assets/reader.css"), "\n",
-        include_str!("../../../assets/mobile.css"), "\n",
+        include_str!("../../../assets/design-tokens.css"),
+        "\n",
+        include_str!("assets/styles.css"),
+        "\n",
+        include_str!("../../../assets/design-foundation.css"),
+        "\n",
+        include_str!("../../../assets/motion.css"),
+        "\n",
+        include_str!("assets/home.css"),
+        "\n",
+        include_str!("assets/reader.css"),
+        "\n",
+        include_str!("../../../assets/mobile.css"),
+        "\n",
         include_str!("../../../assets/expressive.css")
     )
 }
@@ -28,13 +35,24 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
-
 fn site_icon(config: &SiteConfig) -> (String, &'static str) {
     if let Some(key) = config.site_icon.as_deref() {
         if let Some(name) = key.strip_prefix("uploads/icons/") {
             if let Some((hash, ext)) = name.rsplit_once('.') {
-                if hash.len() == 64 && hash.bytes().all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c)) && matches!(ext, "svg" | "ico") {
-                    return (format!("/site-icon/{name}"), if ext == "ico" { "image/x-icon" } else { "image/svg+xml" });
+                if hash.len() == 64
+                    && hash
+                        .bytes()
+                        .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+                    && matches!(ext, "svg" | "ico")
+                {
+                    return (
+                        format!("/site-icon/{name}"),
+                        if ext == "ico" {
+                            "image/x-icon"
+                        } else {
+                            "image/svg+xml"
+                        },
+                    );
                 }
             }
         }
@@ -44,8 +62,10 @@ fn site_icon(config: &SiteConfig) -> (String, &'static str) {
 
 pub fn client_script() -> &'static str {
     concat!(
-        include_str!("../../../assets/motion.js"), "\n",
-        include_str!("../../../assets/mobile.js"), "\n",
+        include_str!("../../../assets/motion.js"),
+        "\n",
+        include_str!("../../../assets/mobile.js"),
+        "\n",
         include_str!("assets/client.js")
     )
 }
@@ -54,6 +74,44 @@ pub fn client_script() -> &'static str {
 // Public page renderers
 // ---------------------------------------------------------------------------
 
+/// Render only managed image keys; direct Rust callers receive the same safe fallback.
+fn home_illustration(config: &SiteConfig) -> String {
+    let Some(key) = config.home_illustration.as_deref() else {
+        return String::new();
+    };
+    if key == "default" {
+        return String::from(
+            r#"<figure class="home-illustration" aria-hidden="true"><img src="/editorial-botanical.svg" width="360" height="420" alt="" decoding="async"></figure>"#,
+        );
+    }
+
+    let svg = key
+        .strip_prefix("uploads/icons/")
+        .and_then(|name| name.strip_suffix(".svg"))
+        .is_some_and(|hash| {
+            hash.len() == 64
+                && hash
+                    .bytes()
+                    .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        });
+    let raster = key.starts_with("uploads/")
+        && [".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"]
+            .iter()
+            .any(|ext| key.ends_with(ext));
+    if key.len() > 1024
+        || !(svg || raster)
+        || !key
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b"_./-".contains(&c))
+        || key
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return String::new();
+    }
+    format!("<figure class=\"home-illustration\" aria-hidden=\"true\"><img src=\"/images/{}\" width=\"360\" height=\"420\" alt=\"\" decoding=\"async\"></figure>", escape_html(key))
+}
+
 /// Renders the blog index page listing all published posts.
 pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
     let mut cards = String::new();
@@ -61,9 +119,15 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
     for post in posts.iter().filter(|post| !post.draft()) {
         let featured = count == 0;
         count += 1;
-        let updated = post.updated().map(|date| format!(
-            "<span>更新 <time datetime=\"{date}\">{date}</time></span>", date = escape_html(date)
-        )).unwrap_or_default();
+        let updated = post
+            .updated()
+            .map(|date| {
+                format!(
+                    "<span>更新 <time datetime=\"{date}\">{date}</time></span>",
+                    date = escape_html(date)
+                )
+            })
+            .unwrap_or_default();
         let art = "";
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
@@ -84,7 +148,11 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             art = art,
         ));
     }
-    let title = config.big_title.as_deref().filter(|value| !value.trim().is_empty()).unwrap_or(&config.title);
+    let title = config
+        .big_title
+        .as_deref()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(&config.title);
     page(
         &config.title,
         &config.description,
@@ -92,19 +160,26 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         &config.description,
         &format!(
             r#"<div class="home-layout">
-<section class="hero home-hero" aria-labelledby="home-title">
+<section class="hero home-hero{illustrated}" aria-labelledby="home-title">
   <div class="home-intro">
     <div class="home-eyebrow"><span aria-hidden="true"></span> {site_title}</div>
     <h1 id="home-title">{title}</h1>
     <p>{subtitle}</p>
     <div class="home-author"><span class="home-avatar" aria-hidden="true">{initial}</span><span>{author}</span></div>
   </div>
+  {illustration}
 </section>
 <section id="posts" aria-labelledby="posts-heading">
   <div class="home-section-heading"><h2 id="posts-heading">最近的文字</h2><span>{count} 篇文章</span></div>
   <div class="grid home-post-grid">{cards}</div>
 </section>
 </div>"#,
+            illustrated = if home_illustration(config).is_empty() {
+                ""
+            } else {
+                " has-illustration"
+            },
+            illustration = home_illustration(config),
             site_title = escape_html(&config.title),
             title = escape_html(title),
             subtitle = escape_html(&config.subtitle),
@@ -112,7 +187,9 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
-            } else { cards },
+            } else {
+                cards
+            },
             count = count,
         ),
         "",
@@ -124,15 +201,26 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
 
 /// Renders a single blog post page.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
-    let updated = post.updated().map(|value| format!(
-        "<span>更新于 <time datetime=\"{date}\">{date}</time></span>", date = escape_html(value)
-    )).unwrap_or_default();
+    let updated = post
+        .updated()
+        .map(|value| {
+            format!(
+                "<span>更新于 <time datetime=\"{date}\">{date}</time></span>",
+                date = escape_html(value)
+            )
+        })
+        .unwrap_or_default();
     // Approximate mixed Chinese/Japanese/Korean characters and space-separated words.
     let is_cjk = |c: char| matches!(c as u32, 0x3400..=0x9fff | 0x3040..=0x30ff | 0xac00..=0xd7af);
     let characters = post.body_plain_text.chars().filter(|c| is_cjk(*c)).count();
-    let words = post.body_plain_text.split_whitespace()
-        .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !is_cjk(c))).count();
-    let minutes = (characters as f64 / 400.0 + words as f64 / 200.0).ceil().max(1.0) as usize;
+    let words = post
+        .body_plain_text
+        .split_whitespace()
+        .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !is_cjk(c)))
+        .count();
+    let minutes = (characters as f64 / 400.0 + words as f64 / 200.0)
+        .ceil()
+        .max(1.0) as usize;
 
     let body = format!(
         r#"<section class="article-shell reader-article">
@@ -298,27 +386,51 @@ fn page(
     ));
 
     // Analytics is opt-in per deployment; never inherit another author's account.
-    if let Some(id) = config.clarity_id.as_deref().filter(|id| !id.is_empty() && id.len() <= 64 && id.bytes().all(|c| c.is_ascii_alphanumeric())) {
-        html.push_str(&format!(r#"  <script type="text/javascript">
+    if let Some(id) = config.clarity_id.as_deref().filter(|id| {
+        !id.is_empty() && id.len() <= 64 && id.bytes().all(|c| c.is_ascii_alphanumeric())
+    }) {
+        html.push_str(&format!(
+            r#"  <script type="text/javascript">
     (function(c,l,a,r,i,t,y){{
         c[a]=c[a]||function(){{(c[a].q=c[a].q||[]).push(arguments)}};
         t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     }})(window, document, "clarity", "script", "{id}");
   </script>
-"#));
+"#
+        ));
     }
     html.push_str("</head>\n");
-    let footer = config.footer.as_deref().filter(|text| !text.is_empty()).map(str::to_owned)
+    let footer = config
+        .footer
+        .as_deref()
+        .filter(|text| !text.is_empty())
+        .map(str::to_owned)
         .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
     let navigation = format!(
         r#"<a href="/#posts" data-reader-nav="posts"{posts_current}>文章</a>{about}"#,
-        posts_current = if page_kind == "home" { " aria-current=\"page\"" } else { "" },
-        about = if config.about.as_deref().is_none_or(|value| !value.trim().is_empty()) {
-            format!("<a href=\"/about/\" data-reader-nav=\"about\"{}>关于</a>",
-                if page_kind == "about" { " aria-current=\"page\"" } else { "" })
-        } else { String::new() },
+        posts_current = if page_kind == "home" {
+            " aria-current=\"page\""
+        } else {
+            ""
+        },
+        about = if config
+            .about
+            .as_deref()
+            .is_none_or(|value| !value.trim().is_empty())
+        {
+            format!(
+                "<a href=\"/about/\" data-reader-nav=\"about\"{}>关于</a>",
+                if page_kind == "about" {
+                    " aria-current=\"page\""
+                } else {
+                    ""
+                }
+            )
+        } else {
+            String::new()
+        },
     );
 
     // ---- <body> -------------------------------------------------------------

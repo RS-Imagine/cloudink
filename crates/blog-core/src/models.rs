@@ -22,11 +22,22 @@ pub struct SiteConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub about: Option<String>,
     /// Optional author palette; absent or unsupported values use the Ink default.
-    #[serde(rename = "themePalette", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "themePalette",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub theme_palette: Option<String>,
     /// Content-addressed uploaded SVG or ICO; absent values use the project icon.
     #[serde(rename = "siteIcon", default, skip_serializing_if = "Option::is_none")]
     pub site_icon: Option<String>,
+    /// Optional home decoration: absent/empty hides it; "default" uses bundled art.
+    #[serde(
+        rename = "homeIllustration",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub home_illustration: Option<String>,
 }
 
 impl Default for SiteConfig {
@@ -42,6 +53,7 @@ impl Default for SiteConfig {
             about: None,
             theme_palette: None,
             site_icon: None,
+            home_illustration: None,
         }
     }
 }
