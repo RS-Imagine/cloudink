@@ -128,3 +128,21 @@ test('reader resources are conditional, same-origin and available to native navi
   assert.equal((await f.request('/reader-assets/katex-LICENSE.txt')).status, 200);
   assert.equal((await f.request('/reader-assets/fonts/account.json')).status, 404);
 });
+
+test('editorial fonts are sliced, same-origin WOFF2 with their license', async (t) => {
+  const f = await fixture(t);
+  const css = await f.request('/reader-assets/editorial-font.css');
+  assert.equal(css.status, 200);
+  const source = await css.text();
+  assert.match(source, /unicode-range:/);
+  assert.match(source, /font-display: swap/);
+  assert.doesNotMatch(source, /https?:|\.woff\)/);
+  const font = source.match(/url\((\/reader-assets\/fonts\/[^)]+\.woff2)\)/)[1];
+  const response = await f.request(font);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('Content-Type'), /font\/woff2/);
+  assert.match(
+    await (await f.request('/reader-assets/editorial-font-LICENSE.txt')).text(),
+    /SIL OPEN FONT LICENSE/,
+  );
+});

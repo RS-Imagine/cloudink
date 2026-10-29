@@ -48,6 +48,7 @@ await build({
 const paths = [
   ['/home-illustration.js', 'ui/home-illustration.generated.js', 'text/javascript; charset=utf-8'],
   ['/editorial-botanical.svg', '../assets/editorial-botanical.svg', 'image/svg+xml'],
+  ['/editorial-botanical.webp', '../assets/editorial-botanical.webp', 'image/webp'],
   ['/image-maintenance.js', 'ui/image-maintenance.generated.js', 'text/javascript; charset=utf-8'],
   ['/image.worker.js', 'ui/image.worker.generated.js', 'text/javascript; charset=utf-8'],
   ['/admin-theme.js', '../assets/theme.js', 'text/javascript; charset=utf-8'],

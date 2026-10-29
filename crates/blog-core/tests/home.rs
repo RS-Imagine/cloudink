@@ -117,3 +117,40 @@ fn home_illustrations_are_optional_and_only_use_managed_sources() {
     let custom = render::render_index(&site, &[], "test");
     assert!(custom.contains("src=\"/images/uploads/photo.webp\""));
 }
+
+#[test]
+fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
+    let mut article = post("illustrated", "An illustrated note", false);
+    article.body_markdown =
+        "![external](https://example.com/photo.jpg)\n![local](/images/uploads/photo.webp)".into();
+    let html = render::render_index(&SiteConfig::default(), &[article.clone()], "test");
+    assert!(html.contains("class=\"home-thumbnail\""));
+    assert!(html.contains("src=\"/images/uploads/photo.webp\""));
+    assert!(!html.contains("https://example.com/photo.jpg"));
+    assert!(html.contains("sizes=\"(max-width: 759px) 88px, 216px\""));
+    assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 1);
+    for body in [
+        "![bad](/images/uploads/../private.jpg)",
+        "![bad](javascript:alert)",
+        "```\n![code](/images/uploads/photo.webp)\n```",
+        "![gif](/images/uploads/animation.gif)",
+        "<img src=\"https://example.com/raw.jpg\">",
+        "Plain text",
+    ] {
+        article.body_markdown = body.into();
+        assert!(
+            !render::render_index(&SiteConfig::default(), &[article.clone()], "test")
+                .contains("class=\"home-thumbnail\"")
+        );
+    }
+}
+
+#[test]
+fn home_thumbnail_supports_dimensioned_editor_images_without_copying_html() {
+    let mut article = post("editor-image", "Photo", false);
+    article.body_markdown = r#"<img src="/images/uploads/editor.webp" alt="Photo" width="800" height="600" onerror="bad()">"#.into();
+    let html = render::render_index(&SiteConfig::default(), &[article], "test");
+    assert!(html.contains("class=\"home-thumbnail\""));
+    assert!(html.contains("src=\"/images/uploads/editor.webp\""));
+    assert!(!html.contains("onerror"));
+}

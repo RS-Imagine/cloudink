@@ -63,6 +63,10 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     write_if_changed(output_root.join("styles.css"), css)?;
     write_if_changed(output_root.join("favicon.svg"), render::favicon_svg())?;
     write_if_changed(
+        output_root.join("editorial-botanical.webp"),
+        include_bytes!("../../../assets/editorial-botanical.webp"),
+    )?;
+    write_if_changed(
         output_root.join("editorial-botanical.svg"),
         include_str!("../../../assets/editorial-botanical.svg"),
     )?;

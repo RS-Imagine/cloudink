@@ -55,7 +55,7 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
     await expect(reader.locator('.home-illustration img')).toBeVisible();
     await expect(reader.locator('.home-illustration img')).toHaveAttribute(
       'src',
-      '/editorial-botanical.svg',
+      '/editorial-botanical.webp',
     );
     await expect
       .poll(() =>

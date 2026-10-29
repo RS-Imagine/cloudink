@@ -10,7 +10,8 @@
     "fflate": "^0.8.2",
     "highlight.js": "^11.11.1",
     "saxes": "6.0.0",
-    "smol-toml": "^1.4.2"
+    "smol-toml": "^1.4.2",
+    "@fontsource/noto-serif-sc": "5.3.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

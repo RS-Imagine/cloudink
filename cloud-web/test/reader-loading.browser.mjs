@@ -93,7 +93,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
           .fulfill({ contentType: 'text/html', body: fixtures[match[1]] })
           .catch(() => {});
       }
-      if (url.pathname.endsWith('.woff2') && failFont) {
+      if (url.pathname.includes('/fonts/KaTeX_') && failFont) {
         failFont = false;
         return route.abort();
       }
@@ -126,14 +126,18 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     };
     await home();
     assert.ok(
-      !requests.some((url) => url.includes('/reader-assets/')),
+      !requests.some((url) =>
+        /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url),
+      ),
       'home must not load code or math resources',
     );
     await page.locator('#reader-link-plain').click();
     await expect(page.locator('.article-heading h1')).toHaveText('Reader plain');
     assert.equal(await page.evaluate(() => window.readerNavigationToken), 'same-document');
     assert.ok(
-      !requests.some((url) => url.includes('/reader-assets/')),
+      !requests.some((url) =>
+        /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url),
+      ),
       'ordinary prose must stay lightweight',
     );
 
@@ -147,7 +151,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       .getByRole('button', { name: '重试', exact: true })
       .click();
     await expect(page.locator('.article-body code.hljs')).toBeVisible();
-    assert.ok(!requests.some((url) => url.includes('katex.css') || url.endsWith('.woff2')));
+    assert.ok(!requests.some((url) => url.includes('katex.css') || url.includes('/fonts/KaTeX_')));
     const color = await page
       .locator('.hljs-string')
       .first()
@@ -191,7 +195,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     await expect(page.locator('.article-heading h1')).toHaveText('Reader math', { timeout: 15000 });
     await expect(page.locator('.article-body .katex')).toBeVisible();
     assert.equal(await page.evaluate(() => window.readerNavigationToken), 'same-document');
-    assert.ok(requests.some((url) => url.endsWith('.woff2')));
+    assert.ok(requests.some((url) => url.includes('/fonts/KaTeX_')));
     await page.screenshot({
       path: resolve(output, 'reader-math-local-' + engine + '.png'),
       fullPage: true,

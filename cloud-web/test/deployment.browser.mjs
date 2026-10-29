@@ -219,7 +219,7 @@ try {
   await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await live.setViewportSize({ width: 1280, height: 900 });
   await live.locator('#theme-toggle-btn').click();
-  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(247, 243, 238)');
+  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(248, 246, 241)');
   await live.screenshot({ path: resolve('cloud-web/dist/article.desktop.png'), fullPage: true });
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.post-card')).toHaveCount(1);

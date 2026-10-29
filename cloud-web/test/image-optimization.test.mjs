@@ -306,3 +306,23 @@ test('an interrupted image family remains eligible and resumes without overwriti
   assert.equal(after.images[0].canOptimize, false);
   assert.equal(after.images[0].optimization, 'complete');
 });
+
+test('index thumbnails keep small sizes and lazy loading when responsive variants are attached', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const image = await (await upload(f)).json();
+  const pending = await f.prepare();
+  await f.stage(
+    pending,
+    [],
+    '<html><head></head><body><figure class="home-thumbnail"><img src="' +
+      image.url +
+      '" alt="" width="216" height="132" loading="lazy" sizes="(max-width: 759px) 88px, 216px"></figure></body></html>',
+  );
+  assert.equal((await f.commit(pending)).status, 200);
+  const html = await (await f.request('/')).text();
+  assert.match(html, /srcset=/);
+  assert.match(html, /sizes="\(max-width: 759px\) 88px, 216px"/);
+  assert.match(html, /loading="lazy"/);
+  assert.match(html, /width="216" height="132"/);
+});

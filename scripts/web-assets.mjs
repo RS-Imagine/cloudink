@@ -45,6 +45,50 @@ if (process.argv[2] === 'seed') {
     target: 'es2022',
     minify: true,
   });
+  // Ship only WOFF2 Unicode slices; readers never contact a font CDN.
+  const fontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif-sc');
+  let fontCSS = '';
+  for (const weight of [400, 600]) {
+    // Keep Latin on the stable system serif: swapping it reflows English headings.
+    // Han glyphs retain their one-em advance, even while the font is downloading.
+    const source = (await readFile(resolve(fontRoot, weight + '.css'), 'utf8')).replace(
+      /@font-face\s*\{[^}]+\}/g,
+      (rule) => {
+        const ranges = rule.match(/unicode-range:\s*([^;]+);/)?.[1] || '';
+        const retained = [];
+        for (const range of ranges.split(',')) {
+          const [first, last = first] = range.trim().replace(/^U\+/i, '').split('-');
+          const start = parseInt(first, 16),
+            end = parseInt(last, 16);
+          for (const [low, high] of [
+            [0x2e80, 0x9fff],
+            [0xf900, 0xfaff],
+            [0xff00, 0xffef],
+            [0x20000, 0x323af],
+          ]) {
+            const a = Math.max(start, low),
+              b = Math.min(end, high);
+            if (a <= b)
+              retained.push('U+' + a.toString(16) + (a === b ? '' : '-' + b.toString(16)));
+          }
+        }
+        return retained.length
+          ? rule.replace(/unicode-range:[^;]+;/, 'unicode-range:' + retained.join(',') + ';')
+          : '';
+      },
+    );
+    const files = [...source.matchAll(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/g)];
+    if (!files.length) throw new Error('Missing editorial WOFF2 slices');
+    for (const [, file] of files)
+      await copyFile(resolve(fontRoot, 'files', file), resolve(vendor, 'fonts', file));
+    fontCSS += source.replace(/src:[^;]+;/g, (declaration) => {
+      const file = declaration.match(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/)?.[1];
+      if (!file) throw new Error('Missing editorial font source');
+      return 'src:url(/reader-assets/fonts/' + file + ') format("woff2");';
+    });
+  }
+  await writeFile(resolve(vendor, 'editorial-font.css'), fontCSS);
+  await copyFile(resolve(fontRoot, 'LICENSE'), resolve(vendor, 'editorial-font-LICENSE.txt'));
   const highlightRoot = resolve(root, 'cloud-admin/node_modules/highlight.js');
   const light = await readFile(resolve(highlightRoot, 'styles/github.min.css'), 'utf8');
   const dark = await readFile(resolve(highlightRoot, 'styles/github-dark.min.css'), 'utf8');
