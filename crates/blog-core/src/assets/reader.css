@@ -26,6 +26,8 @@
   align-items: center;
 }
 .article-shell article h1 {
+  max-width: 18ch;
+  text-wrap: balance;
   margin: 24px 0 22px;
   font: 500 clamp(2rem, 4vw, 3.5rem)/1.35 var(--ci-font-reading);
   letter-spacing: 0;

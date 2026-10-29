@@ -158,7 +158,10 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
             await tab.screenshot({
               path: 'cloud-web/dist/image-before-' + viewport.width + '.png',
             });
-          console.log('IMAGE_LAYOUT_SAMPLE ' + JSON.stringify({ mode, viewport: viewport.width, repeat, ...sample }));
+          console.log(
+            'IMAGE_LAYOUT_SAMPLE ' +
+              JSON.stringify({ mode, viewport: viewport.width, repeat, ...sample }),
+          );
           assert.ok(sample.cls < 0.02);
           metrics.push({ mode, viewport: viewport.width, repeat, ...sample });
         } finally {

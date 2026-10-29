@@ -58,10 +58,18 @@ if (process.argv[2] === 'seed') {
         const retained = [];
         for (const range of ranges.split(',')) {
           const [first, last = first] = range.trim().replace(/^U\+/i, '').split('-');
-          const start = parseInt(first, 16), end = parseInt(last, 16);
-          for (const [low, high] of [[0x2e80, 0x9fff], [0xf900, 0xfaff], [0xff00, 0xffef], [0x20000, 0x323af]]) {
-            const a = Math.max(start, low), b = Math.min(end, high);
-            if (a <= b) retained.push('U+' + a.toString(16) + (a === b ? '' : '-' + b.toString(16)));
+          const start = parseInt(first, 16),
+            end = parseInt(last, 16);
+          for (const [low, high] of [
+            [0x2e80, 0x9fff],
+            [0xf900, 0xfaff],
+            [0xff00, 0xffef],
+            [0x20000, 0x323af],
+          ]) {
+            const a = Math.max(start, low),
+              b = Math.min(end, high);
+            if (a <= b)
+              retained.push('U+' + a.toString(16) + (a === b ? '' : '-' + b.toString(16)));
           }
         }
         return retained.length
