@@ -116,12 +116,12 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await capture('preview');
         await page.locator('#show-writing').click();
         await expect(page.locator('#body')).toHaveValue(body);
-        await page.locator('#delete-post').click();
+        await page.locator('#unpublish-post').click();
         await expect(page.locator('#confirmation-dialog')).toBeVisible();
         await expect(page.locator('#confirmation-cancel')).toBeFocused();
         await capture('confirmation');
         await page.keyboard.press('Escape');
-        await expect(page.locator('#delete-post')).toBeFocused();
+        await expect(page.locator('#unpublish-post')).toBeFocused();
         await page.locator('#images').click();
         await expect(page.locator('#images-view')).toBeVisible();
         await expect(page.locator('#image-library-grid')).toHaveAttribute('aria-busy', 'false');
