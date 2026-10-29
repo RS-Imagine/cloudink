@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { build } from 'esbuild';
+import { build, transform } from 'esbuild';
 import { readFile, writeFile } from 'node:fs/promises';
 const root = new URL('.', import.meta.url);
 await build({
@@ -79,6 +79,12 @@ for (const [path, file, type] of paths) {
       Buffer.from('\n'),
       await readFile(new URL('../assets/expressive.css', root)),
     ]);
+    const stylesheet = await transform(bytes.toString('utf8'), {
+      loader: 'css',
+      minify: true,
+      target: 'es2022',
+    });
+    bytes = Buffer.from(stylesheet.code);
   }
   assets[path] = {
     type,
