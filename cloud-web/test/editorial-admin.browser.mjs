@@ -152,7 +152,6 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await page.locator('#studio-tools summary').click();
         await expect(page.locator('#import-posts')).toBeVisible();
         await capture('menu');
-        await page.locator('#import-posts').click();
         await page.locator('#import-files').setInputFiles({
           name: 'invalid-encoding.md',
           mimeType: 'text/markdown',
