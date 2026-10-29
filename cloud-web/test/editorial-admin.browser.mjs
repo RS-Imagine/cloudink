@@ -63,7 +63,7 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
             ['editorial-admin', version, screen, width, theme, engine].join('-') + '.png';
           await page.screenshot({
             path: resolve(output, file),
-            fullPage: true,
+            fullPage: !['appearance', 'account', 'backup', 'service'].includes(screen),
             animations: 'disabled',
           });
           samples.push({ version, screen, width, theme, engine, file });
@@ -125,6 +125,13 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await page.locator('#images').click();
         await expect(page.locator('#images-view')).toBeVisible();
         await expect(page.locator('#image-library-grid')).toHaveAttribute('aria-busy', 'false');
+        if (version === 'after') {
+          const control = await page.locator('#image-library-unused').boundingBox();
+          assert.ok(control.width >= 42 && control.height >= 26, 'Gallery switch keeps its shape');
+          await page.locator('#image-library-unused').check();
+          await expect(page.locator('#image-library-empty')).toBeVisible();
+          await page.locator('#image-library-unused').uncheck();
+        }
         await capture('images');
         await page.locator('#image-maintenance summary').click();
         await expect(page.locator('#image-library-optimize')).toBeVisible();

@@ -321,7 +321,7 @@ button[aria-busy='true'] {
   color: var(--ci-text);
   cursor: pointer;
 }
-.library-switch input {
+.image-library-filters .library-switch input {
   appearance: none;
   position: relative;
   flex: none;
@@ -334,7 +334,7 @@ button[aria-busy='true'] {
   background: var(--ci-container);
   cursor: pointer;
 }
-.library-switch input::before {
+.image-library-filters .library-switch input::before {
   content: '';
   position: absolute;
   top: 4px;
@@ -345,11 +345,11 @@ button[aria-busy='true'] {
   background: var(--ci-muted);
   transition: transform var(--ci-motion-fast);
 }
-.library-switch input:checked {
+.image-library-filters .library-switch input:checked {
   background: var(--ci-primary);
   border-color: var(--ci-primary);
 }
-.library-switch input:checked::before {
+.image-library-filters .library-switch input:checked::before {
   transform: translateX(16px);
   background: var(--ci-on-primary);
 }
@@ -1142,7 +1142,7 @@ body:has(dialog[open]) {
   }
 }
 
-.editor-document :is(.title-input, .description-input) {
+.editor-document :is(input.title-input, textarea.description-input) {
   background: transparent;
   border: 0;
   border-radius: 0;
