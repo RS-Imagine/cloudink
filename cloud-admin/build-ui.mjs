@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { build } from 'esbuild';
+import { gzipSync } from 'node:zlib';
+import { build, transform } from 'esbuild';
 import { readFile, writeFile } from 'node:fs/promises';
 const root = new URL('.', import.meta.url);
 await build({
@@ -62,23 +63,36 @@ const assets = {};
 for (const [path, file, type] of paths) {
   let bytes = await readFile(new URL(file, root));
   if (path === '/style.css') {
-    bytes = Buffer.concat([
-      await readFile(new URL('../assets/design-tokens.css', root)),
-      Buffer.from('\n'),
-      bytes,
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/design-foundation.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/motion.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('ui/studio.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('ui/workflows.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/mobile.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/expressive.css', root)),
-    ]);
+    const sources = [
+      '../assets/design-tokens.css',
+      'ui/style.css',
+      '../assets/design-foundation.css',
+      '../assets/motion.css',
+      'ui/studio.css',
+      'ui/workflows.css',
+      '../assets/mobile.css',
+      '../assets/expressive.css',
+    ];
+    const stylesheets = await Promise.all(
+      sources.map(async (file) => {
+        const source = await readFile(new URL(file, root), 'utf8');
+        if (file === '../assets/design-tokens.css' || file === '../assets/design-foundation.css')
+          return source;
+        return (
+          await transform(source, {
+            loader: 'css',
+            minify: true,
+            target: 'es2022',
+          })
+        ).code;
+      }),
+    );
+    bytes = Buffer.from(stylesheets.join('\n'));
+    for (let index = 0; index < sources.length; index++)
+      console.log(
+        JSON.stringify({ stylesheet: sources[index], gzip: gzipSync(stylesheets[index]).length }),
+      );
+    console.log(JSON.stringify({ adminStylesheetGzip: gzipSync(bytes).length }));
   }
   assets[path] = {
     type,
