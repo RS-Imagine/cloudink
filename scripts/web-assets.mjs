@@ -49,7 +49,26 @@ if (process.argv[2] === 'seed') {
   const fontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif-sc');
   let fontCSS = '';
   for (const weight of [400, 600]) {
-    const source = await readFile(resolve(fontRoot, weight + '.css'), 'utf8');
+    // Keep Latin on the stable system serif: swapping it reflows English headings.
+    // Han glyphs retain their one-em advance, even while the font is downloading.
+    const source = (await readFile(resolve(fontRoot, weight + '.css'), 'utf8')).replace(
+      /@font-face\s*\{[^}]+\}/g,
+      (rule) => {
+        const ranges = rule.match(/unicode-range:\s*([^;]+);/)?.[1] || '';
+        const retained = [];
+        for (const range of ranges.split(',')) {
+          const [first, last = first] = range.trim().replace(/^U\+/i, '').split('-');
+          const start = parseInt(first, 16), end = parseInt(last, 16);
+          for (const [low, high] of [[0x2e80, 0x9fff], [0xf900, 0xfaff], [0xff00, 0xffef], [0x20000, 0x323af]]) {
+            const a = Math.max(start, low), b = Math.min(end, high);
+            if (a <= b) retained.push('U+' + a.toString(16) + (a === b ? '' : '-' + b.toString(16)));
+          }
+        }
+        return retained.length
+          ? rule.replace(/unicode-range:[^;]+;/, 'unicode-range:' + retained.join(',') + ';')
+          : '';
+      },
+    );
     const files = [...source.matchAll(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/g)];
     if (!files.length) throw new Error('Missing editorial WOFF2 slices');
     for (const [, file] of files)

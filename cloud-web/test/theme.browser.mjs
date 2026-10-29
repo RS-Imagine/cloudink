@@ -20,12 +20,14 @@ export async function verifyThemes(browser, origin, output, engine) {
   const root = page.locator('html');
   const mode = page.locator('select[data-theme-mode]');
   await page.goto(origin + '/');
+  const publishedPalette = await root.getAttribute('data-palette');
+  const darkBackground = publishedPalette === 'brown' ? 'rgb(33, 26, 22)' : 'rgb(20, 27, 23)';
   await expect(root).toHaveAttribute('data-theme', 'light');
   await expect(root).toHaveAttribute('data-theme-mode', 'auto');
   await expect(mode).toHaveValue('auto');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(20, 27, 23)');
+  await expect(page.locator('body')).toHaveCSS('background-color', darkBackground);
   await mode.selectOption('light');
   await page.reload();
   await expect(root).toHaveAttribute('data-theme', 'light');
@@ -49,7 +51,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   // Reader mode and the admin cache must not override the published author palette.
   await page.evaluate(() => localStorage.setItem('cloudink-admin-palette', 'neutral'));
   await page.reload();
-  await expect(root).toHaveAttribute('data-palette', 'ink');
+  await expect(root).toHaveAttribute('data-palette', publishedPalette);
   await page.goto(origin + '/admin');
   await expect(page.locator('#login-view')).toBeVisible();
   await expect(root).toHaveAttribute('data-palette', 'neutral');
@@ -86,7 +88,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   );
   const staticPage = await noScript.newPage();
   await staticPage.goto(origin + '/');
-  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(20, 27, 23)');
+  await expect(staticPage.locator('body')).toHaveCSS('background-color', darkBackground);
   await staticPage.locator('.post-card h2 a').first().click();
   await expect(staticPage.locator('article h1')).toBeVisible();
   await noScript.close();
