@@ -1,0 +1,30 @@
+name: Prepare editorial review sources
+on:
+  pull_request:
+jobs:
+  prepare:
+    if: github.head_ref == 'feat/editorial-concept-fidelity'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Format touched design sources
+        run: |
+          npx prettier --write crates/blog-core/src/assets/home.css assets/design-tokens.css crates/blog-core/src/assets/reader.css cloud-admin/src/image-variants.ts cloud-admin/ui/studio.css cloud-admin/ui/index.html cloud-admin/package.json scripts/web-assets.mjs cloud-web/src/index.ts scripts/ui-audit.mjs docs/design/EDITORIAL-FIDELITY.md
+          rustup component add rustfmt
+          cargo fmt --all
+      - name: Export formatted sources for review
+        env:
+          SOURCE_PATHS: '["crates/blog-core/src/render.rs","crates/blog-core/src/assets/home.css","assets/design-tokens.css","crates/blog-core/src/assets/reader.css","cloud-admin/src/image-variants.ts","cloud-admin/ui/studio.css","cloud-admin/ui/index.html","cloud-admin/package.json","scripts/web-assets.mjs","cloud-web/src/index.ts","crates/blog-core/tests/home.rs","scripts/ui-audit.mjs","docs/design/EDITORIAL-FIDELITY.md"]'
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile} from 'node:fs/promises';
+          for (const path of JSON.parse(process.env.SOURCE_PATHS))
+            console.log('FORMATTED_SOURCE ' + JSON.stringify({path,content:await readFile(path,'utf8')}));
+          JS
+          npm view @fontsource/noto-serif-sc@5.3.1 dist --json

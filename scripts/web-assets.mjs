@@ -45,6 +45,23 @@ if (process.argv[2] === 'seed') {
     target: 'es2022',
     minify: true,
   });
+  // Ship only WOFF2 Unicode slices; readers never contact a font CDN.
+  const fontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif-sc');
+  let fontCSS = '';
+  for (const weight of [400, 600]) {
+    const source = await readFile(resolve(fontRoot, weight + '.css'), 'utf8');
+    const files = [...source.matchAll(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/g)];
+    if (!files.length) throw new Error('Missing editorial WOFF2 slices');
+    for (const [, file] of files)
+      await copyFile(resolve(fontRoot, 'files', file), resolve(vendor, 'fonts', file));
+    fontCSS += source.replace(/src:[^;]+;/g, (declaration) => {
+      const file = declaration.match(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/)?.[1];
+      if (!file) throw new Error('Missing editorial font source');
+      return 'src:url(/reader-assets/fonts/' + file + ') format("woff2");';
+    });
+  }
+  await writeFile(resolve(vendor, 'editorial-font.css'), fontCSS);
+  await copyFile(resolve(fontRoot, 'LICENSE'), resolve(vendor, 'editorial-font-LICENSE.txt'));
   const highlightRoot = resolve(root, 'cloud-admin/node_modules/highlight.js');
   const light = await readFile(resolve(highlightRoot, 'styles/github.min.css'), 'utf8');
   const dark = await readFile(resolve(highlightRoot, 'styles/github-dark.min.css'), 'utf8');

@@ -141,7 +141,7 @@ export async function responsiveImages(
 ): Promise<string> {
   const families = new Map<string, Promise<ReturnType<typeof imagePresentation> | null>>();
   return new HTMLRewriter()
-    .on('.article-body img', {
+    .on('.article-body img, .home-thumbnail img', {
       async element(el) {
         if (el.hasAttribute('srcset')) return; // Respect explicitly authored responsive HTML.
         let key: string;
@@ -181,7 +181,8 @@ export async function responsiveImages(
         if (info.srcset) {
           el.setAttribute('src', info.displayUrl);
           el.setAttribute('srcset', info.srcset);
-          el.setAttribute('sizes', '(max-width: 759px) calc(100vw - 44px), 720px');
+          if (!el.hasAttribute('sizes'))
+            el.setAttribute('sizes', '(max-width: 759px) calc(100vw - 44px), 720px');
           el.setAttribute('data-full-src', info.fullUrl);
         }
       },

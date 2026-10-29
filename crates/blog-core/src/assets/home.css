@@ -1,10 +1,10 @@
 /* Reader shell and home only. Article typography stays in the reading milestone. */
 .reader-layout {
-  max-width: 1160px;
+  max-width: 1100px;
   padding: 0 28px 48px;
 }
 .reader-header {
-  min-height: 88px;
+  min-height: 84px;
   gap: 20px;
   flex-wrap: nowrap;
   padding: 0;
@@ -13,7 +13,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   max-width: 60%;
   color: var(--ci-text);
@@ -108,7 +108,7 @@
   padding: 8px;
   background: var(--ci-elevated);
   border: 1px solid var(--ci-divider);
-  border-radius: var(--ci-radius-lg);
+  border-radius: 4px;
   box-shadow: var(--ci-shadow-floating);
 }
 .reader-menu-links a {
@@ -118,7 +118,7 @@
   padding: 12px 16px;
   color: var(--ci-text);
   text-decoration: none;
-  border-radius: var(--ci-radius-md);
+  border-radius: 4px;
 }
 .reader-sr-only {
   position: absolute;
@@ -176,7 +176,7 @@
 .home-hero {
   display: block;
   max-width: none;
-  padding: 88px 0 64px;
+  padding: 64px 0 52px;
   border-bottom: 1px solid var(--ci-divider);
 }
 .home-intro {
@@ -192,10 +192,10 @@
   display: none;
 }
 .home-hero h1 {
-  max-width: 880px;
+  max-width: 14ch;
   margin: 24px 0;
-  font: 500 clamp(2.5rem, 5.3vw, 4.75rem)/1.3 var(--ci-font-reading);
-  letter-spacing: -0.025em;
+  font: 500 clamp(2.5rem, 5.3vw, 4.75rem)/1.28 var(--ci-font-reading);
+  letter-spacing: 0.015em;
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
@@ -203,13 +203,13 @@
   max-width: 640px;
   margin: 0;
   color: var(--ci-muted);
-  font: 18px/1.9 var(--ci-font-reading);
+  font: italic 22px/1.7 var(--ci-font-reading);
 }
 .home-author {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding-top: 26px;
+  padding-top: 16px;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -263,8 +263,8 @@
 .home-card .home-card-copy {
   min-width: 0;
   display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
-  column-gap: 32px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  column-gap: 28px;
 }
 .home-badge,
 .home-feature-art {
@@ -273,7 +273,7 @@
 .home-card h2 {
   grid-column: 2;
   margin: 0 0 10px;
-  font: 500 26px/1.5 var(--ci-font-reading);
+  font: 500 25px/1.5 var(--ci-font-reading);
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
@@ -453,8 +453,8 @@
 
 .home-hero.has-illustration {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 48px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 36px;
   align-items: center;
 }
 .home-illustration {
@@ -484,5 +484,99 @@
   .home-illustration img,
   .home-illustration svg {
     height: 180px;
+  }
+}
+
+/* The approved study is a publication, with navigation beside its masthead. */
+.reader-header .reader-navigation {
+  flex: 1;
+  min-width: 0;
+  margin-inline-start: 20px;
+}
+.reader-tools {
+  margin-inline-start: auto;
+}
+.reader-header .site-brand {
+  flex-direction: row-reverse;
+  gap: 4px;
+}
+.reader-header .site-nav a {
+  padding-inline: 12px;
+}
+.reader-header .site-nav a[aria-current] {
+  text-decoration: none;
+}
+.home-hero .home-intro > .home-description {
+  margin-top: 24px;
+  max-width: 36ch;
+  font: 16px/1.95 var(--ci-font-reading);
+  white-space: pre-line;
+}
+.home-author {
+  color: var(--ci-muted);
+  font-family: var(--ci-font-reading);
+}
+.home-card:has(.home-thumbnail) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 216px;
+  gap: 28px;
+  align-items: center;
+}
+.home-thumbnail {
+  margin: 0;
+}
+.home-thumbnail img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 18 / 11;
+  object-fit: cover;
+  border-radius: 2px;
+}
+@media (max-width: 759px) {
+  .reader-header .reader-navigation {
+    flex: none;
+    margin-inline-start: auto;
+  }
+  .reader-header .site-brand {
+    max-width: calc(100% - 144px);
+  }
+  .reader-header .site-mark {
+    display: none;
+  }
+  .home-hero.has-illustration {
+    position: relative;
+    display: block;
+  }
+  .home-hero.has-illustration .home-illustration {
+    position: absolute;
+    top: 68px;
+    inset-inline-end: 0;
+    width: 96px;
+    height: 156px;
+  }
+  .home-hero.has-illustration .home-illustration img {
+    height: 156px;
+  }
+  .home-hero.has-illustration h1 {
+    max-width: calc(100% - 100px);
+    font-size: 38px;
+  }
+  .home-hero.has-illustration .home-intro > p:not(.home-description) {
+    max-width: calc(100% - 100px);
+  }
+  .home-hero .home-intro > .home-description {
+    font-size: 15px;
+    margin-top: 28px;
+  }
+  .home-card:has(.home-thumbnail) {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 16px;
+  }
+  .home-card h2 {
+    font-size: 21px;
+  }
+  .home-thumbnail img {
+    aspect-ratio: 4 / 5;
   }
 }

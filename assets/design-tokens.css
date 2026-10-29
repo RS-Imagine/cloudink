@@ -79,7 +79,7 @@
   --ci-font-ui:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --ci-font-reading:
-    'Iowan Old Style', 'Palatino Linotype', 'Songti SC', 'Noto Serif CJK SC', serif;
+    'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', 'Noto Serif CJK SC', serif;
   --ci-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --ci-type-display: clamp(2.5rem, 5.1vw, 4.5rem);
   --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);
@@ -164,7 +164,7 @@
   --ci-dark-on-primary-container: #d6e3f5;
 }
 :root[data-palette='brown'] {
-  --ci-light-bg: #f7f3ee;
+  --ci-light-bg: #f8f6f1;
   --ci-dark-bg: #211a16;
   --ci-light-surface: #fffcf8;
   --ci-dark-surface: #2a211c;
@@ -172,13 +172,13 @@
   --ci-dark-elevated: #342a23;
   --ci-light-container: #f0e8dd;
   --ci-dark-container: #403329;
-  --ci-light-text: #30251e;
+  --ci-light-text: #241e19;
   --ci-dark-text: #f3e5d8;
   --ci-light-muted: #716052;
   --ci-dark-muted: #d1bcaa;
   --ci-light-outline: #968375;
   --ci-dark-outline: #ad9580;
-  --ci-light-divider: #e5d9cd;
+  --ci-light-divider: #d6cbbd;
   --ci-dark-divider: #57483c;
   --ci-light-hover: #eee5da;
   --ci-dark-hover: #44362b;

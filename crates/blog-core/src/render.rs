@@ -112,6 +112,33 @@ fn home_illustration(config: &SiteConfig) -> String {
     format!("<figure class=\"home-illustration\" aria-hidden=\"true\"><img src=\"/images/{}\" width=\"360\" height=\"420\" alt=\"\" decoding=\"async\"></figure>", escape_html(key))
 }
 
+/// The first managed Markdown image is a quiet, optional index thumbnail.
+/// External URLs and raw HTML are not fetched just to decorate an index.
+fn post_thumbnail(post: &Post) -> String {
+    use pulldown_cmark::{Event, Options, Parser, Tag};
+
+    for event in Parser::new_ext(&post.body_markdown, Options::all()) {
+        let Event::Start(Tag::Image { dest_url, .. }) = event else {
+            continue;
+        };
+        let Some(key) = dest_url.strip_prefix("/images/uploads/") else {
+            continue;
+        };
+        if key.len() > 1000
+            || !key.bytes().all(|c| c.is_ascii_alphanumeric() || b"_./-".contains(&c))
+            || key.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+            || ![".jpg", ".jpeg", ".png", ".webp", ".avif"].iter().any(|ext| key.ends_with(ext))
+        {
+            continue;
+        }
+        return format!(
+            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="216" height="132" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 216px"></figure>"#,
+            escape_html(&dest_url)
+        );
+    }
+    String::new()
+}
+
 /// Renders the blog index page listing all published posts.
 pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
     let mut cards = String::new();
@@ -128,7 +155,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
                 )
             })
             .unwrap_or_default();
-        let art = "";
+        let art = post_thumbnail(post);
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
@@ -165,7 +192,8 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
     <div class="home-eyebrow"><span aria-hidden="true"></span> {site_title}</div>
     <h1 id="home-title">{title}</h1>
     <p>{subtitle}</p>
-    <div class="home-author"><span class="home-avatar" aria-hidden="true">{initial}</span><span>{author}</span></div>
+    <p class="home-description">{description}</p>
+    <div class="home-author"><span>{author}</span></div>
   </div>
   {illustration}
 </section>
@@ -184,7 +212,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             title = escape_html(title),
             subtitle = escape_html(&config.subtitle),
             author = escape_html(&config.author),
-            initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
+            description = escape_html(&config.description),
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
             } else {
@@ -368,6 +396,7 @@ fn page(
   <meta name="author" content="{author}">
   <title>{title}</title>
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
+  <link rel="stylesheet" href="/reader-assets/editorial-font.css">
   <link rel="icon" type="{icon_type}" href="{icon_url}">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
