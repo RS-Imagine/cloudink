@@ -33,12 +33,13 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         const context = await browser.newContext({
           viewport: { width, height: width >= 760 ? 1000 : 844 },
           colorScheme: theme,
+          ignoreHTTPSErrors: true,
           reducedMotion: 'reduce',
         });
         context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
         await context.addInitScript((mode) => {
           // Preview frames have opaque origins; only seed the top-level app.
-          if (window.top !== window) return;
+          if (window.top !== window || !/^https?:$/.test(location.protocol)) return;
           localStorage.setItem('theme', mode);
           localStorage.setItem('cloudink-admin-palette', 'brown');
         }, theme);
