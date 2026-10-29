@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import { build, transform } from 'esbuild';
 import { readFile, writeFile } from 'node:fs/promises';
 const root = new URL('.', import.meta.url);
@@ -87,6 +88,9 @@ for (const [path, file, type] of paths) {
       }),
     );
     bytes = Buffer.from(stylesheets.join('\n'));
+    for (let index = 0; index < sources.length; index++)
+      console.log(JSON.stringify({ stylesheet: sources[index], gzip: gzipSync(stylesheets[index]).length }));
+    console.log(JSON.stringify({ adminStylesheetGzip: gzipSync(bytes).length }));
   }
   assets[path] = {
     type,
