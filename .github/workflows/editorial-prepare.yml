@@ -15,12 +15,12 @@ jobs:
       - run: npm ci
       - name: Format touched design sources
         run: |
-          npx prettier --write cloud-admin/ui/index.html cloud-admin/ui/home-illustration.js cloud-web/test/home-illustration.browser.mjs cloud-admin/build-ui.mjs cloud-web/src/index.ts cloud-web/test/deployment.browser.mjs cloud-web/test/reader-loading.browser.mjs cloud-web/test/editorial-admin.browser.mjs docs/design/EDITORIAL-FIDELITY.md scripts/ui-audit.mjs crates/blog-core/src/assets/home.css
+          npx prettier --write cloud-admin/ui/index.html cloud-admin/ui/home-illustration.js cloud-web/test/home-illustration.browser.mjs cloud-admin/build-ui.mjs cloud-web/src/index.ts cloud-web/test/deployment.browser.mjs cloud-web/test/reader-loading.browser.mjs cloud-web/test/editorial-admin.browser.mjs docs/design/EDITORIAL-FIDELITY.md scripts/ui-audit.mjs crates/blog-core/src/assets/home.css cloud-web/test/reader-performance.browser.mjs cloud-web/test/reader.test.mjs cloud-web/test/image-optimization.test.mjs
           rustup component add rustfmt
           cargo fmt --all
       - name: Export formatted sources for review
         env:
-          SOURCE_PATHS: '["crates/blog-core/src/render.rs","cloud-admin/ui/index.html","cloud-admin/ui/home-illustration.js","cloud-web/test/home-illustration.browser.mjs","cloud-admin/build-ui.mjs","cloud-web/src/index.ts","cloud-web/test/deployment.browser.mjs","cloud-web/test/reader-loading.browser.mjs","cloud-web/test/editorial-admin.browser.mjs","crates/blog-core/src/lib.rs","crates/blog-core/tests/home.rs","docs/design/EDITORIAL-FIDELITY.md","scripts/ui-audit.mjs","crates/blog-core/src/assets/home.css"]'
+          SOURCE_PATHS: '["crates/blog-core/src/render.rs","cloud-admin/ui/index.html","cloud-admin/ui/home-illustration.js","cloud-web/test/home-illustration.browser.mjs","cloud-admin/build-ui.mjs","cloud-web/src/index.ts","cloud-web/test/deployment.browser.mjs","cloud-web/test/reader-loading.browser.mjs","cloud-web/test/editorial-admin.browser.mjs","crates/blog-core/src/lib.rs","crates/blog-core/tests/home.rs","docs/design/EDITORIAL-FIDELITY.md","scripts/ui-audit.mjs","crates/blog-core/src/assets/home.css","cloud-web/test/reader-performance.browser.mjs","cloud-web/test/reader.test.mjs","cloud-web/test/image-optimization.test.mjs"]'
         run: |
           node --input-type=module <<'JS'
           import {readFile} from 'node:fs/promises';
