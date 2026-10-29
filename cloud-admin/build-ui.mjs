@@ -89,7 +89,9 @@ for (const [path, file, type] of paths) {
     );
     bytes = Buffer.from(stylesheets.join('\n'));
     for (let index = 0; index < sources.length; index++)
-      console.log(JSON.stringify({ stylesheet: sources[index], gzip: gzipSync(stylesheets[index]).length }));
+      console.log(
+        JSON.stringify({ stylesheet: sources[index], gzip: gzipSync(stylesheets[index]).length }),
+      );
     console.log(JSON.stringify({ adminStylesheetGzip: gzipSync(bytes).length }));
   }
   assets[path] = {
