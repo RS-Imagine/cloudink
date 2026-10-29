@@ -815,18 +815,6 @@ body:has(dialog[open]) {
   max-height: 65dvh;
   border-radius: 3px;
 }
-@supports (corner-shape: squircle) {
-  .editor-view,
-  .editor-panes,
-  .settings-card,
-  .image-card,
-  .image-library-filters,
-  .workflow-empty,
-  .confirmation-dialog,
-  .image-preview-dialog {
-    corner-shape: round;
-  }
-}
 @media (max-width: 1099px) {
   #show-split:not([data-ci-pane-control]) {
     display: none;
@@ -1080,11 +1068,6 @@ body:has(dialog[open]) {
 }
 #home-illustration-custom button {
   margin: 12px 8px 0 0;
-}
-#home-illustration-mode,
-#home-illustration-choices {
-  background: var(--ci-surface);
-  border-color: var(--ci-outline);
 }
 .site-icon-settings + .site-icon-settings {
   padding-top: 24px;
