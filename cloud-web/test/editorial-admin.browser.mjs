@@ -8,7 +8,8 @@ import { owner, password } from './fixture.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 
 const baseline = '1b176737e055666836715d0b98255ce9de7418af';
-const original = (path) => execFileSync('git', ['show', baseline + ':' + path], { encoding: 'utf8' });
+const original = (path) =>
+  execFileSync('git', ['show', baseline + ':' + path], { encoding: 'utf8' });
 const stylePaths = [
   'assets/design-tokens.css',
   'cloud-admin/ui/style.css',
@@ -58,8 +59,13 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
             [engine, version, screen, width, theme].join('/') + ' reflows',
           );
-          const file = ['editorial-admin', version, screen, width, theme, engine].join('-') + '.png';
-          await page.screenshot({ path: resolve(output, file), fullPage: true, animations: 'disabled' });
+          const file =
+            ['editorial-admin', version, screen, width, theme, engine].join('-') + '.png';
+          await page.screenshot({
+            path: resolve(output, file),
+            fullPage: true,
+            animations: 'disabled',
+          });
           samples.push({ version, screen, width, theme, engine, file });
           if (
             engine === 'chromium' &&
@@ -68,10 +74,15 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
             theme === 'light' &&
             ['login', 'dashboard', 'editor', 'images', 'settings', 'confirmation'].includes(screen)
           ) {
-            console.log('ADMIN_REVIEW_PREVIEW ' + JSON.stringify({
-              screen, width, theme,
-              image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
-            }));
+            console.log(
+              'ADMIN_REVIEW_PREVIEW ' +
+                JSON.stringify({
+                  screen,
+                  width,
+                  theme,
+                  image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
+                }),
+            );
           }
         }
         await page.goto(origin + '/admin');
@@ -136,7 +147,9 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await capture('menu');
         await page.locator('#import-posts').click();
         await page.locator('#import-files').setInputFiles({
-          name: 'invalid-encoding.md', mimeType: 'text/markdown', buffer: Buffer.from([0xff]),
+          name: 'invalid-encoding.md',
+          mimeType: 'text/markdown',
+          buffer: Buffer.from([0xff]),
         });
         await expect(page.locator('#markdown-import-dialog')).toBeVisible();
         await expect(page.locator('#markdown-import-results [data-state=error]')).toHaveCount(1);
@@ -148,15 +161,37 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
   }
   await writeFile(
     resolve(output, 'editorial-admin-coverage-' + engine + '.json'),
-    JSON.stringify({ baseline, samples, note: 'Ephemeral fixture; same data, browser and viewport; no production data.' }, null, 2),
+    JSON.stringify(
+      {
+        baseline,
+        samples,
+        note: 'Ephemeral fixture; same data, browser and viewport; no production data.',
+      },
+      null,
+      2,
+    ),
   );
-  const cards = samples.map((item) => {
-    const label = [item.version, item.screen, item.width, item.theme].join(' · ');
-    return '<figure><figcaption>' + label + '</figcaption><a href="' + item.file + '"><img loading="lazy" src="' + item.file + '" alt="' + label + '"></a></figure>';
-  }).join('');
+  const cards = samples
+    .map((item) => {
+      const label = [item.version, item.screen, item.width, item.theme].join(' · ');
+      return (
+        '<figure><figcaption>' +
+        label +
+        '</figcaption><a href="' +
+        item.file +
+        '"><img loading="lazy" src="' +
+        item.file +
+        '" alt="' +
+        label +
+        '"></a></figure>'
+      );
+    })
+    .join('');
   await writeFile(
     resolve(output, 'editorial-admin-review-' + engine + '.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 后台书刊设计</title><style>body{margin:0;padding:24px;background:#f7f3ee;color:#30251e;font:15px/1.8 system-ui}main{max-width:1440px;margin:auto}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:24px}figure{margin:0}img{width:100%;height:440px;object-fit:contain;object-position:top;border:1px solid #968375;background:#fffcf8}a{color:inherit}figcaption{padding:12px 0}</style><main><h1>CloudInk · 后台书刊设计</h1><p>before：升级前真实模板与样式；after：本次正式界面。同数据、同视口、同 Brown 配色。点击查看完整图片；其他主题与功能检查见主报告。</p><div class="gallery">' + cards + '</div></main></html>',
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 后台书刊设计</title><style>body{margin:0;padding:24px;background:#f7f3ee;color:#30251e;font:15px/1.8 system-ui}main{max-width:1440px;margin:auto}.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:24px}figure{margin:0}img{width:100%;height:440px;object-fit:contain;object-position:top;border:1px solid #968375;background:#fffcf8}a{color:inherit}figcaption{padding:12px 0}</style><main><h1>CloudInk · 后台书刊设计</h1><p>before：升级前真实模板与样式；after：本次正式界面。同数据、同视口、同 Brown 配色。点击查看完整图片；其他主题与功能检查见主报告。</p><div class="gallery">' +
+      cards +
+      '</div></main></html>',
   );
   assert.deepEqual(errors, [], engine + ' editorial review must not throw');
 }
