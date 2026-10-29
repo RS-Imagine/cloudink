@@ -121,7 +121,8 @@ fn home_illustrations_are_optional_and_only_use_managed_sources() {
 #[test]
 fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
     let mut article = post("illustrated", "An illustrated note", false);
-    article.body_markdown = "![external](https://example.com/photo.jpg)\n![local](/images/uploads/photo.webp)".into();
+    article.body_markdown =
+        "![external](https://example.com/photo.jpg)\n![local](/images/uploads/photo.webp)".into();
     let html = render::render_index(&SiteConfig::default(), &[article.clone()], "test");
     assert!(html.contains("class=\"home-thumbnail\""));
     assert!(html.contains("src=\"/images/uploads/photo.webp\""));
@@ -137,7 +138,9 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
         "Plain text",
     ] {
         article.body_markdown = body.into();
-        assert!(!render::render_index(&SiteConfig::default(), &[article.clone()], "test")
-            .contains("class=\"home-thumbnail\""));
+        assert!(
+            !render::render_index(&SiteConfig::default(), &[article.clone()], "test")
+                .contains("class=\"home-thumbnail\"")
+        );
     }
 }

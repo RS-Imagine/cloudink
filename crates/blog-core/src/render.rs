@@ -125,9 +125,15 @@ fn post_thumbnail(post: &Post) -> String {
             continue;
         };
         if key.len() > 1000
-            || !key.bytes().all(|c| c.is_ascii_alphanumeric() || b"_./-".contains(&c))
-            || key.split('/').any(|part| part.is_empty() || part == "." || part == "..")
-            || ![".jpg", ".jpeg", ".png", ".webp", ".avif"].iter().any(|ext| key.ends_with(ext))
+            || !key
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"_./-".contains(&c))
+            || key
+                .split('/')
+                .any(|part| part.is_empty() || part == "." || part == "..")
+            || ![".jpg", ".jpeg", ".png", ".webp", ".avif"]
+                .iter()
+                .any(|ext| key.ends_with(ext))
         {
             continue;
         }
