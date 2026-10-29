@@ -175,13 +175,15 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
   if (
     name === 'production' &&
     engine === 'chromium' &&
-    ['home', 'article'].includes(screen) &&
+    ['home', 'article', 'dashboard', 'editor', 'images', 'settings', 'login', 'setup'].includes(screen) &&
     [1440, 390].includes(width)
   ) {
     console.log(
       'READER_PREVIEW ' +
         JSON.stringify({
           width,
+          screen,
+          theme,
           image: (await page.screenshot({ type: 'jpeg', quality: 65 })).toString('base64'),
         }),
     );
