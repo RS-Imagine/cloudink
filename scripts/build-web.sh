@@ -5,6 +5,8 @@ source scripts/ensure-rust.sh
 npm --prefix cloud-admin ci
 export PATH="$PWD/cloud-admin/node_modules/.bin:$PATH"
 rustup target add wasm32-unknown-unknown
+# Keep the browser engine small without changing native generator optimization.
+CARGO_PROFILE_RELEASE_OPT_LEVEL=s CARGO_PROFILE_RELEASE_LTO=thin CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 \
 wasm-pack build crates/blog-wasm --target web --out-dir ../../cloud-admin/ui/wasm --no-typescript
 npm --prefix cloud-admin run ui
 export BLOG_CONTENT_ROOT="$PWD/build-work/web-content"
