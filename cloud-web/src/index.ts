@@ -9,6 +9,7 @@ export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
   '/home-illustration.js',
   '/editorial-botanical.svg',
+  '/editorial-botanical.webp',
   '/image.worker.js',
   '/image-maintenance.js',
   '/admin-theme.js',

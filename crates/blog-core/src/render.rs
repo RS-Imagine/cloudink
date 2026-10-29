@@ -81,7 +81,7 @@ fn home_illustration(config: &SiteConfig) -> String {
     };
     if key == "default" {
         return String::from(
-            r#"<figure class="home-illustration" aria-hidden="true"><img src="/editorial-botanical.svg" width="360" height="420" alt="" decoding="async"></figure>"#,
+            r#"<figure class="home-illustration" aria-hidden="true"><img src="/editorial-botanical.webp" width="360" height="420" alt="" decoding="async"></figure>"#,
         );
     }
 
@@ -118,7 +118,18 @@ fn post_thumbnail(post: &Post) -> String {
     use pulldown_cmark::{Event, Options, Parser, Tag};
 
     for event in Parser::new_ext(&post.body_markdown, Options::all()) {
-        let Event::Start(Tag::Image { dest_url, .. }) = event else {
+        let source = match event {
+            Event::Start(Tag::Image { dest_url, .. }) => Some(dest_url.into_string()),
+            // The editor writes this exact shape when image dimensions are known.
+            // Do not copy author HTML or its attributes into the index.
+            Event::Html(html) | Event::InlineHtml(html) => html
+                .trim_start()
+                .strip_prefix("<img src=\"")
+                .and_then(|value| value.split_once('"'))
+                .map(|(source, _)| source.to_owned()),
+            _ => None,
+        };
+        let Some(dest_url) = source else {
             continue;
         };
         let Some(key) = dest_url.strip_prefix("/images/uploads/") else {

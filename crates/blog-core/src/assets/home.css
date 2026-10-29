@@ -580,3 +580,7 @@
     aspect-ratio: 4 / 5;
   }
 }
+
+.home-illustration img[src='/editorial-botanical.webp'] {
+  filter: grayscale(1) sepia(0.35);
+}

@@ -157,6 +157,12 @@ async function watch(context) {
 }
 async function capture(page, name, screen, theme, width, engine = 'chromium') {
   await page.evaluate(() => document.fonts.ready);
+  if (name === 'production') {
+    const loaded = await page.evaluate(() =>
+      [...document.fonts].some((font) => font.family.includes('Noto Serif SC') && font.status === 'loaded'),
+    );
+    assert.ok(loaded, 'The shipped editorial font must load before visual review');
+  }
   await page.waitForTimeout(350);
   const data = await page.evaluate(() => {
     const navigation = performance.getEntriesByType('navigation')[0];

@@ -15,12 +15,12 @@ jobs:
       - run: npm ci
       - name: Format touched design sources
         run: |
-          npx prettier --write crates/blog-core/src/assets/home.css assets/design-tokens.css crates/blog-core/src/assets/reader.css cloud-admin/src/image-variants.ts cloud-admin/ui/studio.css cloud-admin/ui/index.html cloud-admin/package.json scripts/web-assets.mjs cloud-web/src/index.ts scripts/ui-audit.mjs docs/design/EDITORIAL-FIDELITY.md
+          npx prettier --write cloud-admin/ui/index.html cloud-admin/ui/home-illustration.js cloud-web/test/home-illustration.browser.mjs cloud-admin/build-ui.mjs cloud-web/src/index.ts cloud-web/test/deployment.browser.mjs cloud-web/test/reader-loading.browser.mjs cloud-web/test/editorial-admin.browser.mjs docs/design/EDITORIAL-FIDELITY.md scripts/ui-audit.mjs crates/blog-core/src/assets/home.css
           rustup component add rustfmt
           cargo fmt --all
       - name: Export formatted sources for review
         env:
-          SOURCE_PATHS: '["crates/blog-core/src/render.rs","crates/blog-core/src/assets/home.css","assets/design-tokens.css","crates/blog-core/src/assets/reader.css","cloud-admin/src/image-variants.ts","cloud-admin/ui/studio.css","cloud-admin/ui/index.html","cloud-admin/package.json","scripts/web-assets.mjs","cloud-web/src/index.ts","crates/blog-core/tests/home.rs","scripts/ui-audit.mjs","docs/design/EDITORIAL-FIDELITY.md"]'
+          SOURCE_PATHS: '["crates/blog-core/src/render.rs","cloud-admin/ui/index.html","cloud-admin/ui/home-illustration.js","cloud-web/test/home-illustration.browser.mjs","cloud-admin/build-ui.mjs","cloud-web/src/index.ts","cloud-web/test/deployment.browser.mjs","cloud-web/test/reader-loading.browser.mjs","cloud-web/test/editorial-admin.browser.mjs","crates/blog-core/src/lib.rs","crates/blog-core/tests/home.rs","docs/design/EDITORIAL-FIDELITY.md","scripts/ui-audit.mjs","crates/blog-core/src/assets/home.css"]'
         run: |
           node --input-type=module <<'JS'
           import {readFile} from 'node:fs/promises';
@@ -28,28 +28,3 @@ jobs:
             console.log('FORMATTED_SOURCE ' + JSON.stringify({path,content:await readFile(path,'utf8')}));
           JS
           npm view @fontsource/noto-serif-sc@5.3.1 dist --json
-      - name: Prepare engraving for static delivery
-        run: |
-          npm --prefix cloud-admin ci
-          cd cloud-admin
-          npx playwright install --with-deps chromium
-          cd ..
-          node --input-type=module <<'JS'
-          import {readFile} from 'node:fs/promises';
-          import {chromium} from './cloud-admin/node_modules/@playwright/test/index.mjs';
-          const browser = await chromium.launch();
-          const page = await browser.newPage();
-          const source = 'data:image/png;base64,' + (await readFile('assets/editorial-botanical-source.png')).toString('base64');
-          const result = await page.evaluate(async (source) => {
-            const image = new Image();
-            image.src = source;
-            await image.decode();
-            const canvas = document.createElement('canvas');
-            canvas.width = 720;
-            canvas.height = Math.round(image.height * canvas.width / image.width);
-            canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
-            return canvas.toDataURL('image/webp', .82).split(',')[1];
-          }, source);
-          console.log('BOTANICAL_WEBP ' + result);
-          await browser.close();
-          JS

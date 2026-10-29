@@ -134,7 +134,7 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
         "![bad](javascript:alert)",
         "```\n![code](/images/uploads/photo.webp)\n```",
         "![gif](/images/uploads/animation.gif)",
-        "<img src=\"/images/uploads/raw.jpg\">",
+        "<img src=\"https://example.com/raw.jpg\">",
         "Plain text",
     ] {
         article.body_markdown = body.into();
@@ -143,4 +143,14 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
                 .contains("class=\"home-thumbnail\"")
         );
     }
+}
+
+#[test]
+fn home_thumbnail_supports_dimensioned_editor_images_without_copying_html() {
+    let mut article = post("editor-image", "Photo", false);
+    article.body_markdown = r#"<img src="/images/uploads/editor.webp" alt="Photo" width="800" height="600" onerror="bad()">"#.into();
+    let html = render::render_index(&SiteConfig::default(), &[article], "test");
+    assert!(html.contains("class=\"home-thumbnail\""));
+    assert!(html.contains("src=\"/images/uploads/editor.webp\""));
+    assert!(!html.contains("onerror"));
 }
