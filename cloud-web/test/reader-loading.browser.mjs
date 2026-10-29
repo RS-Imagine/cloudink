@@ -126,14 +126,18 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
     };
     await home();
     assert.ok(
-      !requests.some((url) => /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url)),
+      !requests.some((url) =>
+        /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url),
+      ),
       'home must not load code or math resources',
     );
     await page.locator('#reader-link-plain').click();
     await expect(page.locator('.article-heading h1')).toHaveText('Reader plain');
     assert.equal(await page.evaluate(() => window.readerNavigationToken), 'same-document');
     assert.ok(
-      !requests.some((url) => /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url)),
+      !requests.some((url) =>
+        /\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(url),
+      ),
       'ordinary prose must stay lightweight',
     );
 

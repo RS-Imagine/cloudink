@@ -161,7 +161,13 @@ export async function verifyReaderPerformance(browser, origin, output) {
               if (mode === 'after') {
                 const paths = sample.resources.map((r) => r.path);
                 if (kind === 'home' || kind === 'plain')
-                  assert.ok(!paths.some((p) => /^\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(p)));
+                  assert.ok(
+                    !paths.some((p) =>
+                      /^\/reader-assets\/(?:highlight\.js|code\.css|katex\.css|fonts\/KaTeX_)/.test(
+                        p,
+                      ),
+                    ),
+                  );
                 if (kind === 'code')
                   assert.ok(!paths.some((p) => p.includes('katex') || p.includes('/fonts/KaTeX_')));
                 if (kind === 'math') assert.ok(!paths.includes('/reader-assets/highlight.js'));
