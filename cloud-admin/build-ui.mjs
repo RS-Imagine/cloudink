@@ -62,29 +62,31 @@ const assets = {};
 for (const [path, file, type] of paths) {
   let bytes = await readFile(new URL(file, root));
   if (path === '/style.css') {
-    bytes = Buffer.concat([
-      await readFile(new URL('../assets/design-tokens.css', root)),
-      Buffer.from('\n'),
-      bytes,
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/design-foundation.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/motion.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('ui/studio.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('ui/workflows.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/mobile.css', root)),
-      Buffer.from('\n'),
-      await readFile(new URL('../assets/expressive.css', root)),
-    ]);
-    const stylesheet = await transform(bytes.toString('utf8'), {
-      loader: 'css',
-      minify: true,
-      target: 'es2022',
-    });
-    bytes = Buffer.from(stylesheet.code);
+    const sources = [
+      '../assets/design-tokens.css',
+      'ui/style.css',
+      '../assets/design-foundation.css',
+      '../assets/motion.css',
+      'ui/studio.css',
+      'ui/workflows.css',
+      '../assets/mobile.css',
+      '../assets/expressive.css',
+    ];
+    const stylesheets = await Promise.all(
+      sources.map(async (file) => {
+        const source = await readFile(new URL(file, root), 'utf8');
+        if (file === '../assets/design-tokens.css' || file === '../assets/design-foundation.css')
+          return source;
+        return (
+          await transform(source, {
+            loader: 'css',
+            minify: true,
+            target: 'es2022',
+          })
+        ).code;
+      }),
+    );
+    bytes = Buffer.from(stylesheets.join('\n'));
   }
   assets[path] = {
     type,
