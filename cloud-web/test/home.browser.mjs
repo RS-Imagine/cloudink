@@ -141,7 +141,8 @@ export async function verifyHome(browser, origin, output, engine) {
   await nativePage.goto(origin + '/');
   await expect(nativePage.locator('.home-card')).toHaveCount(3);
   await nativePage.locator('#reader-menu summary').click();
-  await expect(nativePage.locator('.reader-menu-links a').first()).toHaveCSS('animation-name', 'none');
+  const nativeLink = nativePage.locator('.reader-menu-links a').first();
+  await expect(nativeLink).toHaveCSS('animation-name', 'none');
   await nativePage.locator('.reader-menu-links a[href="/about/"]').click();
   await expect(nativePage.locator('#swup')).toHaveAttribute('data-page', 'about');
   await nativePage.goto(origin + '/');
