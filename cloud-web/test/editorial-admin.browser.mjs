@@ -113,9 +113,9 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await expect(page.locator('#editor-view')).toBeVisible();
         await expect(page.locator('#body')).toBeVisible();
         if (version === 'after' && width < 760) {
-          const titleSize = await page.locator('#title').evaluate((node) =>
-            parseFloat(getComputedStyle(node).fontSize),
-          );
+          const titleSize = await page
+            .locator('#title')
+            .evaluate((node) => parseFloat(getComputedStyle(node).fontSize));
           assert.ok(titleSize >= 30, 'Mobile editor title keeps its document hierarchy');
         }
         await capture('editor');

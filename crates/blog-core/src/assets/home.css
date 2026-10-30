@@ -676,7 +676,9 @@
 .reader-menu > summary svg path {
   transform-box: fill-box;
   transform-origin: center;
-  transition: transform 500ms var(--ci-ease), opacity 300ms var(--ci-ease);
+  transition:
+    transform 500ms var(--ci-ease),
+    opacity 300ms var(--ci-ease);
 }
 .reader-menu[open] > summary svg path:first-child {
   transform: translateY(5px) rotate(45deg);

@@ -155,7 +155,9 @@
     const visual = previous ? env.getComputedStyle(element) : null;
     const start = {
       opacity: visual?.opacity || (enter ? (kind === 'content' ? '0.7' : '0') : '1'),
-      translate: visual?.translate || (enter && kind !== 'content' ? (kind === 'reveal' ? '0 24px' : '0 8px') : '0 0'),
+      translate:
+        visual?.translate ||
+        (enter && kind !== 'content' ? (kind === 'reveal' ? '0 24px' : '0 8px') : '0 0'),
     };
     previous?.cancel();
     if (signal?.aborted) return { finished: Promise.resolve(false), cancel() {} };

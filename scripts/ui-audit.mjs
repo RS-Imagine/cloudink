@@ -184,9 +184,17 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
   if (
     name === 'production' &&
     engine === 'chromium' &&
-    ['home', 'home-sparse', 'article', 'dashboard', 'editor', 'images', 'settings', 'login', 'setup'].includes(
-      screen,
-    ) &&
+    [
+      'home',
+      'home-sparse',
+      'article',
+      'dashboard',
+      'editor',
+      'images',
+      'settings',
+      'login',
+      'setup',
+    ].includes(screen) &&
     [1440, 390].includes(width)
   ) {
     console.log(

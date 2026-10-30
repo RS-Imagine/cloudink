@@ -4,8 +4,7 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { imageInfo } from '../../cloud-admin/src/image-info.ts';
 
-const url =
-  'https://upload.wikimedia.org/wikipedia/commons/8/8b/Autumn_Lake_Landscape.jpg';
+const url = 'https://upload.wikimedia.org/wikipedia/commons/8/8b/Autumn_Lake_Landscape.jpg';
 const directory = 'build-work/editorial-photo';
 let bytes;
 for (let attempt = 0; attempt < 3; attempt++) {
