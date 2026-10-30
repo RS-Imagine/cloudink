@@ -40,7 +40,7 @@ export async function verifyHome(browser, origin, output, engine) {
   for (const width of [390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(page.locator('#site-search-btn')).toBeVisible();
-    await expect(page.locator('#theme-toggle-btn')).toBeVisible();
+    await expect(page.locator('#theme-toggle-btn')).toHaveCount(0);
     await expect(page.locator('.desktop-reader-nav')).toBeHidden();
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
@@ -88,7 +88,7 @@ export async function verifyHome(browser, origin, output, engine) {
     [390, 'dark'],
   ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
-    await page.locator('select[data-theme-mode]').selectOption(theme);
+    await page.emulateMedia({ colorScheme: theme });
     await page.screenshot({
       path: resolve(output, 'reader-home-' + engine + '-' + width + '-' + theme + '.png'),
       fullPage: true,

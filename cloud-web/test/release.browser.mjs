@@ -29,7 +29,7 @@ export async function verifyRelease(browser, origin, output, engine) {
   await page.goto(origin + '/posts/slow-days/');
   await page.addStyleTag({ content: spacing });
   for (const mode of ['light', 'dark']) {
-    await page.evaluate((mode) => CloudInkTheme.setMode(mode), mode);
+    await page.emulateMedia({ colorScheme: mode });
     await noOverflow(page, engine + ' reader text spacing');
     await page.locator('#site-search-btn').click();
     await expect(page.locator('#search-input')).toBeFocused();

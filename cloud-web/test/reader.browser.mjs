@@ -60,7 +60,7 @@ export async function verifyReader(browser, origin, output, engine) {
     [360, 'dark'],
   ]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
-    await page.locator('select[data-theme-mode]').selectOption(theme);
+    await page.emulateMedia({ colorScheme: theme });
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,

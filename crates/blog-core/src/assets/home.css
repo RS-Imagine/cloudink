@@ -401,32 +401,10 @@
 .site-footer-copy a {
   text-decoration: none;
 }
-.site-footer .reader-preferences {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px 16px;
-  margin-top: 24px;
-}
-.site-footer .theme-mode {
-  display: inline-flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--ci-muted);
-  font: 12px/16px var(--ci-font-ui);
-}
-.site-footer .theme-mode select {
-  width: auto;
-  min-height: 40px;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--ci-divider);
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
+/* Previously published HTML also stops exposing manual reader preferences. */
+.reader-preferences,
+.reader-header #theme-toggle-btn {
+  display: none !important;
 }
 @media (hover: hover) and (pointer: fine) {
   .home-post-grid > .home-card:hover {
@@ -633,12 +611,6 @@
   .site-footer {
     margin-top: 40px;
     padding-inline: 8px;
-  }
-  .site-footer .reader-preferences {
-    justify-content: flex-start;
-  }
-  .site-footer .theme-mode select {
-    font-size: 16px;
   }
 }
 @media (max-width: 359px) {

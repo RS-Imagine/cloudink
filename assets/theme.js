@@ -1,4 +1,4 @@
-/* Shared blocking theme bootstrap. Palette is author-owned; mode is reader-owned. */
+/* Shared bootstrap: readers follow the system; authors retain admin preferences. */
 (() => {
   if (window.CloudInkTheme) return;
   const root = document.documentElement;
@@ -14,8 +14,8 @@
       return null;
     }
   };
-  let mode = validMode(read('theme'));
-  let effectsMode = read('cloudink-effects') === 'off' ? 'off' : 'auto';
+  let mode = admin ? validMode(read('theme')) : 'auto';
+  let effectsMode = admin && read('cloudink-effects') === 'off' ? 'off' : 'auto';
   const effectMedia = [
     matchMedia('(prefers-reduced-transparency: reduce)'),
     matchMedia('(prefers-contrast: more)'),
@@ -42,19 +42,26 @@
       select.value = effectsMode;
     });
     document.querySelectorAll('[data-effects-control]').forEach((control) => {
-      control.hidden = false;
+      control.hidden = !admin;
     });
   }
   function setEffects(value) {
-    effectsMode = value === 'off' ? 'off' : 'auto';
-    try {
-      localStorage.setItem('cloudink-effects', effectsMode);
-    } catch {}
+    effectsMode = admin && value === 'off' ? 'off' : 'auto';
+    if (admin) {
+      try {
+        localStorage.setItem('cloudink-effects', effectsMode);
+      } catch {}
+    }
     applyEffects();
   }
   if (admin) root.dataset.palette = validPalette(read('cloudink-admin-palette'));
   else root.dataset.palette = validPalette(root.dataset.palette);
   function apply() {
+    if (!admin) {
+      document.querySelectorAll('.reader-preferences,#theme-toggle-btn').forEach((control) => {
+        control.remove();
+      });
+    }
     applyEffects();
     const dark = mode === 'dark' || (mode === 'auto' && system.matches);
     root.dataset.theme = dark ? 'dark' : 'light';
@@ -77,10 +84,12 @@
     document.dispatchEvent(new Event('cloudink:theme'));
   }
   function setMode(value) {
-    mode = validMode(value);
-    try {
-      localStorage.setItem('theme', mode);
-    } catch {}
+    mode = admin ? validMode(value) : 'auto';
+    if (admin) {
+      try {
+        localStorage.setItem('theme', mode);
+      } catch {}
+    }
     apply();
   }
   function setPalette(value) {
@@ -107,6 +116,7 @@
   for (const media of effectMedia) media.addEventListener('change', applyEffects);
   navigator.connection?.addEventListener?.('change', applyEffects);
   window.addEventListener('storage', (event) => {
+    if (!admin) return;
     if (event.key === 'cloudink-effects' || event.key === null) {
       effectsMode = read('cloudink-effects') === 'off' ? 'off' : 'auto';
       applyEffects();

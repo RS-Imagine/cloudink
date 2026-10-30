@@ -19,6 +19,12 @@ async function closeReaderMenu(page) {
   await page.keyboard.press('Escape');
   await expect(page.locator('#reader-menu')).not.toHaveAttribute('open', '');
 }
+async function readerEffects(page, mode) {
+  await page.evaluate(
+    (mode) => __setSurfaceMedia('(prefers-reduced-transparency: reduce)', mode === 'off'),
+    mode,
+  );
+}
 async function checkArea(page) {
   const area = await page.locator('body,body *').evaluateAll((nodes) => {
     let area = 0;
@@ -134,21 +140,19 @@ export async function verifySurfaces(browser, origin, output, engine) {
   );
   const enabled = supported ? 'glass' : 'solid';
   await expect(root).toHaveAttribute('data-effects', enabled);
-  await expect(page.locator('[data-effects-control]')).toBeVisible();
-  await page.locator('select[data-effects-mode]').selectOption('off');
+  await expect(page.locator('[data-effects-control]')).toHaveCount(0);
+  await page.evaluate(() => localStorage.setItem('cloudink-effects', 'off'));
   await page.reload();
-  await expect(root).toHaveAttribute('data-effects-mode', 'off');
-  await expect(root).toHaveAttribute('data-effects', 'solid');
+  await expect(root).toHaveAttribute('data-effects-mode', 'auto');
+  await expect(root).toHaveAttribute('data-effects', enabled);
   await page.locator('.post-card h2 a').first().click();
   await expect(page.locator('article h1')).toBeVisible();
-  await expect(root).toHaveAttribute('data-effects', 'solid');
-  await page.locator('select[data-effects-mode]').selectOption('auto');
   await expect(root).toHaveAttribute('data-effects', enabled);
   const contrasts = [],
     areas = [];
   for (const theme of ['light', 'dark']) {
-    await page.evaluate((theme) => CloudInkTheme.setMode(theme), theme);
-    await page.evaluate(() => CloudInkTheme.setEffects('auto'));
+    await page.emulateMedia({ colorScheme: theme });
+    await readerEffects(page, 'auto');
     await expect(root).toHaveAttribute('data-effects', enabled);
     for (const palette of ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose']) {
       await page.evaluate((palette) => CloudInkTheme.setPalette(palette), palette);
@@ -166,7 +170,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
     }
     await page.evaluate(() => CloudInkTheme.setPalette('ink'));
     for (const mode of ['auto', 'off']) {
-      await page.evaluate((mode) => CloudInkTheme.setEffects(mode), mode);
+      await readerEffects(page, mode);
       await openReaderMenu(page);
       if (mode === 'off') assert.equal(await filter(page.locator('.reader-menu-links')), 'none');
       await page.screenshot({
@@ -177,7 +181,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
     }
   }
   for (const pair of contrasts) assert.ok(pair.ratio >= 4.5, JSON.stringify(pair));
-  await page.evaluate(() => CloudInkTheme.setEffects('auto'));
+  await readerEffects(page, 'auto');
   for (const query of ['(prefers-reduced-transparency: reduce)', '(prefers-contrast: more)']) {
     await page.evaluate((query) => __setSurfaceMedia(query, true), query);
     await expect(root).toHaveAttribute('data-effects', 'solid');
@@ -205,11 +209,11 @@ export async function verifySurfaces(browser, origin, output, engine) {
   await expect(root).toHaveAttribute('data-effects', 'solid');
   await page.emulateMedia({ forcedColors: 'none' });
   await expect(root).toHaveAttribute('data-effects', enabled);
-  // Preference sync and deletion from a second same-origin tab.
+  // Admin preference changes cannot override automatic public effects.
   const second = await context.newPage();
-  await second.goto(origin + '/');
+  await second.goto(origin + '/admin');
   await second.evaluate(() => CloudInkTheme.setEffects('off'));
-  await expect(root).toHaveAttribute('data-effects', 'solid');
+  await expect(root).toHaveAttribute('data-effects', enabled);
   await second.evaluate(() => localStorage.removeItem('cloudink-effects'));
   await expect(root).toHaveAttribute('data-effects', enabled);
   await second.close();
@@ -295,8 +299,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   });
   await page.goto(origin + '/');
   await expect(root).toHaveAttribute('data-effects', 'solid');
-  await page.locator('select[data-effects-mode]').selectOption('off');
-  await page.locator('select[data-effects-mode]').selectOption('auto');
+  await expect(page.locator('select[data-effects-mode]')).toHaveCount(0);
   await expect(root).toHaveAttribute('data-effects', 'solid');
   await page.locator('.post-card h2 a').first().click();
   await expect(page.locator('article h1')).toBeVisible();
@@ -310,7 +313,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   );
   const staticPage = await staticContext.newPage();
   await staticPage.goto(origin + '/');
-  await expect(staticPage.locator('[data-effects-control]')).toBeHidden();
+  await expect(staticPage.locator('[data-effects-control]')).toHaveCount(0);
   await staticPage.locator('#reader-menu summary').click();
   assert.equal(await filter(staticPage.locator('.reader-menu-links')), 'none');
   await staticPage.locator('#reader-menu summary').click();

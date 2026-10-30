@@ -2,18 +2,6 @@
 [data-effects-control][hidden] {
   display: none !important;
 }
-.reader-preferences {
-  min-width: 0;
-  max-width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 12px 24px;
-}
-.reader-preferences .theme-mode {
-  min-width: 0;
-  max-width: 100%;
-}
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and
   (color: color-mix(in srgb, black, transparent)) {
   :root[data-effects='glass'] .mobile-toc-btn {
@@ -50,10 +38,5 @@
       -webkit-backdrop-filter: blur(8px);
       backdrop-filter: blur(8px);
     }
-  }
-}
-@media (max-width: 759px) {
-  .reader-preferences {
-    justify-content: flex-start;
   }
 }

@@ -202,7 +202,7 @@ try {
     .evaluateAll((nodes) => nodes.map((n) => n.id));
   assert.equal(new Set(headingIds).size, headingIds.length);
   await expect(live.locator('.article-body table')).toHaveAttribute('tabindex', '0');
-  await live.locator('#theme-toggle-btn').click();
+  await live.emulateMedia({ colorScheme: 'dark' });
   await expect(live.locator('html')).toHaveAttribute('data-theme', 'dark');
   await live.locator('#site-search-btn').click();
   await expect(live.locator('#search-input')).toBeFocused();
@@ -218,7 +218,7 @@ try {
   await expect(live.locator('#search-modal')).not.toHaveClass(/active/);
   await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await live.setViewportSize({ width: 1280, height: 900 });
-  await live.locator('#theme-toggle-btn').click();
+  await live.emulateMedia({ colorScheme: 'light' });
   await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(248, 246, 241)');
   await live.screenshot({ path: resolve('cloud-web/dist/article.desktop.png'), fullPage: true });
   await live.goto('http://localhost:8791/');
@@ -247,7 +247,7 @@ try {
   await live.locator('.toc-link').first().click();
   await expect(live.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');
   assert.equal(await live.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await live.locator('#theme-toggle-btn').click();
+  await live.emulateMedia({ colorScheme: 'dark' });
   await live.screenshot({
     path: resolve('cloud-web/dist/article.mobile.dark.png'),
     fullPage: true,
