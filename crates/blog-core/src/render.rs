@@ -214,7 +214,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
   {illustration}
 </section>
 <section id="posts" aria-labelledby="posts-heading">
-  <div class="home-section-heading"><h2 id="posts-heading">最近的文字</h2><span>{count} 篇文章</span></div>
+  <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2><span>{count} 篇文章</span></div>
   <div class="grid home-post-grid">{cards}</div>
 </section>
 </div>"#,

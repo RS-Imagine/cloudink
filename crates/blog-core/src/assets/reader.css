@@ -26,7 +26,7 @@
   align-items: center;
 }
 .article-shell article h1 {
-  max-width: 18ch;
+  max-width: 8em;
   text-wrap: balance;
   margin: 24px 0 22px;
   font: 600 clamp(2rem, 3.7vw, 3.25rem)/1.25 var(--ci-font-reading);
