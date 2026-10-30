@@ -246,6 +246,18 @@
   gap: 16px;
   margin-bottom: 24px;
 }
+.app[data-view='editor'] .workspace-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+}
+.app[data-view='editor'] .article-browser {
+  margin-bottom: 12px;
+}
+.app[data-view='editor'] .publish-banner[data-tone='success'] {
+  margin: 0;
+  padding: 4px 0;
+  border: 0;
+}
 .article-browser .search {
   display: block;
   flex: 1;
