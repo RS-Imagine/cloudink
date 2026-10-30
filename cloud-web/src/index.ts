@@ -98,7 +98,13 @@ export default {
         return staticAsset(request, env, path);
       const key = publicPath(path);
       const pointer = await env.STORAGE.get('state/published.json');
-      const published = pointer ? await pointer.json<{ id: string; clarityId?: string; postRedirects?: Record<string, string> }>() : null;
+      const published = pointer
+        ? await pointer.json<{
+            id: string;
+            clarityId?: string;
+            postRedirects?: Record<string, string>;
+          }>()
+        : null;
       const id = published?.id || null;
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);

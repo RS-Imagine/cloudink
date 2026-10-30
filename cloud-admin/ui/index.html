@@ -622,7 +622,12 @@
                 <label>日期<input id="date" type="date" /></label>
                 <div class="post-address-field">
                   <label for="slug">文章地址</label>
-                  <input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" aria-describedby="post-address-hint" />
+                  <input
+                    id="slug"
+                    pattern="[A-Za-z0-9_-]+"
+                    maxlength="100"
+                    aria-describedby="post-address-hint"
+                  />
                   <small id="post-address-hint">首次保存前可直接编辑；保存后点击“修改地址”。</small>
                   <button id="change-post-address" type="button" class="quiet">修改地址</button>
                 </div>
@@ -1148,10 +1153,27 @@
         <p id="post-address-current"></p>
         <p id="post-address-help"></p>
         <label for="post-address-input">新地址</label>
-        <input id="post-address-input" name="slug" pattern="[A-Za-z0-9_-]+" maxlength="100"
-          required autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="post-address-format" />
-        <p id="post-address-format">只填写地址末尾部分，支持英文字母、数字、短横线和下划线，最多 100 个字符。</p>
-        <p id="post-address-status" class="operation-feedback" role="status" aria-live="polite" hidden></p>
+        <input
+          id="post-address-input"
+          name="slug"
+          pattern="[A-Za-z0-9_-]+"
+          maxlength="100"
+          required
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-describedby="post-address-format"
+        />
+        <p id="post-address-format">
+          只填写地址末尾部分，支持英文字母、数字、短横线和下划线，最多 100 个字符。
+        </p>
+        <p
+          id="post-address-status"
+          class="operation-feedback"
+          role="status"
+          aria-live="polite"
+          hidden
+        ></p>
         <div class="form-actions">
           <button id="post-address-close" type="button">取消</button>
           <button id="post-address-submit" type="submit" class="primary">修改地址</button>

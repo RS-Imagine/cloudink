@@ -104,10 +104,13 @@ async function apiRoute(
       const draft = parseSource(source);
       published.set(slug, { draft, digest: await digest(editorial(draft)) });
     }
-    const redirects = (await readJson<{ postRedirects?: Record<string, string> }>(
-      env.STORAGE,
-      'state/published.json',
-    ))?.postRedirects || {};
+    const redirects =
+      (
+        await readJson<{ postRedirects?: Record<string, string> }>(
+          env.STORAGE,
+          'state/published.json',
+        )
+      )?.postRedirects || {};
     const posts = new Map<string, unknown>();
     for (const [slug, p] of published)
       posts.set(slug, {

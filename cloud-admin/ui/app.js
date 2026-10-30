@@ -420,7 +420,7 @@ $('setup-form').addEventListener('submit', async (event) => {
     try {
       const session = await api('/api/setup', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${form.elements.token.value}` },
+        headers: { Authorization: `*** },
         body: {
           email: form.elements.email.value,
           password: form.elements.password.value,
@@ -823,20 +823,28 @@ for (const id of ['download-post', 'change-post-address'])
   $(id).addEventListener('click', () => {
     if (!doc || (id === 'change-post-address' && (editorLocked || publishingBusy))) return;
     import('/post-address.js')
-      .then(({ postAction }) => postAction(id, {
-        api, notice, flush, lock: lockEditor, publish: startPublish,
-        get: () => doc && {
-          draft: currentDraft(), etag: doc.etag,
-          published: posts.some((p) => p.slug === doc.front_matter.slug && p.published),
-        },
-        replace: async (slug) => {
-          const data = await api('/api/posts/' + encodeURIComponent(slug));
-          await refresh();
-          ++navigationVersion;
-          articleCache.clear();
-          fillEditor(data.draft, data.etag);
-        },
-      }))
+      .then(({ postAction }) =>
+        postAction(id, {
+          api,
+          notice,
+          flush,
+          lock: lockEditor,
+          publish: startPublish,
+          get: () =>
+            doc && {
+              draft: currentDraft(),
+              etag: doc.etag,
+              published: posts.some((p) => p.slug === doc.front_matter.slug && p.published),
+            },
+          replace: async (slug) => {
+            const data = await api('/api/posts/' + encodeURIComponent(slug));
+            await refresh();
+            ++navigationVersion;
+            articleCache.clear();
+            fillEditor(data.draft, data.etag);
+          },
+        }),
+      )
       .catch((error) => notice(error.message, 'error'));
   });
 function showPublishing(state) {

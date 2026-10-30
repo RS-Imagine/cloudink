@@ -187,7 +187,11 @@ export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promis
   if (pointer && value?.publishing === id) {
     const cleared = await env.STORAGE.put(
       'state/published.json',
-      JSON.stringify({ id: value.id, clarityId: value.clarityId || '', postRedirects: value.postRedirects }),
+      JSON.stringify({
+        id: value.id,
+        clarityId: value.clarityId || '',
+        postRedirects: value.postRedirects,
+      }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
     if (!cleared) {
@@ -234,7 +238,11 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
     await assertRenameUnchanged(env.STORAGE, state);
     const saved = await env.STORAGE.put(
       'state/published.json',
-      JSON.stringify({ id, clarityId: release.site.clarityId || '', postRedirects: postRedirects(release) }),
+      JSON.stringify({
+        id,
+        clarityId: release.site.clarityId || '',
+        postRedirects: postRedirects(release),
+      }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
     if (!saved) throw new HttpError(409, '线上版本已经变化，请重新发布。');

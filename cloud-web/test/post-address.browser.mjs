@@ -27,7 +27,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
       headers: { Origin: origin, 'X-CSRF-Token': csrf },
       ...(data === undefined ? {} : { data }),
     });
-    assert.ok(response.ok(), method + ' ' + path + ': ' + await response.text());
+    assert.ok(response.ok(), method + ' ' + path + ': ' + (await response.text()));
     return response.json();
   }
   const first = 'address-' + engine + '-draft';
@@ -40,11 +40,14 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   assert.ok(image, 'The isolated fixture supplies an existing managed image');
   const body = '## 保留正文\n\n地址更改后保留这段文字。\n\n![图片保持原地址](' + image + ')';
   const collision = await api('/api/posts/' + occupied, 'PUT', {
-    draft: draft(occupied, 'Another private article'), etag: null,
+    draft: draft(occupied, 'Another private article'),
+    etag: null,
   });
   await page.locator('#new-post').click();
   await page.locator('#editor-view').waitFor();
-  await page.locator('.post-details').evaluate((node) => { node.open = true; });
+  await page.locator('.post-details').evaluate((node) => {
+    node.open = true;
+  });
   await page.locator('#slug').fill(first);
   await page.locator('#title').fill(title);
   await page.locator('#body').fill(body);
@@ -67,7 +70,10 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await page.locator('#change-post-address').click();
   await input.fill(second);
   await page.evaluate(() => CloudInkTheme.setPalette('brown'));
-  await page.screenshot({ path: resolve(output, 'post-address-' + engine + '-390-light.png'), fullPage: true });
+  await page.screenshot({
+    path: resolve(output, 'post-address-' + engine + '-390-light.png'),
+    fullPage: true,
+  });
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
   await expect(page.locator('#slug')).toHaveValue(second);
@@ -83,8 +89,14 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(page.locator('#post-address-help')).toContainText('保存并发布');
   await input.fill(live);
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.evaluate(() => { CloudInkTheme.setMode('dark'); CloudInkTheme.setPalette('brown'); });
-  await page.screenshot({ path: resolve(output, 'post-address-' + engine + '-390-dark.png'), fullPage: true });
+  await page.evaluate(() => {
+    CloudInkTheme.setMode('dark');
+    CloudInkTheme.setPalette('brown');
+  });
+  await page.screenshot({
+    path: resolve(output, 'post-address-' + engine + '-390-dark.png'),
+    fullPage: true,
+  });
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
   await expect(page.locator('#slug')).toHaveValue(live);
@@ -94,7 +106,8 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   for (const slug of [second]) {
     for (const method of ['GET', 'HEAD']) {
       const response = await page.request.fetch(origin + '/posts/' + slug + '/?from=old', {
-        method, maxRedirects: 0,
+        method,
+        maxRedirects: 0,
       });
       assert.equal(response.status(), 301);
       assert.equal(response.headers().location, origin + '/posts/' + live + '/?from=old');
@@ -113,7 +126,9 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(reader.locator('.article-body')).toContainText('这段刚保存的文字随改址发布');
   await expect(reader.locator('.article-body img')).toHaveCount(1);
   await reader.locator('.article-body img').scrollIntoViewIfNeeded();
-  await expect.poll(() => reader.locator('.article-body img').evaluate((node) => node.naturalWidth)).toBeGreaterThan(0);
+  await expect
+    .poll(() => reader.locator('.article-body img').evaluate((node) => node.naturalWidth))
+    .toBeGreaterThan(0);
   await reader.close();
   const backup = await api('/api/backup');
   assert.ok(backup.files['published/' + live + '.md'].includes('aliases'));
@@ -124,7 +139,9 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await page.locator('#unpublish-post').click();
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-accept').click();
-  await expect.poll(async () => (await api('/api/posts')).posts.find((post) => post.slug === live)?.published).toBe(false);
+  await expect
+    .poll(async () => (await api('/api/posts')).posts.find((post) => post.slug === live)?.published)
+    .toBe(false);
   const saved = await api('/api/posts/' + live);
   assert.equal(saved.draft.body_markdown, updated);
   await api('/api/posts/' + live, 'DELETE', { etag: saved.etag });

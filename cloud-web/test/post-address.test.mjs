@@ -41,10 +41,19 @@ test('saved draft can move without publishing or changing its body; retries are 
   assert.equal((await bucket.head('drafts/draft-old.md')).customMetadata.deleted, 'true');
   assert.ok(!(await (await bucket.get('drafts/draft-old.md')).text()).includes('Keep this body'));
   const list = await (await f.request('/api/posts')).json();
-  assert.deepEqual(list.posts.map((post) => post.slug), ['draft-new']);
-  assert.equal((await f.request('/api/posts/draft-old', 'PUT', {
-    draft: original.draft, etag: original.etag,
-  })).status, 409);
+  assert.deepEqual(
+    list.posts.map((post) => post.slug),
+    ['draft-new'],
+  );
+  assert.equal(
+    (
+      await f.request('/api/posts/draft-old', 'PUT', {
+        draft: original.draft,
+        etag: original.etag,
+      })
+    ).status,
+    409,
+  );
 });
 
 test('rename rejects occupied, invalid, stale and unauthenticated requests without overwriting either draft', async (t) => {
@@ -52,15 +61,38 @@ test('rename rejects occupied, invalid, stale and unauthenticated requests witho
   await f.login();
   const a = await save(f, 'source', 'Source body');
   const b = await save(f, 'occupied', 'Destination body');
-  assert.equal((await f.request('/api/posts/source/rename', 'POST', { slug: 'occupied', etag: a.etag })).status, 409);
-  assert.equal((await f.request('/api/posts/source/rename', 'POST', { slug: 'new', etag: 'stale' })).status, 409);
+  assert.equal(
+    (await f.request('/api/posts/source/rename', 'POST', { slug: 'occupied', etag: a.etag }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (await f.request('/api/posts/source/rename', 'POST', { slug: 'new', etag: 'stale' })).status,
+    409,
+  );
   for (const slug of ['', '../escape', 'bad/slash', 'x'.repeat(101), '中文', 'https://evil.test'])
-    assert.equal((await f.request('/api/posts/source/rename', 'POST', { slug, etag: a.etag })).status, 400);
-  assert.equal((await f.request('/api/posts/source/rename', 'POST', { slug: 'new', etag: a.etag }, { 'X-CSRF-Token': 'wrong' })).status, 403);
+    assert.equal(
+      (await f.request('/api/posts/source/rename', 'POST', { slug, etag: a.etag })).status,
+      400,
+    );
+  assert.equal(
+    (
+      await f.request(
+        '/api/posts/source/rename',
+        'POST',
+        { slug: 'new', etag: a.etag },
+        { 'X-CSRF-Token': 'wrong' },
+      )
+    ).status,
+    403,
+  );
   assert.equal((await (await f.request('/api/posts/source')).json()).source, a.source);
   assert.equal((await (await f.request('/api/posts/occupied')).json()).source, b.source);
-  const results = await Promise.all(['one', 'two'].map((slug) =>
-    f.request('/api/posts/source/rename', 'POST', { slug, etag: a.etag })));
+  const results = await Promise.all(
+    ['one', 'two'].map((slug) =>
+      f.request('/api/posts/source/rename', 'POST', { slug, etag: a.etag }),
+    ),
+  );
   assert.equal(results.filter((response) => response.status === 200).length, 1);
   const list = await (await f.request('/api/posts')).json();
   assert.equal(list.posts.length, 2);
@@ -78,7 +110,10 @@ test('a draft move recovers the copy-complete cleanup-interrupted state', async 
   await bucket.put('drafts/before.md', original.source, { customMetadata: metadata });
   assert.equal((await f.request('/api/posts/before/rename', 'POST', input)).status, 200);
   const posts = await (await f.request('/api/posts')).json();
-  assert.deepEqual(posts.posts.map((post) => post.slug), ['after']);
+  assert.deepEqual(
+    posts.posts.map((post) => post.slug),
+    ['after'],
+  );
 });
 
 test('published rename is staged, cancellable, atomic and preserves unrelated drafts and redirects', async (t) => {
@@ -100,13 +135,19 @@ test('published rename is staged, cancellable, atomic and preserves unrelated dr
   await redirect(f, 'a', 'b');
   assert.equal((await f.request('/posts/b/')).status, 200);
   assert.equal((await f.request('/posts/private/')).status, 404);
-  assert.equal((await f.request('/api/posts/a', 'PUT', { draft: a.draft, etag: a.etag })).status, 409);
+  assert.equal(
+    (await f.request('/api/posts/a', 'PUT', { draft: a.draft, etag: a.etag })).status,
+    409,
+  );
   // Later publication cancellation must retain the established redirect map.
   const pending = await f.prepare({ rebuild: true });
   await f.request('/api/publish/' + pending.release_id + '/cancel', 'POST', {});
   await redirect(f, 'a', 'b');
   const b = await (await f.request('/api/posts/b')).json();
-  const savedB = await f.request('/api/posts/b', 'PUT', { draft: { ...b.draft, body_markdown: 'Next body' }, etag: b.etag });
+  const savedB = await f.request('/api/posts/b', 'PUT', {
+    draft: { ...b.draft, body_markdown: 'Next body' },
+    etag: b.etag,
+  });
   const stateB = await savedB.json();
   await publish(f, { slug: 'b', etag: stateB.etag, renameTo: 'c' });
   await redirect(f, 'a', 'c');
@@ -118,7 +159,8 @@ test('published rename is staged, cancellable, atomic and preserves unrelated dr
   await redirect(f, 'b', 'a');
   await redirect(f, 'c', 'a');
   await publish(f, { unpublish: 'a' });
-  for (const slug of ['a', 'b', 'c']) assert.equal((await f.request('/posts/' + slug + '/')).status, 404);
+  for (const slug of ['a', 'b', 'c'])
+    assert.equal((await f.request('/posts/' + slug + '/')).status, 404);
   assert.match((await (await f.request('/api/posts/a')).json()).draft.body_markdown, /Next body/);
   const backup = await (await f.request('/api/backup')).json();
   assert.match(backup.files['drafts/a.md'], /aliases/);
@@ -130,7 +172,10 @@ test('rename commit rejects changed source or destination while retaining the pr
   const original = await save(f, 'live', 'Original public content');
   await publish(f, { slug: 'live', etag: original.etag });
   const pending = await f.prepare({ slug: 'live', etag: original.etag, renameTo: 'new' });
-  assert.equal((await f.request('/api/posts/new', 'PUT', { draft: draft('new'), etag: null })).status, 409);
+  assert.equal(
+    (await f.request('/api/posts/new', 'PUT', { draft: draft('new'), etag: null })).status,
+    409,
+  );
   const changed = await save(f, 'live', 'Newer saved changes', original.etag);
   await f.stage(pending);
   assert.equal((await f.commit(pending)).status, 409);

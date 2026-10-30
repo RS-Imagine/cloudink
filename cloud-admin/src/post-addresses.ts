@@ -20,7 +20,10 @@ export function postRedirects(release: Release): Record<string, string> {
     if (draft.front_matter.draft) continue;
     for (const alias of draft.front_matter.aliases || []) {
       if (alias === slug) continue;
-      if (Object.hasOwn(release.markdown_posts, alias) || (redirects[alias] && redirects[alias] !== slug))
+      if (
+        Object.hasOwn(release.markdown_posts, alias) ||
+        (redirects[alias] && redirects[alias] !== slug)
+      )
         throw new HttpError(409, '文章地址或旧链接已被其他文章占用：' + alias);
       redirects[alias] = slug;
     }
@@ -29,8 +32,12 @@ export function postRedirects(release: Release): Record<string, string> {
   return redirects;
 }
 export function withAddress(draft: Draft, slug: string, remember = true): Draft {
-  const aliases = [...new Set([...(draft.front_matter.aliases || []), ...(remember ? [draft.front_matter.slug] : [])])]
-    .filter((alias) => alias !== slug);
+  const aliases = [
+    ...new Set([
+      ...(draft.front_matter.aliases || []),
+      ...(remember ? [draft.front_matter.slug] : []),
+    ]),
+  ].filter((alias) => alias !== slug);
   if (aliases.length > 100) throw new HttpError(400, '这篇文章已保留 100 个旧地址，不能继续改址。');
   const next: Draft = {
     ...draft,
@@ -91,7 +98,8 @@ export async function assertRenameUnchanged(storage: R2Bucket, state: Publishing
   const source = await storage.head(`drafts/${from}.md`);
   const target = await storage.head(`drafts/${to}.md`);
   if (
-    !source || source.etag !== etag ||
+    !source ||
+    source.etag !== etag ||
     source.customMetadata?.deleted ||
     (target?.etag || null) !== targetEtag
   )
@@ -106,7 +114,8 @@ export async function finishRename(
   const { from, to, etag, targetEtag } = state.rename;
   const target = await storage.head(`drafts/${to}.md`);
   if (target?.customMetadata?.renameRelease !== state.release_id) {
-    const release = knownRelease || await readJson<Release>(storage, `releases/${state.release_id}.json`);
+    const release =
+      knownRelease || (await readJson<Release>(storage, `releases/${state.release_id}.json`));
     const published = release?.markdown_posts[to];
     if (!published) throw new HttpError(503, '改址后的原稿尚未就绪，请稍后重试。');
     const draft = parseSource(published);
@@ -148,8 +157,12 @@ export async function renameDraft(
     source.customMetadata.renameSourceEtag === input.etag
   ) {
     const moved = await env.STORAGE.get(`drafts/${to}.md`);
-    if (moved && !moved.customMetadata?.deleted &&
-      moved.customMetadata?.renameFrom === slug && moved.customMetadata?.renameSourceEtag === input.etag) {
+    if (
+      moved &&
+      !moved.customMetadata?.deleted &&
+      moved.customMetadata?.renameFrom === slug &&
+      moved.customMetadata?.renameSourceEtag === input.etag
+    ) {
       const body = await moved.text();
       return json({ draft: parseSource(body), source: body, etag: moved.etag });
     }
