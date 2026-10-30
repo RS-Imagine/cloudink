@@ -113,6 +113,25 @@ jobs:
           path: build-work/ui-audit
           if-no-files-found: ignore
 
+      - name: Save focused editorial screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-focused-review
+          retention-days: 90
+          path: |
+            build-work/ui-audit/production-home-1440-light-chromium.png
+            build-work/ui-audit/production-home-390-light-chromium.png
+            build-work/ui-audit/production-article-1440-light-chromium.png
+            build-work/ui-audit/production-article-390-light-chromium.png
+            build-work/ui-audit/production-dashboard-1440-light-chromium.png
+            build-work/ui-audit/production-dashboard-390-light-chromium.png
+            build-work/ui-audit/production-editor-1440-light-chromium.png
+            build-work/ui-audit/production-images-1440-light-chromium.png
+            build-work/ui-audit/production-settings-1440-light-chromium.png
+            build-work/ui-audit/production-settings-390-light-chromium.png
+          if-no-files-found: ignore
+
   editorial-study:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
