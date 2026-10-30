@@ -292,8 +292,10 @@ function view(name, { focus = true } = {}) {
     section.hidden = id !== sectionName;
     section.tabIndex = -1;
   }
-  if ($('article-search-slot'))
-    $(name === 'editor' ? 'editor-view' : 'article-search-slot').prepend($('article-browser'));
+  if (changingView && $('article-search-slot'))
+    $(name === 'editor' ? 'editor-search-slot' : 'article-search-slot').prepend(
+      $('article-browser'),
+    );
   $('article-browser').hidden = !['home', 'posts', 'editor'].includes(name);
   $('posts-title').hidden = name !== 'posts';
   $('home-view').setAttribute('aria-labelledby', name === 'posts' ? 'posts-title' : 'home-heading');

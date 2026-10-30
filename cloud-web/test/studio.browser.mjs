@@ -129,7 +129,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('#workspace')).toBeFocused();
   // Primary navigation must still flush a draft before leaving the editor.
   await page.locator('#new-post').click();
-  await expect(page.locator('#editor-view > #article-browser')).toBeVisible();
+  await expect(page.locator('#editor-search-slot > #article-browser')).toBeVisible();
   await page.locator('#title').fill('Studio draft ' + engine);
   await page.locator('#body').fill('Keep this text while navigating.');
   await page.locator('#dashboard-nav').click();
