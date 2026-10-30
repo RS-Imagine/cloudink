@@ -771,9 +771,6 @@ body:has(dialog[open]) {
 .editor-toolbar .article-browser {
   margin: 0;
 }
-.editor-toolbar .article-browser .search {
-  display: none;
-}
 .editor-toolbar .post-switcher {
   margin: 0;
 }
@@ -812,6 +809,9 @@ body:has(dialog[open]) {
   }
 }
 @media (max-width: 759px) {
+  .editor-toolbar .article-browser .search {
+    display: none;
+  }
   .studio-masthead {
     top: 12px;
     grid-template-columns: minmax(0, 1fr) auto;
