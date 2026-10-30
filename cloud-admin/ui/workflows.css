@@ -183,10 +183,9 @@ button[aria-busy='true'] {
 .editor-panes {
   margin: 0;
   height: clamp(520px, 66dvh, 760px);
-  border: 1px solid var(--ci-divider);
+  border: 1px solid var(--ci-outline);
   border-radius: 4px;
   background: var(--ci-surface);
-  border-color: var(--ci-outline);
 }
 .markdown-input {
   font-family: var(--ci-font-mono);

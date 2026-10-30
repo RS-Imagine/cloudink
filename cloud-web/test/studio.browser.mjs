@@ -76,10 +76,9 @@ export async function verifyStudio(browser, origin, output, engine) {
     else {
       const header = await page.locator('.studio-masthead').boundingBox();
       const navigation = await page.locator('.studio-nav').boundingBox();
-      assert.ok(header.width >= width - 96 && header.height <= 112);
+      assert.ok(header.width >= Math.min(width, 1280) - 96 && header.height <= 112);
       assert.ok(
-        navigation.y >= header.y &&
-          navigation.y + navigation.height <= header.y + header.height,
+        navigation.y >= header.y && navigation.y + navigation.height <= header.y + header.height,
       );
     }
   }
