@@ -17,8 +17,10 @@ export async function verifyThemes(browser, origin, output, engine) {
     route.fulfill({ contentType: 'text/css', body: '' }),
   );
   await context.addInitScript(() => {
-    localStorage.setItem('theme', 'dark');
-    localStorage.setItem('cloudink-effects', 'off');
+    try {
+      localStorage.setItem('theme', 'dark');
+      localStorage.setItem('cloudink-effects', 'off');
+    } catch {}
   });
   const page = await context.newPage();
   const root = page.locator('html');
