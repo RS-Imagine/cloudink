@@ -255,8 +255,7 @@ function showLogin({ focus = false } = {}) {
   shell.close();
   $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
-  if ($('image-preview-dialog').open) $('image-preview-dialog').close();
-  if ($('confirmation-dialog').open) $('confirmation-dialog').close();
+  for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
   clearTimeout(autosaveTimer);
   $('app-view').hidden = true;
   const wizard = appConfig && !appConfig.initialized;
