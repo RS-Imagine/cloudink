@@ -16,39 +16,69 @@ export async function verifyThemes(browser, origin, output, engine) {
   await context.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({ contentType: 'text/css', body: '' }),
   );
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('theme', 'dark');
+      localStorage.setItem('cloudink-effects', 'off');
+    } catch {}
+  });
   const page = await context.newPage();
   const root = page.locator('html');
-  const mode = page.locator('select[data-theme-mode]');
+  const controls =
+    '.reader-preferences,select[data-theme-mode],select[data-effects-mode],#theme-toggle-btn';
   await page.goto(origin + '/');
   const publishedPalette = await root.getAttribute('data-palette');
   const darkBackground = publishedPalette === 'brown' ? 'rgb(19, 18, 9)' : 'rgb(24, 24, 24)';
+  await expect(page.locator(controls)).toHaveCount(0);
   await expect(root).toHaveAttribute('data-theme', 'light');
   await expect(root).toHaveAttribute('data-theme-mode', 'auto');
-  await expect(mode).toHaveValue('auto');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(root).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('body')).toHaveCSS('background-color', darkBackground);
-  await mode.selectOption('light');
   await page.reload();
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await page.evaluate(() => CloudInkTheme.setMode('light'));
+  await expect(root).toHaveAttribute('data-theme', 'dark');
+  await expect(root).toHaveAttribute('data-theme-mode', 'auto');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(root).toHaveAttribute('data-theme', 'light');
+
+  // Changes from an admin tab must not override the public system preference.
+  const second = await context.newPage();
+  await second.goto(origin + '/admin');
+  await second.evaluate(() => {
+    CloudInkTheme.setMode('light');
+    CloudInkTheme.setMode('dark');
+  });
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await second.close();
+
+  // Already-published HTML loses its old controls without a content republish.
+  const current = await (await page.request.get(origin + '/')).text();
+  const legacy = current
+    .replace(
+      '</footer>',
+      '<div class="reader-preferences"><select data-theme-mode><option value="light">浅色</option></select><label data-effects-control><select data-effects-mode><option value="off">简洁</option></select></label></div></footer>',
+    )
+    .replace('</header>', '<button id="theme-toggle-btn">旧外观</button></header>');
+  await context.route(origin + '/legacy-reader/', (route) =>
+    route.fulfill({ contentType: 'text/html', body: legacy }),
+  );
+  await page.goto(origin + '/legacy-reader/');
+  await expect(page.locator(controls)).toHaveCount(0);
   await expect(root).toHaveAttribute('data-theme', 'light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  await expect(root).toHaveAttribute('data-theme', 'light');
-  await mode.selectOption('auto');
-  await expect(root).toHaveAttribute('data-theme', 'dark');
   await page.locator('.post-card h2 a').first().click();
   await expect(page.locator('article h1')).toBeVisible();
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await expect(mode).toHaveValue('auto');
-  await page.keyboard.press('Tab');
-  await mode.focus();
-  await expect(mode).toBeFocused();
-  await expect(mode).toHaveCSS('outline-style', 'solid');
+  await expect(root).toHaveAttribute('data-theme-mode', 'auto');
+  await expect(page.locator(controls)).toHaveCount(0);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({
     path: resolve(output, 'theme-' + engine + '-mobile-dark.png'),
     fullPage: true,
   });
-  // Reader mode and the admin cache must not override the published author palette.
+  // The admin cache must not override the published author palette.
   await page.evaluate(() => localStorage.setItem('cloudink-admin-palette', 'neutral'));
   await page.reload();
   await expect(root).toHaveAttribute('data-palette', publishedPalette);
@@ -60,7 +90,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await context.close();
 
-  // Denied storage must preserve system following, navigation and manual theme changes.
+  // Storage denial preserves public system following and admin manual controls.
   const blocked = await browser.newContext({ colorScheme: 'dark' });
   blocked.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)));
   await blocked.route('https://cdn.jsdelivr.net/**', (route) =>
@@ -78,8 +108,12 @@ export async function verifyThemes(browser, origin, output, engine) {
   const blockedPage = await blocked.newPage();
   await blockedPage.goto(origin + '/');
   await expect(blockedPage.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await blockedPage.locator('select[data-theme-mode]').selectOption('light');
+  await expect(blockedPage.locator(controls)).toHaveCount(0);
+  await blockedPage.emulateMedia({ colorScheme: 'light' });
   await expect(blockedPage.locator('html')).toHaveAttribute('data-theme', 'light');
+  await blockedPage.goto(origin + '/admin');
+  await blockedPage.locator('[data-theme-toggle]').first().click();
+  await expect(blockedPage.locator('html')).toHaveAttribute('data-theme', 'dark');
   await blocked.close();
 
   const noScript = await browser.newContext({ javaScriptEnabled: false, colorScheme: 'dark' });

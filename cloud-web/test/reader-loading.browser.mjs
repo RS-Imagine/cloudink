@@ -156,7 +156,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
       .locator('.hljs-string')
       .first()
       .evaluate((node) => getComputedStyle(node).color);
-    await page.locator('select[data-theme-mode]').selectOption('dark');
+    await page.emulateMedia({ colorScheme: 'dark' });
     await expect
       .poll(() =>
         page
@@ -165,7 +165,7 @@ export async function verifyReaderLoading(browser, origin, output, engine) {
           .evaluate((node) => getComputedStyle(node).color),
       )
       .not.toBe(color);
-    await page.locator('select[data-theme-mode]').selectOption('light');
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.screenshot({
       path: resolve(output, 'reader-code-lazy-' + engine + '.png'),
       fullPage: true,

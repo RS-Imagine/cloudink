@@ -93,7 +93,14 @@ fn navigation_state_is_present_in_ssr_on_every_page_kind() {
         "test",
     );
     assert!(about.contains("data-reader-nav=\"about\" aria-current=\"page\""));
-    assert!(render::render_404(&site, "test").contains("data-page=\"not-found\""));
+    let missing = render::render_404(&site, "test");
+    assert!(missing.contains("data-page=\"not-found\""));
+    for html in [&home, &article, &about, &missing] {
+        assert!(!html.contains("class=\"reader-preferences\""));
+        assert!(!html.contains("<select data-theme-mode"));
+        assert!(!html.contains("<select data-effects-mode"));
+        assert!(!html.contains("id=\"theme-toggle-btn\""));
+    }
 }
 
 #[test]

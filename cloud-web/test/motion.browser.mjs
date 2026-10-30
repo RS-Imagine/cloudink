@@ -14,9 +14,9 @@ export async function verifyMotion(browser, origin, output, engine) {
   const errors = [];
   context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
   const page = await context.newPage();
-  await page.goto(origin + '/');
+  await page.goto(origin + '/posts/slow-days/');
   await expect(page.locator('html')).toHaveAttribute('data-ci-motion', '');
-  const button = page.locator('#theme-toggle-btn');
+  const button = page.locator('#copy-link');
   const idle = async () => {
     await expect
       .poll(() =>
@@ -31,6 +31,7 @@ export async function verifyMotion(browser, origin, output, engine) {
     page.evaluate(
       () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
     );
+  await button.scrollIntoViewIfNeeded();
   const box = await button.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -108,12 +109,12 @@ export async function verifyMotion(browser, origin, output, engine) {
   assert.deepEqual(cancellation, [false, true, 0]);
   await idle();
   await page
-    .locator('#theme-toggle-btn')
+    .locator('#copy-link')
     .dispatchEvent('pointerdown', { button: 0, pointerId: 56, isPrimary: true });
   await twoFrames();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await idle();
-  await expect(page.locator('#theme-toggle-btn')).toHaveCSS('scale', 'none');
+  await expect(page.locator('#copy-link')).toHaveCSS('scale', 'none');
   await image.click();
   await expect(dialog).toBeVisible();
   assert.equal(await page.evaluate(() => CloudInkMotion.stats().effects), 0);
@@ -141,10 +142,10 @@ export async function verifyMotion(browser, origin, output, engine) {
       route.fulfill({ contentType: 'text/css', body: '' }),
     );
     const touchPage = await touch.newPage();
-    await touchPage.goto(origin + '/');
-    await touchPage.locator('#theme-toggle-btn').tap();
-    await expect(touchPage.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(touchPage.locator('#theme-toggle-btn')).toHaveCSS('scale', 'none');
+    await touchPage.goto(origin + '/posts/slow-days/');
+    await touchPage.locator('#copy-link').tap();
+    await expect(touchPage.locator('html')).toHaveAttribute('data-theme', 'light');
+    await expect(touchPage.locator('#copy-link')).toHaveCSS('scale', 'none');
     await touch.close();
   }
 }

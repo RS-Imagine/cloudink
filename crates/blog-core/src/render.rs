@@ -518,10 +518,6 @@ fn page(
         <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
         <div class="reader-tools">
           <button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-          <button id="theme-toggle-btn" class="reader-icon theme-btn" aria-label="切换明暗主题">
-            <svg class="sun-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
-            <svg class="moon-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
-          </button>
           <details class="reader-menu" id="reader-menu">
             <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
             <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
@@ -532,7 +528,7 @@ fn page(
     <main id="swup" class="transition-fade" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
       {body}
     </main>
-    <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div><div class="reader-preferences"><label class="theme-mode">外观<select data-theme-mode aria-label="Appearance / 阅读外观"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label class="theme-mode" data-effects-control hidden>视觉效果<select data-effects-mode aria-label="视觉效果"><option value="auto">自动</option><option value="off">简洁（不透明）</option></select></label></div></footer>
+    <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div></footer>
   </div>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">

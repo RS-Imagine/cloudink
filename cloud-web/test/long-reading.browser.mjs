@@ -112,7 +112,7 @@ export async function verifyLongReading(browser, origin, output, engine) {
       for (const theme of ['light', 'dark']) {
         baseline = true;
         await page.goto(origin + '/posts/long-reading-check/');
-        await page.locator('select[data-theme-mode]').selectOption(theme);
+        await page.emulateMedia({ colorScheme: theme });
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
         await page.evaluate(() => document.fonts.ready);
         await expect(page.locator('.article-body code.hljs')).toBeVisible();

@@ -66,7 +66,7 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
       .toBe(true);
     await expect(reader.locator('html')).toHaveAttribute('data-palette', 'brown');
     for (const theme of ['light', 'dark']) {
-      await reader.locator('select[data-theme-mode]').selectOption(theme);
+      await reader.emulateMedia({ colorScheme: theme });
       assert.equal(
         await reader.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,
