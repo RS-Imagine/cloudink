@@ -1,10 +1,10 @@
 /* Reader shell and home only. Article typography stays in the reading milestone. */
 .reader-layout {
-  max-width: 1100px;
-  padding: 0 28px 48px;
+  max-width: 1024px;
+  padding: 0 48px 48px;
 }
 .reader-header {
-  min-height: 84px;
+  min-height: 80px;
   gap: 20px;
   flex-wrap: nowrap;
   padding: 0;
@@ -176,7 +176,7 @@
 .home-hero {
   display: block;
   max-width: none;
-  padding: 44px 0 40px;
+  padding: 48px 0 40px;
   border-bottom: 1px solid var(--ci-divider);
 }
 .home-intro {
@@ -184,17 +184,15 @@
   overflow-wrap: anywhere;
 }
 .home-eyebrow {
-  color: var(--ci-muted);
-  font: 12px/1.8 var(--ci-font-ui);
-  letter-spacing: 0.08em;
+  display: none;
 }
 .home-eyebrow > span {
   display: none;
 }
 .home-hero h1 {
-  max-width: 14ch;
+  max-width: 8em;
   margin: 18px 0;
-  font: 600 clamp(2.5rem, 4.5vw, 4rem)/1.2 var(--ci-font-reading);
+  font: 600 clamp(2.5rem, 4.5vw, 3.75rem)/1.2 var(--ci-font-reading);
   letter-spacing: 0;
   overflow-wrap: anywhere;
   white-space: pre-line;
@@ -239,7 +237,7 @@
 }
 .home-section-heading h2 {
   margin: 0;
-  font: 600 23px/1.5 var(--ci-font-reading);
+  font: 600 24px/1.5 var(--ci-font-reading);
 }
 .home-section-heading > span {
   color: var(--ci-muted);
@@ -253,7 +251,7 @@
 .home-post-grid > .home-card {
   display: block;
   position: relative;
-  padding: 26px 32px 26px 0;
+  padding: 24px 40px 24px 0;
   border: 0;
   border-bottom: 1px solid var(--ci-divider);
   border-radius: 0;
@@ -266,7 +264,7 @@
 .home-card .home-card-copy {
   min-width: 0;
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   column-gap: 24px;
 }
 .home-badge,
@@ -276,7 +274,7 @@
 .home-card h2 {
   grid-column: 2;
   margin: 0 0 10px;
-  font: 600 23px/1.5 var(--ci-font-reading);
+  font: 600 24px/1.5 var(--ci-font-reading);
   letter-spacing: -0.015em;
   overflow-wrap: anywhere;
 }
@@ -308,10 +306,10 @@
 .home-card-meta .post-arrow {
   position: absolute;
   inset-inline-end: 2px;
-  top: 28px;
+  top: 32px;
   color: var(--ci-primary);
   font-size: 24px;
-  transition: transform 180ms var(--ci-ease);
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .home-card:focus-within {
   outline: 2px solid var(--ci-primary);
@@ -421,7 +419,7 @@
     padding: 36px 0 32px;
   }
   .home-hero h1 {
-    font-size: 38px;
+    font-size: 36px;
     margin-block: 20px;
   }
   .home-hero .home-intro > p {
@@ -431,7 +429,7 @@
     font-size: 22px;
   }
   .home-post-grid > .home-card {
-    padding: 24px 28px 24px 0;
+    padding: 24px 32px 24px 0;
   }
   .home-card .home-card-copy {
     display: flex;
@@ -490,14 +488,14 @@
 
 .home-hero.has-illustration {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 36px;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
   align-items: center;
 }
 .home-illustration {
   margin: 0;
   width: 100%;
-  height: 340px;
+  height: 320px;
   display: grid;
   place-items: center;
 }
@@ -505,8 +503,8 @@
 .home-illustration svg {
   display: block;
   width: 100%;
-  max-width: 290px;
-  height: 340px;
+  max-width: 280px;
+  height: 320px;
   object-fit: contain;
 }
 @media (max-width: 759px) {
@@ -556,7 +554,7 @@
 .home-card:has(.home-thumbnail) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 180px;
-  gap: 28px;
+  gap: 24px;
   align-items: center;
 }
 .home-thumbnail {
@@ -596,8 +594,8 @@
     height: 156px;
   }
   .home-hero.has-illustration h1 {
-    max-width: calc(100% - 100px);
-    font-size: 38px;
+    max-width: calc(100% - 96px);
+    font-size: 36px;
   }
   .home-hero.has-illustration .home-intro > p:not(.home-description) {
     max-width: calc(100% - 100px);
@@ -611,7 +609,7 @@
     gap: 16px;
   }
   .home-card h2 {
-    font-size: 21px;
+    font-size: 20px;
   }
   .home-thumbnail img {
     aspect-ratio: 1;

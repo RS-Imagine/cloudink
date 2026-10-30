@@ -39,3 +39,18 @@ Noto Serif SC 由 Fontsource 5.3.1 提供，按 SIL OFL-1.1 保留许可证。�
 ## 回滚
 
 Revert 此 PR，使用原发布流程重新生成公开页面。不迁移或删除用户数据。
+
+## 构图复审
+
+本轮依据 [AI Design Skills](https://github.com/elayadesign/ai-design-skills/blob/main/skills/landing-page-design/SKILL.md) 及其 [Redesign Existing Projects](https://github.com/elayadesign/redesign-skill/blob/main/skills/redesign-existing-projects/SKILL.md) 的审计顺序，先核对真实截图，再调整既有模板。外部 skill 仅用于设计工作流，不写入项目的 AGENTS.md，也不成为运行时依赖。
+
+项目已有明确的视觉简报，因此保留已确认的宋体、纸色、棕褐主色、英文副标题和书刊分隔线。营销页的转化文案、渐变标题、浮动玻璃导航及巨幅标语不适用于这个个人博客。
+
+发现的问题与处理：
+
+- 首页内容跨度过宽，文字与插画互相分离：整体收拢至 1024px 外框，使用 3:2 的两栏，插画回到文字附近。
+- 文章日期、摘要与缩略图缺少紧凑节奏：日期栏缩为 88px，统一文章行内的 24px 间距。
+- 工作台的侧栏、搜索栏、状态栏分割写作空间：导航合入刊头，搜索移至文章列表之前，保留独立可达的文章切换和保存状态。
+- 编辑、图片和设置继续复用现有业务处理器；编辑器中的搜索入口随视图移动，控件 ID 与事件保持一致。
+
+云端审查用相同样例比较本轮前后的后台，基准为 58312862。截图通过不代表获得用户的视觉认可。

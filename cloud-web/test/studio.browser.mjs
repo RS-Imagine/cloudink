@@ -39,6 +39,9 @@ export async function verifyStudio(browser, origin, output, engine) {
   );
   assert.ok(sessionCookie?.secure && sessionCookie.httpOnly, engine + ' keeps a secure session');
   await expect(page.locator('.studio-nav [aria-current]')).toHaveAttribute('id', 'dashboard-nav');
+  const intro = await page.locator('.home-intro').boundingBox();
+  const search = await page.locator('#article-browser').boundingBox();
+  assert.ok(search.y >= intro.y + intro.height, 'Dashboard search follows its introduction');
   const initialCount = await page.locator('.article-card').count();
   assert.equal(initialCount, 4);
   await page.locator('[data-post-filter=draft]').click();
@@ -70,8 +73,15 @@ export async function verifyStudio(browser, origin, output, engine) {
       assert.ok(rect.width >= 44 && rect.height >= 44, id + ' must keep a touch target');
     }
     if (width < 760) await expect(page.locator('.studio-nav')).toHaveCSS('position', 'fixed');
-    else
-      assert.ok((await page.locator('.sidebar').boundingBox()).width >= (width >= 1100 ? 220 : 80));
+    else {
+      const header = await page.locator('.studio-masthead').boundingBox();
+      const navigation = await page.locator('.studio-nav').boundingBox();
+      assert.ok(header.width >= width - 96 && header.height <= 112);
+      assert.ok(
+        navigation.y >= header.y &&
+          navigation.y + navigation.height <= header.y + header.height,
+      );
+    }
   }
   await page.locator('#studio-tools summary').click();
   await expect(page.locator('#logout')).toBeVisible();
@@ -120,6 +130,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('#workspace')).toBeFocused();
   // Primary navigation must still flush a draft before leaving the editor.
   await page.locator('#new-post').click();
+  await expect(page.locator('#editor-view > #article-browser')).toBeVisible();
   await page.locator('#title').fill('Studio draft ' + engine);
   await page.locator('#body').fill('Keep this text while navigating.');
   await page.locator('#dashboard-nav').click();
