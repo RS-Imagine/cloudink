@@ -764,6 +764,9 @@ body:has(dialog[open]) {
   max-height: 65dvh;
   border-radius: 16px;
 }
+.app:not([data-view='editor']) .editor-toolbar {
+  display: none;
+}
 .editor-toolbar #editor-search-slot {
   flex: 1;
   min-width: 0;

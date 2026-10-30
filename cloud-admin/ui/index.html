@@ -586,18 +586,18 @@
           <button id="image-library-retry" hidden>重新加载图片库</button>
           <button id="image-library-more" hidden>加载更多图片</button>
         </section>
-        <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden>
-          <div class="editor-toolbar">
-            <div class="editor-save-status">
-              <span class="status-dot" aria-hidden="true"></span
-              ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
-            </div>
-            <div id="editor-search-slot"></div>
-            <div class="toolbar-actions">
-              <button id="save-post">保存草稿</button>
-              <button id="publish-post" class="primary">发布这篇</button>
-            </div>
+        <div class="editor-toolbar">
+          <div class="editor-save-status">
+            <span class="status-dot" aria-hidden="true"></span
+            ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
           </div>
+          <div id="editor-search-slot"></div>
+          <div class="toolbar-actions">
+            <button id="save-post">保存草稿</button>
+            <button id="publish-post" class="primary">发布这篇</button>
+          </div>
+        </div>
+        <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden>
           <div class="editor-document">
             <label class="editor-field-label" for="title">文章标题</label>
             <input

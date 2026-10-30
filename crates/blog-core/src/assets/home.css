@@ -305,6 +305,7 @@
   text-wrap: pretty;
 }
 .home-card-meta .post-arrow {
+  pointer-events: none;
   position: absolute;
   inset-inline-end: 16px;
   bottom: 24px;
