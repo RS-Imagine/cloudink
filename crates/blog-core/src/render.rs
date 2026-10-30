@@ -149,7 +149,7 @@ fn post_thumbnail(post: &Post) -> String {
             continue;
         }
         return format!(
-            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="216" height="132" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 216px"></figure>"#,
+            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="180" height="110" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 180px"></figure>"#,
             escape_html(&dest_url)
         );
     }
