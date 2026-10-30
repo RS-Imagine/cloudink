@@ -420,7 +420,7 @@ $('setup-form').addEventListener('submit', async (event) => {
     try {
       const session = await api('/api/setup', {
         method: 'POST',
-        headers: { Authorization: `*** },
+        headers: { Authorization: `Bearer ${form.elements.token.value}` },
         body: {
           email: form.elements.email.value,
           password: form.elements.password.value,
