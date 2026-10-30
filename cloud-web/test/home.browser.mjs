@@ -56,8 +56,8 @@ export async function verifyHome(browser, origin, output, engine) {
   await expect(menu).not.toHaveAttribute('open', '');
   await expect(summary).toBeFocused();
   await summary.click();
-  // The compact menu can overlap the headline; exercise a point outside the panel.
-  await page.locator('.home-description').click();
+  // The full-height menu dismisses from its blank backdrop.
+  await page.locator('.reader-menu-links').click({ position: { x: 16, y: 160 } });
   await expect(menu).not.toHaveAttribute('open', '');
   await summary.click();
   await page.locator('#site-search-btn').click();

@@ -184,7 +184,7 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
   if (
     name === 'production' &&
     engine === 'chromium' &&
-    ['home', 'article', 'dashboard', 'editor', 'images', 'settings', 'login', 'setup'].includes(
+    ['home', 'home-sparse', 'article', 'dashboard', 'editor', 'images', 'settings', 'login', 'setup'].includes(
       screen,
     ) &&
     [1440, 390].includes(width)
@@ -301,34 +301,9 @@ try {
   await admin.locator('#login-form input[name=password]').fill(password);
   await admin.locator('#login-submit').click();
   await expect(admin.locator('#home-view')).toBeVisible();
-  // Generate a generic local image; no external or production media is used.
-  const imageData = await admin.evaluate(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 640;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#d9e5d9';
-    context.fillRect(0, 0, 1080, 640);
-    context.fillStyle = '#f6f6e9';
-    context.beginPath();
-    context.arc(800, 140, 60, 0, Math.PI * 2);
-    context.fill();
-    for (const [color, y, offset] of [
-      ['#8ea58c', 340, 0],
-      ['#60816c', 440, 150],
-      ['#31594d', 570, -100],
-    ]) {
-      context.fillStyle = color;
-      context.beginPath();
-      context.moveTo(0, 640);
-      context.lineTo(0, y);
-      context.bezierCurveTo(280 + offset, y - 250, 650 + offset, y + 100, 1080, y - 120);
-      context.lineTo(1080, 640);
-      context.closePath();
-      context.fill();
-    }
-    return canvas.toDataURL('image/png').split(',')[1];
-  });
+  // CC0 landscape, uploaded through the real optimizer into ephemeral fixture R2.
+  const imageData = await readFile('build-work/editorial-photo/lake.jpg');
+  await copyFile('build-work/editorial-photo/source.json', resolve(output, 'photo-source.json'));
   // Generate real Rust/WASM pages through the local publication UI.
   for (const post of demoPosts.slice(0, 3)) {
     await openPostSwitcher(admin);
@@ -336,9 +311,9 @@ try {
     await expect(admin.locator('#title')).toHaveValue(post.title);
     if (post.slug === 'slow-days') {
       await admin.locator('#image-files').setInputFiles({
-        name: '山间来信.png',
-        mimeType: 'image/png',
-        buffer: Buffer.from(imageData, 'base64'),
+        name: '湖畔来信.jpg',
+        mimeType: 'image/jpeg',
+        buffer: imageData,
       });
       await expect(admin.locator('#notice')).toContainText('图片已上传');
     }
@@ -346,6 +321,70 @@ try {
     await expect(admin.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
     await expect(admin.locator('#publish-banner')).toContainText('已上线');
   }
+  // Exercise actual Rust templates with sparse content, without production data or art.
+  const sparseFiles = await admin.evaluate(async () => {
+    const worker = new Worker('/preview.worker.js', { type: 'module' });
+    try {
+      return await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Sparse fixture render timed out')), 30000);
+        worker.onmessage = ({ data }) => {
+          clearTimeout(timer);
+          data.error ? reject(new Error(data.error)) : resolve(data.result);
+        };
+        worker.onerror = (event) => {
+          clearTimeout(timer);
+          reject(new Error(event.message));
+        };
+        worker.postMessage({
+          id: 1,
+          type: 'site',
+          release: {
+            schema_version: 1,
+            id: 'visual-review-only',
+            created_at: '2026-10-01T00:00:00Z',
+            site: {
+              title: 'CloudInk',
+              bigTitle: '让平凡的日子，有迹可循。',
+              subtitle: '认真生活，慢慢记录。',
+              author: '林间',
+              description: '记录生活的细微，也保存技术的思考。',
+              themePalette: 'brown',
+              homeIllustration: null,
+              about: '',
+            },
+            markdown_posts: {
+              'first-note':
+                '+++\ntitle = "从一篇文章开始"\nslug = "first-note"\ndate = "2026-10-01"\ndescription = "不必等到万事俱备，写下此刻正在发生的生活。"\n+++\n\n## 开始记录\n\n每一段值得记住的日子，都可以成为一篇文章。',
+            },
+            about_markdown: null,
+          },
+        });
+      });
+    } finally {
+      worker.terminate();
+    }
+  });
+  const sparseContext = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    reducedMotion: 'reduce',
+  });
+  await watch(sparseContext);
+  await sparseContext.route(origin + '/', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: sparseFiles['index.html'] }),
+  );
+  for (const width of widths)
+    for (const theme of themes) {
+      const page = await sparseContext.newPage();
+      await page.setViewportSize({ width, height: width > 759 ? 1000 : 844 });
+      await page.addInitScript((value) => localStorage.setItem('theme', value), theme);
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto(origin + '/');
+      await expect(page.locator('.home-illustration')).toHaveCount(0);
+      await expect(page.locator('.post-card')).toHaveCount(1);
+      await capture(page, 'production', 'home-sparse', theme, width);
+      await page.close();
+    }
+  await sparseContext.close();
   for (const width of widths)
     for (const theme of themes) {
       await context.setDefaultTimeout(15000);

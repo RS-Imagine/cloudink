@@ -20,7 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (focus) menuSummary.focus({ preventScroll: true });
       };
       readerMenu?.addEventListener('click', event => {
-        if (event.target.closest('a[href]')) closeReaderMenu();
+        if (event.target.closest('a[href]') || event.target.classList.contains('reader-menu-links')) closeReaderMenu();
+      });
+      readerMenu?.addEventListener('focusout', event => {
+        if (event.relatedTarget && !readerMenu.contains(event.relatedTarget)) closeReaderMenu();
       });
       document.addEventListener('click', event => {
         if (readerMenu && !readerMenu.contains(event.target)) closeReaderMenu();
@@ -252,6 +255,39 @@ document.addEventListener('DOMContentLoaded', () => {
             favicon.setAttribute('type', iconURL.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml');
           }
           document.querySelectorAll('.site-mark img').forEach(image => image.setAttribute('src', iconURL));
+        }
+
+        if (motion && !reducedMotion.matches && 'IntersectionObserver' in window) {
+          const pending = new Map();
+          const observer = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              observer.unobserve(entry.target);
+              entry.target.style.opacity = pending.get(entry.target);
+              pending.delete(entry.target);
+              motion.enter(entry.target, { kind: 'reveal' });
+            }
+          }, { threshold: 0.08 });
+          for (const card of swupContainer.querySelectorAll('.home-card')) {
+            if (card.getBoundingClientRect().top < innerHeight) continue;
+            pending.set(card, card.style.opacity);
+            card.style.opacity = '0';
+            observer.observe(card);
+          }
+          const finishReveals = () => {
+            observer.disconnect();
+            for (const [card, opacity] of pending) card.style.opacity = opacity;
+            pending.clear();
+          };
+          const motionChange = () => {
+            if (reducedMotion.matches) finishReveals();
+          };
+          reducedMotion.addEventListener('change', motionChange);
+          cleanupFunctions.push(() => {
+            finishReveals();
+            reducedMotion.removeEventListener('change', motionChange);
+            motion.cancelWithin(swupContainer);
+          });
         }
 
         const images = document.querySelectorAll('.article-body img');

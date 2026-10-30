@@ -8,13 +8,13 @@
   --ci-palette-violet: #6d4993;
   --ci-palette-rose: #934760;
   --ci-light-bg: #f3f5f1;
-  --ci-dark-bg: #141b17;
+  --ci-dark-bg: #181818;
   --ci-light-surface: #fbfcf9;
-  --ci-dark-surface: #1c2520;
+  --ci-dark-surface: #1f1f1f;
   --ci-light-elevated: #ffffff;
-  --ci-dark-elevated: #253029;
+  --ci-dark-elevated: #272727;
   --ci-light-container: #eaeee8;
-  --ci-dark-container: #2c3830;
+  --ci-dark-container: #313131;
   --ci-light-text: #202a25;
   --ci-dark-text: #e7eee5;
   --ci-light-muted: #59665e;
@@ -89,8 +89,8 @@
   --ci-glass-blur: 12px;
   --ci-glass-highlight: #ffffff38;
   --ci-radius-sm: 8px;
-  --ci-radius-md: 14px;
-  --ci-radius-lg: 22px;
+  --ci-radius-md: 12px;
+  --ci-radius-lg: 24px;
   --ci-radius-xl: 32px;
   --ci-space-1: 4px;
   --ci-space-2: 8px;
@@ -104,10 +104,10 @@
   --ci-space-10: 40px;
   --ci-space-11: 44px;
   --ci-space-12: 48px;
-  --ci-motion-fast: 150ms;
-  --ci-motion-standard: 250ms;
-  --ci-motion-emphasized: 380ms;
-  --ci-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ci-motion-fast: 200ms;
+  --ci-motion-standard: 300ms;
+  --ci-motion-emphasized: 500ms;
+  --ci-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ci-layer-base: 0;
   --ci-layer-navigation: 20;
   --ci-layer-modal: 60;
@@ -165,13 +165,13 @@
 }
 :root[data-palette='brown'] {
   --ci-light-bg: #f8f6f1;
-  --ci-dark-bg: #211a16;
+  --ci-dark-bg: #131209;
   --ci-light-surface: #fffcf8;
-  --ci-dark-surface: #2a211c;
+  --ci-dark-surface: #1f1f1f;
   --ci-light-elevated: #ffffff;
-  --ci-dark-elevated: #342a23;
+  --ci-dark-elevated: #272727;
   --ci-light-container: #f0e8dd;
-  --ci-dark-container: #403329;
+  --ci-dark-container: #313131;
   --ci-light-text: #241e19;
   --ci-dark-text: #f3e5d8;
   --ci-light-muted: #716052;

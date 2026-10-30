@@ -7,7 +7,7 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 import { owner, password } from './fixture.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 
-const baseline = '58312862a618c6fb831e18fa288624a9ac9b2582';
+const baseline = '4d3127976d42d58e4f6f1b81827f4d296d4f80d1';
 const original = (path) =>
   execFileSync('git', ['show', baseline + ':' + path], { encoding: 'utf8' });
 const stylePaths = [
@@ -112,6 +112,12 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
         await page.locator('.post-item').filter({ hasText: '把日子，写成一封长信' }).click();
         await expect(page.locator('#editor-view')).toBeVisible();
         await expect(page.locator('#body')).toBeVisible();
+        if (version === 'after' && width < 760) {
+          const titleSize = await page.locator('#title').evaluate((node) =>
+            parseFloat(getComputedStyle(node).fontSize),
+          );
+          assert.ok(titleSize >= 30, 'Mobile editor title keeps its document hierarchy');
+        }
         await capture('editor');
         const body = await page.locator('#body').inputValue();
         await page.locator('#show-preview').click();

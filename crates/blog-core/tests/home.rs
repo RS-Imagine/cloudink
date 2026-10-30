@@ -127,7 +127,10 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
     assert!(html.contains("class=\"home-thumbnail\""));
     assert!(html.contains("src=\"/images/uploads/photo.webp\""));
     assert!(!html.contains("https://example.com/photo.jpg"));
-    assert!(html.contains("sizes=\"(max-width: 759px) 88px, 180px\""));
+    assert!(html.contains(concat!(
+        "sizes=\"(max-width: 759px) calc(100vw - 48px), ",
+        "(max-width: 1199px) 36vw, 400px\""
+    )));
     assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 1);
     for body in [
         "![bad](/images/uploads/../private.jpg)",

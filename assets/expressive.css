@@ -8,7 +8,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px 20px;
+  gap: 12px 24px;
 }
 .reader-preferences .theme-mode {
   min-width: 0;
@@ -16,7 +16,6 @@
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and
   (color: color-mix(in srgb, black, transparent)) {
-  :root[data-effects='glass'] .reader-menu[open] > .reader-menu-links,
   :root[data-effects='glass'] .mobile-toc-btn {
     background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
     color: var(--ci-text);
@@ -31,6 +30,8 @@
     border-color: var(--ci-outline);
   }
   @media (min-width: 760px) {
+    :root[data-effects='glass'] .reader-header,
+    :root[data-effects='glass'] .studio-masthead,
     :root[data-effects='glass'] #studio-tools[open] > .studio-tools-panel {
       background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
       box-shadow:
