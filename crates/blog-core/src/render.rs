@@ -157,10 +157,8 @@ fn post_thumbnail(post: &Post) -> String {
 }
 
 fn home_subtitle_class(text: &str) -> &'static str {
-    if text
-        .chars()
-        .any(|c| matches!(c as u32, 0x2e80..=0x9fff | 0xac00..=0xd7af))
-    {
+    let is_cjk = |c: char| matches!(c as u32, 0x2e80..=0x9fff | 0xac00..=0xd7af);
+    if text.chars().any(is_cjk) {
         "home-subtitle"
     } else {
         "home-subtitle subtitle-italic"
@@ -171,7 +169,10 @@ fn home_subtitle_class(text: &str) -> &'static str {
 fn display_title(title: &str) -> String {
     title
         .split_inclusive(['，', '。', '；', '：', '！', '？', ',', ';', ':', '!', '?'])
-        .map(|part| format!(r#"<span class="title-phrase">{}</span>"#, escape_html(part)))
+        .map(|part| {
+            let text = escape_html(part);
+            format!(r#"<span class="title-phrase">{text}</span>"#)
+        })
         .collect::<Vec<_>>()
         .join("<wbr>")
 }
