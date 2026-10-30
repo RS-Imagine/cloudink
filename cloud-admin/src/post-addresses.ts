@@ -114,7 +114,11 @@ export async function finishRename(
       customMetadata: { ...(await draftSummary(draft)), renameRelease: state.release_id },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
     });
-    if (!saved) throw new HttpError(503, '新地址原稿正在恢复，请稍后重试；已发布正文仍保留。');
+    if (!saved) {
+      const recovered = await storage.head(`drafts/${to}.md`);
+      if (recovered?.customMetadata?.renameRelease !== state.release_id)
+        throw new HttpError(503, '新地址原稿正在恢复，请稍后重试；已发布正文仍保留。');
+    }
   }
   const source = await storage.head(`drafts/${from}.md`);
   if (source && !source.customMetadata?.deleted && source.etag === etag)

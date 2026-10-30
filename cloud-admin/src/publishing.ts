@@ -1,6 +1,7 @@
 import { ensureHomeIllustration } from './home-illustration';
 import { ensureSiteIcon } from './site-icons';
 import { addressTarget, withAddress, postRedirects, finishRename } from './post-addresses';
+import { withContentMutation } from './storage-mutations';
 import type { CloudInkEnv } from './env';
 import {
   requiredPages,
@@ -30,12 +31,20 @@ export async function currentRelease(env: CloudInkEnv): Promise<Release> {
 function busy(state: Publishing): boolean {
   return ['queued', 'building', 'built'].includes(state.status);
 }
-export async function publishStatus(env: CloudInkEnv): Promise<Publishing | null> {
+export async function publishStatus(env: CloudInkEnv, locked = false): Promise<Publishing | null> {
   const obj = await env.STORAGE.get('state/pending.json');
   if (!obj) return null;
   const state = await obj.json<Publishing>();
   if (!busy(state)) return state;
   const pointer = await readJson<{ id: string }>(env.STORAGE, 'state/published.json');
+  if (pointer?.id === state.release_id && state.rename && !locked) {
+    try {
+      return await withContentMutation(env.STORAGE, () => publishStatus(env, true));
+    } catch (error) {
+      if (error instanceof HttpError && error.status === 503) return { ...state, status: 'built' };
+      throw error;
+    }
+  }
   if (pointer?.id === state.release_id) state.status = 'deployed';
   if (busy(state) && Date.now() - Date.parse(state.started_at) > 30 * 60_000)
     return (await cancelBrowserPublish(env, state.release_id)).json<Publishing>();
@@ -48,7 +57,7 @@ export async function publishStatus(env: CloudInkEnv): Promise<Publishing | null
 }
 export async function publish(request: Request, env: CloudInkEnv): Promise<Response> {
   const data = await jsonInput(request, 4096);
-  await publishStatus(env);
+  await publishStatus(env, true);
   const previous = await env.STORAGE.get('state/pending.json');
   if (previous && busy(await previous.json<Publishing>()))
     throw new HttpError(409, '上一次发布还在进行中，请等待完成。');

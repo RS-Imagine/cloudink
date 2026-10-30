@@ -4,6 +4,10 @@ on:
   push:
     branches: [fix/edit-post-address]
 
+concurrency:
+  group: format-post-address
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

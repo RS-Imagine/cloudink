@@ -38,7 +38,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   const sample = await api('/api/posts/slow-days');
   const image = sample.draft.body_markdown.match(/\/images\/uploads\/[A-Za-z0-9_./-]+/)?.[0];
   assert.ok(image, 'The isolated fixture supplies an existing managed image');
-  const body = '# 保留正文\n\n地址更改后保留这段文字。\n\n![图片保持原地址](' + image + ')';
+  const body = '## 保留正文\n\n地址更改后保留这段文字。\n\n![图片保持原地址](' + image + ')';
   const collision = await api('/api/posts/' + occupied, 'PUT', {
     draft: draft(occupied, 'Another private article'), etag: null,
   });
@@ -66,6 +66,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(page.locator('#change-post-address')).toBeFocused();
   await page.locator('#change-post-address').click();
   await input.fill(second);
+  await page.evaluate(() => CloudInkTheme.setPalette('brown'));
   await page.screenshot({ path: resolve(output, 'post-address-' + engine + '-390-light.png'), fullPage: true });
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
@@ -82,7 +83,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(page.locator('#post-address-help')).toContainText('保存并发布');
   await input.fill(live);
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.evaluate(() => CloudInkTheme.setMode('dark'));
+  await page.evaluate(() => { CloudInkTheme.setMode('dark'); CloudInkTheme.setPalette('brown'); });
   await page.screenshot({ path: resolve(output, 'post-address-' + engine + '-390-dark.png'), fullPage: true });
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
