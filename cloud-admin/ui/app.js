@@ -819,7 +819,7 @@ function download(data, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 for (const id of ['download-post', 'change-post-address'])
-  $(id).addEventListener('click', () => {
+  $(id)?.addEventListener('click', () => {
     if (!doc || (id === 'change-post-address' && (editorLocked || publishingBusy))) return;
     import('/post-address.js')
       .then(({ postAction }) =>
@@ -861,7 +861,8 @@ function showPublishing(state) {
     }
   }
   $('publish-welcome').disabled = publishingBusy || publishRequest;
-  $('change-post-address').disabled = publishingBusy || publishRequest;
+  if ($('change-post-address'))
+    $('change-post-address').disabled = publishingBusy || publishRequest;
   const banner = $('publish-banner');
   banner.hidden = !state;
   if (!state) return;
