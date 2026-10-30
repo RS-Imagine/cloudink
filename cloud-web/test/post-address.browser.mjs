@@ -15,6 +15,22 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
     route.fulfill({ contentType: 'text/css', body: '' }),
   );
   const page = await context.newPage();
+  async function capture(theme) {
+    await page.screenshot({
+      path: resolve(output, 'post-address-' + engine + '-390-' + theme + '.png'),
+      fullPage: true,
+    });
+    if (engine === 'chromium')
+      console.log(
+        'ADMIN_REVIEW_PREVIEW ' +
+          JSON.stringify({
+            screen: 'post-address',
+            width: 390,
+            theme,
+            image: (await page.screenshot({ type: 'jpeg', quality: 75 })).toString('base64'),
+          }),
+      );
+  }
   await page.goto(origin + '/admin');
   await page.locator('#login-form input[name=email]').fill(owner);
   await page.locator('#login-form input[name=password]').fill(password);
@@ -70,10 +86,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await page.locator('#change-post-address').click();
   await input.fill(second);
   await page.evaluate(() => CloudInkTheme.setPalette('brown'));
-  await page.screenshot({
-    path: resolve(output, 'post-address-' + engine + '-390-light.png'),
-    fullPage: true,
-  });
+  await capture('light');
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
   await expect(page.locator('#slug')).toHaveValue(second);
@@ -93,10 +106,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
     CloudInkTheme.setMode('dark');
     CloudInkTheme.setPalette('brown');
   });
-  await page.screenshot({
-    path: resolve(output, 'post-address-' + engine + '-390-dark.png'),
-    fullPage: true,
-  });
+  await capture('dark');
   await page.locator('#post-address-submit').click();
   await expect(dialog).toBeHidden();
   await expect(page.locator('#slug')).toHaveValue(live);

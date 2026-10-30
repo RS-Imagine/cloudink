@@ -16,7 +16,10 @@ async function publish(f, body) {
 }
 async function redirect(f, from, to) {
   for (const method of ['GET', 'HEAD']) {
-    const response = await f.request('/posts/' + from + '/?source=old', method);
+    const response = await f.mf.dispatchFetch(origin + '/posts/' + from + '/?source=old', {
+      method,
+      redirect: 'manual',
+    });
     assert.equal(response.status, 301);
     assert.equal(response.headers.get('Location'), origin + '/posts/' + to + '/?source=old');
   }
