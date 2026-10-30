@@ -359,7 +359,10 @@ try {
     const saved = await fetch('/api/posts/' + slug, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf },
-      body: JSON.stringify({ source: post.source + '\n\nUnpublished layout test.', etag: post.etag }),
+      body: JSON.stringify({
+        source: post.source + '\n\nUnpublished layout test.',
+        etag: post.etag,
+      }),
     });
     if (!saved.ok) throw new Error(await saved.text());
   }, slug);
