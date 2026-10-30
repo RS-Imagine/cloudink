@@ -191,6 +191,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         count += 1;
         let updated = post
             .updated()
+            .filter(|date| *date != post.date())
             .map(|date| {
                 format!(
                     "<span>更新 <time datetime=\"{date}\">{date}</time></span>",
@@ -202,14 +203,12 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
-    {badge}
     <h2><a href="/posts/{slug}/">{title}</a></h2>
     <p>{description}</p>
     <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
   </div>{art}
 </article>"#,
             featured_class = if featured { " home-feature" } else { "" },
-            badge = if featured { "<span class=\"home-badge\">最新文章</span>" } else { "" },
             slug = escape_html(post.slug()),
             title = escape_html(post.title()),
             description = escape_html(post.description()),
@@ -240,7 +239,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
   {illustration}
 </section>
 <section id="posts" aria-labelledby="posts-heading">
-  <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2><span>{count} 篇文章</span></div>
+  <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2></div>
   <div class="grid home-post-grid">{cards}</div>
 </section>
 </div>"#,
@@ -260,7 +259,6 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             } else {
                 cards
             },
-            count = count,
         ),
         "",
         css_hash,
@@ -273,6 +271,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
     let updated = post
         .updated()
+        .filter(|value| *value != post.date())
         .map(|value| {
             format!(
                 "<span>更新于 <time datetime=\"{date}\">{date}</time></span>",
