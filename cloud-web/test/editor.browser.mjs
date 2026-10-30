@@ -152,6 +152,7 @@ try {
   await expect(page.locator('#title')).toHaveValue('beta');
   await sleep(900);
   await expect(page.locator('#title')).toHaveValue('beta');
+  await page.locator('.post-details summary').click();
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#download-post').click();
   await downloadPromise;

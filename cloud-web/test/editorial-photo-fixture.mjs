@@ -26,6 +26,11 @@ for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt === 2) throw error;
   }
 }
+assert.equal(
+  createHash('sha256').update(bytes).digest('hex'),
+  '7f1c23529631cdbafe2af21134ab5340c0c8a251c9ba2e456b2fad6b06855f70',
+  'The CC0 landscape changed; review provenance before updating its digest.',
+);
 await mkdir(directory, { recursive: true });
 await writeFile(directory + '/lake.jpg', bytes);
 const provenance = {

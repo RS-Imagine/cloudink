@@ -89,7 +89,7 @@
 .article-shell article .article-body h3,
 .article-shell article .article-body h4 {
   font-family: var(--ci-font-reading);
-  scroll-margin-top: 112px;
+  scroll-margin-top: 80px;
 }
 .article-shell article .article-body h2 {
   margin: 48px 0 24px;

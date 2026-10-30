@@ -529,8 +529,9 @@
     margin-bottom: 16px;
   }
   .home-hero h1 {
+    max-width: none;
     margin-bottom: 16px;
-    font-size: 48px;
+    font-size: 36px;
   }
   .home-hero .home-intro > p {
     font-size: 18px;
@@ -605,7 +606,7 @@
     gap: 24px;
     padding: 8px 8px 24px;
   }
-  .home-feature .home-card-copy {
+  .home-feature:has(.home-thumbnail) .home-card-copy {
     padding: 0 16px;
   }
   .home-feature .home-thumbnail img {

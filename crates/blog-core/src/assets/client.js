@@ -258,34 +258,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (motion && !reducedMotion.matches && 'IntersectionObserver' in window) {
-          const pending = new Map();
           const observer = new IntersectionObserver(entries => {
             for (const entry of entries) {
               if (!entry.isIntersecting) continue;
               observer.unobserve(entry.target);
-              entry.target.style.opacity = pending.get(entry.target);
-              pending.delete(entry.target);
               motion.enter(entry.target, { kind: 'reveal' });
             }
           }, { threshold: 0.08 });
           for (const card of swupContainer.querySelectorAll('.home-card')) {
-            if (card.getBoundingClientRect().top < innerHeight) continue;
-            pending.set(card, card.style.opacity);
-            card.style.opacity = '0';
-            observer.observe(card);
+            if (card.getBoundingClientRect().top >= innerHeight) observer.observe(card);
           }
-          const finishReveals = () => {
-            observer.disconnect();
-            for (const [card, opacity] of pending) card.style.opacity = opacity;
-            pending.clear();
-          };
-          const motionChange = () => {
-            if (reducedMotion.matches) finishReveals();
-          };
-          reducedMotion.addEventListener('change', motionChange);
           cleanupFunctions.push(() => {
-            finishReveals();
-            reducedMotion.removeEventListener('change', motionChange);
+            observer.disconnect();
             motion.cancelWithin(swupContainer);
           });
         }

@@ -197,9 +197,15 @@ export async function verifyLongReading(browser, origin, output, engine) {
     await page.locator('.toc-link').last().click();
     const heading = page.locator('.article-body h2').last();
     await expect(heading).toBeFocused();
+    const headerBottom = await page.locator('.reader-header').evaluate((node) =>
+      node.getBoundingClientRect().bottom,
+    );
     await expect
-      .poll(() => heading.evaluate((node) => Math.abs(node.getBoundingClientRect().top - 32)))
-      .toBeLessThan(50);
+      .poll(() => heading.evaluate((node) => node.getBoundingClientRect().top))
+      .toBeGreaterThanOrEqual(headerBottom + 8);
+    await expect
+      .poll(() => heading.evaluate((node) => node.getBoundingClientRect().top))
+      .toBeLessThan(headerBottom + 64);
     const savedY = await page.evaluate(() => scrollY);
     await page.evaluate(() => {
       void window.swup.navigate('/posts/white-space/');

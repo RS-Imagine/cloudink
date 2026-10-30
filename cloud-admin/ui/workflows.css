@@ -188,6 +188,12 @@ button[aria-busy='true']::before,
   color: var(--ci-primary);
   box-shadow: var(--ci-shadow-soft);
 }
+.editor-image-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 .editor-image-actions {
   display: flex;
   flex-wrap: wrap;
@@ -765,61 +771,6 @@ button[aria-busy='true']::before,
   background: var(--ci-error-container);
   border-color: var(--ci-error);
 }
-body:has(dialog[open]) {
-  overflow: hidden;
-}
-.confirmation-dialog,
-.image-preview-dialog {
-  max-height: 85dvh;
-  padding: 32px;
-  border: 1px solid var(--ci-divider);
-  border-radius: 24px;
-  background: var(--ci-elevated);
-  color: var(--ci-text);
-  box-shadow: var(--ci-shadow-overlay);
-}
-.confirmation-dialog {
-  width: min(480px, calc(100vw - 32px));
-}
-.confirmation-dialog h2 {
-  margin: 12px 0;
-  font: 600 30px/36px var(--ci-font-reading);
-}
-.confirmation-dialog p {
-  margin-block: 16px;
-  color: var(--ci-muted);
-  font: 16px/24px var(--ci-font-ui);
-  overflow-wrap: anywhere;
-}
-.confirmation-dialog .form-actions {
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 24px;
-}
-.confirmation-dialog button,
-.image-preview-dialog button {
-  min-height: 48px;
-  border-radius: 12px;
-  font: 600 14px/20px var(--ci-font-ui);
-}
-.confirmation-dialog .destructive {
-  background: var(--ci-error-container);
-  color: var(--ci-error);
-  border-color: var(--ci-error);
-}
-.image-preview-dialog .dialog-heading {
-  gap: 24px;
-  align-items: start;
-}
-.image-preview-dialog h3 {
-  font: 600 24px/32px var(--ci-font-reading);
-  overflow-wrap: anywhere;
-}
-.image-preview-dialog > img {
-  max-height: 65dvh;
-  border-radius: 16px;
-}
 @media (max-width: 1099px) {
   #show-split:not([data-ci-pane-control]) {
     display: none;
@@ -840,13 +791,13 @@ body:has(dialog[open]) {
     padding: 12px;
   }
   .editor-save-status {
+    order: -1;
     flex-basis: 100%;
   }
   .toolbar-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    margin-inline-start: 0;
+    display: flex;
+    width: auto;
+    margin-inline-start: auto;
   }
   .toolbar-actions button {
     padding-inline: 4px;
@@ -877,8 +828,11 @@ body:has(dialog[open]) {
     padding-inline: 8px;
   }
   .editor-image-actions {
-    width: 100%;
+    flex-wrap: nowrap;
     justify-content: flex-end;
+  }
+  .editor-image-actions button span {
+    display: none;
   }
   .editor-panes {
     height: 62dvh;
