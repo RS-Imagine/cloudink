@@ -20,7 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (focus) menuSummary.focus({ preventScroll: true });
       };
       readerMenu?.addEventListener('click', event => {
-        if (event.target.closest('a[href]')) closeReaderMenu();
+        if (event.target.closest('a[href]') || event.target.classList.contains('reader-menu-links')) closeReaderMenu();
+      });
+      readerMenu?.addEventListener('focusout', event => {
+        if (event.relatedTarget && !readerMenu.contains(event.relatedTarget)) closeReaderMenu();
       });
       document.addEventListener('click', event => {
         if (readerMenu && !readerMenu.contains(event.target)) closeReaderMenu();
@@ -252,6 +255,23 @@ document.addEventListener('DOMContentLoaded', () => {
             favicon.setAttribute('type', iconURL.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml');
           }
           document.querySelectorAll('.site-mark img').forEach(image => image.setAttribute('src', iconURL));
+        }
+
+        if (motion && !reducedMotion.matches && 'IntersectionObserver' in window) {
+          const observer = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              observer.unobserve(entry.target);
+              motion.enter(entry.target, { kind: 'reveal' });
+            }
+          }, { threshold: 0.08 });
+          for (const card of swupContainer.querySelectorAll('.home-card')) {
+            if (card.getBoundingClientRect().top >= innerHeight) observer.observe(card);
+          }
+          cleanupFunctions.push(() => {
+            observer.disconnect();
+            motion.cancelWithin(swupContainer);
+          });
         }
 
         const images = document.querySelectorAll('.article-body img');

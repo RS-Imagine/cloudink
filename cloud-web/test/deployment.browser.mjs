@@ -129,7 +129,7 @@ try {
   const staticPage = await noScript.newPage();
   await staticPage.goto('http://localhost:8791/');
   await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
-  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(33, 26, 22)');
+  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(19, 18, 9)');
   await expect(staticPage.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
   await staticPage.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(staticPage.locator('article h1')).toHaveText('Browser published mathematics');

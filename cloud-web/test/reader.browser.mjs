@@ -41,14 +41,16 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.toc-link[aria-current="location"]')).toHaveCount(1);
   await page.goto(origin + '/posts/slow-days/#' + encodeURIComponent(ids[0]));
   await page.reload();
+  const headerBottom = await page
+    .locator('.reader-header')
+    .evaluate((node) => node.getBoundingClientRect().bottom);
+  const target = page.locator('.article-body h2').first();
   await expect
-    .poll(() =>
-      page
-        .locator('.article-body h2')
-        .first()
-        .evaluate((node) => Math.abs(node.getBoundingClientRect().top - 32)),
-    )
-    .toBeLessThan(50);
+    .poll(() => target.evaluate((node) => node.getBoundingClientRect().top))
+    .toBeGreaterThanOrEqual(headerBottom + 8);
+  await expect
+    .poll(() => target.evaluate((node) => node.getBoundingClientRect().top))
+    .toBeLessThan(headerBottom + 64);
   await expect(page.locator('.article-body .katex')).toHaveCount(1);
   await expect(page.locator('.article-body code.hljs')).toHaveCount(1);
   await expect(page.locator('.article-body table')).toHaveAttribute('tabindex', '0');

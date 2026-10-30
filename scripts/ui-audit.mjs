@@ -5,7 +5,7 @@ import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mj
 import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
 import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
 import { verifyImageOptimizer } from '../cloud-web/test/image-optimizer.browser.mjs';
-// Isolated production theme and approved prototype review. Never uses Wrangler remote mode.
+// Isolated production theme review with separately labelled historical prototypes. Never uses Wrangler remote mode.
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, copyFile, readdir, rm } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
@@ -184,9 +184,17 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
   if (
     name === 'production' &&
     engine === 'chromium' &&
-    ['home', 'article', 'dashboard', 'editor', 'images', 'settings', 'login', 'setup'].includes(
-      screen,
-    ) &&
+    [
+      'home',
+      'home-sparse',
+      'article',
+      'dashboard',
+      'editor',
+      'images',
+      'settings',
+      'login',
+      'setup',
+    ].includes(screen) &&
     [1440, 390].includes(width)
   ) {
     console.log(
@@ -301,34 +309,9 @@ try {
   await admin.locator('#login-form input[name=password]').fill(password);
   await admin.locator('#login-submit').click();
   await expect(admin.locator('#home-view')).toBeVisible();
-  // Generate a generic local image; no external or production media is used.
-  const imageData = await admin.evaluate(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 640;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#d9e5d9';
-    context.fillRect(0, 0, 1080, 640);
-    context.fillStyle = '#f6f6e9';
-    context.beginPath();
-    context.arc(800, 140, 60, 0, Math.PI * 2);
-    context.fill();
-    for (const [color, y, offset] of [
-      ['#8ea58c', 340, 0],
-      ['#60816c', 440, 150],
-      ['#31594d', 570, -100],
-    ]) {
-      context.fillStyle = color;
-      context.beginPath();
-      context.moveTo(0, 640);
-      context.lineTo(0, y);
-      context.bezierCurveTo(280 + offset, y - 250, 650 + offset, y + 100, 1080, y - 120);
-      context.lineTo(1080, 640);
-      context.closePath();
-      context.fill();
-    }
-    return canvas.toDataURL('image/png').split(',')[1];
-  });
+  // CC0 landscape, uploaded through the real optimizer into ephemeral fixture R2.
+  const imageData = await readFile('build-work/editorial-photo/lake.jpg');
+  await copyFile('build-work/editorial-photo/source.json', resolve(output, 'photo-source.json'));
   // Generate real Rust/WASM pages through the local publication UI.
   for (const post of demoPosts.slice(0, 3)) {
     await openPostSwitcher(admin);
@@ -336,16 +319,81 @@ try {
     await expect(admin.locator('#title')).toHaveValue(post.title);
     if (post.slug === 'slow-days') {
       await admin.locator('#image-files').setInputFiles({
-        name: '山间来信.png',
-        mimeType: 'image/png',
-        buffer: Buffer.from(imageData, 'base64'),
+        name: '湖畔来信.jpg',
+        mimeType: 'image/jpeg',
+        buffer: imageData,
       });
       await expect(admin.locator('#notice')).toContainText('图片已上传');
+      await expect(admin.locator('#upload-image svg')).toHaveCount(1);
     }
     await admin.locator('#publish-post').click();
     await expect(admin.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
     await expect(admin.locator('#publish-banner')).toContainText('已上线');
   }
+  // Exercise actual Rust templates with sparse content, without production data or art.
+  const sparseFiles = await admin.evaluate(async () => {
+    const worker = new Worker('/preview.worker.js', { type: 'module' });
+    try {
+      return await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Sparse fixture render timed out')), 30000);
+        worker.onmessage = ({ data }) => {
+          clearTimeout(timer);
+          data.error ? reject(new Error(data.error)) : resolve(data.result);
+        };
+        worker.onerror = (event) => {
+          clearTimeout(timer);
+          reject(new Error(event.message));
+        };
+        worker.postMessage({
+          id: 1,
+          type: 'site',
+          release: {
+            schema_version: 1,
+            id: 'visual-review-only',
+            created_at: '2026-10-01T00:00:00Z',
+            site: {
+              title: 'CloudInk',
+              bigTitle: '让平凡的日子，有迹可循。',
+              subtitle: '认真生活，慢慢记录。',
+              author: '林间',
+              description: '记录生活的细微，也保存技术的思考。',
+              themePalette: 'brown',
+              homeIllustration: null,
+              about: '',
+            },
+            markdown_posts: {
+              'first-note':
+                '+++\ntitle = "从一篇文章开始"\nslug = "first-note"\ndate = "2026-10-01"\ndescription = "不必等到万事俱备，写下此刻正在发生的生活。"\n+++\n\n## 开始记录\n\n每一段值得记住的日子，都可以成为一篇文章。',
+            },
+            about_markdown: null,
+          },
+        });
+      });
+    } finally {
+      worker.terminate();
+    }
+  });
+  const sparseContext = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    reducedMotion: 'reduce',
+  });
+  await watch(sparseContext);
+  await sparseContext.route(origin + '/', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: sparseFiles['index.html'] }),
+  );
+  for (const width of widths)
+    for (const theme of themes) {
+      const page = await sparseContext.newPage();
+      await page.setViewportSize({ width, height: width > 759 ? 1000 : 844 });
+      await page.addInitScript((value) => localStorage.setItem('theme', value), theme);
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto(origin + '/');
+      await expect(page.locator('.home-illustration')).toHaveCount(0);
+      await expect(page.locator('.post-card')).toHaveCount(1);
+      await capture(page, 'production', 'home-sparse', theme, width);
+      await page.close();
+    }
+  await sparseContext.close();
   for (const width of widths)
     for (const theme of themes) {
       await context.setDefaultTimeout(15000);
@@ -843,7 +891,9 @@ try {
               '.png';
             return (
               '<figure><figcaption>' +
-              (sample.version === 'production' ? '正式界面（当前提交）' : '已确认的设计参考') +
+              (sample.version === 'production'
+                ? '正式界面（当前提交）'
+                : '历史 UI 2.0 原型（仅存档）') +
               '</figcaption><a href="' +
               file +
               '"><img loading="lazy" src="' +
@@ -886,7 +936,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}.supplemental{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:24px}.supplemental figcaption{overflow-wrap:anywhere;font-size:13px}.supplemental img{aspect-ratio:3/2;object-fit:contain;background:#e9ede6}summary{cursor:pointer;padding:20px 0;font-weight:600}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk · 书刊设计全界面审阅</h1><p><a href="editorial-admin-review-chromium.html">后台升级前后对比</a> · <a href="editorial-admin-review-firefox.html">Firefox 后台</a> · <a href="editorial-admin-review-webkit.html">WebKit 后台</a></p><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">历史 UI 2.0 原型</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39238605433/artifacts/12180362373">下载 PR-08 上游基线</a>。左侧为当前正式界面，右侧为历史 UI 2.0 原型，不能将原型当作升级前截图；升级前请使用 PR-00 基线包。补充文字间距截图以 release-text-spacing 开头。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}.supplemental{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:24px}.supplemental figcaption{overflow-wrap:anywhere;font-size:13px}.supplemental img{aspect-ratio:3/2;object-fit:contain;background:#e9ede6}summary{cursor:pointer;padding:20px 0;font-weight:600}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk · 棕褐阅读与写作界面审阅</h1><p><a href="editorial-admin-review-chromium.html">后台升级前后对比</a> · <a href="editorial-admin-review-firefox.html">Firefox 后台</a> · <a href="editorial-admin-review-webkit.html">WebKit 后台</a></p><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">历史 UI 2.0 原型</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39238605433/artifacts/12180362373">下载 PR-08 上游基线</a>。左侧为当前正式界面，右侧为历史 UI 2.0 原型，不能将原型当作升级前截图；升级前请使用 PR-00 基线包。补充文字间距截图以 release-text-spacing 开头。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +

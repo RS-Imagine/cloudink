@@ -68,6 +68,10 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
     );
+    const metadata = page.locator('.post-details');
+    const expanded = await metadata.evaluate((node) => node.open);
+    if (!expanded) await metadata.locator('summary').click();
+    await expect(page.locator('#download-post')).toBeVisible();
     for (const id of [
       'save-post',
       'publish-post',
@@ -83,6 +87,7 @@ export async function verifyWorkflows(browser, origin, output, engine) {
         engine + '/' + id + ' remains touchable: ' + JSON.stringify({ width, theme, rect }),
       );
     }
+    if (!expanded) await metadata.locator('summary').click();
     if (width < 1100) {
       await expect(page.locator('#show-split')).toBeHidden();
       await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');

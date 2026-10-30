@@ -155,7 +155,9 @@
     const visual = previous ? env.getComputedStyle(element) : null;
     const start = {
       opacity: visual?.opacity || (enter ? (kind === 'content' ? '0.7' : '0') : '1'),
-      translate: visual?.translate || (enter && kind !== 'content' ? '0 8px' : '0 0'),
+      translate:
+        visual?.translate ||
+        (enter && kind !== 'content' ? (kind === 'reveal' ? '0 24px' : '0 8px') : '0 0'),
     };
     previous?.cancel();
     if (signal?.aborted) return { finished: Promise.resolve(false), cancel() {} };
@@ -176,7 +178,12 @@
           translate: enter || kind === 'content' ? '0 0' : '0 6px',
         },
       ],
-      { duration: duration(enter), delay, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'both' },
+      {
+        duration: kind === 'reveal' ? 650 : duration(enter),
+        delay,
+        easing: 'cubic-bezier(0.22,1,0.36,1)',
+        fill: 'both',
+      },
     );
     const settle = (ok) => {
       if (done) return;

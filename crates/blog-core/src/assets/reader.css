@@ -1,14 +1,14 @@
-/* Reading surfaces share the same tokens as the site and writing preview. */
+/* Reading is the quiet, continuous surface of the CloudInk journal. */
 .article-shell {
   max-width: 720px;
   margin-inline: auto;
-  padding-top: 48px;
+  padding-top: 64px;
 }
 .reader-article {
   display: grid;
-  grid-template-columns: minmax(0, 680px) 160px;
-  gap: 48px;
-  max-width: 888px;
+  grid-template-columns: minmax(0, 680px) 192px;
+  gap: 64px;
+  max-width: 936px;
 }
 .article-shell article {
   min-width: 0;
@@ -17,39 +17,56 @@
   margin: 0;
 }
 .article-heading {
-  margin-bottom: 36px;
+  margin-bottom: 40px;
 }
 .article-shell .article-back,
 .article-end .back-link {
-  min-height: 44px;
-  font-size: 13px;
+  display: inline-flex;
   align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--ci-container);
+  color: var(--ci-primary);
+  font: 600 14px/20px var(--ci-font-ui);
 }
 .article-shell article h1 {
-  max-width: 8em;
+  max-width: 680px;
+  margin: 24px 0;
+  font: 600 60px/1.12 var(--ci-font-reading);
+  letter-spacing: -0.035em;
   text-wrap: balance;
-  margin: 24px 0 22px;
-  font: 600 clamp(2rem, 3.7vw, 3.25rem)/1.25 var(--ci-font-reading);
-  letter-spacing: 0;
 }
 .article-shell article h1 .title-phrase {
   display: inline-block;
   max-width: 100%;
 }
 .article-shell article .article-description {
-  font: 17px/1.8 var(--ci-font-reading);
-  color: var(--ci-muted);
   margin: 0 0 24px;
   padding: 0;
   border: 0;
+  color: var(--ci-muted);
+  font: 18px/28px var(--ci-font-reading);
+  text-wrap: pretty;
 }
 .article-author {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding-bottom: 28px;
+  padding-bottom: 32px;
   border-bottom: 1px solid var(--ci-divider);
-  font: 14px/1.6 var(--ci-font-ui);
+  font: 14px/20px var(--ci-font-ui);
+}
+.home-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--ci-container);
+  color: var(--ci-primary);
+  font: 600 20px/28px var(--ci-font-reading);
 }
 .article-author > div {
   min-width: 0;
@@ -60,120 +77,127 @@
 .article-details {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-top: 5px;
-  font-size: 12px;
+  gap: 8px 16px;
+  margin-top: 8px;
+  font: 12px/16px var(--ci-font-ui);
 }
 .article-body {
   overflow-wrap: anywhere;
-  font: 17px/1.95 var(--ci-font-reading);
+  font: 18px/32px var(--ci-font-reading);
 }
 .article-shell article .article-body h2,
 .article-shell article .article-body h3,
 .article-shell article .article-body h4 {
   font-family: var(--ci-font-reading);
-  scroll-margin-top: 32px;
+  scroll-margin-top: 80px;
 }
 .article-shell article .article-body h2 {
-  font-size: 25px;
-  margin: 44px 0 20px;
+  margin: 48px 0 24px;
+  font-size: 30px;
+  line-height: 40px;
 }
 .article-shell article .article-body h3 {
-  font-size: 21px;
+  font-size: 24px;
+  line-height: 32px;
 }
 .article-shell article .article-body h4 {
-  font-size: 18px;
+  font-size: 20px;
+  line-height: 28px;
 }
 .article-shell article .article-body p,
 .article-shell article .article-body ul,
 .article-shell article .article-body ol {
+  max-width: 65ch;
   margin-block: 24px;
 }
 .article-shell article .article-body blockquote {
-  margin: 28px 0;
-  padding: 4px 20px;
-  border-inline-start: 3px solid var(--ci-primary);
-  border-radius: 0;
-  background: transparent;
+  margin: 32px 0;
+  padding: 24px 32px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ci-container);
   color: var(--ci-primary);
 }
 .article-shell article .article-body blockquote p {
-  margin-block: 4px;
+  margin-block: 0;
 }
 .article-shell article figure {
   margin: 32px 0;
 }
 .article-shell article figcaption {
   margin-top: 12px;
-  text-align: start;
   color: var(--ci-muted);
-  font: 12px/1.7 var(--ci-font-ui);
+  text-align: start;
+  font: 12px/24px var(--ci-font-ui);
 }
 .article-shell article img {
-  border-radius: 4px;
+  border-radius: 16px;
 }
 .article-shell article code,
 .article-shell article pre {
   font-family: var(--ci-font-mono);
 }
 .article-shell article pre {
-  font-size: 13px;
-  line-height: 1.8;
-  padding: 22px;
-  border-radius: var(--ci-radius-md);
+  padding: 24px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 24px;
 }
 .code-block {
-  border-radius: var(--ci-radius-md);
+  padding-top: 56px;
+  border-radius: 16px;
   background: var(--ci-container);
-  padding-top: 52px;
 }
 .copy-code {
-  min-height: 44px;
-  top: 6px;
+  top: 4px;
   right: 8px;
-  padding: 6px 12px;
-  border-radius: var(--ci-radius-sm);
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
   background: var(--ci-surface);
   color: var(--ci-text);
-  font: 12px/1.5 var(--ci-font-ui);
+  font: 600 12px/16px var(--ci-font-ui);
 }
 .copy-status {
   font-family: var(--ci-font-ui);
 }
 .article-shell article table {
   border: 1px solid var(--ci-divider);
-  border-radius: var(--ci-radius-md);
-  font: 14px/1.8 var(--ci-font-ui);
+  border-radius: 16px;
+  font: 14px/24px var(--ci-font-ui);
 }
 .article-shell article th,
 .article-shell article td {
-  padding: 14px 18px;
+  padding: 16px;
 }
 .article-shell article thead th {
   background: var(--ci-container);
 }
 .article-shell .article-end {
-  margin-top: 44px;
+  margin-top: 48px;
   padding-top: 24px;
   align-items: center;
+  gap: 16px;
   font-family: var(--ci-font-ui);
 }
 .article-share-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 .article-end .share-button {
-  min-height: 44px;
-  padding: 10px 16px;
-  border-radius: 4px;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 12px;
   background: var(--ci-surface);
   color: var(--ci-text);
-  border: 1px solid var(--ci-divider);
+  font: 600 14px/20px var(--ci-font-ui);
 }
 .article-end #share-btn {
-  background: var(--ci-primary-container);
-  color: var(--ci-on-primary-container);
+  border-color: transparent;
+  background: var(--ci-primary);
+  color: var(--ci-on-primary);
 }
 .article-end #share-status {
   flex: 1 0 100%;
@@ -184,47 +208,47 @@
 .toc-container {
   position: sticky;
   inset: auto;
-  top: 32px;
+  top: 112px;
   width: 100%;
-  max-height: calc(100dvh - 64px);
-  padding: 26px 0 8px;
-  font-family: var(--ci-font-ui);
-  font-size: 13px;
+  max-height: calc(100dvh - 144px);
+  padding: 16px;
   overflow-y: auto;
-  transform: none;
-  background: transparent;
-  border-radius: 0;
+  border-radius: 16px;
+  background: var(--ci-container);
   box-shadow: none;
+  transform: none;
+  font: 12px/24px var(--ci-font-ui);
 }
 .toc-title {
+  margin: 0 0 12px;
   color: var(--ci-muted);
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
-  margin: 0 0 16px;
 }
 .toc-link {
-  min-height: 44px;
+  display: block;
+  min-height: 48px;
   margin: 0;
-  padding: 10px 14px;
-  line-height: 1.7;
-  font-size: 13px;
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ci-muted);
+  font: 14px/24px var(--ci-font-ui);
   text-decoration: none;
   overflow-wrap: anywhere;
-  border-inline-start: 2px solid var(--ci-divider);
 }
 .toc-link.toc-active {
+  padding-inline-start: 8px;
+  background: var(--ci-surface);
   color: var(--ci-primary);
-  border-color: var(--ci-primary);
-  background: transparent;
-  padding-inline-start: 14px;
 }
 .toc-link.toc-level-3 {
-  margin-inline-start: 10px;
+  margin-inline-start: 8px;
   font-size: 12px;
 }
 .toc-link.toc-level-4 {
-  margin-inline-start: 20px;
+  margin-inline-start: 16px;
   font-size: 12px;
 }
 .mobile-toc-btn,
@@ -241,7 +265,7 @@
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
   padding: 64px 20px 20px;
-  border-radius: 8px;
+  border-radius: 24px;
   border: 1px solid var(--ci-divider);
   color: var(--ci-text);
   background: var(--ci-elevated);
@@ -256,7 +280,7 @@ dialog.search-modal::backdrop {
   min-width: 44px;
   padding: 10px 14px;
   border: 1px solid var(--ci-divider);
-  border-radius: 4px;
+  border-radius: 12px;
   background: var(--ci-container);
   color: var(--ci-text);
 }
@@ -271,7 +295,7 @@ dialog.search-modal::backdrop {
   min-height: 44px;
   color: var(--ci-on-primary-container);
   background: var(--ci-primary-container);
-  border-radius: 4px;
+  border-radius: 12px;
   text-decoration: none;
 }
 /* Native dialog supplies background inertness and focus containment. */
@@ -285,7 +309,7 @@ dialog.search-modal {
   margin: min(10vh, 80px) auto auto;
   padding: 0;
   border: 1px solid var(--ci-divider);
-  border-radius: 8px;
+  border-radius: 24px;
   color: var(--ci-text);
   background: var(--ci-elevated);
   box-shadow: var(--ci-shadow-overlay);
@@ -448,7 +472,7 @@ dialog.search-modal .search-input {
   .toc-close {
     display: block;
     min-height: 44px;
-    border-radius: 4px;
+    border-radius: 12px;
     padding: 10px 16px;
     margin-top: 16px;
     background: var(--ci-container);
@@ -458,24 +482,24 @@ dialog.search-modal .search-input {
 }
 @media (max-width: 759px) {
   .article-shell {
-    padding-top: 24px;
+    padding-top: 32px;
   }
   .article-shell article h1 {
-    font-size: 33px;
-    margin-top: 22px;
+    font-size: 36px;
+    margin-top: 24px;
   }
   .article-shell article .article-description {
     font-size: 16px;
   }
   .article-body {
-    font-size: 17px;
-    line-height: 1.95;
+    font-size: 18px;
+    line-height: 32px;
   }
   .article-shell article .article-body h2 {
-    font-size: 23px;
+    font-size: 24px;
   }
   .article-shell article .article-body blockquote {
-    padding: 16px 18px;
+    padding: 24px;
   }
   .article-shell article pre {
     padding: 18px;

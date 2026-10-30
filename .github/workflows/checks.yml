@@ -89,7 +89,7 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin 6b97a08cf93ef0a1a545f045d0660e17174cb258
           git fetch --no-tags --depth=1 origin 1b176737e055666836715d0b98255ce9de7418af
-          git fetch --no-tags --depth=1 origin 58312862a618c6fb831e18fa288624a9ac9b2582
+          git fetch --no-tags --depth=1 origin 4d3127976d42d58e4f6f1b81827f4d296d4f80d1
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
@@ -103,6 +103,8 @@ jobs:
         run: sudo apt-get install -y fonts-noto-cjk
       - name: Prepare public-domain real photo fixture
         run: node cloud-web/test/image-photo-fixture.mjs
+      - name: Prepare CC0 editorial landscape fixture
+        run: node cloud-web/test/editorial-photo-fixture.mjs
       - name: Capture production themes and approved design reference
         run: npm run test:ui:audit
       - name: Save UI review, screenshots and measurements
@@ -123,6 +125,9 @@ jobs:
           path: |
             build-work/ui-audit/production-home-1440-light-chromium.png
             build-work/ui-audit/production-home-390-light-chromium.png
+            build-work/ui-audit/production-home-sparse-1440-light-chromium.png
+            build-work/ui-audit/production-home-sparse-390-light-chromium.png
+            build-work/ui-audit/production-editor-390-light-chromium.png
             build-work/ui-audit/production-article-1440-light-chromium.png
             build-work/ui-audit/production-article-390-light-chromium.png
             build-work/ui-audit/production-dashboard-1440-light-chromium.png

@@ -152,6 +152,7 @@ try {
   await expect(page.locator('#title')).toHaveValue('beta');
   await sleep(900);
   await expect(page.locator('#title')).toHaveValue('beta');
+  await page.locator('.post-details summary').click();
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#download-post').click();
   await downloadPromise;
@@ -175,7 +176,10 @@ try {
   await expect(page.locator('#title')).toHaveValue('beta');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.locator('#search')).toBeVisible();
+  await expect(page.locator('#post-switcher summary')).toBeVisible();
+  await openPostSwitcher(page);
+  await expect(page.locator('#studio-sheet-search #search')).toBeVisible();
+  await page.keyboard.press('Escape');
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,

@@ -114,7 +114,7 @@ fn home_illustration(config: &SiteConfig) -> String {
 
 /// The first managed Markdown image is a quiet, optional index thumbnail.
 /// External URLs and raw HTML are not fetched just to decorate an index.
-fn post_thumbnail(post: &Post) -> String {
+fn post_thumbnail(post: &Post, featured: bool) -> String {
     use pulldown_cmark::{Event, Options, Parser, Tag};
 
     for event in Parser::new_ext(&post.body_markdown, Options::all()) {
@@ -148,8 +148,13 @@ fn post_thumbnail(post: &Post) -> String {
         {
             continue;
         }
+        let sizes = if featured {
+            "(max-width: 759px) calc(100vw - 48px), (max-width: 1199px) 36vw, 400px"
+        } else {
+            "(max-width: 759px) 88px, 180px"
+        };
         return format!(
-            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="180" height="110" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 180px"></figure>"#,
+            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="180" height="110" loading="lazy" decoding="async" sizes="{sizes}"></figure>"#,
             escape_html(&dest_url)
         );
     }
@@ -193,7 +198,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
                 )
             })
             .unwrap_or_default();
-        let art = post_thumbnail(post);
+        let art = post_thumbnail(post, featured);
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
@@ -227,7 +232,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             r#"<div class="home-layout">
 <section class="hero home-hero{illustrated}" aria-labelledby="home-title">
   <div class="home-intro">
-    <div class="home-eyebrow"><span aria-hidden="true"></span> {site_title}</div>
+    <div class="home-eyebrow"><span aria-hidden="true"></span> {author}</div>
     <h1 id="home-title">{title}</h1>
     <p class="{subtitle_class}">{subtitle}</p>
     <p class="home-description">{description}</p>
@@ -245,8 +250,8 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
                 " has-illustration"
             },
             illustration = home_illustration(config),
-            site_title = escape_html(&config.title),
-            title = escape_html(title),
+            author = escape_html(&config.author),
+            title = display_title(title),
             subtitle = escape_html(&config.subtitle),
             subtitle_class = home_subtitle_class(&config.subtitle),
             description = escape_html(&config.description),
@@ -518,7 +523,7 @@ fn page(
             <svg class="moon-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
           </button>
           <details class="reader-menu" id="reader-menu">
-            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
+            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
             <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
           </details>
         </div>

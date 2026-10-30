@@ -21,7 +21,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   const mode = page.locator('select[data-theme-mode]');
   await page.goto(origin + '/');
   const publishedPalette = await root.getAttribute('data-palette');
-  const darkBackground = publishedPalette === 'brown' ? 'rgb(33, 26, 22)' : 'rgb(20, 27, 23)';
+  const darkBackground = publishedPalette === 'brown' ? 'rgb(19, 18, 9)' : 'rgb(24, 24, 24)';
   await expect(root).toHaveAttribute('data-theme', 'light');
   await expect(root).toHaveAttribute('data-theme-mode', 'auto');
   await expect(mode).toHaveValue('auto');

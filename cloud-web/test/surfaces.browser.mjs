@@ -154,19 +154,10 @@ export async function verifySurfaces(browser, origin, output, engine) {
       await page.evaluate((palette) => CloudInkTheme.setPalette(palette), palette);
       await openReaderMenu(page);
       if (supported) {
-        const details = await page.locator('.reader-menu-links').evaluate((node) => ({
-          root: { ...document.documentElement.dataset },
-          open: node.parentElement.open,
-          blur: getComputedStyle(node).getPropertyValue('--ci-glass-blur'),
-          background: getComputedStyle(node).backgroundColor,
-          supports: CSS.supports(
-            '((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) and (color: color-mix(in srgb, black, transparent))',
-          ),
-        }));
-        assert.notEqual(
+        assert.equal(
           await filter(page.locator('.reader-menu-links')),
           'none',
-          JSON.stringify(details),
+          'Full-height navigation stays opaque to avoid full-screen blur',
         );
         contrasts.push(...(await contrast(page, '.reader-menu-links')));
       }
@@ -322,6 +313,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   await expect(staticPage.locator('[data-effects-control]')).toBeHidden();
   await staticPage.locator('#reader-menu summary').click();
   assert.equal(await filter(staticPage.locator('.reader-menu-links')), 'none');
+  await staticPage.locator('#reader-menu summary').click();
   await staticPage.locator('.post-card h2 a').first().click();
   await expect(staticPage.locator('article h1')).toBeVisible();
   await staticContext.close();
