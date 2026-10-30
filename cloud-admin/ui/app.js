@@ -444,7 +444,7 @@ $('setup-form').addEventListener('submit', async (event) => {
   });
 });
 $('publish-welcome').addEventListener('click', () =>
-  action('publish-welcome', '正在发布首页…', () => startPublish({ rebuild: true })),
+  action('publish-welcome', '正在生成页面…', () => startPublish({ rebuild: true })),
 );
 
 function badge(post) {
@@ -542,7 +542,7 @@ function renderLists() {
 async function refresh() {
   const data = await api('/api/posts');
   posts = data.posts;
-  $('publish-welcome').hidden = data.publicInitialized;
+  $('publish-welcome').textContent = data.publicInitialized ? '更新网站排版' : '发布博客首页';
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
@@ -843,6 +843,7 @@ function showPublishing(state) {
           : '发布网站信息';
     }
   }
+  $('publish-welcome').disabled = publishingBusy || publishRequest;
   const banner = $('publish-banner');
   banner.hidden = !state;
   if (!state) return;

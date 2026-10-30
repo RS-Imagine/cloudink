@@ -49,3 +49,14 @@ fn empty_article_keeps_reading_tools_and_an_accessible_search_shell() {
     assert!(html.contains("id=\"search-status\""));
     assert!(html.contains("class=\"reader-toc-slot\""));
 }
+
+#[test]
+fn grouped_display_titles_escape_each_clause_and_keep_plain_metadata() {
+    let mut post = article();
+    post.front_matter.title = "把日子，写成一封长信 <img src=x>".into();
+    let html = render::render_post(&SiteConfig::default(), &post, "test");
+    assert!(html.contains(r#"<span class="title-phrase">把日子，</span><wbr>"#));
+    assert!(html.contains("写成一封长信 &lt;img src=x&gt;</span>"));
+    assert!(!html.contains("<img src=x>"));
+    assert!(html.contains("<title>把日子，写成一封长信 &lt;img src=x&gt;"));
+}

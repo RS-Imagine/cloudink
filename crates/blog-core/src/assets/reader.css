@@ -6,13 +6,13 @@
 }
 .reader-article {
   display: grid;
-  grid-template-columns: minmax(0, 700px) 180px;
-  gap: 56px;
-  max-width: 936px;
+  grid-template-columns: minmax(0, 680px) 160px;
+  gap: 48px;
+  max-width: 888px;
 }
 .article-shell article {
   min-width: 0;
-  max-width: 720px;
+  max-width: 680px;
   width: 100%;
   margin: 0;
 }
@@ -26,14 +26,18 @@
   align-items: center;
 }
 .article-shell article h1 {
-  max-width: 18ch;
+  max-width: 8em;
   text-wrap: balance;
   margin: 24px 0 22px;
-  font: 500 clamp(2rem, 4vw, 3.5rem)/1.35 var(--ci-font-reading);
+  font: 600 clamp(2rem, 3.7vw, 3.25rem)/1.25 var(--ci-font-reading);
   letter-spacing: 0;
 }
+.article-shell article h1 .title-phrase {
+  display: inline-block;
+  max-width: 100%;
+}
 .article-shell article .article-description {
-  font: 18px/1.8 var(--ci-font-reading);
+  font: 17px/1.8 var(--ci-font-reading);
   color: var(--ci-muted);
   margin: 0 0 24px;
   padding: 0;
@@ -62,7 +66,7 @@
 }
 .article-body {
   overflow-wrap: anywhere;
-  font: 18px/1.95 var(--ci-font-reading);
+  font: 17px/1.95 var(--ci-font-reading);
 }
 .article-shell article .article-body h2,
 .article-shell article .article-body h3,
@@ -87,7 +91,7 @@
 }
 .article-shell article .article-body blockquote {
   margin: 28px 0;
-  padding: 18px 24px;
+  padding: 4px 20px;
   border-inline-start: 3px solid var(--ci-primary);
   border-radius: 0;
   background: transparent;
@@ -212,7 +216,7 @@
 .toc-link.toc-active {
   color: var(--ci-primary);
   border-color: var(--ci-primary);
-  background: var(--ci-state-hover);
+  background: transparent;
   padding-inline-start: 14px;
 }
 .toc-link.toc-level-3 {

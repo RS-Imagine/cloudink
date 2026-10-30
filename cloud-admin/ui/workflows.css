@@ -15,7 +15,7 @@ button[aria-busy='true'] {
   top: 0;
   z-index: 8;
   margin: 0;
-  padding: 16px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--ci-divider);
   border-radius: 0;
   background: var(--ci-bg);
@@ -58,13 +58,14 @@ button[aria-busy='true'] {
 .editor-view-switch button,
 .editor-danger-zone button,
 .image-actions button {
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
   font-size: 13px;
   padding: 10px 14px;
   border-radius: var(--ci-radius-md);
 }
 .editor-document {
-  padding: 40px 4px 0;
+  padding: 24px 4px 0;
 }
 .editor-field-label {
   display: block;
@@ -82,11 +83,11 @@ button[aria-busy='true'] {
   font-size: clamp(32px, 3.5vw, 48px);
   line-height: 1.45;
   letter-spacing: 0;
-  padding: 8px 0;
-  margin-bottom: 24px;
+  padding: 4px 0;
+  margin-bottom: 16px;
   color: var(--ci-text);
   background: transparent;
-  font-weight: 500;
+  font-weight: 600;
   border-radius: 0;
   border: 0;
 }
@@ -94,7 +95,7 @@ button[aria-busy='true'] {
   font-size: 15px;
   line-height: 1.8;
   padding: 8px 0;
-  min-height: 80px;
+  min-height: 56px;
   background: transparent;
   border-radius: 0;
   color: var(--ci-muted);
@@ -111,7 +112,7 @@ button[aria-busy='true'] {
   margin-top: 16px;
   border-bottom: 1px solid var(--ci-divider);
   font-size: 13px;
-  margin: 24px 0 0;
+  margin: 16px 0 0;
   border-top: 1px solid var(--ci-divider);
 }
 .post-details summary {
@@ -148,7 +149,7 @@ button[aria-busy='true'] {
   flex-wrap: wrap;
   gap: 16px;
   margin: 0;
-  padding: 24px 0;
+  padding: 12px 0;
 }
 .editor-view-switch {
   display: flex;
@@ -268,11 +269,11 @@ button[aria-busy='true'] {
 .workflow-heading h1,
 .images-view h1 {
   margin: 10px 0 12px;
-  font-size: 42px;
+  font-size: 36px;
   line-height: 1.4;
   letter-spacing: 0;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .workflow-heading p,
 .images-view .section-heading p {
@@ -412,7 +413,7 @@ button[aria-busy='true'] {
   line-height: 1.6;
   margin-bottom: 8px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .image-card-body p {
   font-size: 12px;
@@ -545,11 +546,11 @@ button[aria-busy='true'] {
   border-bottom: 1px solid var(--ci-primary);
 }
 .settings-card h2 {
-  font-size: 26px;
+  font-size: 24px;
   margin: 0 0 6px;
   line-height: 1.4;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .settings-card-heading p {
   margin: 0;
@@ -591,7 +592,7 @@ button[aria-busy='true'] {
 .appearance-settings legend {
   padding-inline: 8px;
   font-size: 20px;
-  font-weight: 500;
+  font-weight: 600;
   padding: 0 12px 0 0;
   font-family: var(--ci-font-reading);
 }
@@ -862,7 +863,7 @@ body:has(dialog[open]) {
     padding-inline: 6px;
   }
   .editor-document {
-    padding: 28px 0 0;
+    padding: 20px 0 0;
   }
   .title-input {
     font-size: 30px;
@@ -871,7 +872,7 @@ body:has(dialog[open]) {
     font-size: 16px;
   }
   .pane-heading {
-    padding: 18px 0;
+    padding: 12px 0;
     gap: 12px;
   }
   .editor-view-switch {

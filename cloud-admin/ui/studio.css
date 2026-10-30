@@ -98,10 +98,10 @@
 }
 .workspace {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1160px;
   min-width: 0;
   margin-inline: auto;
-  padding: 32px 56px 80px;
+  padding: 28px 44px 72px;
 }
 .workspace-header {
   min-height: 44px;
@@ -246,6 +246,18 @@
   gap: 16px;
   margin-bottom: 24px;
 }
+.app[data-view='editor'] .workspace-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+}
+.app[data-view='editor'] .article-browser {
+  margin-bottom: 12px;
+}
+.app[data-view='editor'] .publish-banner[data-tone='success'] {
+  margin: 0;
+  padding: 4px 0;
+  border: 0;
+}
 .article-browser .search {
   display: block;
   flex: 1;
@@ -333,12 +345,12 @@
   overflow-wrap: anywhere;
 }
 .home-intro h1 {
-  font-size: clamp(36px, 3.8vw, 58px);
+  font-size: clamp(34px, 3.4vw, 48px);
   line-height: 1.4;
   letter-spacing: 0;
   margin: 10px 0 14px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .home-intro p,
 .home-intro .eyebrow {
@@ -368,8 +380,8 @@
   flex: none;
   opacity: 0.8;
   padding: 0;
-  width: 160px;
-  height: 190px;
+  width: 140px;
+  height: 170px;
   object-fit: contain;
 }
 .dashboard-heading {
@@ -382,7 +394,7 @@
   margin: 0 0 6px;
   font-size: 24px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 #post-count {
   font-size: 13px;
@@ -455,7 +467,7 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .article-card p {
   grid-column: 1;
@@ -536,7 +548,7 @@
   font-size: 18px;
   margin: 0 0 10px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .dashboard-tip p {
   font-size: 13px;
@@ -553,7 +565,7 @@
   font-size: 38px;
   margin: 0 0 28px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .app[data-view='posts'] .home-intro,
 .app[data-view='posts'] .dashboard-tips {
@@ -575,8 +587,7 @@
   background: var(--ci-surface);
   border: 1px solid var(--ci-divider);
   box-shadow: none;
-  padding: 40px;
-  border-color: var(--ci-outline);
+  padding: 36px;
 }
 .login-card {
   width: min(460px, 100%);
@@ -591,7 +602,7 @@
   line-height: 1.35;
   margin: 0 0 16px;
   font-family: var(--ci-font-reading);
-  font-weight: 500;
+  font-weight: 600;
 }
 .login-card label,
 .setup-card label {
@@ -644,6 +655,15 @@
 .publish-banner,
 .navigation-status {
   border-radius: 4px;
+}
+.publish-banner[data-tone='success'] {
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--ci-divider);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ci-muted);
+  font-size: 12px;
 }
 .studio-sr-only {
   position: absolute;
@@ -930,7 +950,7 @@
 }
 .auth-cover h2 {
   margin: 24px 0;
-  font: 500 clamp(38px, 4vw, 58px)/1.45 var(--ci-font-reading);
+  font: 600 clamp(38px, 4vw, 52px)/1.25 var(--ci-font-reading);
 }
 .auth-cover p {
   color: var(--ci-muted);

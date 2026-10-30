@@ -78,7 +78,10 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       'upload-image',
     ]) {
       const rect = await page.locator('#' + id).boundingBox();
-      assert.ok(rect.width >= 44 && rect.height >= 44, engine + '/' + id + ' remains touchable');
+      assert.ok(
+        rect.width >= 44 && rect.height >= 44,
+        engine + '/' + id + ' remains touchable: ' + JSON.stringify({ width, theme, rect }),
+      );
     }
     if (width < 1100) {
       await expect(page.locator('#show-split')).toBeHidden();

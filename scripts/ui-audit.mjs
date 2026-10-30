@@ -254,7 +254,7 @@ try {
       password,
       site: {
         title: 'CloudInk 演示博客',
-        bigTitle: '在日常里，\n写下回响。',
+        bigTitle: '在日常里，写下回响。',
         themePalette: 'brown',
         homeIllustration: 'default',
         author: '林间',

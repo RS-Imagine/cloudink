@@ -317,12 +317,12 @@ test('index thumbnails keep small sizes and lazy loading when responsive variant
     [],
     '<html><head></head><body><figure class="home-thumbnail"><img src="' +
       image.url +
-      '" alt="" width="216" height="132" loading="lazy" sizes="(max-width: 759px) 88px, 216px"></figure></body></html>',
+      '" alt="" width="216" height="132" loading="lazy" sizes="(max-width: 759px) 88px, 180px"></figure></body></html>',
   );
   assert.equal((await f.commit(pending)).status, 200);
   const html = await (await f.request('/')).text();
   assert.match(html, /srcset=/);
-  assert.match(html, /sizes="\(max-width: 759px\) 88px, 216px"/);
+  assert.match(html, /sizes="\(max-width: 759px\) 88px, 180px"/);
   assert.match(html, /loading="lazy"/);
   assert.match(html, /width="216" height="132"/);
 });

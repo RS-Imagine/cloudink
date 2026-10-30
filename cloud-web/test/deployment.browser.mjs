@@ -346,6 +346,47 @@ try {
   await expect(live.locator('article h1')).toBeVisible();
   await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
   await expect(live.locator('.site-mark img')).toHaveAttribute('src', '/favicon.svg');
+  // Updating layout must retain the published content and all unpublished work.
+  const bucket = await mf.getR2Bucket('STORAGE');
+  const beforeLayout = await (await bucket.get('state/published.json')).json();
+  const publishedBeforeLayout = await (await bucket.get(`releases/${beforeLayout.id}.json`)).json();
+  await page.locator('#site-form input[name=title]').fill('Unpublished website title');
+  await page.locator('#save-site').click();
+  await expect(page.locator('#notice')).toContainText('网站信息已保存');
+  await page.evaluate(async (slug) => {
+    const session = await (await fetch('/api/posts')).json();
+    const post = await (await fetch('/api/posts/' + slug)).json();
+    const saved = await fetch('/api/posts/' + slug, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf },
+      body: JSON.stringify({
+        source: post.source + '\n\nUnpublished layout test.',
+        etag: post.etag,
+      }),
+    });
+    if (!saved.ok) throw new Error(await saved.text());
+  }, slug);
+  const draftBeforeLayout = await bucket.head(`drafts/${slug}.md`);
+  await page.locator('#dashboard-nav').click();
+  await expect(page.locator('#publish-welcome')).toBeVisible();
+  await expect(page.locator('#publish-welcome')).toHaveText('更新网站排版');
+  await page.locator('#publish-welcome').click();
+  await expect(page.locator('#publish-welcome')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('#publish-banner')).toContainText('已上线');
+  const afterLayout = await (await bucket.get('state/published.json')).json();
+  assert.notEqual(afterLayout.id, beforeLayout.id);
+  const publishedAfterLayout = await (await bucket.get(`releases/${afterLayout.id}.json`)).json();
+  assert.deepEqual(publishedAfterLayout.site, publishedBeforeLayout.site);
+  assert.deepEqual(publishedAfterLayout.markdown_posts, publishedBeforeLayout.markdown_posts);
+  assert.equal((await bucket.head(`drafts/${slug}.md`)).etag, draftBeforeLayout.etag);
+  assert.equal(
+    (await (await bucket.get('draft-site.json')).json()).title,
+    'Unpublished website title',
+  );
+  await page.locator('#settings').click();
+  await page.locator('#site-form input[name=title]').fill(publishedBeforeLayout.site.title);
+  await page.locator('#save-site').click();
+  await expect(page.locator('#notice')).toContainText('网站信息已保存');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

@@ -149,11 +149,32 @@ fn post_thumbnail(post: &Post) -> String {
             continue;
         }
         return format!(
-            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="216" height="132" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 216px"></figure>"#,
+            r#"<figure class="home-thumbnail"><img src="{}" alt="" width="180" height="110" loading="lazy" decoding="async" sizes="(max-width: 759px) 88px, 180px"></figure>"#,
             escape_html(&dest_url)
         );
     }
     String::new()
+}
+
+fn home_subtitle_class(text: &str) -> &'static str {
+    let is_cjk = |c: char| matches!(c as u32, 0x2e80..=0x9fff | 0xac00..=0xd7af);
+    if text.chars().any(is_cjk) {
+        "home-subtitle"
+    } else {
+        "home-subtitle subtitle-italic"
+    }
+}
+
+/// Keep short clauses together, while allowing long clauses to wrap normally.
+fn display_title(title: &str) -> String {
+    title
+        .split_inclusive(['，', '。', '；', '：', '！', '？', ',', ';', ':', '!', '?'])
+        .map(|part| {
+            let text = escape_html(part);
+            format!(r#"<span class="title-phrase">{text}</span>"#)
+        })
+        .collect::<Vec<_>>()
+        .join("<wbr>")
 }
 
 /// Renders the blog index page listing all published posts.
@@ -208,14 +229,13 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
   <div class="home-intro">
     <div class="home-eyebrow"><span aria-hidden="true"></span> {site_title}</div>
     <h1 id="home-title">{title}</h1>
-    <p>{subtitle}</p>
+    <p class="{subtitle_class}">{subtitle}</p>
     <p class="home-description">{description}</p>
-    <div class="home-author"><span>{author}</span></div>
   </div>
   {illustration}
 </section>
 <section id="posts" aria-labelledby="posts-heading">
-  <div class="home-section-heading"><h2 id="posts-heading">最近的文字</h2><span>{count} 篇文章</span></div>
+  <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2><span>{count} 篇文章</span></div>
   <div class="grid home-post-grid">{cards}</div>
 </section>
 </div>"#,
@@ -228,7 +248,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             site_title = escape_html(&config.title),
             title = escape_html(title),
             subtitle = escape_html(&config.subtitle),
-            author = escape_html(&config.author),
+            subtitle_class = home_subtitle_class(&config.subtitle),
             description = escape_html(&config.description),
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
@@ -291,7 +311,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         date = escape_html(post.date()),
         updated = updated,
         minutes = minutes,
-        title = escape_html(post.title()),
+        title = display_title(post.title()),
         description = escape_html(post.description()),
         author = escape_html(&config.author),
         initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
