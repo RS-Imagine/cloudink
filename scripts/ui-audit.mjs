@@ -1,3 +1,4 @@
+import { verifyPostAddresses } from '../cloud-web/test/post-address.browser.mjs';
 import { verifyEditorialAdmin } from '../cloud-web/test/editorial-admin.browser.mjs';
 import { verifyHomeIllustrations } from '../cloud-web/test/home-illustration.browser.mjs';
 import { verifyLongReading } from '../cloud-web/test/long-reading.browser.mjs';
@@ -534,6 +535,7 @@ try {
     await verifyHomeIllustrations(localBrowser, origin, output, engine);
     await verifyEditorialAdmin(localBrowser, origin, output, engine);
     await verifyMarkdownImport(localBrowser, origin, output, engine);
+    await verifyPostAddresses(localBrowser, origin, output, engine);
     await verifyImageOptimizer(localBrowser, origin);
     await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
@@ -667,6 +669,7 @@ try {
     'cloud-admin/ui/preview.worker.generated.js',
     'cloud-admin/ui/image.worker.generated.js',
     'cloud-admin/ui/image-maintenance.generated.js',
+    'cloud-admin/ui/post-address.generated.js',
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm',
     'assets/design-tokens.css',
     'assets/design-foundation.css',
@@ -792,6 +795,7 @@ try {
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
     'cloud-admin/ui/image.worker.generated.js': 4 * 1024,
     'cloud-admin/ui/image-maintenance.generated.js': 4 * 1024,
+    'cloud-admin/ui/post-address.generated.js': 4 * 1024,
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
   };
   report.releaseBudgets = releaseBudgets;

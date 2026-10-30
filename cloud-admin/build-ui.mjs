@@ -10,7 +10,7 @@ await build({
   format: 'esm',
   target: 'es2022',
   minify: true,
-  external: ['/blog_wasm.js', '/image-maintenance.js', '/home-illustration.js'],
+  external: ['/blog_wasm.js', '/image-maintenance.js', '/home-illustration.js', '/post-address.js'],
 });
 await build({
   entryPoints: [new URL('ui/preview.worker.js', root).pathname],
@@ -45,7 +45,16 @@ await build({
   target: 'es2022',
   minify: true,
 });
+await build({
+  entryPoints: [new URL('ui/post-address.js', root).pathname],
+  outfile: new URL('ui/post-address.generated.js', root).pathname,
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  minify: true,
+});
 const paths = [
+  ['/post-address.js', 'ui/post-address.generated.js', 'text/javascript; charset=utf-8'],
   ['/home-illustration.js', 'ui/home-illustration.generated.js', 'text/javascript; charset=utf-8'],
   ['/editorial-botanical.svg', '../assets/editorial-botanical.svg', 'image/svg+xml'],
   ['/editorial-botanical.webp', '../assets/editorial-botanical.webp', 'image/webp'],

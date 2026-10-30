@@ -991,3 +991,15 @@ body:has(dialog[open]) {
     display: none;
   }
 }
+
+#post-address-dialog {
+  inset: 16px 0 calc(var(--ci-vp-bottom, 0px) + 16px);
+  max-height: calc(var(--ci-vp-height, 100dvh) - 32px);
+  overflow: auto;
+}
+#post-address-dialog .form-actions {
+  position: sticky;
+  bottom: 0;
+  padding-block: 8px;
+  background: var(--ci-elevated);
+}

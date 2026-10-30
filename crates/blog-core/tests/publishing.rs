@@ -24,6 +24,7 @@ fn draft(slug: &str, unpublished: bool) -> PostDraft {
             date: "2026-10-01".into(),
             updated: None,
             slug: slug.into(),
+            aliases: Vec::new(),
             description: "测试".into(),
             draft: unpublished,
         },
@@ -176,5 +177,23 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
     let mut invalid = bundle;
     invalid["markdown_posts"]["visible"] = invalid["markdown_posts"]["private"].clone();
     assert!(blog_core::bundle::render_release(&invalid.to_string()).is_err());
+    fs::remove_dir_all(p).unwrap();
+}
+
+#[test]
+fn former_addresses_survive_originals_and_are_not_inherited_by_new_imports() {
+    let p = temp();
+    let mut renamed = draft("new-address", false);
+    renamed.front_matter.aliases = vec!["old-address".into(), "older-address".into()];
+    let path = content::save_post(&p, &renamed).unwrap();
+    let raw = fs::read_to_string(path).unwrap();
+    let parsed = content::parse_post(&raw).unwrap();
+    assert_eq!(parsed.front_matter.aliases, renamed.front_matter.aliases);
+    let imported =
+        blog_core::import::import_markdown(&raw, "article.md", "2026-10-01", "fresh-import")
+            .unwrap();
+    assert!(imported.front_matter.aliases.is_empty());
+    let legacy = toml::to_string(&draft("legacy", true).front_matter).unwrap();
+    assert!(!legacy.contains("aliases"));
     fs::remove_dir_all(p).unwrap();
 }
