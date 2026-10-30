@@ -210,7 +210,6 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
     <h1 id="home-title">{title}</h1>
     <p>{subtitle}</p>
     <p class="home-description">{description}</p>
-    <div class="home-author"><span>{author}</span></div>
   </div>
   {illustration}
 </section>
@@ -228,7 +227,6 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             site_title = escape_html(&config.title),
             title = escape_html(title),
             subtitle = escape_html(&config.subtitle),
-            author = escape_html(&config.author),
             description = escape_html(&config.description),
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()

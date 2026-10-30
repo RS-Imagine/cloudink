@@ -204,6 +204,7 @@
   margin: 0;
   color: var(--ci-muted);
   font: italic 20px/1.65 var(--ci-font-reading);
+  font-synthesis: none;
 }
 .home-author {
   display: flex;
