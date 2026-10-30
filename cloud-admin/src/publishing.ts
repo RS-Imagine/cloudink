@@ -78,6 +78,8 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
     if (draft.customMetadata?.deleted) throw new HttpError(409, '文章已删除或改址，请重新打开。');
     let target = slug;
     if (typeof data.renameTo === 'string') {
+      if (!Object.hasOwn(base.markdown_posts, slug))
+        throw new HttpError(409, '这篇文章尚未发布，请先修改草稿地址，再发布。');
       target = validSlug(data.renameTo);
       const reserved = await addressTarget(env.STORAGE, base, slug, target);
       parsed = withAddress(parsed, target);

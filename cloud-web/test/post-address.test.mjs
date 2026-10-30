@@ -31,7 +31,7 @@ test('saved draft can move without publishing or changing its body; retries are 
   assert.equal(first.status, 200, await first.clone().text());
   const moved = await first.json();
   assert.equal(moved.draft.front_matter.slug, 'draft-new');
-  assert.deepEqual(moved.draft.front_matter.aliases, ['draft-old']);
+  assert.equal(moved.draft.front_matter.aliases, undefined);
   assert.equal(moved.draft.body_markdown, original.draft.body_markdown);
   assert.equal((await f.request('/posts/draft-new/')).status, 404);
   assert.equal((await f.request('/api/posts/draft-old')).status, 404);

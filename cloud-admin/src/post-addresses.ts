@@ -28,14 +28,16 @@ export function postRedirects(release: Release): Record<string, string> {
   if (Object.keys(redirects).length > 2000) throw new HttpError(413, '旧文章地址超过 2000 个。');
   return redirects;
 }
-export function withAddress(draft: Draft, slug: string): Draft {
-  const aliases = [...new Set([...(draft.front_matter.aliases || []), draft.front_matter.slug])]
+export function withAddress(draft: Draft, slug: string, remember = true): Draft {
+  const aliases = [...new Set([...(draft.front_matter.aliases || []), ...(remember ? [draft.front_matter.slug] : [])])]
     .filter((alias) => alias !== slug);
   if (aliases.length > 100) throw new HttpError(400, '这篇文章已保留 100 个旧地址，不能继续改址。');
-  return {
+  const next: Draft = {
     ...draft,
     front_matter: { ...draft.front_matter, slug, aliases, draft: true },
   };
+  if (!aliases.length) delete next.front_matter.aliases;
+  return next;
 }
 export async function addressTarget(
   storage: R2Bucket,
@@ -157,7 +159,7 @@ export async function renameDraft(
   if (typeof input.etag !== 'string' || source.etag !== input.etag)
     throw new HttpError(409, '文章已修改，请重新打开后再修改地址。');
   if (source.size > 2_000_000) throw new HttpError(413, '原稿超过地址修改的大小限制。');
-  const draft = withAddress(parseSource(await source.text()), to);
+  const draft = withAddress(parseSource(await source.text()), to, false);
   const body = serializeDraft(draft);
   const prior = await env.STORAGE.get(`drafts/${to}.md`);
   if (

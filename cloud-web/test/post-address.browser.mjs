@@ -90,7 +90,8 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(page.locator('#slug')).toHaveValue(live);
   await expect(page.locator('#body')).toHaveValue(updated);
   await expect(page.locator('#slug')).toHaveAttribute('readonly', '');
-  for (const slug of [first, second]) {
+  assert.equal((await page.request.get(origin + '/posts/' + first + '/')).status(), 404);
+  for (const slug of [second]) {
     for (const method of ['GET', 'HEAD']) {
       const response = await page.request.fetch(origin + '/posts/' + slug + '/?from=old', {
         method, maxRedirects: 0,
