@@ -890,7 +890,9 @@ try {
               '.png';
             return (
               '<figure><figcaption>' +
-              (sample.version === 'production' ? '正式界面（当前提交）' : '历史 UI 2.0 原型（仅存档）') +
+              (sample.version === 'production'
+                ? '正式界面（当前提交）'
+                : '历史 UI 2.0 原型（仅存档）') +
               '</figcaption><a href="' +
               file +
               '"><img loading="lazy" src="' +

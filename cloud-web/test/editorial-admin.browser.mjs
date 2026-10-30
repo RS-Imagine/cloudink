@@ -117,6 +117,12 @@ export async function verifyEditorialAdmin(browser, origin, output, engine) {
             .locator('#title')
             .evaluate((node) => parseFloat(getComputedStyle(node).fontSize));
           assert.ok(titleSize >= 30, 'Mobile editor title keeps its document hierarchy');
+          const writing = await page.locator('#editor-panes').boundingBox();
+          const navigation = await page.locator('.studio-nav').boundingBox();
+          assert.ok(
+            writing.y + 120 <= navigation.y,
+            'Mobile writing starts above the bottom navigation with room for content',
+          );
         }
         await capture('editor');
         const body = await page.locator('#body').inputValue();

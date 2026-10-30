@@ -197,9 +197,9 @@ export async function verifyLongReading(browser, origin, output, engine) {
     await page.locator('.toc-link').last().click();
     const heading = page.locator('.article-body h2').last();
     await expect(heading).toBeFocused();
-    const headerBottom = await page.locator('.reader-header').evaluate((node) =>
-      node.getBoundingClientRect().bottom,
-    );
+    const headerBottom = await page
+      .locator('.reader-header')
+      .evaluate((node) => node.getBoundingClientRect().bottom);
     await expect
       .poll(() => heading.evaluate((node) => node.getBoundingClientRect().top))
       .toBeGreaterThanOrEqual(headerBottom + 8);
