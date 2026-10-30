@@ -514,9 +514,11 @@
     color: var(--ci-text);
     font: 600 36px/40px var(--ci-font-reading);
     text-decoration: none;
+  }
+  :root[data-ci-motion] .reader-menu-links a {
     animation: journal-menu 600ms var(--ci-ease) both;
   }
-  .reader-menu-links a:nth-child(2) {
+  :root[data-ci-motion] .reader-menu-links a:nth-child(2) {
     animation-delay: 60ms;
   }
   .reader-menu-links a[aria-current],
