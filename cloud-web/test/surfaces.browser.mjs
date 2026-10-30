@@ -212,7 +212,10 @@ export async function verifySurfaces(browser, origin, output, engine) {
   // Admin preference changes cannot override automatic public effects.
   const second = await context.newPage();
   await second.goto(origin + '/admin');
-  await second.evaluate(() => CloudInkTheme.setEffects('off'));
+  await second.evaluate(() => {
+    CloudInkTheme.setEffects('auto');
+    CloudInkTheme.setEffects('off');
+  });
   await expect(root).toHaveAttribute('data-effects', enabled);
   await second.evaluate(() => localStorage.removeItem('cloudink-effects'));
   await expect(root).toHaveAttribute('data-effects', enabled);

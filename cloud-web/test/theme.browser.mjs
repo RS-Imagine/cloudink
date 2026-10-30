@@ -44,7 +44,10 @@ export async function verifyThemes(browser, origin, output, engine) {
   // Changes from an admin tab must not override the public system preference.
   const second = await context.newPage();
   await second.goto(origin + '/admin');
-  await second.evaluate(() => CloudInkTheme.setMode('dark'));
+  await second.evaluate(() => {
+    CloudInkTheme.setMode('light');
+    CloudInkTheme.setMode('dark');
+  });
   await expect(root).toHaveAttribute('data-theme', 'light');
   await second.close();
 
