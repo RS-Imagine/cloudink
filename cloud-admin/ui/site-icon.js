@@ -25,7 +25,7 @@ export function configureSiteIcon({ api, notice }) {
   }
   function apply(config) {
     const url = iconURL(config?.siteIcon);
-    document.querySelectorAll('.sidebar .brand-mark img, .studio-intro-mark').forEach((image) => {
+    document.querySelectorAll('#app-view .brand-mark img, .studio-intro-mark').forEach((image) => {
       image.src = url;
     });
     const favicon = document.querySelector('link[rel="icon"]');

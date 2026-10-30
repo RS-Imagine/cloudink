@@ -7,7 +7,7 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 import { owner, password } from './fixture.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 
-const baseline = '1b176737e055666836715d0b98255ce9de7418af';
+const baseline = '58312862a618c6fb831e18fa288624a9ac9b2582';
 const original = (path) =>
   execFileSync('git', ['show', baseline + ':' + path], { encoding: 'utf8' });
 const stylePaths = [

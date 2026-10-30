@@ -89,6 +89,7 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin 6b97a08cf93ef0a1a545f045d0660e17174cb258
           git fetch --no-tags --depth=1 origin 1b176737e055666836715d0b98255ce9de7418af
+          git fetch --no-tags --depth=1 origin 58312862a618c6fb831e18fa288624a9ac9b2582
       - name: Check design source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

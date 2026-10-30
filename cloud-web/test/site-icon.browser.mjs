@@ -65,7 +65,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
     );
     await page.reload();
     await expect(page.locator('#home-view')).toBeVisible();
-    await expect(page.locator('.sidebar .brand-mark img')).toHaveAttribute(
+    await expect(page.locator('#app-view .brand-mark img')).toHaveAttribute(
       'src',
       '/site-icon/' + key.split('/').pop(),
     );
@@ -90,7 +90,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
   await expect(page.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await expect(page.locator('.sidebar .brand-mark img')).toHaveAttribute('src', '/favicon.svg');
+  await expect(page.locator('#app-view .brand-mark img')).toHaveAttribute('src', '/favicon.svg');
   const session = await (await context.request.get(origin + '/api/session')).json();
   const catalog = await (await context.request.get(origin + '/api/images')).json();
   for (const image of catalog.images.filter((image) => uploaded.has(image.key))) {
