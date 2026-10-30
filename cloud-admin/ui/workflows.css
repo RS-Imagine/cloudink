@@ -58,7 +58,8 @@ button[aria-busy='true'] {
 .editor-view-switch button,
 .editor-danger-zone button,
 .image-actions button {
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
   font-size: 13px;
   padding: 10px 14px;
   border-radius: var(--ci-radius-md);
