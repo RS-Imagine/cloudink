@@ -8,6 +8,7 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
   '/home-illustration.js',
+  '/post-address.js',
   '/editorial-botanical.svg',
   '/editorial-botanical.webp',
   '/image.worker.js',
@@ -97,7 +98,7 @@ export default {
         return staticAsset(request, env, path);
       const key = publicPath(path);
       const pointer = await env.STORAGE.get('state/published.json');
-      const published = pointer ? await pointer.json<{ id: string; clarityId?: string }>() : null;
+      const published = pointer ? await pointer.json<{ id: string; clarityId?: string; postRedirects?: Record<string, string> }>() : null;
       const id = published?.id || null;
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
@@ -115,6 +116,13 @@ export default {
         );
       }
       if (key && id) {
+        const from = key.match(/^posts\/([A-Za-z0-9_-]{1,100})\/index\.html$/)?.[1];
+        const redirects = published?.postRedirects;
+        const target = from && redirects && Object.hasOwn(redirects, from) ? redirects[from] : null;
+        if (target && target !== from && /^[A-Za-z0-9_-]{1,100}$/.test(target)) {
+          url.pathname = '/posts/' + target + '/';
+          return protect(Response.redirect(url.toString(), 301), analytics);
+        }
         const body =
           request.method === 'HEAD' ? null : await env.STORAGE.get(`public/${id}/${key}`);
         const object =

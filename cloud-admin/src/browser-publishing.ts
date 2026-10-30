@@ -1,4 +1,5 @@
 import { responsiveImages } from './image-variants';
+import { assertRenameUnchanged, finishRename, postRedirects } from './post-addresses';
 import type { CloudInkEnv } from './env';
 import {
   HttpError,
@@ -24,6 +25,7 @@ interface BrowserPointer {
   id: string;
   publishing?: string;
   clarityId?: string;
+  postRedirects?: Record<string, string>;
 }
 export async function claimBrowserPublication(env: CloudInkEnv, state: Publishing): Promise<void> {
   const pointer = await env.STORAGE.get('state/published.json');
@@ -185,7 +187,7 @@ export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promis
   if (pointer && value?.publishing === id) {
     const cleared = await env.STORAGE.put(
       'state/published.json',
-      JSON.stringify({ id: value.id, clarityId: value.clarityId || '' }),
+      JSON.stringify({ id: value.id, clarityId: value.clarityId || '', postRedirects: value.postRedirects }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
     if (!cleared) {
@@ -229,13 +231,15 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
     const current = pointer ? await pointer.json<BrowserPointer>() : null;
     if (!pointer || current?.id !== state.previous_id || current.publishing !== id)
       throw new HttpError(409, '这次发布已取消或线上版本已经变化，请重新发布。');
+    await assertRenameUnchanged(env.STORAGE, state);
     const saved = await env.STORAGE.put(
       'state/published.json',
-      JSON.stringify({ id, clarityId: release.site.clarityId || '' }),
+      JSON.stringify({ id, clarityId: release.site.clarityId || '', postRedirects: postRedirects(release) }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
     if (!saved) throw new HttpError(409, '线上版本已经变化，请重新发布。');
     committed = true;
+    await finishRename(env.STORAGE, state, release);
     const done: Publishing = { ...state, status: 'deployed' };
     await env.STORAGE.put('state/pending.json', JSON.stringify(done), {
       onlyIf: { etagMatches: locked.etag },

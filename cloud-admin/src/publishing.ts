@@ -1,5 +1,6 @@
 import { ensureHomeIllustration } from './home-illustration';
 import { ensureSiteIcon } from './site-icons';
+import { addressTarget, withAddress, postRedirects, finishRename } from './post-addresses';
 import type { CloudInkEnv } from './env';
 import {
   requiredPages,
@@ -38,6 +39,7 @@ export async function publishStatus(env: CloudInkEnv): Promise<Publishing | null
   if (pointer?.id === state.release_id) state.status = 'deployed';
   if (busy(state) && Date.now() - Date.parse(state.started_at) > 30 * 60_000)
     return (await cancelBrowserPublish(env, state.release_id)).json<Publishing>();
+  if (state.status === 'deployed') await finishRename(env.STORAGE, state);
   if (state.status === 'deployed' || state.status === 'failed')
     await env.STORAGE.put('state/pending.json', JSON.stringify(state), {
       onlyIf: { etagMatches: obj.etag },
@@ -54,17 +56,29 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
   const release: Release = structuredClone(base);
   release.id = crypto.randomUUID();
   release.created_at = new Date().toISOString();
+  let rename: Publishing['rename'];
+  if (data.renameTo !== undefined && typeof data.renameTo !== 'string')
+    throw new HttpError(400, '新文章地址格式不正确。');
   if (typeof data.slug === 'string') {
     const slug = validSlug(data.slug),
       draft = await env.STORAGE.get(`drafts/${slug}.md`);
     if (!draft) throw new HttpError(404, '请先保存这篇文章的草稿。');
     if (data.etag !== draft.etag)
       throw new HttpError(409, '文章刚刚发生了修改，请保存最新版本后再发布。');
-    const parsed = parseSource(await draft.text());
+    let parsed = parseSource(await draft.text());
+    if (draft.customMetadata?.deleted) throw new HttpError(409, '文章已删除或改址，请重新打开。');
+    let target = slug;
+    if (typeof data.renameTo === 'string') {
+      target = validSlug(data.renameTo);
+      const reserved = await addressTarget(env.STORAGE, base, slug, target);
+      parsed = withAddress(parsed, target);
+      rename = { from: slug, to: target, etag: draft.etag, targetEtag: reserved?.etag || null };
+      delete release.markdown_posts[slug];
+    }
     parsed.front_matter.draft = false;
-    if (base.markdown_posts[slug])
+    if (Object.hasOwn(base.markdown_posts, slug))
       parsed.front_matter.updated = new Date().toISOString().slice(0, 10);
-    release.markdown_posts[slug] = serializeDraft(parsed);
+    release.markdown_posts = { ...release.markdown_posts, [target]: serializeDraft(parsed) };
   } else if (typeof data.unpublish === 'string') {
     const slug = validSlug(data.unpublish);
     delete release.markdown_posts[slug];
@@ -77,6 +91,8 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
       if (release.site.about.trim()) release.about_markdown = aboutSource(release.site.about);
     }
   } else if (data.rebuild !== true) throw new HttpError(400, '请选择要发布的文章或网站信息。');
+  if (data.renameTo !== undefined && !rename) throw new HttpError(400, '请选择需要改址的文章。');
+  postRedirects(release);
   if (new TextEncoder().encode(JSON.stringify(release)).byteLength > 16_000_000)
     throw new HttpError(413, '网站内容超过当前版本的发布大小限制。');
   await ensureHomeIllustration(env.STORAGE, release.site);
@@ -86,6 +102,7 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
     previous_id: base.id,
     status: 'queued',
     started_at: new Date().toISOString(),
+    ...(rename ? { rename } : {}),
   };
   pending.files = requiredPages(release);
   if (pending.files.length > 750) throw new HttpError(413, '当前网页数量超过发布限制。');

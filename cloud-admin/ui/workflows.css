@@ -1070,3 +1070,16 @@ button[aria-busy='true']::before,
   border: 0;
   border-radius: 0;
 }
+
+.post-address-field {
+  flex: 1;
+  min-width: 0;
+}
+.post-address-field > button {
+  margin-top: 8px;
+}
+#post-address-input {
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+}

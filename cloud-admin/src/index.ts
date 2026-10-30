@@ -4,6 +4,8 @@ import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './
 import { ASSETS } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
+import { editorial, draftSummary } from './post-metadata';
+import { assertWritableAddress, renameDraft } from './post-addresses';
 import { currentRelease, publish, publishStatus } from './publishing';
 import {
   HttpError,
@@ -24,22 +26,8 @@ import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
-import { imageLibraryRoute, imageReferenceMetadata, ensureManagedImages } from './image-library';
+import { imageLibraryRoute, ensureManagedImages } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
-function editorial(draft: Draft): string {
-  const f = draft.front_matter;
-  return JSON.stringify([f.title, f.slug, f.date, f.description, draft.body_markdown]);
-}
-async function draftSummary(draft: Draft): Promise<Record<string, string>> {
-  const f = draft.front_matter;
-  return {
-    title: f.title.slice(0, 120),
-    date: f.date,
-    description: f.description.slice(0, 240),
-    ...imageReferenceMetadata(draft.body_markdown),
-    digest: await digest(editorial(draft)),
-  };
-}
 async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
   const objects: R2Object[] = [];
   let cursor: string | undefined;
@@ -56,6 +44,7 @@ async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
   return objects;
 }
 async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
+  await assertWritableAddress(env.STORAGE, slug);
   const input = await jsonInput(request);
   let draft: Draft, source: string;
   if (typeof input.source === 'string') {
@@ -71,7 +60,8 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
   const existing = await env.STORAGE.head(`drafts/${slug}.md`);
   if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
-  if (!existing && input.etag) throw new HttpError(409, '文章已被删除，请重新打开。');
+  if ((!existing || existing.customMetadata?.deleted) && input.etag)
+    throw new HttpError(409, '文章已删除或改址，请重新打开。');
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
     customMetadata: await draftSummary(draft),
@@ -114,6 +104,10 @@ async function apiRoute(
       const draft = parseSource(source);
       published.set(slug, { draft, digest: await digest(editorial(draft)) });
     }
+    const redirects = (await readJson<{ postRedirects?: Record<string, string> }>(
+      env.STORAGE,
+      'state/published.json',
+    ))?.postRedirects || {};
     const posts = new Map<string, unknown>();
     for (const [slug, p] of published)
       posts.set(slug, {
@@ -124,8 +118,9 @@ async function apiRoute(
       });
     for (const object of drafts) {
       if (object.customMetadata?.deleted) continue;
-      const slug = object.key.slice(7, -3),
-        meta = object.customMetadata || {};
+      const slug = object.key.slice(7, -3);
+      if (Object.hasOwn(redirects, slug)) continue;
+      const meta = object.customMetadata || {};
       posts.set(slug, {
         slug,
         title: meta.title || slug,
@@ -151,6 +146,9 @@ async function apiRoute(
       publicInitialized: !!(await env.STORAGE.head(`public/${release.id}/index.html`)),
     });
   }
+  const rename = path.match(/^\/api\/posts\/([A-Za-z0-9_-]+)\/rename$/);
+  if (rename && request.method === 'POST')
+    return renameDraft(request, env, validSlug(rename[1]), await currentRelease(env));
   const match = path.match(/^\/api\/posts\/([A-Za-z0-9_-]+)$/);
   if (match) {
     const slug = validSlug(match[1]);

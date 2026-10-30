@@ -569,14 +569,10 @@ function currentDraft() {
       description: $('description').value,
       draft: true,
       ...(doc?.front_matter.updated ? { updated: doc.front_matter.updated } : {}),
+      ...(doc?.front_matter.aliases?.length ? { aliases: doc.front_matter.aliases } : {}),
     },
     body_markdown: $('body').value,
   };
-}
-function markdownSource(draft) {
-  const f = draft.front_matter;
-  const quote = (s) => JSON.stringify(s);
-  return `+++\ntitle = ${quote(f.title)}\nslug = ${quote(f.slug)}\ndate = ${quote(f.date)}\ndescription = ${quote(f.description)}\ndraft = ${!!f.draft}\n${f.updated ? `updated = ${quote(f.updated)}\n` : ''}+++\n\n${draft.body_markdown}`;
 }
 function preview() {
   if (
@@ -823,16 +819,26 @@ function download(data, name, type) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-$('download-post').addEventListener('click', () =>
-  action(
-    'download-post',
-    '正在准备下载…',
-    async () => {
-      if (doc) download(markdownSource(currentDraft()), `${$('slug').value}.md`, 'text/markdown');
-    },
-    '已开始下载原稿，请查看浏览器下载列表。',
-  ),
-);
+for (const id of ['download-post', 'change-post-address'])
+  $(id).addEventListener('click', () => {
+    if (!doc || (id === 'change-post-address' && (editorLocked || publishingBusy))) return;
+    import('/post-address.js')
+      .then(({ postAction }) => postAction(id, {
+        api, notice, flush, lock: lockEditor, publish: startPublish,
+        get: () => doc && {
+          draft: currentDraft(), etag: doc.etag,
+          published: posts.some((p) => p.slug === doc.front_matter.slug && p.published),
+        },
+        replace: async (slug) => {
+          const data = await api('/api/posts/' + encodeURIComponent(slug));
+          await refresh();
+          ++navigationVersion;
+          articleCache.clear();
+          fillEditor(data.draft, data.etag);
+        },
+      }))
+      .catch((error) => notice(error.message, 'error'));
+  });
 function showPublishing(state) {
   publishingId = state?.release_id || '';
   publishingBusy = !!state && ['queued', 'building', 'built'].includes(state.status);
@@ -848,6 +854,7 @@ function showPublishing(state) {
     }
   }
   $('publish-welcome').disabled = publishingBusy || publishRequest;
+  $('change-post-address').disabled = publishingBusy || publishRequest;
   const banner = $('publish-banner');
   banner.hidden = !state;
   if (!state) return;

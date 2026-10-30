@@ -620,11 +620,12 @@
               <summary>文章日期和地址 <span aria-hidden="true">⌄</span></summary>
               <div class="details-fields">
                 <label>日期<input id="date" type="date" /></label>
-                <label
-                  >文章地址<input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" /><small
-                    >保存后地址锁定，发布后链接保持稳定。</small
-                  ></label
-                >
+                <div class="post-address-field">
+                  <label for="slug">文章地址</label>
+                  <input id="slug" pattern="[A-Za-z0-9_-]+" maxlength="100" aria-describedby="post-address-hint" />
+                  <small id="post-address-hint">首次保存前可直接编辑；保存后点击“修改地址”。</small>
+                  <button id="change-post-address" type="button" class="quiet">修改地址</button>
+                </div>
               </div>
               <button id="download-post" class="quiet">下载原稿</button>
             </details>
@@ -927,7 +928,7 @@
                       <option value="dark">深色</option>
                     </select></label
                   >
-                  <p>明暗模式只影响当前浏览器。读者可以自行选择，不会强制跟随后台。</p>
+                  <p>明暗模式只影响本机后台。公开网站跟随系统，不会强制跟随后台。</p>
                   <label data-effects-control hidden
                     >本机视觉效果<select data-effects-mode>
                       <option value="auto">自动</option>
@@ -1132,6 +1133,28 @@
         <div class="form-actions">
           <button id="confirmation-cancel" value="cancel" autofocus>暂不操作</button
           ><button id="confirmation-accept" value="confirm" class="primary">继续</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      id="post-address-dialog"
+      class="confirmation-dialog"
+      aria-labelledby="post-address-title"
+      aria-describedby="post-address-help post-address-current"
+    >
+      <form id="post-address-form">
+        <span class="workflow-eyebrow">文章地址</span>
+        <h2 id="post-address-title">修改文章地址</h2>
+        <p id="post-address-current"></p>
+        <p id="post-address-help"></p>
+        <label for="post-address-input">新地址</label>
+        <input id="post-address-input" name="slug" pattern="[A-Za-z0-9_-]+" maxlength="100"
+          required autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="post-address-format" />
+        <p id="post-address-format">只填写地址末尾部分，支持英文字母、数字、短横线和下划线，最多 100 个字符。</p>
+        <p id="post-address-status" class="operation-feedback" role="status" aria-live="polite" hidden></p>
+        <div class="form-actions">
+          <button id="post-address-close" type="button">取消</button>
+          <button id="post-address-submit" type="submit" class="primary">修改地址</button>
         </div>
       </form>
     </dialog>
