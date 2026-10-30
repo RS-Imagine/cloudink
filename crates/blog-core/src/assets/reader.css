@@ -32,6 +32,10 @@
   font: 600 clamp(2rem, 3.7vw, 3.25rem)/1.25 var(--ci-font-reading);
   letter-spacing: 0;
 }
+.article-shell article h1 .title-phrase {
+  display: inline-block;
+  max-width: 100%;
+}
 .article-shell article .article-description {
   font: 17px/1.8 var(--ci-font-reading);
   color: var(--ci-muted);
