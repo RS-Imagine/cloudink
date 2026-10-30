@@ -324,6 +324,7 @@ try {
         buffer: imageData,
       });
       await expect(admin.locator('#notice')).toContainText('图片已上传');
+      await expect(admin.locator('#upload-image svg')).toHaveCount(1);
     }
     await admin.locator('#publish-post').click();
     await expect(admin.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
