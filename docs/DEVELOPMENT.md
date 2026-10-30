@@ -43,7 +43,8 @@ Rust 在编译期 include_str!，后台在 build-ui.mjs 拼接同一源，不复
 首页、阅读页、后台壳与写作工作流共享同一设计系统；[升级与验收](design/UI-2.0-RELEASE.md)记录最终回归、资源预算与回滚。
 
 唯一主题控制器 `assets/theme.js` 在 CSS 前执行，并按原有 URL 输出公开 /theme.js 与
-后台 /admin-theme.js；系统模式为 auto，明确选择为 light/dark，沿用 localStorage.theme。
+后台 /admin-theme.js。公开页面固定为 auto，随 prefers-color-scheme 实时更新，忽略 localStorage.theme 和后台标签页的手动模式变更；
+后台保留 auto/light/dark 选择与 localStorage.theme。公开模板不输出页脚偏好控件或页头主题按钮；共享样式和脚本也会清理旧发布 HTML 中的相同控件。
 网站图标使用可选的 `siteIcon` 字段，值仅接受 `uploads/icons/<SHA-256>.svg|ico` 内容地址。
 `POST /api/site-icon` 沿用会话和 CSRF，限制 256 KiB；服务器校验 ICO 目录、像素/遮罩长度、PNG 数据块 CRC 和解压后的扫描行（总解码预算 4 MiB），并使用仅在 Worker 内打包的 `saxes` 校验 SVG XML 结构，再用静态 SVG 元素/属性白名单重写 SVG，移除脚本、样式表、事件、外部链接和嵌入内容。
 SVG 的局部渐变/裁剪引用可保留；复杂 SVG 建议先导出为基本图形。公开 `/site-icon/<hash>.<ext>` 只映射图标专用键，使用正确 MIME、nosniff、sandbox CSP、ETag 和 immutable 缓存，不依赖 Referer。
@@ -223,7 +224,7 @@ data-sheet 标记的原生 dialog 由 CloudInkMotion 接入手机面板；目录
 
 assets/expressive.css 通过原有 Rust/WASM 和后台构建共享，格式检查与 2KiB minified gzip 预算覆盖新增样式。
 theme.js 复用阻塞式引导，主题与效果 bootstrap 合计 gzip 预算 2KiB。
-视觉效果是本浏览器偏好，不写入站点设置，也不需要发布才生效；公开模板代码更新后仍按既有流程重发内容。
+公开页面视觉效果始终自动选择，尊重系统与设备限制，不读取以前保存的手动效果偏好；后台保留本浏览器的自动/简洁设置和跨标签页同步，不写入站点设置。移除旧控件无需重新发布；其他模板结构更新仍按既有流程更新网站排版。
 运行 npm run test:ui:audit 验证 Chromium、Firefox、WebKit 的效果/不透明比较、合成对比度、面积、关闭与降级。
 report.json 的 surfaces 包含 4× CPU 滚动帧样本；它是实验记录，不能作为真实 GPU 或输入延迟的结论。
 原型 prototypes/ui-2.0/surfaces.html 只使用共享资源和本地示例，审阅包可直接解压打开。
