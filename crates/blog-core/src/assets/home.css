@@ -456,6 +456,9 @@
   .reader-preferences {
     justify-content: flex-start;
   }
+  .site-footer .theme-mode select {
+    font-size: 16px;
+  }
 }
 @media (max-width: 379px) {
   .reader-layout {
