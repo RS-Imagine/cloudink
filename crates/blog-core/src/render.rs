@@ -251,7 +251,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             },
             illustration = home_illustration(config),
             author = escape_html(&config.author),
-            title = escape_html(title),
+            title = display_title(title),
             subtitle = escape_html(&config.subtitle),
             subtitle_class = home_subtitle_class(&config.subtitle),
             description = escape_html(&config.description),

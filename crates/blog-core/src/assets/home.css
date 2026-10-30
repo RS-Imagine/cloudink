@@ -165,13 +165,17 @@
   background: currentColor;
 }
 .home-hero h1 {
-  max-width: min(680px, 12ch);
+  max-width: 680px;
   margin: 0 0 24px;
   font: 600 72px/1.12 var(--ci-font-reading);
   letter-spacing: -0.035em;
   overflow-wrap: anywhere;
   white-space: pre-line;
   text-wrap: balance;
+}
+.home-hero h1 .title-phrase {
+  display: inline-block;
+  max-width: 100%;
 }
 @supports (background-clip: text) {
   .home-hero h1 {

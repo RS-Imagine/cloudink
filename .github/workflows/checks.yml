@@ -29,16 +29,7 @@ jobs:
       - name: Install project tools
         run: npm ci
       - name: Check source formatting
-        run: |
-          if ! npm run format:check; then
-            npx prettier --write cloud-admin/ui cloud-web/test .github/workflows/checks.yml
-            node --input-type=module <<'JS'
-          import {execFileSync} from 'node:child_process';
-          import {readFileSync} from 'node:fs';
-          for (const p of execFileSync('git',['diff','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean))
-            console.log('FORMAT_REPAIR '+JSON.stringify({path:p,base64:readFileSync(p).toString('base64')}));
-          JS
-          fi
+        run: npm run format:check
       - name: Build the browser deployment
         run: npm run build
       - name: Report UI resource sizes

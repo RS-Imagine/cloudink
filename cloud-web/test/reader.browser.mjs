@@ -41,9 +41,9 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.toc-link[aria-current="location"]')).toHaveCount(1);
   await page.goto(origin + '/posts/slow-days/#' + encodeURIComponent(ids[0]));
   await page.reload();
-  const headerBottom = await page.locator('.reader-header').evaluate((node) =>
-    node.getBoundingClientRect().bottom,
-  );
+  const headerBottom = await page
+    .locator('.reader-header')
+    .evaluate((node) => node.getBoundingClientRect().bottom);
   const target = page.locator('.article-body h2').first();
   await expect
     .poll(() => target.evaluate((node) => node.getBoundingClientRect().top))

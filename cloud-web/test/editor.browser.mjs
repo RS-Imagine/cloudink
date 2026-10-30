@@ -171,25 +171,6 @@ try {
   });
   await expect(page.locator('#notice')).toContainText('已导入 1 篇');
   await expect(page.locator('#title')).toHaveValue('Imported');
-  console.log('IMPORTED_SWITCHER_LAYOUT ' + JSON.stringify(await page.locator('#post-switcher summary').evaluate((node) => {
-    const rect = node.getBoundingClientRect();
-    const ancestors = [];
-    for (let el = node; el; el = el.parentElement) {
-      const style = getComputedStyle(el);
-      ancestors.push({
-        tag: el.tagName, id: el.id, hidden: el.hidden, inert: el.inert,
-        rect: el.getBoundingClientRect().toJSON(),
-        position: style.position, zIndex: style.zIndex, overflow: style.overflow,
-        pointerEvents: style.pointerEvents, display: style.display, translate: style.translate,
-      });
-    }
-    return {
-      scrollY, rect: rect.toJSON(), ancestors,
-      hit: document.elementsFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2).map(el => el.tagName + '#' + el.id),
-      modals: [...document.querySelectorAll(':modal')].map(el => el.id),
-    };
-  })));
-
   await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'beta' }).click();
   await expect(page.locator('#title')).toHaveValue('beta');
