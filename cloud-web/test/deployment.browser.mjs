@@ -201,7 +201,7 @@ try {
     .locator('.article-body h2')
     .evaluateAll((nodes) => nodes.map((n) => n.id));
   assert.equal(new Set(headingIds).size, headingIds.length);
-  await expect(live.locator('.article-body table')).toHaveAttribute('tabindex', '0');
+  await expect(live.locator('.article-body .table-scroll')).toHaveAttribute('tabindex', '0');
   await live.emulateMedia({ colorScheme: 'dark' });
   await expect(live.locator('html')).toHaveAttribute('data-theme', 'dark');
   await live.locator('#site-search-btn').click();
