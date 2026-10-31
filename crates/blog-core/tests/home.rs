@@ -36,7 +36,7 @@ fn home_keeps_each_published_url_once_and_features_first_visible_post() {
     assert_eq!(html.matches("href=\"/posts/next/\"").count(), 1);
     assert_eq!(html.matches("post-card home-card home-feature").count(), 1);
     assert!(html.find("/posts/first/").unwrap() < html.find("/posts/next/").unwrap());
-    assert!(html.contains("2 篇文章"));
+    assert!(!html.contains("篇文章"));
     assert_eq!(html.matches("<h1").count(), 1);
     assert!(html.contains("href=\"/#posts\""));
 }
@@ -47,7 +47,7 @@ fn empty_home_and_disabled_about_are_complete_without_fake_content() {
     site.about = Some(String::new());
     let html = render::render_index(&site, &[], "test");
     assert!(html.contains("home-empty"));
-    assert!(html.contains("0 篇文章"));
+    assert!(!html.contains("篇文章"));
     assert!(!html.contains("home-feature-art"));
     assert!(!html.contains("href=\"/about/\""));
     assert!(html.contains("<details class=\"reader-menu\""));

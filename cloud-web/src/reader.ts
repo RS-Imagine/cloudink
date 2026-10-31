@@ -183,57 +183,66 @@ interface FeedItem {
   updated?: string | null;
 }
 
-const isFeedItem = (value: unknown): value is FeedItem =>
-  !!value &&
-  typeof value === 'object' &&
-  typeof (value as FeedItem).title === 'string' &&
-  typeof (value as FeedItem).slug === 'string' &&
-  /^[A-Za-z0-9_-]{1,100}$/.test((value as FeedItem).slug);
-
-const toRfc822 = (value: string | undefined | null): string | null => {
-  if (!value) return null;
-  const time = Date.parse(value + 'T00:00:00Z');
-  return Number.isNaN(time) ? null : new Date(time).toUTCString();
+const isFeedItem = (value: unknown): value is FeedItem => {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Partial<FeedItem>;
+  return (
+    typeof item.title === 'string' &&
+    item.title.length <= 300 &&
+    typeof item.slug === 'string' &&
+    /^[A-Za-z0-9_-]{1,100}$/.test(item.slug) &&
+    (item.description === undefined ||
+      (typeof item.description === 'string' && item.description.length <= 2000)) &&
+    (item.date === undefined || typeof item.date === 'string') &&
+    (item.updated == null || typeof item.updated === 'string')
+  );
 };
 
-// Builds an RSS 2.0 feed from the published release. Like the sitemap, the
-// feed is generated at request time so absolute URLs always use the serving
-// origin and forks need no domain configuration.
+const toRfc822 = (value: string | undefined | null): string | null => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const time = Date.parse(value + 'T00:00:00Z');
+  if (Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== value) return null;
+  return new Date(time).toUTCString();
+};
+
+const feedText = (value: string) =>
+  escape(value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, ''));
+
+// Only public, release-scoped metadata is read. Storage errors must not replace
+// a previously populated subscription with a successful but empty response.
 async function buildFeed(url: URL, bucket: R2Bucket, id: string | null): Promise<string> {
   let siteTitle = 'Blog';
   let siteDescription = '';
   let items: unknown = [];
   if (id) {
-    try {
-      const siteObj = await bucket.get(`public/${id}/site.json`);
-      if (siteObj) {
-        const site = await siteObj.json<{ title?: string; description?: string }>();
-        if (site && typeof site.title === 'string' && site.title) siteTitle = site.title;
-        if (site && typeof site.description === 'string') siteDescription = site.description;
-      }
-    } catch {
-      /* fall back to defaults */
+    const siteObj = await bucket.get(`public/${id}/site.json`);
+    if (siteObj) {
+      const site = await siteObj.json<{ title?: string; description?: string }>();
+      if (site && typeof site.title === 'string' && site.title)
+        siteTitle = site.title.slice(0, 300);
+      if (site && typeof site.description === 'string')
+        siteDescription = site.description.slice(0, 2000);
     }
-    try {
-      const indexObj = await bucket.get(`public/${id}/search_index.json`);
-      if (indexObj) items = await indexObj.json();
-    } catch {
-      /* fall back to an empty feed */
-    }
+    const indexObj = await bucket.get(`public/${id}/search_index.json`);
+    if (indexObj) items = await indexObj.json();
   }
-  const entries = (Array.isArray(items) ? items : [])
-    .filter(isFeedItem)
-    .slice(0, 50)
+  if (!Array.isArray(items)) throw new Error('Published feed index is invalid');
+  const selected = items.filter(isFeedItem).slice(0, 50);
+  const lastBuildDate = selected
+    .map((item) => toRfc822(item.updated || item.date))
+    .filter((date): date is string => date !== null)
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  const entries = selected
     .map((item) => {
       const link = url.origin + '/posts/' + item.slug + '/';
-      const pubDate = toRfc822(item.updated || item.date);
+      const pubDate = toRfc822(item.date);
       return (
         '<item>' +
-        `<title>${escape(item.title)}</title>` +
+        `<title>${feedText(item.title)}</title>` +
         `<link>${escape(link)}</link>` +
         `<guid>${escape(link)}</guid>` +
-        (pubDate ? `<pubDate>${escape(pubDate)}</pubDate>` : '') +
-        `<description>${escape(item.description || '')}</description>` +
+        (pubDate ? `<pubDate>${pubDate}</pubDate>` : '') +
+        `<description>${feedText(item.description || '')}</description>` +
         '</item>'
       );
     })
@@ -241,10 +250,10 @@ async function buildFeed(url: URL, bucket: R2Bucket, id: string | null): Promise
   return (
     '<?xml version="1.0" encoding="UTF-8"?>' +
     '<rss version="2.0"><channel>' +
-    `<title>${escape(siteTitle)}</title>` +
+    `<title>${feedText(siteTitle)}</title>` +
     `<link>${escape(url.origin + '/')}</link>` +
-    `<description>${escape(siteDescription)}</description>` +
-    `<lastBuildDate>${escape(new Date().toUTCString())}</lastBuildDate>` +
+    `<description>${feedText(siteDescription)}</description>` +
+    (lastBuildDate ? `<lastBuildDate>${lastBuildDate}</lastBuildDate>` : '') +
     entries +
     '</channel></rss>'
   );
@@ -290,7 +299,20 @@ export async function discovery(
       '</urlset>';
     type = 'application/xml; charset=utf-8';
   }
-  return new Response(request.method === 'HEAD' ? null : body, {
-    headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=0, must-revalidate' },
+  const headers = new Headers({
+    'Content-Type': type,
+    'Cache-Control': 'public, max-age=0, must-revalidate',
   });
+  if (url.pathname === '/feed.xml') {
+    const etag = await readerEtag(body, url);
+    headers.set('ETag', etag);
+    if (
+      request.headers
+        .get('If-None-Match')
+        ?.split(',')
+        .some((tag) => tag.trim().replace(/^W\//, '') === etag || tag.trim() === '*')
+    )
+      return new Response(null, { status: 304, headers });
+  }
+  return new Response(request.method === 'HEAD' ? null : body, { headers });
 }

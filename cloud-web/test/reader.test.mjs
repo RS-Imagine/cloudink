@@ -101,7 +101,7 @@ test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => 
         'search_index.json',
         JSON.stringify([
           {
-            title: 'Hello <world>',
+            title: 'Hello <world>\u0000',
             slug: 'hello',
             description: 'First post',
             date: '2026-10-01',
@@ -116,6 +116,8 @@ test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => 
             updated: '2026-09-15',
             body: 'y',
           },
+          { title: 'Invalid calendar', slug: 'calendar', date: '2026-02-30' },
+          { title: 'Bad metadata', slug: 'invalid', description: { invalid: true } },
         ]),
       )
     ).status,
@@ -133,8 +135,22 @@ test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => 
   assert.match(feed, /<title>Hello &lt;world&gt;<\/title>/);
   assert.match(feed, new RegExp(`${escapedOrigin}/posts/hello/`));
   assert.match(feed, /<pubDate>Thu, 01 Oct 2026 00:00:00 GMT<\/pubDate>/);
-  assert.match(feed, /<pubDate>Tue, 15 Sep 2026 00:00:00 GMT<\/pubDate>/);
-  assert.equal(await (await f.request('/feed.xml', 'HEAD')).text(), '');
+  assert.match(feed, /<pubDate>Tue, 01 Sep 2026 00:00:00 GMT<\/pubDate>/);
+  assert.doesNotMatch(feed, /\u0000|Bad metadata|Mon, 02 Mar 2026/);
+  assert.match(feed, /<lastBuildDate>Thu, 01 Oct 2026 00:00:00 GMT<\/lastBuildDate>/);
+  const etag = response.headers.get('ETag');
+  assert.ok(etag);
+  assert.equal(await (await f.request('/feed.xml')).text(), feed);
+  assert.equal(
+    (await f.request('/feed.xml', 'GET', undefined, { 'If-None-Match': etag })).status,
+    304,
+  );
+  const head = await f.request('/feed.xml', 'HEAD');
+  assert.equal(head.headers.get('ETag'), etag);
+  assert.equal(await head.text(), '');
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  await bucket.put('public/' + release.release_id + '/search_index.json', '{invalid');
+  assert.equal((await f.request('/feed.xml')).status, 503);
 });
 
 test('new reader masthead preserves the full site name in response metadata', async (t) => {
