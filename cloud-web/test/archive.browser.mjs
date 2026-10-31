@@ -18,7 +18,11 @@ export async function verifyArchive(browser, origin, output, engine) {
     await expect(page.locator('h1')).toHaveText('文章归档');
     await expect(page.locator('.archive-group a[href="/posts/slow-days/"]')).toBeVisible();
     await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', origin + '/archive/');
-    for (const [width, theme] of [[1440, 'light'], [390, 'dark'], [360, 'light']]) {
+    for (const [width, theme] of [
+      [1440, 'light'],
+      [390, 'dark'],
+      [360, 'light'],
+    ]) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme: theme });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
