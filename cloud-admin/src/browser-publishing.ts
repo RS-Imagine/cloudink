@@ -74,9 +74,7 @@ export function aboutSource(markdown: string): string {
   return '+++\ntitle = "About"\ndescription = ""\n+++\n\n' + markdown;
 }
 export function publicType(path: string): string {
-  if (
-    /^(?:index|404|about\/index|archive\/index|posts\/[A-Za-z0-9_-]{1,100}\/index)\.html$/.test(path)
-  )
+  if (/^(?:index|404|(?:about|archive)\/index|posts\/[A-Za-z0-9_-]{1,100}\/index)\.html$/.test(path))
     return 'text/html; charset=utf-8';
   if (path.endsWith('.json')) return 'application/json; charset=utf-8';
   if (path === 'client.js') return 'text/javascript; charset=utf-8';
