@@ -84,7 +84,9 @@ export async function verifyReader(browser, origin, output, engine) {
   }
   await page.setViewportSize({ width: 320, height: 720 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
+  await page.evaluate(() =>
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+  );
   await expect(toTop).toBeVisible();
   const topBounds = await toTop.boundingBox();
   const contentsBounds = await page.locator('.mobile-toc-btn').boundingBox();

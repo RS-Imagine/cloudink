@@ -135,17 +135,22 @@ export async function verifyLongReading(browser, origin, output, engine) {
         await page.evaluate(() => {
           Object.defineProperty(navigator, 'clipboard', {
             configurable: true,
-            value: { writeText: async (text) => { window.copiedCode = text; } },
+            value: {
+              writeText: async (text) => {
+                window.copiedCode = text;
+              },
+            },
           });
         });
         await page.locator('.copy-code').click();
         await expect.poll(() => page.evaluate(() => window.copiedCode)).toBe(originalCode);
         const alignment = await gutter.evaluate((node) => {
           const pre = node.parentElement.querySelector('pre');
-          return Math.abs(
-            node.getBoundingClientRect().top + parseFloat(getComputedStyle(node).paddingTop) -
-            pre.getBoundingClientRect().top - parseFloat(getComputedStyle(pre).paddingTop),
-          );
+          const gutterTop = node.getBoundingClientRect().top;
+          const codeTop = pre.getBoundingClientRect().top;
+          const gutterPadding = parseFloat(getComputedStyle(node).paddingTop);
+          const codePadding = parseFloat(getComputedStyle(pre).paddingTop);
+          return Math.abs(gutterTop + gutterPadding - codeTop - codePadding);
         });
         assert.ok(alignment < 2, 'Line numbers stay aligned after copy feedback');
 
