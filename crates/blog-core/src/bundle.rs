@@ -44,6 +44,10 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
         render::render_index(&release.site, &posts, &css_hash),
     );
     files.insert(
+        "archive/index.html".into(),
+        render::render_archive(&release.site, &posts, &css_hash),
+    );
+    files.insert(
         "404.html".into(),
         render::render_404(&release.site, &css_hash),
     );

@@ -78,6 +78,14 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
         render::render_index(&config, &posts, &css_hash),
     )?;
 
+    // Archive page.
+    let archive_dir = output_root.join("archive");
+    fs::create_dir_all(&archive_dir)?;
+    write_if_changed(
+        archive_dir.join("index.html"),
+        render::render_archive(&config, &posts, &css_hash),
+    )?;
+
     // Optional about page.
     let about_path = content_root.join("about.md");
     let about_dir = output_root.join("about");

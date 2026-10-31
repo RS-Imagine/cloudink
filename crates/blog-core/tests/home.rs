@@ -8,7 +8,6 @@ fn post(slug: &str, title: &str, draft: bool) -> Post {
         front_matter: FrontMatter {
             title: title.into(),
             slug: slug.into(),
-            aliases: Vec::new(),
             date: "2026-10-01".into(),
             updated: None,
             description: "A description & a thought".into(),
@@ -164,4 +163,46 @@ fn home_thumbnail_supports_dimensioned_editor_images_without_copying_html() {
     assert!(html.contains("class=\"home-thumbnail\""));
     assert!(html.contains("src=\"/images/uploads/editor.webp\""));
     assert!(!html.contains("onerror"));
+}
+
+fn dated_post(slug: &str, title: &str, date: &str) -> Post {
+    let mut p = post(slug, title, false);
+    p.front_matter.date = date.into();
+    p
+}
+
+#[test]
+fn archive_groups_posts_by_month_newest_first() {
+    let html = render::render_archive(
+        &SiteConfig::default(),
+        &[
+            dated_post("old", "Old", "2026-08-15"),
+            dated_post("new", "New", "2026-10-02"),
+            dated_post("mid", "Mid", "2026-10-01"),
+            post("draft", "Draft", true),
+        ],
+        "test",
+    );
+    assert!(html.contains("文章归档"));
+    assert!(!html.contains("/posts/draft/"));
+    let oct = html.find("2026 年 10 月").unwrap();
+    let aug = html.find("2026 年 8 月").unwrap();
+    assert!(oct < aug, "newest month comes first");
+    assert!(
+        html.find("/posts/new/").unwrap() < html.find("/posts/mid/").unwrap(),
+        "newest post comes first within a month"
+    );
+    assert!(html.contains("<time datetime=\"2026-10-02\">10-02</time>"));
+}
+
+#[test]
+fn home_links_to_archive_when_posts_exist() {
+    let html = render::render_index(
+        &SiteConfig::default(),
+        &[post("first", "First", false)],
+        "test",
+    );
+    assert!(html.contains("href=\"/archive/\""));
+    let empty = render::render_index(&SiteConfig::default(), &[], "test");
+    assert!(!empty.contains("href=\"/archive/\""));
 }
