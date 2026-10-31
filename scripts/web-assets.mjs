@@ -36,16 +36,30 @@ if (process.argv[2] === 'seed') {
   const styleSource = await readFile(stylesheetPath, 'utf8');
   // Retain the Rust output outside public assets for controlled CSS comparisons.
   await writeFile(resolve(root, 'build-work/web-styles.source.css'), styleSource);
-  const stylesheet = await transform(styleSource, {
+  const cssOptions = {
     loader: 'css',
     minify: true,
     target: ['chrome100', 'firefox100', 'safari15'],
-  });
-  await writeFile(stylesheetPath, stylesheet.code);
+  };
+  const styleParts = [];
+  let remainingStyles = styleSource;
+  // Keep the same canonical theme and foundation bytes used by the editor.
+  for (const path of ['assets/design-tokens.css', 'assets/design-foundation.css']) {
+    const shared = await readFile(resolve(root, path), 'utf8');
+    const offset = remainingStyles.indexOf(shared);
+    if (offset < 0) throw new Error('Missing shared stylesheet: ' + path);
+    if (offset > 0)
+      styleParts.push((await transform(remainingStyles.slice(0, offset), cssOptions)).code);
+    styleParts.push(shared);
+    remainingStyles = remainingStyles.slice(offset + shared.length);
+  }
+  if (remainingStyles) styleParts.push((await transform(remainingStyles, cssOptions)).code);
+  const stylesheet = styleParts.join('\n');
+  await writeFile(stylesheetPath, stylesheet);
   console.log(
     JSON.stringify({
       asset: 'public/styles.css',
-      gzip: gzipSync(stylesheet.code).length,
+      gzip: gzipSync(stylesheet).length,
       sourceGzip: gzipSync(styleSource).length,
     }),
   );
