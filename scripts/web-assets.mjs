@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir, rm, readdir, copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { build, transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
 import { root } from './commands.mjs';
 const content = resolve(root, 'build-work/web-content');
@@ -41,6 +42,13 @@ if (process.argv[2] === 'seed') {
     target: ['chrome100', 'firefox100', 'safari15'],
   });
   await writeFile(stylesheetPath, stylesheet.code);
+  console.log(
+    JSON.stringify({
+      asset: 'public/styles.css',
+      gzip: gzipSync(stylesheet.code).length,
+      sourceGzip: gzipSync(styleSource).length,
+    }),
+  );
   const vendor = resolve(output, 'reader-assets');
   await mkdir(resolve(vendor, 'fonts'), { recursive: true });
   await build({
