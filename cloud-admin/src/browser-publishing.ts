@@ -19,6 +19,7 @@ const coreFiles = [
   'client.js',
   'favicon.svg',
   'search_index.json',
+  'site.json',
   '_release.json',
 ];
 interface BrowserPointer {

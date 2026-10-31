@@ -439,6 +439,7 @@ fn page(
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
   <link rel="stylesheet" href="/reader-assets/editorial-font.css">
   <link rel="icon" type="{icon_type}" href="{icon_url}">
+  <link rel="alternate" type="application/rss+xml" title="{site_title}" href="/feed.xml">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="none" id="hljs-light">
@@ -451,6 +452,7 @@ fn page(
         description = escape_html(description),
         author = escape_html(&config.author),
         title = escape_html(title),
+        site_title = escape_html(site_title),
         css_hash = css_hash,
         extra_head = extra_head,
     ));

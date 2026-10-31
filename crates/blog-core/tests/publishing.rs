@@ -162,6 +162,7 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
         "about/index.html",
         "posts/visible/index.html",
         "search_index.json",
+        "site.json",
         "client.js",
         "styles.css",
         "favicon.svg",
@@ -196,4 +197,15 @@ fn former_addresses_survive_originals_and_are_not_inherited_by_new_imports() {
     let legacy = toml::to_string(&draft("legacy", true).front_matter).unwrap();
     assert!(!legacy.contains("aliases"));
     fs::remove_dir_all(p).unwrap();
+}
+
+#[test]
+fn rss_discovery_escapes_the_site_title() {
+    let config = SiteConfig {
+        title: r#"Notes "from home" & <garden>"#.into(),
+        ..SiteConfig::default()
+    };
+    let html = blog_core::render::render_index(&config, &[], "test");
+    let title = "Notes &quot;from home&quot; &amp; &lt;garden&gt;";
+    assert!(html.contains(&format!("title=\"{title}\" href=\"/feed.xml\"")));
 }
