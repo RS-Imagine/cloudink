@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir, rm, readdir, copyFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { build, transform } from '../cloud-admin/node_modules/esbuild/lib/main.js';
 import { root } from './commands.mjs';
 const content = resolve(root, 'build-work/web-content');
@@ -31,6 +32,37 @@ if (process.argv[2] === 'seed') {
     target: 'es2022',
     minify: true,
   });
+  const stylesheetPath = resolve(output, 'styles.css');
+  const styleSource = await readFile(stylesheetPath, 'utf8');
+  // Retain the Rust output outside public assets for controlled CSS comparisons.
+  await writeFile(resolve(root, 'build-work/web-styles.source.css'), styleSource);
+  const cssOptions = {
+    loader: 'css',
+    minify: true,
+    target: ['chrome100', 'firefox100', 'safari15'],
+  };
+  const styleParts = [];
+  let remainingStyles = styleSource;
+  // Keep the same canonical theme and foundation bytes used by the editor.
+  for (const path of ['assets/design-tokens.css', 'assets/design-foundation.css']) {
+    const shared = await readFile(resolve(root, path), 'utf8');
+    const offset = remainingStyles.indexOf(shared);
+    if (offset < 0) throw new Error('Missing shared stylesheet: ' + path);
+    if (offset > 0)
+      styleParts.push((await transform(remainingStyles.slice(0, offset), cssOptions)).code);
+    styleParts.push(shared);
+    remainingStyles = remainingStyles.slice(offset + shared.length);
+  }
+  if (remainingStyles) styleParts.push((await transform(remainingStyles, cssOptions)).code);
+  const stylesheet = styleParts.join('\n');
+  await writeFile(stylesheetPath, stylesheet);
+  console.log(
+    JSON.stringify({
+      asset: 'public/styles.css',
+      gzip: gzipSync(stylesheet).length,
+      sourceGzip: gzipSync(styleSource).length,
+    }),
+  );
   const vendor = resolve(output, 'reader-assets');
   await mkdir(resolve(vendor, 'fonts'), { recursive: true });
   await build({

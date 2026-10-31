@@ -147,6 +147,85 @@
   padding-top: 56px;
   border-radius: 16px;
   background: var(--ci-container);
+  position: relative;
+}
+/* Code blocks scroll horizontally inside the padded shell. */
+.article-shell article .article-body pre {
+  overflow-x: auto;
+}
+/* Keep line numbers outside the scroll viewport and aligned with copy feedback. */
+.code-block.has-gutter {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+.code-gutter {
+  grid-column: 1;
+  grid-row: 2;
+  padding: 24px 12px 24px 0;
+  font-family: var(--ci-font-mono);
+  font-size: 14px;
+  line-height: 24px;
+  text-align: right;
+  color: var(--ci-muted);
+  user-select: none;
+  white-space: pre;
+  overflow: hidden;
+  pointer-events: none;
+}
+.code-block.has-gutter pre {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding-left: 12px;
+  border-radius: 0 16px 16px 0;
+}
+.code-block.has-gutter .copy-status {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+/* Tables get one horizontal scroll region on narrow screens. */
+.table-scroll {
+  overflow-x: auto;
+  margin: 1.5em 0;
+  border: 1px solid var(--ci-divider);
+  border-radius: 16px;
+}
+.article-shell article .table-scroll table {
+  display: table;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  overflow: visible;
+  border: none;
+}
+/* Back-to-top floating button. */
+.to-top {
+  position: fixed;
+  right: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 50;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--ci-surface);
+  color: var(--ci-text);
+  box-shadow: var(--ci-shadow-overlay);
+  cursor: pointer;
+}
+.to-top[hidden] {
+  display: none;
+}
+.to-top svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.to-top:hover {
+  background: var(--ci-elevated);
 }
 .copy-code {
   top: 4px;
@@ -438,6 +517,9 @@ dialog.search-modal .search-input {
   }
 }
 @media (max-width: 1099px) {
+  .to-top {
+    bottom: calc(max(20px, env(safe-area-inset-bottom)) + 60px);
+  }
   .reader-article {
     display: block;
     max-width: 720px;
@@ -483,6 +565,10 @@ dialog.search-modal .search-input {
 @media (max-width: 759px) {
   .article-shell {
     padding-top: 32px;
+  }
+  .code-gutter {
+    padding-top: 18px;
+    padding-bottom: 18px;
   }
   .article-shell article h1 {
     font-size: 36px;
