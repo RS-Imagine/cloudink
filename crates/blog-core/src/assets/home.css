@@ -723,6 +723,8 @@
   color: var(--ci-muted);
 }
 .archive-group a {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--ci-text);
   text-decoration: none;
   font: 17px/26px var(--ci-font-reading);

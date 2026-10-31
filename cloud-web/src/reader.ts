@@ -26,7 +26,7 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
   if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
   const path = url.pathname.replace(/\/index\.html$/, '/');
   const canonical = new URL(path, url.origin);
-  if (/^\/(about|posts\/[A-Za-z0-9_-]+)$/.test(path)) canonical.pathname += '/';
+  if (/^\/(about|archive|posts\/[A-Za-z0-9_-]+)$/.test(path)) canonical.pathname += '/';
   const isPost = /^\/posts\/[A-Za-z0-9_-]+\/$/.test(canonical.pathname);
   let title = '',
     description = '',
