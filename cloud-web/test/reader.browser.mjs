@@ -53,17 +53,19 @@ export async function verifyReader(browser, origin, output, engine) {
     .toBeLessThan(headerBottom + 64);
   await expect(page.locator('.article-body .katex')).toHaveCount(1);
   await expect(page.locator('.article-body code.hljs')).toHaveCount(1);
-  await expect(page.locator('.article-body table')).toHaveAttribute('tabindex', '0');
+  await expect(page.locator('.article-body .table-scroll')).toHaveAttribute('tabindex', '0');
   // Reading enhancements: tables scroll in their own region, single-line code
   // gets no gutter, and the back-to-top button appears after scrolling.
   await expect(page.locator('.article-body .table-scroll > table')).toHaveCount(1);
   await expect(page.locator('.article-body .code-block .code-gutter')).toHaveCount(0);
   const toTop = page.locator('#to-top');
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await expect(toTop).toBeHidden();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await expect(toTop).toBeVisible();
   await toTop.click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.locator('#swup')).toBeFocused();
   for (const [width, theme] of [
     [1440, 'light'],
     [390, 'light'],
@@ -82,6 +84,13 @@ export async function verifyReader(browser, origin, output, engine) {
   }
   await page.setViewportSize({ width: 320, height: 720 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
+  await expect(toTop).toBeVisible();
+  const topBounds = await toTop.boundingBox();
+  const contentsBounds = await page.locator('.mobile-toc-btn').boundingBox();
+  assert.ok(topBounds.y + topBounds.height <= contentsBounds.y - 8);
+  await toTop.click();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
   await page.locator('.mobile-toc-btn').click();
   await expect(page.locator('.toc-link').first()).toBeFocused();
   await page.keyboard.press('Shift+Tab');

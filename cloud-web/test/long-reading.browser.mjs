@@ -128,6 +128,27 @@ export async function verifyLongReading(browser, origin, output, engine) {
         await expect(page.locator('.article-body code.hljs')).toBeVisible();
         await expect(page.locator('.katex-display')).toHaveCount(2);
         const after = await measure();
+        const gutter = page.locator('.code-gutter');
+        await expect(gutter).toHaveAttribute('aria-hidden', 'true');
+        await expect(gutter).toHaveText('1\n2');
+        const originalCode = await page.locator('.article-body pre code').textContent();
+        await page.evaluate(() => {
+          Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: async (text) => { window.copiedCode = text; } },
+          });
+        });
+        await page.locator('.copy-code').click();
+        await expect.poll(() => page.evaluate(() => window.copiedCode)).toBe(originalCode);
+        const alignment = await gutter.evaluate((node) => {
+          const pre = node.parentElement.querySelector('pre');
+          return Math.abs(
+            node.getBoundingClientRect().top + parseFloat(getComputedStyle(node).paddingTop) -
+            pre.getBoundingClientRect().top - parseFloat(getComputedStyle(pre).paddingTop),
+          );
+        });
+        assert.ok(alignment < 2, 'Line numbers stay aligned after copy feedback');
+
         assert.ok(
           after.scrollWidth > after.width + 100,
           JSON.stringify({ engine, width, theme, before, after }),
@@ -149,7 +170,7 @@ export async function verifyLongReading(browser, origin, output, engine) {
           };
         });
         assert.ok(typography.size >= 17 && typography.leading >= 1.7);
-        for (const selector of ['pre', 'table', '.katex-display']) {
+        for (const selector of ['pre', '.table-scroll', '.katex-display']) {
           const region = page.locator('.article-body ' + selector).first();
           await expect(region).toHaveAttribute('tabindex', '0');
           await region.focus();

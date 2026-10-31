@@ -49,15 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
       // Back-to-top: one persistent floating button for every page.
       const toTop = document.createElement('button');
       toTop.id = 'to-top';
+      toTop.type = 'button';
       toTop.className = 'to-top';
       toTop.setAttribute('aria-label', '回到顶部 / Back to top');
       toTop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l-7 7 1.4 1.4L11 8.8V19h2V8.8l4.6 4.6L19 12z"/></svg>';
       toTop.hidden = true;
       document.body.append(toTop);
-      const updateToTop = () => { toTop.hidden = window.scrollY < 600; };
+      const updateToTop = () => {
+        const hidden = window.scrollY < 600;
+        if (toTop.hidden !== hidden) toTop.hidden = hidden;
+      };
       window.addEventListener('scroll', updateToTop, { passive: true });
       updateToTop();
       toTop.addEventListener('click', () => {
+        document.getElementById('swup')?.focus({ preventScroll: true });
         window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
       });
 
@@ -417,17 +422,13 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.append(pre);
           // Line-number gutter: aria-hidden so it never pollutes copy or screen readers.
           const codeText = pre.querySelector('code')?.textContent ?? pre.textContent;
-          const codeLines = codeText.replace(/\n$/, '').split('\n');
-          if (codeLines.length > 1) {
+          const lineCount = codeText.replace(/\n$/, '').split('\n').length;
+          if (lineCount > 1 && lineCount <= 5000) {
             wrapper.classList.add('has-gutter');
             const gutter = document.createElement('div');
             gutter.className = 'code-gutter';
             gutter.setAttribute('aria-hidden', 'true');
-            codeLines.forEach((_, index) => {
-              const number = document.createElement('span');
-              number.textContent = String(index + 1);
-              gutter.append(number);
-            });
+            gutter.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join('\n');
             wrapper.prepend(gutter);
           }
           const button = document.createElement('button');
@@ -447,11 +448,12 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
         document.querySelectorAll('.article-body table').forEach(table => {
-          table.tabIndex = 0;
-          table.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
           if (table.parentElement.classList.contains('table-scroll')) return;
           const scroller = document.createElement('div');
           scroller.className = 'table-scroll';
+          scroller.tabIndex = 0;
+          scroller.setAttribute('role', 'region');
+          scroller.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
           table.before(scroller);
           scroller.append(table);
         });
