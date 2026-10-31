@@ -147,6 +147,80 @@
   padding-top: 56px;
   border-radius: 16px;
   background: var(--ci-container);
+  position: relative;
+}
+/* Code blocks scroll horizontally inside the padded shell. */
+.article-shell article .article-body pre {
+  overflow-x: auto;
+}
+/* Line-number gutter: fixed while code scrolls beneath it. */
+.code-gutter {
+  position: absolute;
+  left: 0;
+  top: 80px; /* 56px toolbar reserve + 24px pre padding */
+  bottom: 24px;
+  width: 52px;
+  padding-right: 12px;
+  box-sizing: border-box;
+  background: var(--ci-container);
+  border-radius: 16px 0 0 16px;
+  font-family: var(--ci-font-mono);
+  font-size: 14px;
+  line-height: 24px;
+  text-align: right;
+  color: var(--ci-muted);
+  user-select: none;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.code-gutter span {
+  display: block;
+}
+.code-block.has-gutter pre {
+  padding-left: 64px;
+}
+/* Tables get one horizontal scroll region on narrow screens. */
+.table-scroll {
+  overflow-x: auto;
+  margin: 1.5em 0;
+  border: 1px solid var(--ci-divider);
+  border-radius: 16px;
+}
+.table-scroll table {
+  margin: 0;
+}
+.article-shell article .table-scroll table {
+  border: none;
+}
+/* Back-to-top floating button. */
+.to-top {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--ci-surface);
+  color: var(--ci-text);
+  box-shadow: var(--ci-shadow-overlay);
+  cursor: pointer;
+}
+.to-top[hidden] {
+  display: none;
+}
+.to-top svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+.to-top:hover {
+  background: var(--ci-elevated);
 }
 .copy-code {
   top: 4px;
@@ -483,6 +557,11 @@ dialog.search-modal .search-input {
 @media (max-width: 759px) {
   .article-shell {
     padding-top: 32px;
+  }
+  /* Match the 18px mobile pre padding so gutter numbers stay aligned. */
+  .code-gutter {
+    top: 74px;
+    bottom: 18px;
   }
   .article-shell article h1 {
     font-size: 36px;

@@ -46,6 +46,20 @@ document.addEventListener('DOMContentLoaded', () => {
           else link.removeAttribute('aria-current');
         }
       };
+      // Back-to-top: one persistent floating button for every page.
+      const toTop = document.createElement('button');
+      toTop.id = 'to-top';
+      toTop.className = 'to-top';
+      toTop.setAttribute('aria-label', '回到顶部 / Back to top');
+      toTop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l-7 7 1.4 1.4L11 8.8V19h2V8.8l4.6 4.6L19 12z"/></svg>';
+      toTop.hidden = true;
+      document.body.append(toTop);
+      const updateToTop = () => { toTop.hidden = window.scrollY < 600; };
+      window.addEventListener('scroll', updateToTop, { passive: true });
+      updateToTop();
+      toTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'auto' : 'smooth' });
+      });
 
       const searchBtn = document.getElementById('site-search-btn');
       const searchModal = document.getElementById('search-modal');
@@ -401,6 +415,21 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.className = 'code-block';
           pre.before(wrapper);
           wrapper.append(pre);
+          // Line-number gutter: aria-hidden so it never pollutes copy or screen readers.
+          const codeText = pre.querySelector('code')?.textContent ?? pre.textContent;
+          const codeLines = codeText.replace(/\n$/, '').split('\n');
+          if (codeLines.length > 1) {
+            wrapper.classList.add('has-gutter');
+            const gutter = document.createElement('div');
+            gutter.className = 'code-gutter';
+            gutter.setAttribute('aria-hidden', 'true');
+            codeLines.forEach((_, index) => {
+              const number = document.createElement('span');
+              number.textContent = String(index + 1);
+              gutter.append(number);
+            });
+            wrapper.prepend(gutter);
+          }
           const button = document.createElement('button');
           button.className = 'copy-code';
           button.textContent = 'Copy / 复制';
@@ -420,6 +449,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.article-body table').forEach(table => {
           table.tabIndex = 0;
           table.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
+          if (table.parentElement.classList.contains('table-scroll')) return;
+          const scroller = document.createElement('div');
+          scroller.className = 'table-scroll';
+          table.before(scroller);
+          scroller.append(table);
         });
         document.querySelectorAll('.article-body .katex-display').forEach(formula => {
           formula.tabIndex = 0;

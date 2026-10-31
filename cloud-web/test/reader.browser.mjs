@@ -54,6 +54,16 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.article-body .katex')).toHaveCount(1);
   await expect(page.locator('.article-body code.hljs')).toHaveCount(1);
   await expect(page.locator('.article-body table')).toHaveAttribute('tabindex', '0');
+  // Reading enhancements: tables scroll in their own region, single-line code
+  // gets no gutter, and the back-to-top button appears after scrolling.
+  await expect(page.locator('.article-body .table-scroll > table')).toHaveCount(1);
+  await expect(page.locator('.article-body .code-block .code-gutter')).toHaveCount(0);
+  const toTop = page.locator('#to-top');
+  await expect(toTop).toBeHidden();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect(toTop).toBeVisible();
+  await toTop.click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   for (const [width, theme] of [
     [1440, 'light'],
     [390, 'light'],
