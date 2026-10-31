@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
+import { transform } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { draft } from './fixture.mjs';
 
 export async function verifyLongReading(browser, origin, output, engine) {
@@ -66,11 +67,19 @@ export async function verifyLongReading(browser, origin, output, engine) {
     );
     await builder.close();
     const css = await readFile('build-work/web-public/styles.css', 'utf8');
-    const beforeCSS = css.replace(
+    const sourceCSS = await readFile('build-work/web-styles.source.css', 'utf8');
+    const beforeSource = sourceCSS.replace(
       /\/\* Wide content reading:[\s\S]*?\/\* End wide content reading\. \*\//,
       '',
     );
-    assert.notEqual(beforeCSS, css, 'The comparison must remove exactly the new wide-content CSS');
+    assert.notEqual(beforeSource, sourceCSS, 'The comparison must remove the wide-content CSS');
+    const beforeCSS = (
+      await transform(beforeSource, {
+        loader: 'css',
+        minify: true,
+        target: ['chrome100', 'firefox100', 'safari15'],
+      })
+    ).code;
     let baseline = false;
     await context.route('**/styles.css*', (route) =>
       route.fulfill({ contentType: 'text/css', body: baseline ? beforeCSS : css }),

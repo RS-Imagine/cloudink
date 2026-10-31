@@ -31,6 +31,16 @@ if (process.argv[2] === 'seed') {
     target: 'es2022',
     minify: true,
   });
+  const stylesheetPath = resolve(output, 'styles.css');
+  const styleSource = await readFile(stylesheetPath, 'utf8');
+  // Retain the Rust output outside public assets for controlled CSS comparisons.
+  await writeFile(resolve(root, 'build-work/web-styles.source.css'), styleSource);
+  const stylesheet = await transform(styleSource, {
+    loader: 'css',
+    minify: true,
+    target: ['chrome100', 'firefox100', 'safari15'],
+  });
+  await writeFile(stylesheetPath, stylesheet.code);
   const vendor = resolve(output, 'reader-assets');
   await mkdir(resolve(vendor, 'fonts'), { recursive: true });
   await build({
