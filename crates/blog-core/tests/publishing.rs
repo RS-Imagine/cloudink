@@ -160,6 +160,7 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
         "index.html",
         "404.html",
         "about/index.html",
+        "archive/index.html",
         "posts/visible/index.html",
         "search_index.json",
         "site.json",

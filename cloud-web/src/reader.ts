@@ -26,7 +26,7 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
   if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
   const path = url.pathname.replace(/\/index\.html$/, '/');
   const canonical = new URL(path, url.origin);
-  if (/^\/(about|posts\/[A-Za-z0-9_-]+)$/.test(path)) canonical.pathname += '/';
+  if (/^\/(about|archive|posts\/[A-Za-z0-9_-]+)$/.test(path)) canonical.pathname += '/';
   const isPost = /^\/posts\/[A-Za-z0-9_-]+\/$/.test(canonical.pathname);
   let title = '',
     description = '',
@@ -276,6 +276,7 @@ export async function discovery(
     const paths = ['/'];
     if (id && (await bucket.head(`public/${id}/index.html`))) {
       if (await bucket.head(`public/${id}/about/index.html`)) paths.push('/about/');
+      if (await bucket.head(`public/${id}/archive/index.html`)) paths.push('/archive/');
       let cursor: string | undefined;
       do {
         const page = await bucket.list({ prefix: `public/${id}/posts/`, cursor, limit: 1000 });

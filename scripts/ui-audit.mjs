@@ -1,3 +1,4 @@
+import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
 import { verifyPostAddresses } from '../cloud-web/test/post-address.browser.mjs';
 import { verifyEditorialAdmin } from '../cloud-web/test/editorial-admin.browser.mjs';
 import { verifyHomeIllustrations } from '../cloud-web/test/home-illustration.browser.mjs';
@@ -536,6 +537,7 @@ try {
     await verifyEditorialAdmin(localBrowser, origin, output, engine);
     await verifyMarkdownImport(localBrowser, origin, output, engine);
     await verifyPostAddresses(localBrowser, origin, output, engine);
+    await verifyArchive(localBrowser, origin, output, engine);
     await verifyImageOptimizer(localBrowser, origin);
     await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));

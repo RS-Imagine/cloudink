@@ -241,6 +241,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
 <section id="posts" aria-labelledby="posts-heading">
   <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2></div>
   <div class="grid home-post-grid">{cards}</div>
+  {archive_link}
 </section>
 </div>"#,
             illustrated = if home_illustration(config).is_empty() {
@@ -259,11 +260,69 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             } else {
                 cards
             },
+            archive_link = if count > 0 {
+                "<p class=\"home-archive-link\"><a href=\"/archive/\">查看全部 &rarr;</a></p>"
+            } else {
+                ""
+            },
         ),
         "",
         css_hash,
         config,
         "home",
+    )
+}
+
+/// Renders the archive page: every published post grouped by month, newest first.
+pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
+    let mut visible: Vec<&Post> = posts.iter().filter(|post| !post.draft()).collect();
+    visible.sort_by(|a, b| b.date().cmp(a.date()));
+    let mut groups: Vec<(String, Vec<&Post>)> = Vec::new();
+    for post in visible {
+        let key = post.date().get(..7).unwrap_or(post.date()).to_owned();
+        match groups.last_mut() {
+            Some((last_key, list)) if *last_key == key => list.push(post),
+            _ => groups.push((key, vec![post])),
+        }
+    }
+    let mut sections = String::new();
+    for (ym, list) in &groups {
+        let year = ym.get(..4).unwrap_or(ym);
+        let month = ym.get(5..7).unwrap_or("").trim_start_matches('0');
+        let mut items = String::new();
+        for post in list {
+            items.push_str(&format!(
+                "<li><time datetime=\"{date}\">{day}</time><a href=\"/posts/{slug}/\">{title}</a></li>",
+                date = escape_html(post.date()),
+                day = escape_html(post.date().get(5..).unwrap_or(post.date())),
+                slug = escape_html(post.slug()),
+                title = escape_html(post.title()),
+            ));
+        }
+        sections.push_str(&format!(
+            "<section class=\"archive-group\" aria-label=\"{year} 年 {month} 月\"><h2>{year} 年 {month} 月</h2><ul>{items}</ul></section>",
+            year = escape_html(year),
+            month = escape_html(month),
+            items = items,
+        ));
+    }
+    if sections.is_empty() {
+        sections.push_str("<p class=\"archive-empty\">这里还没有发布的文章，欢迎稍后再来。</p>");
+    }
+    let body = format!(
+        "<div class=\"archive-layout\"><h1 id=\"archive-title\">文章归档</h1>{sections}</div>",
+        sections = sections,
+    );
+    page(
+        "文章归档",
+        &config.description,
+        &config.title,
+        &config.description,
+        &body,
+        "",
+        css_hash,
+        config,
+        "archive",
     )
 }
 

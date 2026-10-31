@@ -63,6 +63,7 @@ function publicPath(path: string): string | null {
   if (path === '/' || path === '/index.html') return 'index.html';
   if (['/404.html', '/search_index.json', '/_release.json'].includes(path)) return path.slice(1);
   if (/^\/about(?:\/|\/index.html)?$/.test(path)) return 'about/index.html';
+  if (/^\/archive(?:\/|\/index.html)?$/.test(path)) return 'archive/index.html';
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
   if (post) return `posts/${post[1]}/index.html`;
   return null;
