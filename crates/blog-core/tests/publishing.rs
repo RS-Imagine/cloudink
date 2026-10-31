@@ -198,3 +198,14 @@ fn former_addresses_survive_originals_and_are_not_inherited_by_new_imports() {
     assert!(!legacy.contains("aliases"));
     fs::remove_dir_all(p).unwrap();
 }
+
+#[test]
+fn rss_discovery_escapes_the_site_title() {
+    let config = SiteConfig {
+        title: r#"Notes "from home" & <garden>"#.into(),
+        ..SiteConfig::default()
+    };
+    let html = blog_core::render::render_index(&config, &[], "test");
+    let title = "Notes &quot;from home&quot; &amp; &lt;garden&gt;";
+    assert!(html.contains(&format!("title=\"{title}\" href=\"/feed.xml\"")));
+}

@@ -452,6 +452,7 @@ fn page(
         description = escape_html(description),
         author = escape_html(&config.author),
         title = escape_html(title),
+        site_title = escape_html(site_title),
         css_hash = css_hash,
         extra_head = extra_head,
     ));
