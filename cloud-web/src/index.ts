@@ -109,7 +109,7 @@ export default {
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
       if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml')
-        return discovery(request, env.STORAGE, id);
+        return await discovery(request, env.STORAGE, id);
       if (path === '/analytics.js') {
         const script = analytics
           ? `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};const s=document.createElement('script');s.async=true;s.src="https://www.clarity.ms/tag/"+${JSON.stringify(clarityId)};document.head.append(s);`
