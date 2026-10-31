@@ -17,6 +17,8 @@ export async function verifyArchive(browser, origin, output, engine) {
     await expect(page.locator('#swup')).toHaveAttribute('data-page', 'archive');
     await expect(page.locator('h1')).toHaveText('文章归档');
     await expect(page.locator('.archive-group a[href="/posts/slow-days/"]')).toBeVisible();
+    // Check the direct response metadata after verifying in-page navigation above.
+    await page.reload();
     await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', origin + '/archive/');
     for (const [width, theme] of [
       [1440, 'light'],
