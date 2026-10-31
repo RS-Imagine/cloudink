@@ -184,6 +184,7 @@ pub fn import_markdown(raw: &str, filename: &str, today: &str, slug: &str) -> Re
             date: date(&published)?,
             updated,
             slug: slug.to_string(),
+            aliases: Vec::new(),
             description,
             draft: true,
         },

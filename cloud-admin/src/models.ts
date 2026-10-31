@@ -11,6 +11,7 @@ export class HttpError extends Error {
 export interface FrontMatter {
   title: string;
   slug: string;
+  aliases?: string[];
   date: string;
   updated?: string;
   description: string;
@@ -53,6 +54,7 @@ export interface Publishing {
   started_at: string;
   error?: string;
   files?: string[];
+  rename?: { from: string; to: string; etag: string; targetEtag: string | null };
 }
 
 export function validSlug(slug: string): string {
@@ -86,10 +88,21 @@ export function validateDraft(input: unknown): Draft {
   const raw = input.front_matter;
   if (!raw || typeof raw !== 'object') throw new HttpError(400, '文章信息不完整。');
   const f = raw as Record<string, unknown>;
+  if (
+    f.aliases !== undefined &&
+    (!Array.isArray(f.aliases) ||
+      f.aliases.length > 100 ||
+      f.aliases.some((alias) => typeof alias !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(alias)))
+  )
+    throw new HttpError(400, '旧文章地址格式不正确或超过 100 个。');
+  const aliases = [...new Set((f.aliases as string[] | undefined) || [])].filter(
+    (alias) => alias !== f.slug,
+  );
   return {
     front_matter: {
       title: text(f.title, '标题', 300),
       slug: validSlug(text(f.slug, '文章地址', 100)),
+      ...(aliases.length ? { aliases } : {}),
       date: date(f.date),
       ...(f.updated ? { updated: date(f.updated) } : {}),
       description: text(f.description ?? '', '摘要', 2000, false),

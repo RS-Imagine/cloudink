@@ -2,8 +2,9 @@ import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
-import { digest } from './auth';
 import { currentRelease } from './publishing';
+import { draftSummary } from './post-metadata';
+import { assertWritableAddress } from './post-addresses';
 import {
   HttpError,
   json,
@@ -16,7 +17,7 @@ import {
   validSiteIconKey,
 } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
-import { imageReferenceMetadata, ensureManagedImages } from './image-library';
+import { ensureManagedImages } from './image-library';
 
 const MAX_TEXT = 8_000_000;
 const MAX_MANIFEST = 18_000_000;
@@ -172,32 +173,18 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   const writes = new Map<string, string>();
   for (const [slug, source] of drafts) writes.set(`drafts/${slug}.md`, source);
   for (const [key, source] of writes) {
+    await assertWritableAddress(env.STORAGE, key.slice(7, -3));
     const existing = await env.STORAGE.get(key);
     if (existing && (await existing.text()) !== source)
       throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
   }
   let restored = 0;
   for (const [key, source] of writes) {
-    const draft = parseSource(source),
-      matter = draft.front_matter;
+    const draft = parseSource(source);
     const saved = await env.STORAGE.put(key, source, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
-      customMetadata: {
-        title: matter.title.slice(0, 120),
-        date: matter.date,
-        description: matter.description.slice(0, 240),
-        ...imageReferenceMetadata(source),
-        digest: await digest(
-          JSON.stringify([
-            matter.title,
-            matter.slug,
-            matter.date,
-            matter.description,
-            draft.body_markdown,
-          ]),
-        ),
-      },
+      customMetadata: await draftSummary(draft),
     });
     if (saved) restored++;
     else {

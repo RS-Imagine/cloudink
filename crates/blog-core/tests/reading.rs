@@ -8,6 +8,7 @@ fn article() -> Post {
         front_matter: FrontMatter {
             title: "A title & a thought".into(),
             slug: "reading".into(),
+            aliases: Vec::new(),
             date: "2026-10-01".into(),
             updated: Some("2026-10-02".into()),
             description: "A <description>".into(),

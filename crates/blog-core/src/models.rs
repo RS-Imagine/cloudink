@@ -72,6 +72,9 @@ pub struct FrontMatter {
     #[serde(default)]
     pub updated: Option<String>,
     pub slug: String,
+    /// Former article addresses, retained for redirects and Markdown backups.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
     #[serde(default)]
     pub description: String,
     #[serde(default)]
