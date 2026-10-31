@@ -134,12 +134,21 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
                 "title": p.title(),
                 "slug": p.slug(),
                 "description": p.description(),
+                "date": p.date(),
+                "updated": p.updated(),
                 "body": p.body_plain_text,
             })
         })
         .collect();
     let search_index_json = serde_json::to_string(&search_index)?;
     write_if_changed(output_root.join("search_index.json"), search_index_json)?;
+
+    // Site metadata used by the worker to build the RSS feed dynamically.
+    write_if_changed(
+        output_root.join("site.json"),
+        serde_json::json!({"title":config.title,"description":config.description,"author":config.author})
+            .to_string(),
+    )?;
 
     Ok(())
 }

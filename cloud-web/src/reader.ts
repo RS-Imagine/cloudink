@@ -175,6 +175,81 @@ export async function readerHtml(response: Response, url: URL): Promise<Response
     .transform(new Response(html, { status: response.status, headers }));
 }
 
+interface FeedItem {
+  title: string;
+  slug: string;
+  description?: string;
+  date?: string;
+  updated?: string | null;
+}
+
+const isFeedItem = (value: unknown): value is FeedItem =>
+  !!value &&
+  typeof value === 'object' &&
+  typeof (value as FeedItem).title === 'string' &&
+  typeof (value as FeedItem).slug === 'string' &&
+  /^[A-Za-z0-9_-]{1,100}$/.test((value as FeedItem).slug);
+
+const toRfc822 = (value: string | undefined | null): string | null => {
+  if (!value) return null;
+  const time = Date.parse(value + 'T00:00:00Z');
+  return Number.isNaN(time) ? null : new Date(time).toUTCString();
+};
+
+// Builds an RSS 2.0 feed from the published release. Like the sitemap, the
+// feed is generated at request time so absolute URLs always use the serving
+// origin and forks need no domain configuration.
+async function buildFeed(url: URL, bucket: R2Bucket, id: string | null): Promise<string> {
+  let siteTitle = 'Blog';
+  let siteDescription = '';
+  let items: unknown = [];
+  if (id) {
+    try {
+      const siteObj = await bucket.get(`public/${id}/site.json`);
+      if (siteObj) {
+        const site = await siteObj.json<{ title?: string; description?: string }>();
+        if (site && typeof site.title === 'string' && site.title) siteTitle = site.title;
+        if (site && typeof site.description === 'string') siteDescription = site.description;
+      }
+    } catch {
+      /* fall back to defaults */
+    }
+    try {
+      const indexObj = await bucket.get(`public/${id}/search_index.json`);
+      if (indexObj) items = await indexObj.json();
+    } catch {
+      /* fall back to an empty feed */
+    }
+  }
+  const entries = (Array.isArray(items) ? items : [])
+    .filter(isFeedItem)
+    .slice(0, 50)
+    .map((item) => {
+      const link = url.origin + '/posts/' + item.slug + '/';
+      const pubDate = toRfc822(item.updated || item.date);
+      return (
+        '<item>' +
+        `<title>${escape(item.title)}</title>` +
+        `<link>${escape(link)}</link>` +
+        `<guid>${escape(link)}</guid>` +
+        (pubDate ? `<pubDate>${escape(pubDate)}</pubDate>` : '') +
+        `<description>${escape(item.description || '')}</description>` +
+        '</item>'
+      );
+    })
+    .join('');
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<rss version="2.0"><channel>' +
+    `<title>${escape(siteTitle)}</title>` +
+    `<link>${escape(url.origin + '/')}</link>` +
+    `<description>${escape(siteDescription)}</description>` +
+    `<lastBuildDate>${escape(new Date().toUTCString())}</lastBuildDate>` +
+    entries +
+    '</channel></rss>'
+  );
+}
+
 export async function discovery(
   request: Request,
   bucket: R2Bucket,
@@ -185,6 +260,9 @@ export async function discovery(
   if (url.pathname === '/robots.txt') {
     body = `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${url.origin}/sitemap.xml\n`;
     type = 'text/plain; charset=utf-8';
+  } else if (url.pathname === '/feed.xml') {
+    body = await buildFeed(url, bucket, id);
+    type = 'application/rss+xml; charset=utf-8';
   } else {
     const paths = ['/'];
     if (id && (await bucket.head(`public/${id}/index.html`))) {

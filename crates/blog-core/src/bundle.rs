@@ -59,8 +59,13 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             render::render_post(&release.site, post, &css_hash),
         );
     }
-    let index: Vec<_> = posts.iter().map(|post| serde_json::json!({"title":post.title(),"slug":post.slug(),"description":post.description(),"body":post.body_plain_text})).collect();
+    let index: Vec<_> = posts.iter().map(|post| serde_json::json!({"title":post.title(),"slug":post.slug(),"description":post.description(),"date":post.date(),"updated":post.updated(),"body":post.body_plain_text})).collect();
     files.insert("search_index.json".into(), serde_json::to_string(&index)?);
+    files.insert(
+        "site.json".into(),
+        serde_json::json!({"title":release.site.title,"description":release.site.description,"author":release.site.author})
+            .to_string(),
+    );
     files.insert(
         "_release.json".into(),
         serde_json::json!({"id":release.id,"created_at":release.created_at}).to_string(),
