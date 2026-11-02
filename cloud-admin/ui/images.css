@@ -1,0 +1,149 @@
+/* Gallery loading and responsive cards share the writing-workspace tokens. */
+.image-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.image-card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border: 0;
+  border-radius: 24px;
+  background: var(--ci-surface);
+  box-shadow: none;
+}
+.image-thumbnail {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 160px;
+  aspect-ratio: 4 / 3;
+  padding: 8px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ci-container);
+}
+.image-thumbnail img {
+  position: absolute;
+  inset: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  max-height: none;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 160ms var(--ci-ease);
+}
+.image-thumbnail img.is-ready {
+  opacity: 1;
+}
+.image-unavailable::after {
+  content: '预览暂不可用';
+  color: var(--ci-muted);
+  font: 12px/20px var(--ci-font-ui);
+}
+.image-thumbnail:focus-visible {
+  outline-offset: -4px;
+}
+.image-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  padding: 16px;
+}
+.image-card-body h3 {
+  margin: 0 0 8px;
+  font: 600 18px/28px var(--ci-font-reading);
+}
+.image-card-body p {
+  font: 12px/24px var(--ci-font-ui);
+}
+.image-card-body .badge {
+  align-self: flex-start;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--ci-primary-container);
+  color: var(--ci-on-primary-container);
+}
+.image-card-body .badge.draft {
+  background: var(--ci-container);
+  color: var(--ci-muted);
+}
+.image-card-body details {
+  margin-top: 16px;
+  font: 12px/24px var(--ci-font-ui);
+}
+.image-card-body summary {
+  min-height: 48px;
+  padding: 12px 0;
+}
+.image-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.image-actions button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+.image-actions .danger {
+  grid-column: auto;
+}
+.image-protection {
+  margin: 12px 0 0;
+  color: var(--ci-muted);
+}
+
+.image-skeleton .image-card-body {
+  min-height: 232px;
+}
+.image-skeleton .image-card-body span {
+  display: block;
+  height: 16px;
+  margin-block: 12px;
+  border-radius: 4px;
+  background: var(--ci-container);
+}
+.image-skeleton span:nth-child(2) {
+  width: 75%;
+}
+.image-skeleton span:nth-child(3) {
+  width: 50%;
+}
+@media (max-width: 759px) {
+  .image-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .image-card {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+  .image-thumbnail {
+    width: 88px;
+    min-height: 0;
+    aspect-ratio: 1;
+  }
+  .image-card-body {
+    padding: 4px 0;
+  }
+  .image-card-body h3 {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  .image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 8px;
+  }
+  .image-actions button {
+    flex: 1 1 auto;
+  }
+}

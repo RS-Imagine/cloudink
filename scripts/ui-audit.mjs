@@ -1,3 +1,4 @@
+import { verifyUiStability } from '../cloud-web/test/ui-stability.browser.mjs';
 import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.mjs';
 import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
@@ -526,6 +527,7 @@ try {
     };
     await verifyReaderMetadata(localBrowser, origin);
     await verifyTemplateUpdates(localBrowser, origin, output, engine);
+    await verifyUiStability(localBrowser, origin, output, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
@@ -668,6 +670,8 @@ try {
     'build-work/web-public/reader-assets/katex.css',
     'build-work/web-public/styles.css',
     'cloud-admin/ui/app.generated.js',
+    'cloud-admin/ui/images.generated.js',
+    'cloud-admin/ui/images.css',
     'cloud-admin/ui/publication.generated.js',
     'cloud-admin/ui/home-illustration.generated.js',
     'cloud-admin/ui/style.css',
@@ -789,6 +793,15 @@ try {
     report.assets['assets/theme.js'].gzip <= 2048,
     'Theme and effects bootstrap gzip budget',
   );
+  const galleryCSS = (
+    await transform(await readFile(resolve('cloud-admin/ui/images.css'), 'utf8'), {
+      loader: 'css',
+      minify: true,
+      target: 'es2022',
+    })
+  ).code;
+  report.assets['admin/images.min.css'] = { gzip: gzipSync(galleryCSS).length };
+  assert.ok(report.assets['admin/images.min.css'].gzip <= 3072, 'Gallery CSS gzip budget');
   // Aggregate guards complement the per-module budgets: no hidden growth between releases.
   const releaseBudgets = {
     'build-work/web-public/client.js': 40 * 1024,
@@ -797,6 +810,7 @@ try {
     'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 29 * 1024,
+    'cloud-admin/ui/images.generated.js': 4 * 1024,
     'cloud-admin/ui/publication.generated.js': 4 * 1024,
     'cloud-admin/ui/home-illustration.generated.js': 3 * 1024,
     'served/admin/style.css': 15 * 1024,
@@ -811,6 +825,9 @@ try {
     assert.ok(report.assets[path].gzip <= budget, path + ' exceeds the release gzip budget');
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
+    'three-engine delayed gallery/refresh/upload/editor controls retain button geometry, existing cards, thumbnail boxes and draft contents at 1440/390/360/320px',
+    'three-engine long share-status text and unbroken URLs reflow without page overflow',
+
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
     'supplemental login/setup/settings/images inventory',
     'Chromium, Firefox and WebKit production theme + prototype smoke',

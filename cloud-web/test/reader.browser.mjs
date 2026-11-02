@@ -246,6 +246,7 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(plain.locator('.home-layout')).toBeVisible();
   await native.close();
   await verifyProgressivePreview(browser, origin, output, engine);
+  await verifyShareFeedback(browser, origin);
   assert.deepEqual(errors, [], engine + ' reader interactions must not produce errors');
 }
 
@@ -320,6 +321,32 @@ async function verifyProgressivePreview(browser, origin, output, engine) {
     await expect(image).toBeFocused();
     await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
     assert.deepEqual(errors, [], 'progressive preview must not leak late callbacks');
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyShareFeedback(browser, origin) {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  try {
+    await page.goto(origin + '/posts/slow-days/');
+    for (const width of [390, 360, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.locator('#share-status').evaluate((status) => {
+        status.textContent =
+          '分享暂时不可用，请复制链接后重试。'.repeat(6) +
+          'https://example.net/' +
+          'verylonglink'.repeat(30);
+      });
+      await page.locator('#share-status').scrollIntoViewIfNeeded();
+      assert.ok(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        'long share feedback reflows at ' + width,
+      );
+      await expect(page.locator('#copy-link')).toBeVisible();
+      await expect(page.locator('#share-btn')).toBeVisible();
+    }
   } finally {
     await context.close();
   }

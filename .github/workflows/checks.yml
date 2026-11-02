@@ -37,7 +37,7 @@ jobs:
           node --input-type=module <<'JS'
           import {readFile} from 'node:fs/promises';
           import {gzipSync} from 'node:zlib';
-          for (const path of ['cloud-admin/ui/app.generated.js','cloud-admin/ui/home-illustration.generated.js','cloud-admin/ui/wasm/blog_wasm_bg.wasm'])
+          for (const path of ['cloud-admin/ui/app.generated.js','cloud-admin/ui/images.generated.js','cloud-admin/ui/home-illustration.generated.js','cloud-admin/ui/wasm/blog_wasm_bg.wasm'])
             console.log(JSON.stringify({asset:path,gzip:gzipSync(await readFile(path)).length}));
           JS
       - name: Generate binding types and check TypeScript

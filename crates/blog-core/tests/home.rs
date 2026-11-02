@@ -207,3 +207,20 @@ fn home_links_to_archive_when_posts_exist() {
     let empty = render::render_index(&SiteConfig::default(), &[], "test");
     assert!(!empty.contains("href=\"/archive/\""));
 }
+
+#[test]
+fn all_drafts_show_the_empty_home_without_an_archive_link() {
+    let html = render::render_index(
+        &SiteConfig::default(),
+        &[
+            post("one", "Private one", true),
+            post("two", "Private two", true),
+        ],
+        "test",
+    );
+    assert!(html.contains("home-empty"));
+    assert!(!html.contains("home-archive-link"));
+    assert!(!html.contains("/archive/"));
+    assert!(!html.contains("/posts/one/"));
+    assert!(!html.contains("Private two"));
+}
