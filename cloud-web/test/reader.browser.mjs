@@ -337,7 +337,7 @@ async function verifyShareFeedback(browser, origin) {
         status.textContent =
           '分享暂时不可用，请复制链接后重试。'.repeat(6) +
           'https://example.net/' +
-          'very-long-link'.repeat(25);
+          'verylonglink'.repeat(30);
       });
       await page.locator('#share-status').scrollIntoViewIfNeeded();
       assert.ok(
