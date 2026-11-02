@@ -10,9 +10,13 @@ import {
   json,
   jsonInput,
   limitedBody,
+  parseShortSource,
   parseSource,
   serializeDraft,
+  serializeShortDraft,
   validateSite,
+  type Draft,
+  type ShortDraft,
   type SiteConfig,
   validSiteIconKey,
 } from './models';
@@ -54,7 +58,10 @@ function legacyHistoryKey(key: string): boolean {
   return /^history\/[A-Za-z0-9_-]{1,100}\/[a-f0-9-]+\.md$/.test(key);
 }
 function sourceSlug(key: string): string | null {
-  return key.match(/^(?:published|drafts)\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1] || null;
+  return key.match(/^(?:published|drafts|published-shorts|shorts)\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1] || null;
+}
+function isShortKey(key: string): boolean {
+  return /^(?:published-shorts|shorts)\//.test(key);
 }
 async function createBackup(env: CloudInkEnv): Promise<Backup> {
   const release = await currentRelease(env);
@@ -70,7 +77,16 @@ async function createBackup(env: CloudInkEnv): Promise<Backup> {
   }
   for (const [slug, source] of Object.entries(release.markdown_posts))
     add(`published/${slug}.md`, source);
+  for (const [slug, source] of Object.entries(release.markdown_shorts || {}))
+    add(`published-shorts/${slug}.md`, source);
   for (const object of await objects(env.STORAGE, 'drafts/')) {
+    if (object.customMetadata?.deleted) continue;
+    if (textBytes + object.size > MAX_TEXT)
+      throw new HttpError(413, '原稿超过网页备份限制，请通过 Cloudflare R2 备份。');
+    const value = await env.STORAGE.get(object.key);
+    if (value) add(object.key, await value.text());
+  }
+  for (const object of await objects(env.STORAGE, 'shorts/')) {
     if (object.customMetadata?.deleted) continue;
     if (textBytes + object.size > MAX_TEXT)
       throw new HttpError(413, '原稿超过网页备份限制，请通过 Cloudflare R2 备份。');
@@ -118,12 +134,21 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   if (files.length > MAX_FILES || value.images.length > MAX_IMAGE_OBJECTS)
     throw new HttpError(413, '备份文件数量过多。');
   const drafts = new Map<string, string>();
+  const shortDrafts = new Map<string, string>();
   // Validate the whole manifest before writing. Drafts take precedence over
   // published copies; restored articles never become public automatically.
   for (const [key, source] of files.sort(([a], [b]) => b.localeCompare(a))) {
     if (legacyHistoryKey(key)) continue;
     const slug = sourceSlug(key);
     if (!slug || typeof source !== 'string') throw new HttpError(400, '备份包含不支持的文件路径。');
+    if (isShortKey(key)) {
+      const draft = parseShortSource(source);
+      if (draft.front_matter.slug !== slug)
+        throw new HttpError(400, '备份短记地址与文件路径不一致。');
+      draft.front_matter.draft = true;
+      shortDrafts.set(slug, serializeShortDraft(draft));
+      continue;
+    }
     const draft = parseSource(source);
     if (draft.front_matter.slug !== slug)
       throw new HttpError(400, '备份文章地址与文件路径不一致。');
@@ -164,7 +189,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   await ensureSiteIcon(env.STORAGE, site);
   await ensureManagedImages(
     env.STORAGE,
-    [site.about || '', ...drafts.values()],
+    [site.about || '', ...drafts.values(), ...shortDrafts.values()],
     new URL(request.url).origin,
   );
   const oldSettings = await env.STORAGE.get('draft-site.json');
@@ -172,6 +197,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     throw new HttpError(409, '网站设置已变化，请重新打开设置后恢复。');
   const writes = new Map<string, string>();
   for (const [slug, source] of drafts) writes.set(`drafts/${slug}.md`, source);
+  for (const [slug, source] of shortDrafts) writes.set(`shorts/${slug}.md`, source);
   for (const [key, source] of writes) {
     await assertWritableAddress(env.STORAGE, key.slice(7, -3));
     const existing = await env.STORAGE.get(key);
@@ -180,11 +206,14 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   }
   let restored = 0;
   for (const [key, source] of writes) {
-    const draft = parseSource(source);
+    const isShort = key.startsWith('shorts/');
+    const draft = isShort ? parseShortSource(source) : parseSource(source);
     const saved = await env.STORAGE.put(key, source, {
       onlyIf: { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
-      customMetadata: await draftSummary(draft),
+      customMetadata: isShort
+        ? { date: (draft as ShortDraft).front_matter.date }
+        : await draftSummary(draft as Draft),
     });
     if (saved) restored++;
     else {

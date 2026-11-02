@@ -39,6 +39,7 @@ export function changesContentReferences(path: string, method: string): boolean 
   if (['GET', 'HEAD'].includes(method)) return false;
   return (
     /^\/api\/posts\//.test(path) ||
+    /^\/api\/shorts\//.test(path) ||
     path === '/api/settings' ||
     path === '/api/publish' ||
     /^\/api\/publish\/[a-f0-9-]{36}\/(?:commit|cancel)$/.test(path) ||

@@ -82,7 +82,8 @@ export function aboutSource(markdown: string): string {
   return '+++\ntitle = "About"\ndescription = ""\n+++\n\n' + markdown;
 }
 export function publicType(path: string): string {
-  if (path === 'archive/index.html') return 'text/html; charset=utf-8';
+  if (path === 'archive/index.html' || path === 'shorts/index.html')
+    return 'text/html; charset=utf-8';
   if (/^(?:index|404|about\/index|posts\/[A-Za-z0-9_-]{1,100}\/index)\.html$/.test(path))
     return 'text/html; charset=utf-8';
   if (path.endsWith('.json')) return 'application/json; charset=utf-8';

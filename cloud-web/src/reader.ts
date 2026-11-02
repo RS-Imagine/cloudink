@@ -277,6 +277,7 @@ export async function discovery(
     if (id && (await bucket.head(`public/${id}/index.html`))) {
       if (await bucket.head(`public/${id}/about/index.html`)) paths.push('/about/');
       if (await bucket.head(`public/${id}/archive/index.html`)) paths.push('/archive/');
+      if (await bucket.head(`public/${id}/shorts/index.html`)) paths.push('/shorts/');
       let cursor: string | undefined;
       do {
         const page = await bucket.list({ prefix: `public/${id}/posts/`, cursor, limit: 1000 });

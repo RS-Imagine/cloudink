@@ -1046,12 +1046,14 @@ function insertImage(image) {
   textarea.focus();
   changed();
 }
-configureImages({
+const imageTools = configureImages({
   rebuild: () => startPublish({ rebuild: true }),
   api,
   flush,
   notice,
   action,
+  imageUploadForm,
+  confirmAction,
   open: (back = false) => {
     ++navigationVersion;
     invalidatePreview();
@@ -1065,6 +1067,10 @@ configureImages({
     return () => version === navigationVersion;
   },
 });
+// Wire the sidebar button and the editor's image picker to the library
+// (previously done by image-library-loader.js).
+for (const id of ['images', 'choose-library-image'])
+  $(id).addEventListener('click', () => action(id, '正在打开…', () => imageTools.show()));
 configureShorts({
   api,
   notice,

@@ -33,6 +33,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       edit.textContent = '编辑';
       edit.addEventListener('click', () => openEditor(item));
       const pub = document.createElement('button');
+      pub.id = 'short-publish-' + item.slug;
       pub.textContent = item.published && !item.has_draft ? '已发布' : '发布';
       pub.disabled = item.published && !item.has_draft;
       pub.classList.add('primary');
@@ -44,6 +45,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
         }),
       );
       const del = document.createElement('button');
+      del.id = 'short-delete-' + item.slug;
       del.textContent = '删除';
       del.classList.add('danger');
       del.addEventListener('click', async () => {
@@ -129,7 +131,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       const slug = draft.front_matter.slug;
       const result = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
-        body: draft,
+        body: { ...draft, etag: editing?.etag || null },
       });
       if (editing) editing.etag = result.etag;
       else editing = { slug, etag: result.etag };
@@ -144,7 +146,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       const slug = draft.front_matter.slug;
       const saved = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
-        body: draft,
+        body: { ...draft, etag: editing?.etag || null },
       });
       await startPublish({ shortSlug: slug, etag: saved.etag });
       notice('短记已发布。', 'success');
