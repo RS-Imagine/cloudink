@@ -210,3 +210,37 @@ fn rss_discovery_escapes_the_site_title() {
     let title = "Notes &quot;from home&quot; &amp; &lt;garden&gt;";
     assert!(html.contains(&format!("title=\"{title}\" href=\"/feed.xml\"")));
 }
+
+#[test]
+fn template_version_tracks_renderer_not_private_content() {
+    let p = temp();
+    let input = p.join("content");
+    let output = p.join("public");
+    content::save_post(&input, &draft("first", false)).unwrap();
+    build_site(&input, &output).unwrap();
+    let native: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(output.join("site.json")).unwrap()).unwrap();
+    let version = blog_core::template_version();
+    assert_eq!(version.len(), 64);
+    assert!(version.bytes().all(|c| c.is_ascii_hexdigit()));
+    assert_eq!(native["template_version"], version);
+    let mut release = serde_json::json!({
+        "schema_version": 1, "id": "release-one", "created_at": "2026-10-01T00:00:00Z",
+        "site": SiteConfig::default(), "markdown_posts": {}
+    });
+    for id in ["release-one", "release-two"] {
+        release["id"] = id.into();
+        release["site"]["title"] = format!("Site {id}").into();
+        let files = blog_core::bundle::render_release(&release.to_string()).unwrap();
+        for name in ["site.json", "_release.json"] {
+            let metadata: serde_json::Value = serde_json::from_str(&files[name]).unwrap();
+            assert_eq!(metadata["template_version"], version);
+        }
+    }
+    content::save_post(&input, &draft("private", true)).unwrap();
+    build_site(&input, &output).unwrap();
+    let after: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(output.join("site.json")).unwrap()).unwrap();
+    assert_eq!(after["template_version"], native["template_version"]);
+    fs::remove_dir_all(p).unwrap();
+}

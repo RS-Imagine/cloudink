@@ -221,6 +221,54 @@
       else signal.addEventListener('abort', abort, { once: true });
     });
   }
+  const metadataSelector =
+    'meta[name="description"],meta[name="author"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],script[type="application/ld+json"]';
+  function pageMetadata(doc, target) {
+    const nodes = [];
+    let canonical = null;
+    for (const source of doc.head.querySelectorAll(metadataSelector)) {
+      if (source.tagName === 'LINK') {
+        try {
+          const url = new URL(source.getAttribute('href'), location.origin);
+          if (url.origin === location.origin) {
+            url.hash = '';
+            url.search = '';
+            canonical = url.href;
+          }
+        } catch {}
+        continue;
+      }
+      if (source.tagName === 'SCRIPT') {
+        try {
+          const value = JSON.parse(source.textContent);
+          if (!value || typeof value !== 'object') continue;
+          const node = document.createElement('script');
+          node.type = 'application/ld+json';
+          node.textContent = JSON.stringify(value).replace(/</g, '\\u003c');
+          nodes.push(node);
+        } catch {}
+        continue;
+      }
+      const node = document.createElement('meta');
+      const key = source.hasAttribute('property') ? 'property' : 'name';
+      node.setAttribute(key, source.getAttribute(key));
+      node.content = source.getAttribute('content') || '';
+      nodes.push(node);
+    }
+    const url = new URL(canonical || target, location.origin);
+    url.hash = '';
+    url.search = '';
+    const link = document.createElement('link');
+    link.rel = 'canonical';
+    link.href = url.href;
+    nodes.push(link);
+    return { title: doc.title, nodes };
+  }
+  function applyMetadata(metadata) {
+    document.title = metadata.title;
+    document.head.querySelectorAll(metadataSelector).forEach((node) => node.remove());
+    document.head.append(...metadata.nodes);
+  }
   function attach(swup) {
     if (!swup) return;
     let controller = null,
@@ -288,7 +336,14 @@
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
         if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
         clear();
-        return perform(visit, { ...options, meta: { ...options.meta, readerPage: page } });
+        return perform(visit, {
+          ...options,
+          meta: {
+            ...options.meta,
+            readerPage: page,
+            readerHead: pageMetadata(doc, page.url),
+          },
+        });
       } catch {
         if (pending !== visit) return;
         clear();
@@ -314,6 +369,9 @@
       'page:load',
       (visit, args, original) => visit.meta.readerPage || original(visit, args),
     );
+    swup.hooks.on('page:view', (visit) => {
+      if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
+    });
     swup.hooks.on('visit:abort', (visit) => {
       if (pending === visit) {
         controller?.abort();

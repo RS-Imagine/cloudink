@@ -1,3 +1,5 @@
+import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.mjs';
+import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
 import { verifyPostAddresses } from '../cloud-web/test/post-address.browser.mjs';
 import { verifyEditorialAdmin } from '../cloud-web/test/editorial-admin.browser.mjs';
@@ -522,6 +524,8 @@ try {
     const localBrowser = {
       newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
     };
+    await verifyReaderMetadata(localBrowser, origin);
+    await verifyTemplateUpdates(localBrowser, origin, output, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
@@ -664,6 +668,7 @@ try {
     'build-work/web-public/reader-assets/katex.css',
     'build-work/web-public/styles.css',
     'cloud-admin/ui/app.generated.js',
+    'cloud-admin/ui/publication.generated.js',
     'cloud-admin/ui/home-illustration.generated.js',
     'cloud-admin/ui/style.css',
     'cloud-admin/ui/studio.css',
@@ -792,6 +797,7 @@ try {
     'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 29 * 1024,
+    'cloud-admin/ui/publication.generated.js': 4 * 1024,
     'cloud-admin/ui/home-illustration.generated.js': 3 * 1024,
     'served/admin/style.css': 15 * 1024,
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,

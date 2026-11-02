@@ -154,7 +154,7 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     // Site metadata used by the worker to build the RSS feed dynamically.
     write_if_changed(
         output_root.join("site.json"),
-        serde_json::json!({"title":config.title,"description":config.description,"author":config.author})
+        serde_json::json!({"title":config.title,"description":config.description,"author":config.author,"template_version":template_version()})
             .to_string(),
     )?;
 
@@ -229,4 +229,9 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Fingerprint of renderer inputs, shared by native and browser builds.
+pub fn template_version() -> &'static str {
+    env!("CLOUDINK_TEMPLATE_VERSION")
 }

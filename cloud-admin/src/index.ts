@@ -1,3 +1,4 @@
+import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
 import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './browser-publishing';
@@ -104,13 +105,18 @@ async function apiRoute(
       const draft = parseSource(source);
       published.set(slug, { draft, digest: await digest(editorial(draft)) });
     }
-    const redirects =
-      (
-        await readJson<{ postRedirects?: Record<string, string> }>(
-          env.STORAGE,
-          'state/published.json',
-        )
-      )?.postRedirects || {};
+    const pointer = await readJson<{
+      id: string;
+      postRedirects?: Record<string, string>;
+      templateVersion?: string;
+    }>(env.STORAGE, 'state/published.json');
+    const redirects = pointer?.postRedirects || {};
+    const publicInitialized = !!(await env.STORAGE.head(`public/${release.id}/index.html`));
+    const templateStatus = !publicInitialized
+      ? 'unpublished'
+      : pointer?.id === release.id && pointer.templateVersion === CURRENT_TEMPLATE_VERSION
+        ? 'current'
+        : 'outdated';
     const posts = new Map<string, unknown>();
     for (const [slug, p] of published)
       posts.set(slug, {
@@ -146,7 +152,8 @@ async function apiRoute(
       publishing,
       email: session.email,
       csrf: session.csrf,
-      publicInitialized: !!(await env.STORAGE.head(`public/${release.id}/index.html`)),
+      publicInitialized,
+      templateStatus,
     });
   }
   const rename = path.match(/^\/api\/posts\/([A-Za-z0-9_-]+)\/rename$/);

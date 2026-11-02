@@ -432,11 +432,19 @@
                   >开始新文章</button
                 ><button
                   id="publish-welcome"
+                  aria-describedby="template-status"
                   title="只重新生成已发布页面，不发布草稿或未发布的网站设置"
                 >
                   发布博客首页
                 </button>
               </div>
+              <p
+                id="template-status"
+                class="operation-feedback"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
             </div>
           </div>
           <h1 id="posts-title" hidden>所有文章</h1>

@@ -19,3 +19,6 @@ deployment.json
 Thumbs.db
 cloud-admin/ui/image.worker.generated.js
 cloud-admin/ui/image-maintenance.generated.js
+
+cloud-admin/src/template-version.generated.ts
+cloud-admin/ui/publication.generated.js

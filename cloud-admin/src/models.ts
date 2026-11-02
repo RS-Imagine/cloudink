@@ -54,6 +54,7 @@ export interface Publishing {
   started_at: string;
   error?: string;
   files?: string[];
+  template_version?: string;
   rename?: { from: string; to: string; etag: string; targetEtag: string | null };
 }
 

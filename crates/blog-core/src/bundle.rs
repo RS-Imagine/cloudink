@@ -67,12 +67,12 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
     files.insert("search_index.json".into(), serde_json::to_string(&index)?);
     files.insert(
         "site.json".into(),
-        serde_json::json!({"title":release.site.title,"description":release.site.description,"author":release.site.author})
+        serde_json::json!({"title":release.site.title,"description":release.site.description,"author":release.site.author,"template_version":crate::template_version()})
             .to_string(),
     );
     files.insert(
         "_release.json".into(),
-        serde_json::json!({"id":release.id,"created_at":release.created_at}).to_string(),
+        serde_json::json!({"id":release.id,"created_at":release.created_at,"template_version":crate::template_version()}).to_string(),
     );
     Ok(files)
 }
