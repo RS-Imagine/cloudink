@@ -231,7 +231,12 @@ async function apiRoute(
       });
     let cursor: string | undefined;
     do {
-      const page = await env.STORAGE.list({ prefix: 'shorts/', cursor, limit: 1000 });
+      const page = await env.STORAGE.list({
+        prefix: 'shorts/',
+        cursor,
+        limit: 1000,
+        include: ['customMetadata'],
+      });
       for (const object of page.objects) {
         if (object.customMetadata?.deleted) continue;
         const slug = object.key.slice(7, -3);
@@ -261,9 +266,17 @@ async function apiRoute(
       if (draft.front_matter.slug !== slug)
         throw new HttpError(400, '短记地址与请求地址不一致。');
       draft.front_matter.draft = true;
+      const existing = await env.STORAGE.head(`shorts/${slug}.md`);
+      if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
+        throw new HttpError(409, '这条短记在另一个窗口中发生了修改，请重新打开。');
+      if ((!existing || existing.customMetadata?.deleted) && input.etag)
+        throw new HttpError(409, '短记已删除，请重新打开。');
       const object = await env.STORAGE.put(`shorts/${slug}.md`, serializeShortDraft(draft), {
+        onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: { date: draft.front_matter.date },
+        httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       });
+      if (!object) throw new HttpError(409, '这条短记刚刚发生了修改，请重新打开。');
       return json({ ok: true, etag: object.etag });
     }
     if (request.method === 'GET') {

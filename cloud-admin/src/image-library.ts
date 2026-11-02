@@ -117,6 +117,8 @@ async function references(
     const data = await object.json<Release>();
     for (const [slug, text] of Object.entries(data.markdown_posts))
       source(text, { kind, slug, title: slug });
+    for (const [slug, text] of Object.entries(data.markdown_shorts || {}))
+      source(text, { kind, slug, title: slug });
     source(JSON.stringify(data.site), {
       kind: 'settings',
       title: kind === 'published' ? '线上网站设置' : '待发布网站设置',
@@ -179,6 +181,30 @@ async function references(
         if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
         source(await body.text(), ref);
       }
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  // Short drafts ("短记") live under shorts/ and can also embed images.
+  cursor = undefined;
+  do {
+    const page = await storage.list({
+      prefix: 'shorts/',
+      cursor,
+      limit: 1000,
+      include: ['customMetadata'],
+    });
+    for (const object of page.objects) {
+      if (++count > MAX_SOURCES)
+        throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
+      if (object.customMetadata?.deleted) continue;
+      const slug = object.key.match(/^shorts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
+      if (!slug) throw new HttpError(503, '短记目录包含无法识别的对象，无法安全检查图片引用。');
+      const ref: ImageReference = { kind: 'draft', title: slug, slug };
+      if (bytes + object.size > MAX_TEXT_BYTES)
+        throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
+      const body = await storage.get(object.key);
+      if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
+      source(await body.text(), ref);
     }
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
