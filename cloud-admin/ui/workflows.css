@@ -4,6 +4,19 @@ button[aria-busy='true'] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+button[aria-busy='true'] [data-action-label] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button[aria-busy='true']:has(svg)::before {
+  display: none;
+}
+button[aria-busy='true'] > svg {
+  flex-shrink: 0;
+  opacity: 0.55;
+  animation: journal-pulse 800ms var(--ci-ease) infinite alternate;
+}
 button[aria-busy='true']::before,
 .navigation-status::before {
   width: 8px;
@@ -381,97 +394,6 @@ button[aria-busy='true']::before,
   border: 1px solid var(--ci-error);
   border-radius: 12px;
   color: var(--ci-error);
-}
-.image-library-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
-  gap: 24px;
-  margin: 24px 0;
-}
-.image-library-grid[aria-busy='true']::before {
-  display: block;
-  min-height: 200px;
-  border-radius: 24px;
-  background: var(--ci-container);
-  content: '';
-  animation: journal-pulse 1200ms var(--ci-ease) infinite alternate;
-}
-.image-card {
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  border: 0;
-  border-radius: 24px;
-  background: var(--ci-surface);
-  box-shadow: none;
-}
-.image-thumbnail {
-  width: 100%;
-  height: auto;
-  min-height: 160px;
-  aspect-ratio: 4 / 3;
-  padding: 8px;
-  border: 0;
-  border-radius: 16px;
-  background: var(--ci-container);
-}
-.image-thumbnail img {
-  max-height: 240px;
-  border-radius: 8px;
-}
-.image-thumbnail:focus-visible {
-  outline-offset: -4px;
-}
-.image-card-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  padding: 16px;
-}
-.image-card-body h3 {
-  margin: 0 0 8px;
-  font: 600 18px/28px var(--ci-font-reading);
-}
-.image-card-body p {
-  font: 12px/24px var(--ci-font-ui);
-}
-.image-card-body .badge {
-  align-self: flex-start;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: var(--ci-primary-container);
-  color: var(--ci-on-primary-container);
-}
-.image-card-body .badge.draft {
-  background: var(--ci-container);
-  color: var(--ci-muted);
-}
-.image-card-body details {
-  margin-top: 16px;
-  font: 12px/24px var(--ci-font-ui);
-}
-.image-card-body summary {
-  min-height: 48px;
-  padding: 12px 0;
-}
-.image-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 16px;
-}
-.image-actions button {
-  min-width: 0;
-  padding-inline: 8px;
-}
-.image-actions .danger {
-  grid-column: auto;
-}
-.image-protection {
-  margin: 12px 0 0;
-  color: var(--ci-muted);
 }
 .workflow-empty {
   padding: 40px 24px;
@@ -863,23 +785,6 @@ button[aria-busy='true']::before,
     max-width: none;
     font-size: 16px;
   }
-  .image-library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-  .image-thumbnail {
-    min-height: 104px;
-  }
-  .image-card-body {
-    padding: 12px 4px;
-  }
-  .image-card-body h3 {
-    font-size: 16px;
-    line-height: 24px;
-  }
-  .image-actions {
-    grid-template-columns: minmax(0, 1fr);
-  }
   .settings-nav {
     position: static;
     flex-wrap: nowrap;
@@ -1058,11 +963,6 @@ button[aria-busy='true']::before,
 :root[data-cloudink-admin] [data-ci-sheet-active] {
   border-radius: 12px 12px 0 0 !important;
   corner-shape: round;
-}
-@media (max-width: 359px) {
-  .image-library-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .editor-document :is(input.title-input, textarea.description-input) {

@@ -1,5 +1,3 @@
-import { imageUploadForm } from './image-upload.js';
-import { confirmAction } from './workflows.js';
 const $ = (id) => document.getElementById(id);
 const kinds = {
   published: '已发布',
@@ -13,6 +11,8 @@ function size(bytes) {
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 export function configureImages({
+  imageUploadForm,
+  confirmAction,
   api,
   flush,
   notice,
@@ -62,6 +62,21 @@ export function configureImages({
         `${image.name} ${image.key}`.toLowerCase().includes(query) &&
         (!unused || (image.referencesChecked && !image.references.length)),
     );
+    if (loading && !images.length) {
+      for (let index = 0; index < 6; index++) {
+        const card = document.createElement('div');
+        card.className = 'image-card image-skeleton';
+        card.setAttribute('aria-hidden', 'true');
+        card.inert = true;
+        const thumbnail = document.createElement('div');
+        thumbnail.className = 'image-thumbnail';
+        const body = document.createElement('div');
+        body.className = 'image-card-body';
+        for (let line = 0; line < 3; line++) body.append(document.createElement('span'));
+        card.append(thumbnail, body);
+        grid.append(card);
+      }
+    }
     $('image-library-summary').textContent =
       `${images.length} 张已加载 · ${size(images.reduce((total, image) => total + (image.totalSize || image.size), 0))}`;
     for (const image of visible) {
@@ -77,6 +92,13 @@ export function configureImages({
       thumbnail.alt = image.name;
       thumbnail.loading = 'lazy';
       thumbnail.decoding = 'async';
+      if (image.width > 0 && image.height > 0) {
+        thumbnail.width = image.width;
+        thumbnail.height = image.height;
+      }
+      thumbnail.addEventListener('load', () => thumbnail.classList.add('is-ready'), { once: true });
+      thumbnail.addEventListener('error', () => preview.classList.add('image-unavailable'), { once: true });
+      if (thumbnail.complete && thumbnail.naturalWidth) thumbnail.classList.add('is-ready');
       preview.append(thumbnail);
       preview.addEventListener('click', () => {
         $('image-preview-title').textContent = image.name;
@@ -179,7 +201,7 @@ export function configureImages({
         { confirmFirst: true },
       );
       remove.classList.add('danger');
-      remove.disabled = !image.referencesChecked || image.references.length > 0;
+      remove.disabled = loading || !!loadError || !image.referencesChecked || image.references.length > 0;
       remove.title = !image.referencesChecked
         ? '引用检查未完成，暂时不能删除。'
         : image.references.length
@@ -188,7 +210,9 @@ export function configureImages({
       const help = document.createElement('p');
       help.id = helpId;
       help.className = 'image-protection';
-      help.textContent = !image.referencesChecked
+      help.textContent = loading || loadError
+        ? '请等图片库刷新完成，再检查是否可以删除。'
+        : !image.referencesChecked
         ? '引用检查完成前，图片会受到保护。'
         : image.references.length
           ? '这张图片正在使用，删除已受保护。'
@@ -205,7 +229,7 @@ export function configureImages({
       : images.length
         ? '没有符合筛选条件的图片。'
         : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
-    $('image-library-more').hidden = !cursor;
+    $('image-library-more').hidden = !cursor || loading || !!loadError;
     $('image-library-back').hidden = !canInsert();
     $('image-library-warning').hidden = !referenceError;
     $('image-library-warning').textContent = referenceError
@@ -218,11 +242,15 @@ export function configureImages({
     loadError = '';
     $('image-library-status').dataset.tone = 'pending';
     status('正在读取图片库和引用信息…');
-    if (reset) {
-      images = [];
-      cursor = null;
-      referenceError = '';
-      render();
+    if (!images.length) render();
+    else {
+      // Retain the last successful cards and thumbnails during a refresh.
+      $('image-library-grid').setAttribute('aria-busy', 'true');
+      $('image-library-grid').querySelectorAll('.danger').forEach((button) => {
+        button.disabled = true;
+      });
+      $('image-library-more').hidden = true;
+      $('image-library-retry').hidden = true;
     }
     try {
       const data = await api(
@@ -237,7 +265,7 @@ export function configureImages({
       for (const image of page) combined.set(image.key, image);
       images = [...combined.values()];
       cursor = data.cursor;
-      referenceError = data.referenceError || referenceError;
+      referenceError = data.referenceError || (reset ? '' : referenceError);
       status(cursor ? '还有更多图片，可继续加载。筛选只作用于已加载图片。' : '图片库已加载。');
       $('image-library-status').dataset.tone = 'success';
     } catch (error) {
@@ -254,15 +282,12 @@ export function configureImages({
       }
     }
   }
-  async function show() {
-    const current = beginNavigation();
+  async function show(current = beginNavigation()) {
     await flush();
     if (!current()) return;
     open();
     await load();
   }
-  for (const id of ['images', 'choose-library-image'])
-    $(id).addEventListener('click', () => action(id, '正在打开…', show));
   $('image-library-refresh').addEventListener('click', () =>
     action('image-library-refresh', '正在刷新…', () => load()),
   );
@@ -301,4 +326,5 @@ export function configureImages({
       event.target.value = '';
     }
   });
+  return { show };
 }

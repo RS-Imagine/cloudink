@@ -5,7 +5,7 @@ import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
-import { configureImages } from './images.js';
+import { configureImages } from './image-library-loader.js';
 import { configureSiteIcon } from './site-icon.js';
 import { configureMarkdownImport } from './markdown-import.js';
 import {
@@ -141,9 +141,12 @@ async function action(id, label, work, success = '') {
     labelNode = button.querySelector('[data-action-label]') || button,
     original = labelNode.textContent,
     originalInlineSize = button.style.inlineSize,
+    originalBlockSize = button.style.blockSize,
+    initialHeight = button.offsetHeight,
     initialWidth = button.offsetWidth;
   activeActions.add(id);
   if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
+  if (initialHeight) button.style.blockSize = `${initialHeight}px`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   labelNode.textContent = label;
@@ -161,6 +164,7 @@ async function action(id, label, work, success = '') {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
     button.style.inlineSize = originalInlineSize;
+    button.style.blockSize = originalBlockSize;
     labelNode.textContent =
       publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
     button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);
@@ -1045,6 +1049,8 @@ function insertImage(image) {
   changed();
 }
 configureImages({
+  imageUploadForm,
+  confirmAction,
   rebuild: () => startPublish({ rebuild: true }),
   api,
   flush,
