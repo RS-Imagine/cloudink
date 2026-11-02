@@ -4,12 +4,17 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 // Compare the live head to the independently served destination HTML.
 function snapshot(html) {
   const doc = html === null ? document : new DOMParser().parseFromString(html, 'text/html');
-  const values = [...doc.head.querySelectorAll(
-    'meta[name="description"],meta[name="author"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],script[type="application/ld+json"]',
-  )].map((node) => {
+  const values = [
+    ...doc.head.querySelectorAll(
+      'meta[name="description"],meta[name="author"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"],script[type="application/ld+json"]',
+    ),
+  ].map((node) => {
     if (node.tagName === 'LINK') return ['canonical', node.getAttribute('href')];
     if (node.tagName === 'SCRIPT') return ['jsonld', JSON.parse(node.textContent)];
-    return [node.getAttribute('property') || node.getAttribute('name'), node.getAttribute('content')];
+    return [
+      node.getAttribute('property') || node.getAttribute('name'),
+      node.getAttribute('content'),
+    ];
   });
   return { title: doc.title, values: values.sort((a, b) => a[0].localeCompare(b[0])) };
 }
@@ -21,7 +26,9 @@ export async function verifyReaderMetadata(browser, origin) {
   try {
     const targets = ['/', '/posts/slow-days/', '/archive/'];
     await page.goto(origin + '/');
-    await page.evaluate(() => { window.__metadataDocument = 'same-document'; });
+    await page.evaluate(() => {
+      window.__metadataDocument = 'same-document';
+    });
     const expected = {};
     for (const target of targets) {
       const response = await context.request.get(origin + target);
@@ -60,19 +67,25 @@ export async function verifyReaderMetadata(browser, origin) {
     await follow(targets[1]);
     await check(targets[1]);
 
-    await context.route('**/metadata-failure/', (route) => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await context.route('**/metadata-failure/', (route) =>
+      route.fulfill({ status: 503, body: 'Unavailable' }),
+    );
     await follow('/metadata-failure/');
     await expect(page.locator('#reader-navigation-status')).toContainText('打开失败');
     await check(targets[1]);
 
     let releaseSlow;
-    const slow = new Promise((resolve) => { releaseSlow = resolve; });
+    const slow = new Promise((resolve) => {
+      releaseSlow = resolve;
+    });
     await context.route('**/metadata-delayed/', async (route) => {
       await slow;
-      await route.fulfill({
-        contentType: 'text/html',
-        body: '<html><head><title>Late stale page</title><meta name="description" content="stale"></head><body><main id="swup">Late</main></body></html>',
-      }).catch(() => {});
+      await route
+        .fulfill({
+          contentType: 'text/html',
+          body: '<html><head><title>Late stale page</title><meta name="description" content="stale"></head><body><main id="swup">Late</main></body></html>',
+        })
+        .catch(() => {});
     });
     await follow('/metadata-delayed/');
     await expect(page.locator('#swup')).toHaveAttribute('aria-busy', 'true');
@@ -83,14 +96,25 @@ export async function verifyReaderMetadata(browser, origin) {
     await check(targets[2]);
 
     // A destination lacking social/schema tags must remove, not inherit, them.
-    await context.route((url) => url.pathname === '/metadata-minimal/', (route) => route.fulfill({
-      contentType: 'text/html',
-      body: '<html><head><title>Minimal page</title><meta name="description" content="Minimal"></head><body><main id="swup">Minimal content</main></body></html>',
-    }));
+    await context.route(
+      (url) => url.pathname === '/metadata-minimal/',
+      (route) =>
+        route.fulfill({
+          contentType: 'text/html',
+          body: '<html><head><title>Minimal page</title><meta name="description" content="Minimal"></head><body><main id="swup">Minimal content</main></body></html>',
+        }),
+    );
     await follow('/metadata-minimal/?preview=1#content');
     await expect(page.locator('#swup')).toHaveText('Minimal content');
-    await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', origin + '/metadata-minimal/');
-    await expect(page.locator('meta[property^="og:"],meta[name^="twitter:"],script[type="application/ld+json"]')).toHaveCount(0);
+    await expect(page.locator('link[rel=canonical]')).toHaveAttribute(
+      'href',
+      origin + '/metadata-minimal/',
+    );
+    await expect(
+      page.locator(
+        'meta[property^="og:"],meta[name^="twitter:"],script[type="application/ld+json"]',
+      ),
+    ).toHaveCount(0);
     await expect(page).toHaveTitle('Minimal page');
     assert.deepEqual(errors, []);
   } finally {

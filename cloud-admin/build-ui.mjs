@@ -10,7 +10,13 @@ await build({
   format: 'esm',
   target: 'es2022',
   minify: true,
-  external: ['/blog_wasm.js', '/image-maintenance.js', '/home-illustration.js', '/post-address.js', '/publication.js'],
+  external: [
+    '/blog_wasm.js',
+    '/image-maintenance.js',
+    '/home-illustration.js',
+    '/post-address.js',
+    '/publication.js',
+  ],
 });
 await build({
   entryPoints: [new URL('ui/preview.worker.js', root).pathname],

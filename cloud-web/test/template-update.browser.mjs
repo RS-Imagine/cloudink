@@ -4,11 +4,19 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 import { owner, password } from './fixture.mjs';
 
 export async function verifyTemplateUpdates(browser, origin, output, engine) {
-  const context = await browser.newContext({ reducedMotion: 'reduce', viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({
+    reducedMotion: 'reduce',
+    viewport: { width: 390, height: 844 },
+  });
   const page = await context.newPage();
-  let failModule = true, staleRenderer = false, outdated = true;
-  let prepared = 0, uploaded = 0;
-  await context.route('**/publication.js', (route) => failModule ? route.abort() : route.continue());
+  let failModule = true,
+    staleRenderer = false,
+    outdated = true;
+  let prepared = 0,
+    uploaded = 0;
+  await context.route('**/publication.js', (route) =>
+    failModule ? route.abort() : route.continue(),
+  );
   await context.route('**/api/posts', async (route) => {
     const response = await route.fetch();
     const value = await response.json();
@@ -33,7 +41,10 @@ export async function verifyTemplateUpdates(browser, origin, output, engine) {
     await page.locator('#login-submit').click();
     await expect(page.locator('#home-view')).toBeVisible();
     await expect(page.locator('#template-status')).toContainText('有新版排版待应用');
-    await page.screenshot({ path: resolve(output, 'template-update-' + engine + '-390.png'), fullPage: true });
+    await page.screenshot({
+      path: resolve(output, 'template-update-' + engine + '-390.png'),
+      fullPage: true,
+    });
     await page.locator('#publish-welcome').click();
     await expect(page.locator('#notice')).toContainText('发布工具加载失败');
     assert.equal(prepared, 0, 'failed lazy import must not start a publication');

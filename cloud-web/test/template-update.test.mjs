@@ -12,8 +12,14 @@ test('legacy pages prompt one safe rebuild; unpublished drafts and settings stay
   await bucket.put('public/' + initial.id + '/index.html', '<h1>Legacy page</h1>');
   assert.equal(await status(), 'outdated');
   const privateDraft = draft('private', 'Do not publish these words');
-  assert.equal((await f.request('/api/posts/private', 'PUT', { draft: privateDraft, etag: null })).status, 200);
-  const savedSite = { ...JSON.parse(await (await bucket.get('releases/' + initial.id + '.json')).text()).site, title: 'Unpublished title' };
+  assert.equal(
+    (await f.request('/api/posts/private', 'PUT', { draft: privateDraft, etag: null })).status,
+    200,
+  );
+  const savedSite = {
+    ...JSON.parse(await (await bucket.get('releases/' + initial.id + '.json')).text()).site,
+    title: 'Unpublished title',
+  };
   await bucket.put('draft-site.json', JSON.stringify(savedSite));
   const state = await f.prepare();
   assert.match(state.template_version, /^[a-f0-9]{64}$/);
@@ -29,7 +35,10 @@ test('legacy pages prompt one safe rebuild; unpublished drafts and settings stay
 
   const cancelled = await f.prepare();
   await f.request('/api/publish/' + cancelled.release_id + '/cancel', 'POST', {});
-  assert.equal((await (await bucket.get('state/published.json')).json()).templateVersion, state.template_version);
+  assert.equal(
+    (await (await bucket.get('state/published.json')).json()).templateVersion,
+    state.template_version,
+  );
   assert.equal(await status(), 'current');
   const incomplete = await f.prepare();
   await f.stage(incomplete, ['404.html']);
@@ -45,8 +54,11 @@ test('an older renderer is rejected before commit without losing the live versio
   assert.equal((await f.commit(first)).status, 200);
   const next = await f.prepare();
   for (const template_version of [undefined, '0'.repeat(64)]) {
-    const response = await f.request('/api/publish/' + next.release_id + '/file?path=_release.json', 'PUT',
-      JSON.stringify({ id: next.release_id, template_version }));
+    const response = await f.request(
+      '/api/publish/' + next.release_id + '/file?path=_release.json',
+      'PUT',
+      JSON.stringify({ id: next.release_id, template_version }),
+    );
     assert.equal(response.status, 409);
     assert.match(await response.text(), /刷新/);
   }
@@ -69,7 +81,10 @@ test('an in-flight publication finishes with its starting template version and t
   await bucket.put('state/pending.json', JSON.stringify(old));
   await f.stage(old);
   assert.equal((await f.commit(old)).status, 200);
-  assert.equal((await (await bucket.get('state/published.json')).json()).templateVersion, old.template_version);
+  assert.equal(
+    (await (await bucket.get('state/published.json')).json()).templateVersion,
+    old.template_version,
+  );
   assert.equal((await (await f.request('/api/posts')).json()).templateStatus, 'outdated');
   const latest = await f.prepare();
   await f.stage(latest);

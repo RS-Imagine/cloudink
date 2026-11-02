@@ -1,4 +1,7 @@
-use std::{env, fs, path::{Path, PathBuf}};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 fn collect(root: &Path, path: &Path, files: &mut Vec<PathBuf>) {
     println!("cargo:rerun-if-changed={}", path.display());
@@ -13,7 +16,10 @@ fn collect(root: &Path, path: &Path, files: &mut Vec<PathBuf>) {
 
 fn main() {
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("crate directory"));
-    let root = manifest.parent().and_then(Path::parent).expect("workspace root");
+    let root = manifest
+        .parent()
+        .and_then(Path::parent)
+        .expect("workspace root");
     let mut files = Vec::new();
     for path in [
         "crates/blog-core/src",
@@ -36,5 +42,8 @@ fn main() {
         hash.update(&(bytes.len() as u64).to_le_bytes());
         hash.update(&bytes);
     }
-    println!("cargo:rustc-env=CLOUDINK_TEMPLATE_VERSION={}", hash.finalize().to_hex());
+    println!(
+        "cargo:rustc-env=CLOUDINK_TEMPLATE_VERSION={}",
+        hash.finalize().to_hex()
+    );
 }

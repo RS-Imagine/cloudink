@@ -1,4 +1,7 @@
-export async function publishInBrowser(result, { api, engineTask, showPublishing, refresh, notice }) {
+export async function publishInBrowser(
+  result,
+  { api, engineTask, showPublishing, refresh, notice },
+) {
   try {
     showPublishing({ ...result, status: 'building' });
     const rendered = await engineTask('site', { release: result.browser_release });

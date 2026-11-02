@@ -370,8 +370,7 @@
       (visit, args, original) => visit.meta.readerPage || original(visit, args),
     );
     swup.hooks.on('page:view', (visit) => {
-      if (swup.visit.id === visit.id && visit.meta.readerHead)
-        applyMetadata(visit.meta.readerHead);
+      if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
     });
     swup.hooks.on('visit:abort', (visit) => {
       if (pending === visit) {

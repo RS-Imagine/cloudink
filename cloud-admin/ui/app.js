@@ -547,10 +547,11 @@ async function refresh() {
   posts = data.posts;
   $('publish-welcome').textContent = data.publicInitialized ? '更新网站排版' : '发布博客首页';
   const status = $('template-status');
-  const message = {
-    outdated: '有新版排版待应用。点击“更新网站排版”即可更新公开页面，草稿和未发布设置保持私有。',
-    current: '网站排版已是最新。',
-  }[data.templateStatus] || '';
+  const message =
+    {
+      outdated: '有新版排版待应用。点击“更新网站排版”即可更新公开页面，草稿和未发布设置保持私有。',
+      current: '网站排版已是最新。',
+    }[data.templateStatus] || '';
   status.hidden = !message;
   if (status.textContent !== message) status.textContent = message;
   site = data.site;

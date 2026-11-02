@@ -23,7 +23,9 @@ if (process.argv[2] === 'seed') {
   await writeFile(
     resolve(root, 'cloud-admin/src/template-version.generated.ts'),
     '// Generated from the Rust renderer. Do not edit.\n' +
-      'export const CURRENT_TEMPLATE_VERSION = ' + JSON.stringify(version) + ';\n',
+      'export const CURRENT_TEMPLATE_VERSION = ' +
+      JSON.stringify(version) +
+      ';\n',
   );
   const motion = await readFile(resolve(root, 'assets/motion.js'), 'utf8');
   const mobile = await readFile(resolve(root, 'assets/mobile.js'), 'utf8');
