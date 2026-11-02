@@ -103,7 +103,7 @@ export async function fixture(t, bindings = {}) {
       if (skip.includes(path)) continue;
       const value =
         path === '_release.json'
-          ? JSON.stringify({ id: state.release_id })
+          ? JSON.stringify({ id: state.release_id, template_version: state.template_version })
           : path.endsWith('.html')
             ? html
             : path === 'search_index.json'

@@ -26,6 +26,7 @@ const coreFiles = [
 interface BrowserPointer {
   id: string;
   publishing?: string;
+  templateVersion?: string;
   clarityId?: string;
   postRedirects?: Record<string, string>;
 }
@@ -164,7 +165,9 @@ export async function stageBrowserPage(
     } catch {
       throw new HttpError(400, '发布标记无效。');
     }
-    if (marker.id !== id) throw new HttpError(400, '发布标记与当前版本不一致。');
+    if (marker?.id !== id) throw new HttpError(400, '发布标记与当前版本不一致。');
+    if (state.template_version && marker.template_version !== state.template_version)
+      throw new HttpError(409, '后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。');
   }
   if (path.endsWith('.html'))
     body = await responsiveImages(
@@ -194,6 +197,7 @@ export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promis
         id: value.id,
         clarityId: value.clarityId || '',
         postRedirects: value.postRedirects,
+        templateVersion: value.templateVersion,
       }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
@@ -245,6 +249,7 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
         id,
         clarityId: release.site.clarityId || '',
         postRedirects: postRedirects(release),
+        templateVersion: state.template_version,
       }),
       { onlyIf: { etagMatches: pointer.etag } },
     );

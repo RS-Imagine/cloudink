@@ -1,3 +1,4 @@
+import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import { ensureSiteIcon } from './site-icons';
 import { addressTarget, withAddress, postRedirects, finishRename } from './post-addresses';
@@ -111,6 +112,7 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
   const pending: Publishing = {
     release_id: release.id,
     previous_id: base.id,
+    template_version: CURRENT_TEMPLATE_VERSION,
     status: 'queued',
     started_at: new Date().toISOString(),
     ...(rename ? { rename } : {}),

@@ -546,6 +546,13 @@ async function refresh() {
   const data = await api('/api/posts');
   posts = data.posts;
   $('publish-welcome').textContent = data.publicInitialized ? '更新网站排版' : '发布博客首页';
+  const status = $('template-status');
+  const message = {
+    outdated: '有新版排版待应用。点击“更新网站排版”即可更新公开页面，草稿和未发布设置保持私有。',
+    current: '网站排版已是最新。',
+  }[data.templateStatus] || '';
+  status.hidden = !message;
+  if (status.textContent !== message) status.textContent = message;
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
@@ -881,60 +888,16 @@ function showPublishing(state) {
       failed: state.error || '发布失败，草稿已保留，可以重试。',
     }[state.status] || '发布进行中';
 }
-async function publishInBrowser(result) {
-  try {
-    showPublishing({ ...result, status: 'building' });
-    const rendered = await engineTask('site', { release: result.browser_release });
-    const files = [...result.files];
-    const uploads = await Promise.allSettled(
-      Array.from({ length: Math.min(3, files.length) }, async () => {
-        while (files.length) {
-          const path = files.shift();
-          if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
-          await api(`/api/publish/${result.release_id}/file?path=${encodeURIComponent(path)}`, {
-            method: 'PUT',
-            body: rendered[path],
-            rawBody: true,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
-        }
-      }),
-    );
-    const failure = uploads.find((upload) => upload.status === 'rejected');
-    if (failure) throw failure.reason;
-    showPublishing({ ...result, status: 'built' });
-    const done = await api(`/api/publish/${result.release_id}/commit`, {
-      method: 'POST',
-      body: {},
-    });
-    showPublishing(done);
-  } catch (error) {
-    const stopped = await api(`/api/publish/${result.release_id}/cancel`, {
-      method: 'POST',
-      body: {},
-    }).catch(() => null);
-    if (stopped?.status === 'deployed') showPublishing(stopped);
-    else {
-      showPublishing(
-        stopped || {
-          ...result,
-          status: 'failed',
-          error: '发布未完成，草稿和上次上线版本已保留。联网后可取消这次发布并重试。',
-        },
-      );
-      throw error;
-    }
-  }
-  await refresh();
-  notice('发布完成，网站已更新。', 'success');
-}
 async function startPublish(data) {
   if (publishRequest) throw new Error('正在提交发布，请稍等。');
   publishRequest = true;
   try {
+    const { publishInBrowser } = await import('/publication.js').catch(() => {
+      throw new Error('发布工具加载失败，请检查网络并刷新后台后重试。');
+    });
     const result = await api('/api/publish', { method: 'POST', body: data });
     showPublishing(result);
-    await publishInBrowser(result);
+    await publishInBrowser(result, { api, engineTask, showPublishing, refresh, notice });
   } finally {
     publishRequest = false;
     await refresh().catch(() => {});

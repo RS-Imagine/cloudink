@@ -1,0 +1,31 @@
+name: Format reader update sources
+on:
+  push:
+    branches: [fix/reader-metadata-template-updates]
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - name: Format changed sources in the cloud
+        run: |
+          npx prettier --write assets/reader-runtime.js cloud-admin/ui/app.js scripts/web-assets.mjs cloud-admin/src/index.ts cloud-admin/src/models.ts cloud-web/test/fixture.mjs cloud-web/test/archive.browser.mjs cloud-admin/ui/index.html scripts/ui-audit.mjs cloud-admin/src/publishing.ts cloud-admin/src/browser-publishing.ts cloud-admin/build-ui.mjs cloud-web/src/index.ts docs/DEVELOPMENT.md docs/DEPLOYMENT.md cloud-admin/ui/publication.js cloud-web/test/template-update.test.mjs cloud-web/test/reader-metadata.browser.mjs cloud-web/test/template-update.browser.mjs
+          rustup component add rustfmt
+          cargo fmt --all
+      - name: Return formatted source chunks
+        run: |
+          node --input-type=module <<'JS'
+          import {readFile} from 'node:fs/promises';
+          for (const path of ["assets/reader-runtime.js","cloud-admin/ui/app.js","crates/blog-core/src/lib.rs","scripts/web-assets.mjs",".gitignore","cloud-admin/src/index.ts","cloud-admin/src/models.ts","crates/blog-core/Cargo.toml","cloud-web/test/fixture.mjs","cloud-web/test/archive.browser.mjs","cloud-admin/ui/index.html","crates/blog-core/src/bundle.rs","scripts/ui-audit.mjs","cloud-admin/src/publishing.ts","crates/blog-core/tests/publishing.rs","cloud-admin/src/browser-publishing.ts","cloud-admin/build-ui.mjs","cloud-web/src/index.ts","docs/DEVELOPMENT.md","docs/DEPLOYMENT.md","crates/blog-core/build.rs","cloud-admin/ui/publication.js","cloud-web/test/template-update.test.mjs","cloud-web/test/reader-metadata.browser.mjs","cloud-web/test/template-update.browser.mjs"]) {
+            const value = (await readFile(path)).toString('base64');
+            for(let part=0;part*12000<value.length;part++)
+              console.log('CLOUDINK_FORMAT ' + JSON.stringify({path,part,data:value.slice(part*12000,(part+1)*12000)}));
+          }
+          JS
