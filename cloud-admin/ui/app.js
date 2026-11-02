@@ -138,8 +138,9 @@ const operationAreas = {
 async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
   const button = $(id),
-    labelNode = button.querySelector('[data-action-label]') || button,
-    original = labelNode.textContent,
+    existingLabel = button.querySelector('[data-action-label]'),
+    labelNode = existingLabel || document.createElement('span'),
+    original = (existingLabel || button).textContent,
     originalInlineSize = button.style.inlineSize,
     originalBlockSize = button.style.blockSize,
     initialHeight = button.offsetHeight,
@@ -149,6 +150,10 @@ async function action(id, label, work, success = '') {
   if (initialHeight) button.style.blockSize = `${initialHeight}px`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
+  if (!existingLabel) {
+    labelNode.dataset.actionLabel = '';
+    button.replaceChildren(labelNode);
+  }
   labelNode.textContent = label;
   feedback(operationAreas[id], label, 'pending');
   try {
@@ -165,7 +170,7 @@ async function action(id, label, work, success = '') {
     button.removeAttribute('aria-busy');
     button.style.inlineSize = originalInlineSize;
     button.style.blockSize = originalBlockSize;
-    labelNode.textContent =
+    (existingLabel || button).textContent =
       publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
     button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);
   }
