@@ -86,6 +86,17 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
         render::render_archive(&config, &posts, &css_hash),
     )?;
 
+    // Shorts feed ("短记").
+    let mut shorts = content::load_shorts(content_root)?;
+    shorts.retain(|short| !short.draft());
+    shorts.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    let shorts_dir = output_root.join("shorts");
+    fs::create_dir_all(&shorts_dir)?;
+    write_if_changed(
+        shorts_dir.join("index.html"),
+        render::render_shorts(&config, &shorts, &css_hash),
+    )?;
+
     // Optional about page.
     let about_path = content_root.join("about.md");
     let about_dir = output_root.join("about");

@@ -5,7 +5,8 @@ import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { zipSync, strToU8 } from 'fflate';
 import { configureBackup } from './backup.js';
-import { configureImages } from './image-library-loader.js';
+import { configureImages } from './images.js';
+import { configureShorts } from './shorts.js';
 import { configureSiteIcon } from './site-icon.js';
 import { configureMarkdownImport } from './markdown-import.js';
 import {
@@ -138,22 +139,14 @@ const operationAreas = {
 async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
   const button = $(id),
-    existingLabel = button.querySelector('[data-action-label]'),
-    labelNode = existingLabel || document.createElement('span'),
-    original = (existingLabel || button).textContent,
+    labelNode = button.querySelector('[data-action-label]') || button,
+    original = labelNode.textContent,
     originalInlineSize = button.style.inlineSize,
-    originalBlockSize = button.style.blockSize,
-    initialHeight = button.offsetHeight,
     initialWidth = button.offsetWidth;
   activeActions.add(id);
   if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
-  if (initialHeight) button.style.blockSize = `${initialHeight}px`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  if (!existingLabel) {
-    labelNode.dataset.actionLabel = '';
-    button.replaceChildren(labelNode);
-  }
   labelNode.textContent = label;
   feedback(operationAreas[id], label, 'pending');
   try {
@@ -169,8 +162,7 @@ async function action(id, label, work, success = '') {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
     button.style.inlineSize = originalInlineSize;
-    button.style.blockSize = originalBlockSize;
-    (existingLabel || button).textContent =
+    labelNode.textContent =
       publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
     button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);
   }
@@ -294,7 +286,7 @@ function view(name, { focus = true } = {}) {
     if (selected) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   }
-  for (const id of ['home', 'editor', 'images', 'settings']) {
+  for (const id of ['home', 'editor', 'images', 'shorts', 'settings']) {
     const section = $(id + '-view');
     if (id !== sectionName) motion.cancelWithin(section);
     section.hidden = id !== sectionName;
@@ -314,6 +306,7 @@ function view(name, { focus = true } = {}) {
     editor: '文章编辑',
     settings: '网站设置',
     images: '图片库',
+    shorts: '短记',
   }[name];
   if (focus && (fromNavigation || changingView))
     $(sectionName + '-view').focus({ preventScroll: true });
@@ -1054,8 +1047,6 @@ function insertImage(image) {
   changed();
 }
 configureImages({
-  imageUploadForm,
-  confirmAction,
   rebuild: () => startPublish({ rebuild: true }),
   api,
   flush,
@@ -1073,6 +1064,16 @@ configureImages({
     const version = ++navigationVersion;
     return () => version === navigationVersion;
   },
+});
+configureShorts({
+  api,
+  notice,
+  action,
+  open: () => {
+    ++navigationVersion;
+    view('shorts');
+  },
+  startPublish,
 });
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {

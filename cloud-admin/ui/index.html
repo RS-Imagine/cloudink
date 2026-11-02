@@ -289,6 +289,22 @@
               <path d="m3 17 6-5 4 3 4-6 4 5" /></svg
             ><span data-action-label>图片库</span>
           </button>
+          <button id="shorts" title="短记" data-studio-nav="shorts" aria-label="短记">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 5h16v11H8l-4 4Z" />
+              <path d="M8 9h8M8 12.5h5" /></svg
+            ><span data-action-label>短记</span>
+          </button>
           <button id="settings" title="网站设置" data-studio-nav="settings" aria-label="网站设置">
             <svg
               width="20"
@@ -593,6 +609,30 @@
           <div id="image-library-empty" class="workflow-empty" hidden></div>
           <button id="image-library-retry" hidden>重新加载图片库</button>
           <button id="image-library-more" hidden>加载更多图片</button>
+        </section>
+        <section id="shorts-view" class="shorts-view" aria-labelledby="shorts-title" hidden>
+          <div class="section-heading">
+            <div>
+              <span class="workflow-eyebrow">即时想法</span>
+              <h1 id="shorts-title">短记</h1>
+              <p class="muted">一句话的想法，精确到分钟。发布后出现在网站的「短记」页面。</p>
+            </div>
+            <div class="form-actions">
+              <button id="short-new" class="primary">写短记</button>
+            </div>
+          </div>
+          <div id="short-editor" class="short-editor" hidden>
+            <label>发布时间<input id="short-date" type="text" inputmode="numeric" placeholder="YYYY-MM-DD HH:MM" maxlength="16" /></label>
+            <label>正文（Markdown）<textarea id="short-body" rows="5" placeholder="此刻在想什么…"></textarea></label>
+            <p id="short-status" class="muted" role="status" aria-live="polite"></p>
+            <div class="form-actions">
+              <button id="short-save">保存草稿</button>
+              <button id="short-publish" class="primary">发布</button>
+              <button id="short-cancel" class="quiet">取消</button>
+            </div>
+          </div>
+          <div id="short-list" class="short-list"></div>
+          <div id="short-empty" class="workflow-empty" hidden>还没有短记，写第一条吧。</div>
         </section>
         <div class="editor-toolbar">
           <div class="editor-save-status">

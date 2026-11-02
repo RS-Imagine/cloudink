@@ -14,9 +14,11 @@ import {
   HttpError,
   json,
   jsonInput,
+  parseShortSource,
   parseSource,
   readJson,
   serializeDraft,
+  serializeShortDraft,
   validSlug,
   validateSite,
   type Publishing,
@@ -91,6 +93,22 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
     if (Object.hasOwn(base.markdown_posts, slug))
       parsed.front_matter.updated = new Date().toISOString().slice(0, 10);
     release.markdown_posts = { ...release.markdown_posts, [target]: serializeDraft(parsed) };
+  } else if (typeof data.shortSlug === 'string') {
+    const slug = validSlug(data.shortSlug),
+      draft = await env.STORAGE.get(`shorts/${slug}.md`);
+    if (!draft) throw new HttpError(404, '请先保存这条短记的草稿。');
+    if (data.etag !== draft.etag)
+      throw new HttpError(409, '短记刚刚发生了修改，请保存最新版本后再发布。');
+    if (draft.customMetadata?.deleted) throw new HttpError(409, '短记已删除，请重新打开。');
+    const parsed = parseShortSource(await draft.text());
+    parsed.front_matter.draft = false;
+    release.markdown_shorts = {
+      ...(release.markdown_shorts || {}),
+      [slug]: serializeShortDraft(parsed),
+    };
+  } else if (typeof data.unpublishShort === 'string') {
+    const slug = validSlug(data.unpublishShort);
+    if (release.markdown_shorts) delete release.markdown_shorts[slug];
   } else if (typeof data.unpublish === 'string') {
     const slug = validSlug(data.unpublish);
     delete release.markdown_posts[slug];

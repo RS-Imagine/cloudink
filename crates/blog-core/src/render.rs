@@ -1,4 +1,4 @@
-use crate::models::{Page, Post, SiteConfig};
+use crate::models::{Page, Post, Short, SiteConfig};
 use crate::utils::escape_html;
 
 // ---------------------------------------------------------------------------
@@ -326,6 +326,40 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
     )
 }
 
+/// Renders the shorts feed ("短记"): lightweight timestamped notes in a
+/// reverse-chronological stream, newest first. No titles, no excerpts —
+/// each card shows the minute-precision timestamp and the rendered body.
+pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> String {
+    let mut visible: Vec<&Short> = shorts.iter().filter(|short| !short.draft()).collect();
+    visible.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    let mut items = String::new();
+    for short in visible {
+        items.push_str(&format!(
+            "<article class=\"short-card\"><time class=\"short-time\" datetime=\"{date}\">{date}</time><div class=\"short-body\">{body}</div></article>",
+            date = escape_html(short.date()),
+            body = short.body_html,
+        ));
+    }
+    if items.is_empty() {
+        items.push_str("<p class=\"shorts-empty\">还没有短记，去写第一条吧。</p>");
+    }
+    let body = format!(
+        "<div class=\"shorts-layout\"><h1 id=\"shorts-title\">短记</h1><div class=\"shorts-feed\">{items}</div></div>",
+        items = items,
+    );
+    page(
+        "短记",
+        &config.description,
+        &config.title,
+        &config.description,
+        &body,
+        "",
+        css_hash,
+        config,
+        "shorts",
+    )
+}
+
 /// Renders a single blog post page.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
     let updated = post
@@ -540,8 +574,13 @@ fn page(
         .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
     let navigation = format!(
-        r#"<a href="/#posts" data-reader-nav="posts"{posts_current}>文章</a>{about}"#,
+        r#"<a href="/#posts" data-reader-nav="posts"{posts_current}>文章</a><a href="/shorts/" data-reader-nav="shorts"{shorts_current}>短记</a>{about}"#,
         posts_current = if page_kind == "home" {
+            " aria-current=\"page\""
+        } else {
+            ""
+        },
+        shorts_current = if page_kind == "shorts" {
             " aria-current=\"page\""
         } else {
             ""

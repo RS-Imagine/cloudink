@@ -3,7 +3,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::markdown::{markdown_to_html, markdown_to_plain_text};
-use crate::models::{FrontMatter, Page, PageFrontMatter, Post, PostDraft, SiteConfig};
+use crate::models::{
+    FrontMatter, Page, PageFrontMatter, Post, PostDraft, Short, ShortDraft, ShortFrontMatter,
+    SiteConfig,
+};
 
 // ---------------------------------------------------------------------------
 // Site config
@@ -164,6 +167,107 @@ pub fn post_path(content_root: impl AsRef<Path>, slug: &str) -> PathBuf {
 }
 
 // ---------------------------------------------------------------------------
+// Short loading
+// ---------------------------------------------------------------------------
+
+/// Loads and renders all Markdown files from `content_root/shorts/`.
+///
+/// Shorts are sorted by `date` (minute precision), newest first. Files
+/// without a `.md` extension are silently ignored.
+pub fn load_shorts(content_root: impl AsRef<Path>) -> Result<Vec<Short>> {
+    let shorts_dir = content_root.as_ref().join("shorts");
+    let mut shorts = Vec::new();
+
+    if !shorts_dir.exists() {
+        return Ok(shorts);
+    }
+
+    for entry in
+        fs::read_dir(&shorts_dir).with_context(|| format!("read {}", shorts_dir.display()))?
+    {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|v| v.to_str()) != Some("md") {
+            continue;
+        }
+        shorts.push(load_short_file(&path)?);
+    }
+
+    shorts.sort_by(|l, r| r.date().cmp(l.date()).then_with(|| r.slug().cmp(l.slug())));
+
+    Ok(shorts)
+}
+
+/// Parses and renders a single short file.
+pub fn load_short_file(path: impl AsRef<Path>) -> Result<Short> {
+    let path = path.as_ref();
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    parse_short(&raw).with_context(|| format!("parse {}", path.display()))
+}
+
+/// Parses an original Markdown document without filesystem access.
+pub fn parse_short(raw: &str) -> Result<Short> {
+    let (front_matter_src, body_markdown) = split_front_matter(raw)?;
+    let front_matter: ShortFrontMatter =
+        toml::from_str(&front_matter_src).context("parse short front matter")?;
+    validate_slug(&front_matter.slug)?;
+    validate_short_datetime(&front_matter.date)?;
+    let body_html = markdown_to_html(&body_markdown);
+    let body_plain_text = markdown_to_plain_text(&body_markdown);
+
+    Ok(Short {
+        front_matter,
+        body_markdown,
+        body_html,
+        body_plain_text,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Short persistence
+// ---------------------------------------------------------------------------
+
+/// Serialises `draft` to disk as a `.md` file under `content_root/shorts/`.
+pub fn save_short(content_root: impl AsRef<Path>, draft: &ShortDraft) -> Result<PathBuf> {
+    validate_slug(&draft.front_matter.slug)?;
+    validate_short_datetime(&draft.front_matter.date)?;
+    let content_root = content_root.as_ref();
+    let shorts_dir = content_root.join("shorts");
+    fs::create_dir_all(&shorts_dir)?;
+
+    let file_path = shorts_dir.join(format!("{}.md", draft.front_matter.slug));
+    let serialized = toml::to_string_pretty(&draft.front_matter)?;
+    let file_content = format!(
+        "+++\n{}\n+++\n\n{}\n",
+        serialized.trim(),
+        draft.body_markdown.trim_start()
+    );
+    fs::write(&file_path, file_content)
+        .with_context(|| format!("write {}", file_path.display()))?;
+    Ok(file_path)
+}
+
+/// Deletes the Markdown file for `slug`. Returns `false` if the file did not
+/// exist (so the caller can decide whether to treat that as an error).
+pub fn delete_short(content_root: impl AsRef<Path>, slug: &str) -> Result<bool> {
+    validate_slug(slug)?;
+    let path = short_path(content_root, slug);
+    if !path.exists() {
+        return Ok(false);
+    }
+    fs::remove_file(&path).with_context(|| format!("delete {}", path.display()))?;
+    Ok(true)
+}
+
+/// Returns the canonical filesystem path for a short with the given slug.
+pub fn short_path(content_root: impl AsRef<Path>, slug: &str) -> PathBuf {
+    content_root
+        .as_ref()
+        .join("shorts")
+        .join(format!("{}.md", slug))
+}
+
+// ---------------------------------------------------------------------------
 // Validation and front-matter parsing
 // ---------------------------------------------------------------------------
 
@@ -179,6 +283,53 @@ pub fn validate_slug(slug: &str) -> Result<()> {
             .all(|c| c.is_ascii_alphanumeric() || c == b'-' || c == b'_')
     {
         bail!("slug must contain 1–100 ASCII letters, digits, hyphens or underscores");
+    }
+    Ok(())
+}
+
+/// Validates a short-note datetime: `YYYY-MM-DD HH:MM` (24-hour), minute
+/// precision. Rejects malformed input loudly instead of silently truncating.
+pub fn validate_short_datetime(date: &str) -> Result<()> {
+    const MSG: &str = "short date must be YYYY-MM-DD HH:MM (24-hour), e.g. 2026-11-02 14:43";
+    let mut parts = date.split(' ');
+    let (ymd, hm) = match (parts.next(), parts.next(), parts.next()) {
+        (Some(ymd), Some(hm), None) => (ymd, hm),
+        _ => bail!(MSG),
+    };
+    // Reject non-zero-padded forms like `2026-1-2 3:4`.
+    if ymd.len() != 10 || hm.len() != 5 {
+        bail!(MSG);
+    }
+    let parse3 = |s: &str| -> Option<(u32, u32, u32)> {
+        let mut it = s.split('-');
+        match (it.next(), it.next(), it.next(), it.next()) {
+            (Some(a), Some(b), Some(c), None) => {
+                Some((a.parse().ok()?, b.parse().ok()?, c.parse().ok()?))
+            }
+            _ => None,
+        }
+    };
+    let parse2 = |s: &str| -> Option<(u32, u32)> {
+        let mut it = s.split(':');
+        match (it.next(), it.next(), it.next()) {
+            (Some(a), Some(b), None) => Some((a.parse().ok()?, b.parse().ok()?)),
+            _ => None,
+        }
+    };
+    let (Some((y, m, d)), Some((hh, mm))) = (parse3(ymd), parse2(hm)) else {
+        bail!(MSG);
+    };
+    if !(1..=9999).contains(&y) || !(1..=12).contains(&m) || hh > 23 || mm > 59 {
+        bail!(MSG);
+    }
+    // Day-of-month bound (leap years accepted loosely: Feb allows 29).
+    let max_day = match m {
+        2 => 29,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
+    };
+    if d < 1 || d > max_day {
+        bail!(MSG);
     }
     Ok(())
 }
