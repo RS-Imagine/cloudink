@@ -1,5 +1,6 @@
 /* Writing, media and settings are surfaces of the same journal. */
 button[aria-busy='true'] {
+  position: relative;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -26,6 +27,15 @@ button[aria-busy='true']::before,
   border-radius: 2px;
   background: currentColor;
   animation: journal-pulse 800ms var(--ci-ease) infinite alternate;
+}
+button[aria-busy='true']::before {
+  position: absolute;
+  inset-block-end: 3px;
+  inset-inline-start: 50%;
+  width: 8px;
+  height: 2px;
+  margin: 0;
+  transform: translateX(-50%);
 }
 .editor-view {
   padding: 0;
