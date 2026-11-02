@@ -10,6 +10,9 @@ button[aria-busy='true'] [data-action-label] {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+button[aria-busy='true']:not(:has(svg)) > [data-action-label] {
+  display: block;
+}
 button[aria-busy='true']:has(svg)::before {
   display: none;
 }

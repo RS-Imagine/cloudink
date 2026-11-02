@@ -73,6 +73,12 @@ export async function verifyUiStability(browser, origin, output, engine) {
   async function stable(id, before) {
     await expect(page.locator('#' + id)).toHaveAttribute('aria-busy', 'true');
     const after = await bounds(id);
+    const labelFits = await page.locator('#' + id).evaluate((button) => {
+      const label = button.querySelector('[data-action-label]');
+      if (!label || getComputedStyle(label).display === 'none') return true;
+      return label.getBoundingClientRect().right <= button.getBoundingClientRect().right + 1;
+    });
+    assert.ok(labelFits, id + ' keeps loading text inside the button');
     assert.ok(Math.abs(before.width - after.width) <= 1, id + ' keeps its width');
     assert.ok(Math.abs(before.height - after.height) <= 1, id + ' keeps its height');
     if (before.icon) assert.ok(Math.abs(before.icon - after.icon) <= 1, id + ' keeps its icon');
