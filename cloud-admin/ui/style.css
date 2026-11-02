@@ -1222,3 +1222,61 @@ dialog {
     scroll-behavior: auto !important;
   }
 }
+
+/* Shorts ("短记") admin view. */
+.shorts-view {
+  padding: 28px;
+  max-width: 760px;
+}
+.shorts-view .section-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.short-editor {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px 0;
+  background: var(--paper);
+}
+.short-editor label {
+  display: block;
+  margin-bottom: 14px;
+}
+.short-editor input,
+.short-editor textarea {
+  width: 100%;
+  margin-top: 6px;
+}
+.short-editor textarea {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  resize: vertical;
+}
+.short-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+.short-admin-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--paper);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.short-admin-card .image-actions {
+  margin-top: 0;
+  margin-left: auto;
+}
+@media (max-width: 650px) {
+  .shorts-view {
+    padding: 16px;
+  }
+}

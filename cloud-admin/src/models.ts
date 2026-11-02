@@ -45,6 +45,7 @@ export interface Release {
   created_at: string;
   site: SiteConfig;
   markdown_posts: Record<string, string>;
+  markdown_shorts?: Record<string, string>;
   about_markdown?: string;
 }
 export interface Publishing {
@@ -128,6 +129,90 @@ export function parseSource(source: string): Draft {
   }
 }
 export function serializeDraft(draft: Draft): string {
+  return `+++\n${stringify({ ...draft.front_matter })}+++\n\n${draft.body_markdown}`;
+}
+
+// ---------------------------------------------------------------------------
+// Short drafts ("短记")
+// ---------------------------------------------------------------------------
+
+export interface ShortFrontMatter {
+  date: string;
+  slug: string;
+  aliases?: string[];
+  draft: boolean;
+}
+export interface ShortDraft {
+  front_matter: ShortFrontMatter;
+  body_markdown: string;
+}
+
+/// Validates a short-note datetime: `YYYY-MM-DD HH:MM` (24-hour), minute
+/// precision. Mirrors the Rust `validate_short_datetime`.
+export function shortDatetime(value: unknown): string {
+  const s = text(value, '发布时间', 16);
+  const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(s);
+  if (!match) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  const [, y, m, d, hh, mm] = match.map(Number);
+  if (m < 1 || m > 12 || hh > 23 || mm > 59) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  const maxDay = m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31;
+  if (d < 1 || d > maxDay) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  const check = new Date(Date.UTC(y, m - 1, d, hh, mm));
+  if (
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== m - 1 ||
+    check.getUTCDate() !== d
+  )
+    throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  return s;
+}
+export function validateShortDraft(input: unknown): ShortDraft {
+  if (
+    !input ||
+    typeof input !== 'object' ||
+    !('front_matter' in input) ||
+    !('body_markdown' in input)
+  )
+    throw new HttpError(400, '短记格式不正确。');
+  const raw = input.front_matter;
+  if (!raw || typeof raw !== 'object') throw new HttpError(400, '短记信息不完整。');
+  const f = raw as Record<string, unknown>;
+  if (
+    f.aliases !== undefined &&
+    (!Array.isArray(f.aliases) ||
+      f.aliases.length > 100 ||
+      f.aliases.some((alias) => typeof alias !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(alias)))
+  )
+    throw new HttpError(400, '旧短记地址格式不正确或超过 100 个。');
+  const aliases = [...new Set((f.aliases as string[] | undefined) || [])].filter(
+    (alias) => alias !== f.slug,
+  );
+  return {
+    front_matter: {
+      date: shortDatetime(f.date),
+      slug: validSlug(text(f.slug, '短记地址', 100)),
+      ...(aliases.length ? { aliases } : {}),
+      draft: f.draft === true,
+    },
+    body_markdown: text(input.body_markdown, '正文', 200_000, false),
+  };
+}
+export function parseShortSource(source: string): ShortDraft {
+  const match = source
+    .replace(/^\uFEFF/, '')
+    .match(/^\+\+\+\r?\n([\s\S]*?)\r?\n\+\+\+(?:\r?\n|$)([\s\S]*)$/);
+  if (!match) throw new HttpError(400, 'Markdown 需要包含 +++ 包围的 TOML 短记信息。');
+  try {
+    return validateShortDraft({
+      front_matter: parse(match[1]),
+      body_markdown: match[2].replace(/^\r?\n/, ''),
+    });
+  } catch (e) {
+    if (e instanceof HttpError) throw e;
+    throw new HttpError(400, '无法解析 Markdown 的 TOML 短记信息。');
+  }
+}
+export function serializeShortDraft(draft: ShortDraft): string {
   return `+++\n${stringify({ ...draft.front_matter })}+++\n\n${draft.body_markdown}`;
 }
 export function validSiteIconKey(value: unknown): boolean {

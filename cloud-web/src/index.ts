@@ -7,7 +7,6 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
-  '/image-library.js',
   '/publication.js',
   '/home-illustration.js',
   '/post-address.js',
@@ -66,6 +65,7 @@ function publicPath(path: string): string | null {
   if (['/404.html', '/search_index.json', '/_release.json'].includes(path)) return path.slice(1);
   if (/^\/about(?:\/|\/index.html)?$/.test(path)) return 'about/index.html';
   if (/^\/archive(?:\/|\/index.html)?$/.test(path)) return 'archive/index.html';
+  if (/^\/shorts(?:\/|\/index.html)?$/.test(path)) return 'shorts/index.html';
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
   if (post) return `posts/${post[1]}/index.html`;
   return null;
@@ -182,6 +182,7 @@ export default {
         );
       if (key === 'index.html') return staticAsset(request, env, '/');
       if (key === 'about/index.html') return staticAsset(request, env, '/about/');
+      if (key === 'shorts/index.html') return staticAsset(request, env, '/shorts/');
       if (key === 'search_index.json') return staticAsset(request, env, '/search_index.json');
       return staticAsset(request, env, '/404.html', 404, analytics);
     } catch (error) {

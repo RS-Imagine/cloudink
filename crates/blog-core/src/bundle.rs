@@ -11,6 +11,8 @@ pub struct ReleaseBundle {
     pub created_at: String,
     pub site: SiteConfig,
     pub markdown_posts: BTreeMap<String, String>,
+    #[serde(default)]
+    pub markdown_shorts: BTreeMap<String, String>,
     pub about_markdown: Option<String>,
 }
 
@@ -63,6 +65,22 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             render::render_post(&release.site, post, &css_hash),
         );
     }
+    let mut shorts = Vec::new();
+    for (slug, source) in &release.markdown_shorts {
+        let short = content::parse_short(source)?;
+        ensure!(
+            short.slug() == slug,
+            "Short slug does not match its source key"
+        );
+        if !short.draft() {
+            shorts.push(short);
+        }
+    }
+    shorts.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    files.insert(
+        "shorts/index.html".into(),
+        render::render_shorts(&release.site, &shorts, &css_hash),
+    );
     let index: Vec<_> = posts.iter().map(|post| serde_json::json!({"title":post.title(),"slug":post.slug(),"description":post.description(),"date":post.date(),"updated":post.updated(),"body":post.body_plain_text})).collect();
     files.insert("search_index.json".into(), serde_json::to_string(&index)?);
     files.insert(

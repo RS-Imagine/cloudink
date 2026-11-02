@@ -13,13 +13,17 @@ import {
   json,
   jsonInput,
   limitedBody,
+  parseShortSource,
   parseSource,
   readJson,
   serializeDraft,
+  serializeShortDraft,
   validSlug,
   validateDraft,
+  validateShortDraft,
   validateSite,
   type Draft,
+  type ShortDraft,
   type SiteConfig,
 } from './models';
 
@@ -202,6 +206,98 @@ async function apiRoute(
           },
         );
         if (!locked) throw new HttpError(409, '文章已修改，请重新打开。');
+      }
+      return json({ ok: true });
+    }
+  }
+  // ---- Shorts ("短记") ------------------------------------------------------
+  if (path === '/api/shorts' && request.method === 'GET') {
+    const release = await currentRelease(env);
+    const published = new Map<string, ShortDraft>();
+    for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
+      try {
+        published.set(slug, parseShortSource(source));
+      } catch {
+        // Skip malformed entries; they will surface on publish validation.
+      }
+    }
+    const shorts = new Map<string, unknown>();
+    for (const [slug, draft] of published)
+      shorts.set(slug, {
+        slug,
+        date: draft.front_matter.date,
+        published: true,
+        has_draft: false,
+      });
+    let cursor: string | undefined;
+    do {
+      const page = await env.STORAGE.list({ prefix: 'shorts/', cursor, limit: 1000 });
+      for (const object of page.objects) {
+        if (object.customMetadata?.deleted) continue;
+        const slug = object.key.slice(7, -3);
+        if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
+        const meta = object.customMetadata || {};
+        shorts.set(slug, {
+          slug,
+          date: meta.date || published.get(slug)?.front_matter.date || '',
+          published: published.has(slug),
+          has_draft: true,
+          etag: object.etag,
+        });
+      }
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+    const list = [...shorts.values()].sort((a: any, b: any) =>
+      String(b.date).localeCompare(String(a.date)),
+    );
+    return json({ shorts: list });
+  }
+  const shortMatch = path.match(/^\/api\/shorts\/([A-Za-z0-9_-]+)$/);
+  if (shortMatch) {
+    const slug = validSlug(shortMatch[1]);
+    if (request.method === 'PUT') {
+      const input = await jsonInput(request, 1_000_000);
+      const draft = validateShortDraft(input);
+      if (draft.front_matter.slug !== slug)
+        throw new HttpError(400, '短记地址与请求地址不一致。');
+      draft.front_matter.draft = true;
+      const object = await env.STORAGE.put(`shorts/${slug}.md`, serializeShortDraft(draft), {
+        customMetadata: { date: draft.front_matter.date },
+      });
+      return json({ ok: true, etag: object.etag });
+    }
+    if (request.method === 'GET') {
+      const object = await env.STORAGE.get(`shorts/${slug}.md`);
+      if (object && !object.customMetadata?.deleted) {
+        const source = await object.text();
+        return json({ draft: parseShortSource(source), source, etag: object.etag });
+      }
+      const release = await currentRelease(env);
+      const source = (release.markdown_shorts || {})[slug];
+      if (source) return json({ draft: parseShortSource(source), source, etag: null });
+      throw new HttpError(404, '短记不存在。');
+    }
+    if (request.method === 'DELETE') {
+      const release = await currentRelease(env);
+      if ((release.markdown_shorts || {})[slug])
+        throw new HttpError(409, '请先取消发布，再删除草稿。');
+      const input = await jsonInput(request, 4096),
+        object = await env.STORAGE.head(`shorts/${slug}.md`);
+      if (object && input.etag !== object.etag)
+        throw new HttpError(409, '短记已修改，请重新打开。');
+      if (object) {
+        const locked = await env.STORAGE.put(
+          `shorts/${slug}.md`,
+          serializeShortDraft({
+            front_matter: { date: '2000-01-01 00:00', slug, draft: true },
+            body_markdown: '',
+          }),
+          {
+            onlyIf: { etagMatches: object.etag },
+            customMetadata: { date: '2000-01-01 00:00', deleted: 'true' },
+          },
+        );
+        if (!locked) throw new HttpError(409, '短记已修改，请重新打开。');
       }
       return json({ ok: true });
     }

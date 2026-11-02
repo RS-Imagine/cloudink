@@ -747,3 +747,58 @@
 .home-archive-link a:hover {
   text-decoration: underline;
 }
+
+/* Shorts feed ("短记"): lightweight timestamped notes, newest first. */
+.shorts-layout {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+}
+.shorts-layout h1 {
+  font: 600 32px/40px var(--ci-font-reading);
+  margin: 0 0 32px;
+}
+.shorts-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.short-card {
+  border: 1px solid var(--ci-divider);
+  border-radius: 16px;
+  padding: 20px 22px;
+  background: var(--ci-elevated);
+}
+.short-time {
+  display: block;
+  font: 500 13px/20px var(--ci-font-ui);
+  color: var(--ci-muted);
+  margin-bottom: 10px;
+}
+.short-body {
+  font: 400 16px/28px var(--ci-font-reading);
+  overflow-wrap: break-word;
+}
+.short-body p:first-child {
+  margin-top: 0;
+}
+.short-body p:last-child {
+  margin-bottom: 0;
+}
+.short-body img {
+  max-width: 100%;
+  border-radius: 12px;
+}
+.shorts-empty {
+  color: var(--ci-muted);
+  font: 400 16px/28px var(--ci-font-reading);
+}
+@media (max-width: 759px) {
+  .shorts-layout {
+    padding: 32px 16px 48px;
+  }
+  .short-card {
+    padding: 16px 18px;
+    border-radius: 14px;
+  }
+}

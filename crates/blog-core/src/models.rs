@@ -134,6 +134,61 @@ pub struct PostDraft {
 }
 
 // ---------------------------------------------------------------------------
+// Short data model ("短记": lightweight timestamped notes)
+// ---------------------------------------------------------------------------
+
+/// Front matter for a short note. Lighter than [`FrontMatter`]: no title or
+/// description. The `date` is precise to the minute (`YYYY-MM-DD HH:MM`).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShortFrontMatter {
+    /// Publication time, `YYYY-MM-DD HH:MM` (24-hour). Minute precision is
+    /// required: several shorts may share a day, and sorting relies on it.
+    pub date: String,
+    pub slug: String,
+    /// Former short addresses, retained for redirects.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
+    #[serde(default)]
+    pub draft: bool,
+}
+
+/// A fully parsed and rendered short note.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Short {
+    pub front_matter: ShortFrontMatter,
+    /// Raw Markdown source, preserved for the admin editor.
+    pub body_markdown: String,
+    /// Rendered HTML body (same Markdown pipeline as posts).
+    pub body_html: String,
+    /// Plain-text version of the body used for search indexing.
+    pub body_plain_text: String,
+}
+
+impl Short {
+    pub fn slug(&self) -> &str {
+        &self.front_matter.slug
+    }
+
+    pub fn date(&self) -> &str {
+        &self.front_matter.date
+    }
+
+    pub fn draft(&self) -> bool {
+        self.front_matter.draft
+    }
+}
+
+/// Input type used when creating or updating a short via the admin UI.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShortDraft {
+    /// All structured metadata for this short.
+    #[serde(flatten)]
+    pub front_matter: ShortFrontMatter,
+    /// Raw Markdown content of the short body.
+    pub body_markdown: String,
+}
+
+// ---------------------------------------------------------------------------
 // Page data model (e.g. about.md)
 // ---------------------------------------------------------------------------
 

@@ -5,6 +5,7 @@ import {
   HttpError,
   json,
   limitedBody,
+  parseShortSource,
   parseSource,
   readJson,
   type Publishing,
@@ -15,6 +16,7 @@ import {
 const coreFiles = [
   'index.html',
   'archive/index.html',
+  'shorts/index.html',
   '404.html',
   'styles.css',
   'client.js',
@@ -48,6 +50,10 @@ export function requiredPages(release: Release): string[] {
     const post = parseSource(source);
     if (post.front_matter.slug !== slug) throw new HttpError(400, '文章地址与原稿不一致。');
     if (!post.front_matter.draft) slugs.add(slug);
+  }
+  for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
+    const short = parseShortSource(source);
+    if (short.front_matter.slug !== slug) throw new HttpError(400, '短记地址与原稿不一致。');
   }
   return [
     ...coreFiles,
