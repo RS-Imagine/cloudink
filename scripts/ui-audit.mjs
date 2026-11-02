@@ -794,7 +794,7 @@ try {
     'Theme and effects bootstrap gzip budget',
   );
   const galleryCSS = (
-    await transform(await readFile(resolve(root, 'cloud-admin/ui/images.css'), 'utf8'), {
+    await transform(await readFile(resolve('cloud-admin/ui/images.css'), 'utf8'), {
       loader: 'css',
       minify: true,
       target: 'es2022',
