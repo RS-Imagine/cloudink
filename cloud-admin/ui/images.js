@@ -97,7 +97,9 @@ export function configureImages({
         thumbnail.height = image.height;
       }
       thumbnail.addEventListener('load', () => thumbnail.classList.add('is-ready'), { once: true });
-      thumbnail.addEventListener('error', () => preview.classList.add('image-unavailable'), { once: true });
+      thumbnail.addEventListener('error', () => preview.classList.add('image-unavailable'), {
+        once: true,
+      });
       if (thumbnail.complete && thumbnail.naturalWidth) thumbnail.classList.add('is-ready');
       preview.append(thumbnail);
       preview.addEventListener('click', () => {
@@ -201,7 +203,8 @@ export function configureImages({
         { confirmFirst: true },
       );
       remove.classList.add('danger');
-      remove.disabled = loading || !!loadError || !image.referencesChecked || image.references.length > 0;
+      remove.disabled =
+        loading || !!loadError || !image.referencesChecked || image.references.length > 0;
       remove.title = !image.referencesChecked
         ? '引用检查未完成，暂时不能删除。'
         : image.references.length
@@ -210,13 +213,14 @@ export function configureImages({
       const help = document.createElement('p');
       help.id = helpId;
       help.className = 'image-protection';
-      help.textContent = loading || loadError
-        ? '请等图片库刷新完成，再检查是否可以删除。'
-        : !image.referencesChecked
-        ? '引用检查完成前，图片会受到保护。'
-        : image.references.length
-          ? '这张图片正在使用，删除已受保护。'
-          : '删除前会再次检查引用，确认后才永久移除。';
+      help.textContent =
+        loading || loadError
+          ? '请等图片库刷新完成，再检查是否可以删除。'
+          : !image.referencesChecked
+            ? '引用检查完成前，图片会受到保护。'
+            : image.references.length
+              ? '这张图片正在使用，删除已受保护。'
+              : '删除前会再次检查引用，确认后才永久移除。';
       remove.setAttribute('aria-describedby', helpId);
       body.append(help, actions);
       card.append(preview, body);
@@ -246,9 +250,11 @@ export function configureImages({
     else {
       // Retain the last successful cards and thumbnails during a refresh.
       $('image-library-grid').setAttribute('aria-busy', 'true');
-      $('image-library-grid').querySelectorAll('.danger').forEach((button) => {
-        button.disabled = true;
-      });
+      $('image-library-grid')
+        .querySelectorAll('.danger')
+        .forEach((button) => {
+          button.disabled = true;
+        });
       $('image-library-more').hidden = true;
       $('image-library-retry').hidden = true;
     }

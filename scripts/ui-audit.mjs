@@ -827,7 +827,7 @@ try {
   report.checks = [
     'three-engine delayed gallery/refresh/upload/editor controls retain button geometry, existing cards, thumbnail boxes and draft contents at 1440/390/360/320px',
     'three-engine long share-status text and unbroken URLs reflow without page overflow',
-    
+
     '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
     'supplemental login/setup/settings/images inventory',
     'Chromium, Firefox and WebKit production theme + prototype smoke',

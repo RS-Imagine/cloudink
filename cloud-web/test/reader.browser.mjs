@@ -24,14 +24,22 @@ export async function verifyReader(browser, origin, output, engine) {
   for (const width of [390, 360, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await page.locator('#share-status').evaluate((status) => {
-      status.textContent = '分享暂时不可用，请复制链接后重试。'.repeat(6) + 'https://example.net/' + 'very-long-link'.repeat(25);
+      status.textContent =
+        '分享暂时不可用，请复制链接后重试。'.repeat(6) +
+        'https://example.net/' +
+        'very-long-link'.repeat(25);
     });
     await page.locator('#share-status').scrollIntoViewIfNeeded();
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'long share feedback reflows at ' + width);
+    assert.ok(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      'long share feedback reflows at ' + width,
+    );
     await expect(page.locator('#copy-link')).toBeVisible();
     await expect(page.locator('#share-btn')).toBeVisible();
   }
-  await page.locator('#share-status').evaluate((status) => { status.textContent = ''; });
+  await page.locator('#share-status').evaluate((status) => {
+    status.textContent = '';
+  });
   await page.setViewportSize({ width: 1440, height: 1000 });
   const bounds = await page.evaluate(() => {
     const article = document.querySelector('.reader-article article').getBoundingClientRect();
