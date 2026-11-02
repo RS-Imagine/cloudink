@@ -28,6 +28,7 @@ fn main() {
         "assets",
         "Cargo.lock",
         "package-lock.json",
+        "cloud-admin/package-lock.json",
         "scripts/web-assets.mjs",
     ] {
         collect(root, &root.join(path), &mut files);
