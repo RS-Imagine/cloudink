@@ -385,7 +385,8 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         .max(1.0) as usize;
 
     let body = format!(
-        r#"<section class="article-shell reader-article">
+        r#"<div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
+<section class="article-shell reader-article">
   <article>
     <header class="article-heading">
       <a class="back-link article-back" href="/">&larr; 所有文章</a>

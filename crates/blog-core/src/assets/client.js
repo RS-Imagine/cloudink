@@ -605,6 +605,27 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const article = document.querySelector('.article-shell article');
       if (article) {
+        let progressBar = document.getElementById('reading-progress');
+        if (!progressBar) {
+          progressBar = document.createElement('div');
+          progressBar.id = 'reading-progress';
+          progressBar.className = 'reading-progress';
+          progressBar.setAttribute('aria-hidden', 'true');
+          document.body.prepend(progressBar);
+        }
+        cleanupFunctions.push(() => {
+          progressBar?.remove();
+        });
+        const updateReadingProgress = () => {
+          const total = document.documentElement.scrollHeight - window.innerHeight;
+          const current = window.scrollY;
+          const progress = total > 0 ? Math.min(100, Math.max(0, (current / total) * 100)) : 0;
+          if (progressBar) progressBar.style.width = progress + '%';
+        };
+        window.addEventListener('scroll', updateReadingProgress, { passive: true });
+        cleanupFunctions.push(() => window.removeEventListener('scroll', updateReadingProgress));
+        updateReadingProgress();
+
         const headings = article.querySelectorAll('.article-body h2, .article-body h3, .article-body h4');
         if (headings.length > 0) {
           const tocContainer = document.createElement('nav');

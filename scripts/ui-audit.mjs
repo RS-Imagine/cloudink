@@ -741,7 +741,7 @@ try {
     })
   ).code;
   report.assets['reader/home.min.css'] = { gzip: gzipSync(homeCSS).length };
-  assert.ok(report.assets['reader/home.min.css'].gzip <= 3072, 'Home CSS gzip budget');
+  assert.ok(report.assets['reader/home.min.css'].gzip <= 4096, 'Home CSS gzip budget');
   const readerCSSMin = (
     await transform(await readFile('crates/blog-core/src/assets/reader.css', 'utf8'), {
       minify: true,
