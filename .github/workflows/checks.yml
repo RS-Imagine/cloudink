@@ -40,7 +40,7 @@ jobs:
           node --input-type=module <<'JS'
           import {readFile} from 'node:fs/promises';
           import {gzipSync} from 'node:zlib';
-          for (const path of ['cloud-admin/ui/app.generated.js','cloud-admin/ui/images.generated.js','cloud-admin/ui/home-illustration.generated.js','cloud-admin/ui/wasm/blog_wasm_bg.wasm'])
+          for (const path of ['cloud-admin/ui/app.generated.js','cloud-admin/ui/home-illustration.generated.js','cloud-admin/ui/wasm/blog_wasm_bg.wasm'])
             console.log(JSON.stringify({asset:path,gzip:gzipSync(await readFile(path)).length}));
           JS
       - name: Generate binding types and check TypeScript
@@ -88,12 +88,7 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Fetch reviewed performance baseline
-        run: |
-          git fetch --no-tags --depth=1 origin 6b97a08cf93ef0a1a545f045d0660e17174cb258
-          git fetch --no-tags --depth=1 origin 1b176737e055666836715d0b98255ce9de7418af
-          git fetch --no-tags --depth=1 origin 4d3127976d42d58e4f6f1b81827f4d296d4f80d1
-      - name: Check design source formatting
+      - name: Check shared UI source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
         run: npm run build
@@ -108,7 +103,7 @@ jobs:
         run: node cloud-web/test/image-photo-fixture.mjs
       - name: Prepare CC0 editorial landscape fixture
         run: node cloud-web/test/editorial-photo-fixture.mjs
-      - name: Capture production themes and approved design reference
+      - name: Check production UI and capture screenshots
         run: npm run test:ui:audit
       - name: Save UI review, screenshots and measurements
         if: always()

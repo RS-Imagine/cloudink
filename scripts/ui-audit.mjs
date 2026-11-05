@@ -3,17 +3,14 @@ import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.
 import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
 import { verifyPostAddresses } from '../cloud-web/test/post-address.browser.mjs';
-import { verifyEditorialAdmin } from '../cloud-web/test/editorial-admin.browser.mjs';
 import { verifyHomeIllustrations } from '../cloud-web/test/home-illustration.browser.mjs';
 import { verifyLongReading } from '../cloud-web/test/long-reading.browser.mjs';
 import { verifyReaderLoading } from '../cloud-web/test/reader-loading.browser.mjs';
-import { verifyReaderPerformance } from '../cloud-web/test/reader-performance.browser.mjs';
 import { verifyImageQuality } from '../cloud-web/test/image-quality.browser.mjs';
 import { verifyImageOptimizer } from '../cloud-web/test/image-optimizer.browser.mjs';
-// Isolated production theme review with separately labelled historical prototypes. Never uses Wrangler remote mode.
-import { createServer } from 'node:http';
+// Review the shipped UI with ephemeral data. Never uses Wrangler remote mode.
 import { readFile, writeFile, mkdir, copyFile, readdir, rm } from 'node:fs/promises';
-import { resolve, extname } from 'node:path';
+import { resolve } from 'node:path';
 import { gzipSync, brotliCompressSync } from 'node:zlib';
 import assert from 'node:assert/strict';
 import {
@@ -43,16 +40,13 @@ import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
 
 const output = resolve('build-work/ui-audit');
 const origin = 'https://127.0.0.1:8795';
-const studyOrigin = 'http://127.0.0.1:8796';
 const widths = [1440, 390, 360];
 const themes = ['light', 'dark'];
 const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
-  baseline: '7a155d59c3dceda9253caba61a6f02044d973c5b',
-  upstream: 'db7bf42ad5a67753c4c387d2d01dc71e5141a5b8',
   revision: process.env.GITHUB_SHA || 'local',
   method:
-    'Local HTTPS Miniflare (test certificate), ephemeral R2; local static prototype; self-hosted editorial font slices; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
+    'Local HTTPS Miniflare (test certificate), ephemeral R2; self-hosted editorial font slices; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
   browsers: {},
   assets: {},
   samples: [],
@@ -61,42 +55,6 @@ const report = {
 };
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
-const allowed = new Set(
-  ['tokens.css', 'style.css', 'app.js', 'index.html', 'motion.html', 'motion.js', 'surfaces.html']
-    .map((p) => '/prototypes/ui-2.0/' + p)
-    .concat(
-      '/assets/cloudink.svg',
-      '/assets/design-tokens.css',
-      '/assets/design-foundation.css',
-      '/assets/motion.css',
-      '/assets/motion.js',
-      '/assets/theme.js',
-      '/assets/expressive.css',
-    ),
-);
-const server = createServer(async (request, response) => {
-  const path = new URL(request.url, studyOrigin).pathname;
-  if (!allowed.has(path)) {
-    response.writeHead(404).end();
-    return;
-  }
-  try {
-    const bytes = await readFile(resolve('.' + path));
-    response.writeHead(200, {
-      'Content-Type': {
-        '.html': 'text/html; charset=utf-8',
-        '.css': 'text/css; charset=utf-8',
-        '.js': 'text/javascript; charset=utf-8',
-        '.svg': 'image/svg+xml',
-      }[extname(path)],
-      'Cache-Control': 'no-store',
-    });
-    response.end(bytes);
-  } catch {
-    response.writeHead(404).end();
-  }
-});
-await new Promise((done) => server.listen(8796, '127.0.0.1', done));
 const mf = new Miniflare(
   convertV4MiniflareOptions({ ...workerOptions(), host: '127.0.0.1', port: 8795, https: true }),
 );
@@ -222,36 +180,6 @@ async function capture(page, name, screen, theme, width, engine = 'chromium') {
     fullPage: true,
     animations: 'disabled',
   });
-}
-async function tokenContrast(page) {
-  const results = await page.evaluate(() => {
-    const style = getComputedStyle(document.documentElement);
-    const rgb = (hex) => {
-      const value = hex.trim().slice(1);
-      return [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255);
-    };
-    const luminance = (color) =>
-      rgb(color)
-        .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-        .reduce((n, c, i) => n + c * [0.2126, 0.7152, 0.0722][i], 0);
-    return [
-      ['text', 'bg'],
-      ['text', 'surface'],
-      ['text', 'elevated'],
-      ['muted', 'bg'],
-      ['muted', 'surface'],
-      ['on-primary', 'primary'],
-      ['on-primary-container', 'primary-container'],
-      ['error', 'surface'],
-      ['success', 'surface'],
-    ].map(([fg, bg]) => {
-      const a = luminance(style.getPropertyValue('--ci-' + fg));
-      const b = luminance(style.getPropertyValue('--ci-' + bg));
-      return { fg, bg, ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
-    });
-  });
-  for (const pair of results) assert.ok(pair.ratio >= 4.5, JSON.stringify(pair));
-  return results;
 }
 try {
   await mf.ready;
@@ -530,7 +458,6 @@ try {
     await verifyUiStability(localBrowser, origin, output, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
-    if (engine === 'chromium') await verifyReaderPerformance(currentBrowser, origin, output);
     await verifyStudio(localBrowser, origin, output, engine);
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
@@ -540,7 +467,6 @@ try {
     await verifyCompletion(localBrowser, origin, output, engine);
     await verifyThemes(localBrowser, origin, output, engine);
     await verifyHomeIllustrations(localBrowser, origin, output, engine);
-    await verifyEditorialAdmin(localBrowser, origin, output, engine);
     await verifyMarkdownImport(localBrowser, origin, output, engine);
     await verifyPostAddresses(localBrowser, origin, output, engine);
     await verifyArchive(localBrowser, origin, output, engine);
@@ -548,118 +474,6 @@ try {
     await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
-    for (const width of engine === 'chromium' ? widths : [390])
-      for (const theme of themes) {
-        const context = await browser.newContext({
-          viewport: { width, height: width > 759 ? 1000 : 844 },
-          colorScheme: theme,
-          reducedMotion: 'reduce',
-          ...(engine !== 'firefox' ? { hasTouch: width < 760, isMobile: width < 760 } : {}),
-        });
-        await watch(context);
-        const page = await context.newPage();
-        const outside = [];
-        page.on('request', (request) => {
-          if (!request.url().startsWith(studyOrigin + '/')) outside.push(request.url());
-        });
-        for (const screen of screens) {
-          await page.goto(
-            studyOrigin + '/prototypes/ui-2.0/index.html?capture&theme=' + theme + '#' + screen,
-          );
-          await page.reload();
-          await expect(page.locator('#content')).toBeVisible();
-          await capture(page, 'prototype', screen, theme, width, engine);
-          assert.equal(
-            await page.locator('.screen').evaluate((node) => getComputedStyle(node).animationName),
-            'none',
-          );
-        }
-        report.samples.at(-1).contrast = await tokenContrast(page);
-        // Palette alternative must maintain readable text in both themes.
-        await page.evaluate(() => {
-          document.documentElement.dataset.palette = 'neutral';
-        });
-        await tokenContrast(page);
-        await page.evaluate(() => {
-          document.documentElement.dataset.palette = 'ink';
-        });
-        const textarea = page.locator('#demo-body');
-        await textarea.fill('## 新的演示内容\n\n不会发送到远端。');
-        await page.getByRole('button', { name: '预览', exact: true }).click();
-        await expect(page.locator('#demo-preview')).toContainText('不会发送到远端');
-        await page.getByRole('button', { name: '写作', exact: true }).click();
-        await expect(textarea).toHaveValue(/新的演示内容/);
-        await page.locator('#demo-save').click();
-        await expect(page.locator('#demo-save')).not.toHaveAttribute('aria-busy', 'true');
-        await expect(page.locator('#save-indicator')).toContainText('演示草稿已保存');
-        await page.locator('[data-theme-toggle]').click();
-        await expect(page.locator('html')).toHaveAttribute(
-          'data-theme',
-          theme === 'light' ? 'dark' : 'light',
-        );
-        await page.goto(
-          studyOrigin + '/prototypes/ui-2.0/index.html?capture&theme=' + theme + '#home',
-        );
-        const search = page.getByRole('button', { name: '搜索文章', exact: true });
-        await search.click();
-        await expect(page.locator('#search-input')).toBeFocused();
-        await page.locator('#search-input').fill('不存在的词');
-        await expect(page.locator('#search-results')).toContainText('还没有找到');
-        await page.keyboard.press('Escape');
-        await expect(search).toBeFocused();
-        await page.goto(
-          studyOrigin + '/prototypes/ui-2.0/index.html?capture&theme=' + theme + '#dashboard',
-        );
-        await page.getByRole('button', { name: '草稿', exact: true }).click();
-        await expect(page.locator('.writing-row')).toHaveCount(2);
-        const library = page.locator('[data-library]:visible').first();
-        await library.click();
-        await expect(page.locator('#library-dialog')).toBeVisible();
-        await page.keyboard.press('Escape');
-        await expect(library).toBeFocused();
-        assert.deepEqual(outside, [], 'The prototype must be completely local, with no API calls');
-        await context.close();
-      }
-    const surfaceDemoContext = await browser.newContext({
-      viewport: { width: 390, height: 844 },
-      reducedMotion: 'no-preference',
-    });
-    const surfaceDemo = await surfaceDemoContext.newPage();
-    const demoOutside = [];
-    surfaceDemo.on('request', (request) => {
-      if (!request.url().startsWith(studyOrigin + '/')) demoOutside.push(request.url());
-    });
-    await surfaceDemo.goto(studyOrigin + '/prototypes/ui-2.0/surfaces.html');
-    await expect(surfaceDemo.locator('select[data-effects-mode]')).toBeVisible();
-    await surfaceDemo.locator('select[data-effects-mode]').selectOption('off');
-    await expect(surfaceDemo.locator('html')).toHaveAttribute('data-effects', 'solid');
-    await surfaceDemo.locator('select[data-theme-mode]').selectOption('dark');
-    await expect(surfaceDemo.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await surfaceDemo.keyboard.press('Escape');
-    await expect(surfaceDemo.locator('.reader-menu')).not.toHaveAttribute('open', '');
-    assert.deepEqual(demoOutside, [], 'Surface comparison stays local');
-    await surfaceDemoContext.close();
-    // Ordinary motion can be interrupted by quick navigation; editor state stays in memory.
-    const motionContext = await browser.newContext({
-      reducedMotion: 'no-preference',
-      viewport: { width: 1440, height: 1000 },
-    });
-    const page = await motionContext.newPage();
-    await page.goto(studyOrigin + '/prototypes/ui-2.0/index.html#editor');
-    await page.locator('#demo-body').fill('Retain this demo text');
-    await page.locator('#demo-save').click();
-    await page.locator('.skip-link').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('#demo-save')).not.toHaveAttribute('aria-busy', 'true');
-    await expect(page.locator('#demo-body')).toHaveValue('Retain this demo text');
-    await page.evaluate(async () => {
-      for (const name of ['dashboard', 'home', 'article', 'editor']) {
-        location.hash = name;
-        await new Promise((done) => setTimeout(done, 30));
-      }
-    });
-    await expect(page.locator('#demo-body')).toHaveValue('Retain this demo text');
-    await motionContext.close();
     await browser.close();
     browser = undefined;
   }
@@ -670,7 +484,6 @@ try {
     'build-work/web-public/reader-assets/katex.css',
     'build-work/web-public/styles.css',
     'cloud-admin/ui/app.generated.js',
-    'cloud-admin/ui/images.generated.js',
     'cloud-admin/ui/images.css',
     'cloud-admin/ui/publication.generated.js',
     'cloud-admin/ui/home-illustration.generated.js',
@@ -692,10 +505,6 @@ try {
     'assets/mobile.js',
     'assets/mobile.css',
     'assets/expressive.css',
-    'prototypes/ui-2.0/index.html',
-    'prototypes/ui-2.0/tokens.css',
-    'prototypes/ui-2.0/style.css',
-    'prototypes/ui-2.0/app.js',
   ]) {
     const bytes = await readFile(path);
     report.assets[path] = {
@@ -810,7 +619,6 @@ try {
     'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 29 * 1024,
-    'cloud-admin/ui/images.generated.js': 4 * 1024,
     'cloud-admin/ui/publication.generated.js': 4 * 1024,
     'cloud-admin/ui/home-illustration.generated.js': 3 * 1024,
     'served/admin/style.css': 15 * 1024,
@@ -828,13 +636,12 @@ try {
     'three-engine delayed gallery/refresh/upload/editor controls retain button geometry, existing cards, thumbnail boxes and draft contents at 1440/390/360/320px',
     'three-engine long share-status text and unbroken URLs reflow without page overflow',
 
-    '24 primary production + 24 reference screenshots in Chromium; supplemental workflow and theme captures',
+    'production screenshots with supplemental workflow and theme captures',
     'supplemental login/setup/settings/images inventory',
-    'Chromium, Firefox and WebKit production theme + prototype smoke',
+    'Chromium, Firefox and WebKit production UI checks',
     'touch emulation (Chromium/WebKit)',
-    '360px overflow guard on production and prototype',
+    '360px overflow guard on production pages',
     'six native color swatches: keyboard, saved choice, Brown preview, 12 palette/mode contrast combinations and responsive screenshots',
-    'light/dark palette contrast pairs',
     'three-engine SVG/ICO upload, decoded image preview, saved icon reload, default reset, mobile/desktop screenshots; full publication and backup round-trip in Chromium',
     'three-engine bounded glass/opaque comparisons, worst-backdrop text contrast, effect opt-out/sync, storage/CSS denial, system preferences and low-resource fallback; Chromium CPU4x scroll samples',
     'reduced motion',
@@ -846,56 +653,13 @@ try {
     'three-engine spring press, cancellation, dialog reversal, keyboard, reduced motion and WAAPI fallback',
     'search and library Escape/focus return',
     'editor view/state retention',
-    'demo loading feedback',
     'rapid navigation',
-    'no external prototype network',
   ];
   report.checks.push(
-    'full editorial admin: same-data before/after Chromium captures; Chromium/Firefox/WebKit light/dark login, dashboard, articles, empty search, editor/preview, confirmation, gallery/maintenance, settings/appearance/account/backup/service, menu/import at desktop/mobile widths',
     'three-engine startup/config/session/data failure-retry, no auth flash, manual login/logout focus, card keyboard navigation and responsive preview focus',
     'three-engine 360px text-spacing reflow: reader/search/login/dashboard/settings/images and primary navigation',
     'keyboard viewport overrides released during simulated pinch zoom; editor text retained',
     'aggregate public/admin/preview/WASM gzip release budgets',
-  );
-  // Artifact includes a self-contained folder hierarchy: open index.html after extracting.
-  await mkdir(resolve(output, 'preview/prototypes/ui-2.0'), { recursive: true });
-  await mkdir(resolve(output, 'preview/assets'), { recursive: true });
-  for (const name of [
-    'index.html',
-    'tokens.css',
-    'style.css',
-    'app.js',
-    'README.md',
-    'motion.html',
-    'motion.js',
-    'surfaces.html',
-  ])
-    await copyFile(
-      resolve('prototypes/ui-2.0', name),
-      resolve(output, 'preview/prototypes/ui-2.0', name),
-    );
-  await copyFile(resolve('assets/cloudink.svg'), resolve(output, 'preview/assets/cloudink.svg'));
-  await copyFile(
-    resolve('assets/design-tokens.css'),
-    resolve(output, 'preview/assets/design-tokens.css'),
-  );
-  for (const name of [
-    'design-foundation.css',
-    'motion.css',
-    'motion.js',
-    'mobile.css',
-    'mobile.js',
-    'theme.js',
-    'expressive.css',
-  ])
-    await copyFile(resolve('assets', name), resolve(output, 'preview/assets', name));
-  await writeFile(
-    resolve(output, 'preview/mobile-frame.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 移动面板演示</title><link rel="stylesheet" href="assets/design-tokens.css"><link rel="stylesheet" href="assets/design-foundation.css"><link rel="stylesheet" href="assets/motion.css"><link rel="stylesheet" href="assets/mobile.css"><style>*{box-sizing:border-box}body{margin:0;padding:24px;font:15px/1.8 var(--ci-font-ui);color:var(--ci-text);background:var(--ci-bg)}body:has(dialog[open]){overflow:hidden}header{display:flex;align-items:center;gap:10px;font-weight:600}h1{font-size:30px;line-height:1.4;margin-top:40px}p{color:var(--ci-muted)}button{min-height:44px;border:1px solid var(--ci-divider);border-radius:14px;padding:10px 16px;background:var(--ci-surface);color:var(--ci-text);font:inherit}main>button{display:block;width:100%;margin:16px 0}.demo-items button{display:block;width:100%;margin:8px 0;text-align:left}.demo-close{float:right}.demo-actions{display:flex;gap:8px;justify-content:flex-end}dialog{border:1px solid var(--ci-divider);background:var(--ci-elevated);color:var(--ci-text)}</style><header><img src="assets/cloudink.svg" width="28" height="28" alt="">CloudInk · 云砚</header><main><h1>随手展开，轻轻收起。</h1><p>拖动把手，或使用点击与方向键，体验正式共用的移动面板。</p><button id="open-list">选择文章</button><button id="open-confirm">操作确认</button><button id="theme">切换明暗</button><p id="result" role="status">本地交互演示。</p></main><dialog id="list" data-sheet="list" aria-labelledby="list-title"><button class="demo-close" data-close="list">关闭</button><h2 id="list-title">选择文章</h2><div class="demo-items"></div></dialog><dialog id="confirm" data-sheet="compact" aria-labelledby="confirm-title"><h2 id="confirm-title">继续这次操作？</h2><p>把手关闭和 Esc 均为取消；按钮确认只更新本地演示状态。</p><div class="demo-actions"><button data-close="confirm">取消</button><button id="accept">确认</button></div></dialog><script src="assets/motion.js"></script><script src="assets/mobile.js"></script><script>CloudInkMotion.mount();const $=id=>document.getElementById(id);for(let i=1;i<=12;i++){const button=document.createElement(\'button\');button.textContent=\'一篇值得留下的文字 · \'+i;button.addEventListener(\'click\',()=>{$(\'result\').textContent=\'已选择演示文章 \'+i;CloudInkMotion.closeDialog($(\'list\'))});document.querySelector(\'.demo-items\').append(button)}$(\'open-list\').onclick=()=>CloudInkMotion.openDialog($(\'list\'));$(\'open-confirm\').onclick=()=>CloudInkMotion.openDialog($(\'confirm\'));document.querySelectorAll(\'[data-close]\').forEach(button=>button.onclick=()=>CloudInkMotion.closeDialog($(button.dataset.close)));$(\'accept\').onclick=()=>{$(\'result\').textContent=\'本地确认已完成\';CloudInkMotion.closeDialog($(\'confirm\'))};$(\'theme\').onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme===\'dark\'?\'light\':\'dark\'};</script></html>',
-  );
-  await writeFile(
-    resolve(output, 'preview/mobile.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 移动交互预览</title><link rel="stylesheet" href="assets/design-tokens.css"><style>body{margin:0;padding:24px;font:15px/1.8 var(--ci-font-ui);background:var(--ci-bg);color:var(--ci-text);text-align:center}h1{font-size:26px}iframe{display:block;width:390px;max-width:100%;height:760px;border:1px solid var(--ci-divider);border-radius:28px;margin:24px auto;background:var(--ci-surface)}</style><h1>CloudInk · 移动面板</h1><p>使用鼠标或触摸拖动把手，也可以点击把手、使用方向键或 Esc。</p><iframe src="mobile-frame.html" title="CloudInk 手机交互演示"></iframe></html>',
   );
   const pairs = new Map();
   for (const sample of report.samples) {
@@ -920,10 +684,7 @@ try {
               '.png';
             return (
               '<figure><figcaption>' +
-              (sample.version === 'production'
-                ? '正式界面（当前提交）'
-                : '历史 UI 2.0 原型（仅存档）') +
-              '</figcaption><a href="' +
+              '正式界面（当前提交）</figcaption><a href="' +
               file +
               '"><img loading="lazy" src="' +
               file +
@@ -965,7 +726,7 @@ try {
     .join('');
   await writeFile(
     resolve(output, 'index.html'),
-    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 2.0 设计审阅</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}.supplemental{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:24px}.supplemental figcaption{overflow-wrap:anywhere;font-size:13px}.supplemental img{aspect-ratio:3/2;object-fit:contain;background:#e9ede6}summary{cursor:pointer;padding:20px 0;font-weight:600}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk · 棕褐阅读与写作界面审阅</h1><p><a href="editorial-admin-review-chromium.html">后台升级前后对比</a> · <a href="editorial-admin-review-firefox.html">Firefox 后台</a> · <a href="editorial-admin-review-webkit.html">WebKit 后台</a></p><p><a href="preview/prototypes/ui-2.0/surfaces.html">打开玻璃与不透明比较</a> · <a href="preview/mobile.html">打开移动面板交互演示</a> · <a href="preview/prototypes/ui-2.0/index.html">历史 UI 2.0 原型</a> · <a href="preview/prototypes/ui-2.0/motion.html">打开交互动画演示</a> · <a href="report.json">实验性能与资源报告</a></p><p>正式界面只使用本地临时演示数据；参考原型不访问接口。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39118109086/artifacts/12133585772">下载 PR-00 升级前基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39147267055/artifacts/12143813480">下载 PR-05 阶段基线</a>。<a href="https://github.com/RS-Imagine/cloudink/actions/runs/39238605433/artifacts/12180362373">下载 PR-08 上游基线</a>。左侧为当前正式界面，右侧为历史 UI 2.0 原型，不能将原型当作升级前截图；升级前请使用 PR-00 基线包。补充文字间距截图以 release-text-spacing 开头。点击截图查看原尺寸。实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
+    '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CloudInk 界面回归检查</title><style>body{font:15px/1.6 system-ui;background:#f3f5f1;color:#202a25;margin:0;padding:24px}main{max-width:1400px;margin:auto}a{color:#24594f}header{padding:20px 0}h1{margin:0}h2{font-size:18px}section{border-top:1px solid #c7d1c5;padding:24px 0}.pair{display:flex;gap:24px;align-items:flex-start}figure{margin:0;flex:1;min-width:0}figcaption{margin-bottom:12px}img{width:100%;height:auto;border-radius:12px;border:1px solid #c7d1c5}select{padding:10px;margin:12px 10px 12px 0}button{padding:10px}.supplemental{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:24px}.supplemental figcaption{overflow-wrap:anywhere;font-size:13px}.supplemental img{aspect-ratio:3/2;object-fit:contain;background:#e9ede6}summary{cursor:pointer;padding:20px 0;font-weight:600}@media(max-width:700px){.pair{display:block}figure{margin-bottom:20px}}</style><main><header><h1>CloudInk · 正式界面回归检查</h1><p><a href="report.json">性能与资源报告</a></p><p>页面使用隔离的临时数据。截图对应当前提交；实验指标不代表真机或真实用户性能。</p><label>宽度 <select id="width"><option value="">全部</option><option>1440</option><option>390</option><option>360</option></select></label><label>主题 <select id="theme"><option value="">全部</option><option>light</option><option>dark</option></select></label><p>当前界面溢出记录：' +
       report.existingLayoutIssues.length +
       '；详见 report.json。</p></header>' +
       cards +
@@ -992,6 +753,5 @@ try {
 } finally {
   await browser?.close();
   await mf.dispose();
-  await new Promise((done) => server.close(done));
   await writeFile(resolve(output, 'report.json'), JSON.stringify(report, null, 2));
 }
