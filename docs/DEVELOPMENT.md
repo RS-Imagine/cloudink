@@ -248,8 +248,11 @@ completion.browser.mjs 补充启动、配置/会话/首次读取失败重试、�
 仅使用本地示例和临时会话；不改变 Cookie、CSRF、自动保存或发布算法。
 后台启动需要等待配置与会话检查，展示失败状态时不得伪造登录成功或退出登录。
 
-在 GitHub **Actions → Project checks → Run workflow** 可从任一分支运行完整检查与三引擎 UI 审阅，
-无须本地克隆或生产凭据。审阅包包含主要页面、全部补充截图目录与离线动效演示。
+PR 自动运行构建、类型检查、核心功能测试和 Chromium 工作流验证。合并到 master 后不重复运行这些检查；直接推送 master 也不会触发 Project checks，代码应通过 PR 验证。
+
+在 GitHub **Actions → Project checks → Run workflow** 可从任一分支手动运行基础检查；勾选 `visual_audit` 才运行完整三引擎 UI 审阅，无须本地克隆或生产凭据。
+旧设计原型不再单独运行自动审查，截图只保留完整的 `ui-design-review` 工件，不重复上传精选截图包。
+Cloudflare 的 Worker 构建与部署独立运行，不受上述测试触发方式影响。
 测试每次清空生成的 build-work/ui-audit 输出，避免把旧截图当作当前提交的结果。
 真实终端、辅助技术及能耗没有使用模拟结果替代；边界与人工清单见 UI 升级指南。
 
