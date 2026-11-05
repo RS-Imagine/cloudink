@@ -766,12 +766,15 @@ document.addEventListener('DOMContentLoaded', () => {
           };
           tocClose.addEventListener('click', requestTocClose);
           function closeTocDrawer() {
+             tocContainer.style.transition = 'none';
+             tocContainer.classList.remove('drawer-open');
              tocSheet?.reset();
+             void tocContainer.offsetHeight;
+             tocContainer.style.transition = '';
              if (tocOverflow !== null) document.body.style.overflow = tocOverflow;
              tocOverflow = null;
              for (const [node, inert] of tocBackground) node.inert = inert;
              tocBackground = [];
-             tocContainer.classList.remove('drawer-open');
              mobileTocBtn.setAttribute('aria-expanded', 'false');
              tocDrawerOverlay.classList.remove('active');
              syncToc();
@@ -894,17 +897,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (swup && 'scrollRestoration' in history) {
         const previousRestoration = history.scrollRestoration;
         const positions = new Map();
-        let currentIndex = history.state?.index, busy = false, restoreFrame = 0;
+        const pathPositions = new Map();
+        let currentIndex = history.state?.index ?? 0, busy = false, restoreFrame = 0;
+        if (history.state == null || !Number.isInteger(history.state.index)) {
+          try {
+            history.replaceState({ ...history.state, index: 0 }, '');
+          } catch {}
+        }
         const remember = () => {
-          if (busy || !Number.isInteger(currentIndex)) return;
-          let position = positions.get(currentIndex);
-          if (!position) {
-            position = { x: 0, y: 0 };
-            positions.set(currentIndex, position);
+          if (busy) return;
+          if (Number.isInteger(currentIndex)) {
+            positions.set(currentIndex, { x: scrollX, y: scrollY });
             if (positions.size > 100) positions.delete(positions.keys().next().value);
           }
-          position.x = scrollX;
-          position.y = scrollY;
+          pathPositions.set(location.pathname, { x: scrollX, y: scrollY });
         };
         history.scrollRestoration = 'manual';
         remember();
@@ -915,9 +921,14 @@ document.addEventListener('DOMContentLoaded', () => {
           cancelAnimationFrame(restoreFrame);
         });
         swup.hooks.on('page:view', visit => {
-          currentIndex = history.state?.index;
-          const position = visit.history.popstate ? positions.get(currentIndex) : null;
-          if (!visit.history.popstate) positions.delete(currentIndex);
+          currentIndex = history.state?.index ?? 0;
+          let position = null;
+          if (visit.history.popstate) {
+            position = positions.get(currentIndex) || pathPositions.get(location.pathname);
+          } else if (location.pathname === '/' || location.pathname === '') {
+            position = pathPositions.get('/');
+          }
+          if (!visit.history.popstate && !position) positions.delete(currentIndex);
           const restore = () => {
             if (swup.visit.id !== visit.id) return;
             if (position) window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });

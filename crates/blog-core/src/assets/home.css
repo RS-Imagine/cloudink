@@ -470,6 +470,18 @@
   .reader-tools {
     gap: 0;
   }
+  .reader-header:has(.reader-menu[open]) {
+    position: fixed;
+    inset: 0 0 auto 0;
+    width: 100%;
+    margin: 0;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    z-index: 1000;
+  }
   .reader-menu {
     display: block;
   }
@@ -488,9 +500,9 @@
     flex-direction: column;
     justify-content: center;
     gap: 16px;
-    width: 100%;
+    width: 100vw;
     min-height: 100dvh;
-    padding: 96px 32px;
+    padding: 96px 32px 48px;
     overflow: auto;
     background: var(--ci-elevated);
   }

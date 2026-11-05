@@ -696,10 +696,10 @@ dialog.search-modal .search-input {
     border-radius: var(--ci-radius-xl) var(--ci-radius-xl) 0 0;
     box-shadow: var(--ci-shadow-overlay);
     transform: translateY(100%);
-    transition: transform var(--ci-motion-emphasized) var(--ci-ease);
   }
   .toc-container.drawer-open {
     transform: translateY(0);
+    transition: transform var(--ci-motion-standard) var(--ci-ease);
   }
   .mobile-toc-btn {
     display: flex;
@@ -713,14 +713,15 @@ dialog.search-modal .search-input {
     box-shadow: var(--ci-shadow-floating);
   }
   .toc-close {
-    display: block;
-    min-height: 44px;
-    border-radius: 12px;
-    padding: 10px 16px;
-    margin-top: 16px;
-    background: var(--ci-container);
-    color: var(--ci-text);
-    border: 1px solid var(--ci-divider);
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   .toc-container .toc-link {
     min-height: 44px;

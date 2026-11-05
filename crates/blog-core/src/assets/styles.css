@@ -6,7 +6,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   scroll-padding-top: 32px;
 }
 html, body { margin: 0; padding: 0; }
@@ -334,11 +334,10 @@ article img {
 }
 .transition-fade {
   opacity: 1;
-  transform: translateY(0);
+  transition: opacity 200ms ease;
 }
 html.is-animating .transition-fade {
   opacity: 0;
-  transform: translateY(6px);
 }
 .swup-progress-bar {
   height: 3px;

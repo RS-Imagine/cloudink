@@ -27,9 +27,7 @@ a {
   transition-timing-function: var(--ci-ease);
 }
 .transition-fade {
-  transition:
-    opacity var(--ci-motion-emphasized) var(--ci-ease),
-    transform var(--ci-motion-emphasized) var(--ci-ease);
+  transition: opacity var(--ci-motion-fast) var(--ci-ease);
 }
 .search-modal {
   transition:
