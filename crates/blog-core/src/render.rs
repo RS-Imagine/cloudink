@@ -200,13 +200,22 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             })
             .unwrap_or_default();
         let art = post_thumbnail(post, featured);
+        let art_link = if art.is_empty() {
+            String::new()
+        } else {
+            format!(
+                r#"<a href="/posts/{slug}/" class="home-card-art-link" aria-hidden="true" tabindex="-1">{art}</a>"#,
+                slug = escape_html(post.slug()),
+                art = art
+            )
+        };
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
     <h2><a href="/posts/{slug}/">{title}</a></h2>
     <p>{description}</p>
     <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
-  </div>{art}
+  </div>{art_link}
 </article>"#,
             featured_class = if featured { " home-feature" } else { "" },
             slug = escape_html(post.slug()),
@@ -214,7 +223,7 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             description = escape_html(post.description()),
             date = escape_html(post.date()),
             updated = updated,
-            art = art,
+            art_link = art_link,
         ));
     }
     let title = config

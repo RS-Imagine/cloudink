@@ -420,6 +420,7 @@
   position: sticky;
   inset: auto;
   top: 112px;
+  z-index: 10;
   width: 100%;
   max-height: calc(100dvh - 144px);
   padding: 16px;
@@ -540,10 +541,9 @@ dialog.search-modal {
   overflow: hidden;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  transition: none;
+  transition: none !important;
 }
-dialog.search-modal[open],
-dialog.search-modal.active {
+dialog.search-modal[open] {
   display: flex;
 }
 :root[data-ci-motion] dialog.search-modal[open] {

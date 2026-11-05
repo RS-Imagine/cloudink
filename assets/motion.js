@@ -195,6 +195,10 @@
       try {
         if (ok) onFinish?.();
       } finally {
+        if (!enter && ok) {
+          element.style.opacity = '0';
+          element.style.transition = 'none';
+        }
         animation.cancel();
         resolve(ok);
       }
@@ -227,10 +231,14 @@
         if (dialog.open) return;
         state.closing = false;
         cancelWithin(dialog);
+        dialog.style.opacity = '';
+        dialog.style.transition = '';
       });
     }
     if (state.closing) dialog.returnValue = '';
     state.closing = false;
+    dialog.style.opacity = '';
+    dialog.style.transition = '';
     if (!dialog.open) dialog.showModal();
     if (env.CloudInkMobile?.openDialog(dialog)) return;
     transition(dialog, true);
@@ -251,6 +259,8 @@
       return;
     transition(dialog, false, {
       onFinish() {
+        dialog.style.transition = 'none';
+        dialog.style.opacity = '0';
         if (state.closing && dialog.open) dialog.close();
       },
     });

@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const finishSearch = () => {
           if (nativeSearch && searchModal.open) return;
+          searchModal.style.transition = 'none';
           searchModal.classList.remove('active');
           searchModal.setAttribute('aria-hidden', 'true');
           searchModal.inert = true;
@@ -98,6 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         const closeSearch = (immediate = false) => {
           if (!searchModal.classList.contains('active')) return;
+          searchModal.style.transition = 'none';
+          searchModal.classList.remove('active');
           if (immediate) searchReturnFocus = false;
           if (nativeSearch && searchModal.open) {
             if (motion && !immediate) motion.closeDialog(searchModal);
@@ -274,6 +277,15 @@ document.addEventListener('DOMContentLoaded', () => {
             favicon.setAttribute('type', iconURL.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml');
           }
           document.querySelectorAll('.site-mark img').forEach(image => image.setAttribute('src', iconURL));
+        }
+
+        for (const card of swupContainer.querySelectorAll('.home-card')) {
+          const onCardClick = event => {
+            if (event.target.closest('a')) return;
+            card.querySelector('h2 a')?.click();
+          };
+          card.addEventListener('click', onCardClick);
+          cleanupFunctions.push(() => card.removeEventListener('click', onCardClick));
         }
 
         if (motion && !reducedMotion.matches && 'IntersectionObserver' in window) {
@@ -822,6 +834,22 @@ document.addEventListener('DOMContentLoaded', () => {
           const updateToc = () => {
             tocFrame = 0;
             if (!tocContainer.isConnected) return;
+            if (!narrowToc.matches) {
+              const headerBottom = 112;
+              const rect = tocContainer.getBoundingClientRect();
+              if (rect.top < headerBottom) {
+                const fadeDistance = 48;
+                const progress = Math.max(0, Math.min(1, (rect.top - (headerBottom - fadeDistance)) / fadeDistance));
+                tocContainer.style.opacity = progress.toFixed(3);
+                tocContainer.style.pointerEvents = progress < 0.1 ? 'none' : '';
+                if (progress <= 0) tocContainer.style.visibility = 'hidden';
+                else tocContainer.style.visibility = '';
+              } else if (tocContainer.style.opacity !== '') {
+                tocContainer.style.opacity = '';
+                tocContainer.style.pointerEvents = '';
+                tocContainer.style.visibility = '';
+              }
+            }
             if (measurePending) {
               for (let i = 0; i < headingEls.length; i++) offsets[i] = headingEls[i].getBoundingClientRect().top + scrollY;
               measurePending = false;

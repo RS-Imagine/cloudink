@@ -29,17 +29,17 @@ a {
 .transition-fade {
   transition: opacity var(--ci-motion-fast) var(--ci-ease);
 }
-.search-modal {
+:not(dialog).search-modal {
   transition:
     opacity var(--ci-motion-fast),
     visibility 0s linear var(--ci-motion-fast);
 }
-.search-modal.active {
+:not(dialog).search-modal.active {
   transition:
     opacity var(--ci-motion-standard),
     visibility 0s;
 }
-.search-content {
+:not(dialog) .search-content {
   transition: transform var(--ci-motion-standard) var(--ci-ease);
 }
 @media (prefers-reduced-motion: reduce) {

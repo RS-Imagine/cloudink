@@ -7,7 +7,7 @@
 .reader-header {
   position: sticky;
   top: 16px;
-  z-index: var(--ci-layer-navigation);
+  z-index: 100;
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
@@ -265,6 +265,7 @@
   background: var(--ci-surface);
   box-shadow: var(--ci-shadow-soft);
   transform: none;
+  cursor: pointer;
   transition:
     background-color var(--ci-motion-fast) var(--ci-ease),
     border-color var(--ci-motion-fast) var(--ci-ease),
@@ -303,6 +304,18 @@
 }
 .home-card h2 a {
   color: var(--ci-text);
+  text-decoration: none;
+}
+.home-card h2 a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.home-card-art-link {
+  display: block;
+  min-width: 0;
+  color: inherit;
   text-decoration: none;
 }
 .home-card p {
@@ -470,18 +483,6 @@
   .reader-tools {
     gap: 0;
   }
-  .reader-header:has(.reader-menu[open]) {
-    position: fixed;
-    inset: 0 0 auto 0;
-    width: 100%;
-    margin: 0;
-    padding: 16px 20px;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    background: transparent;
-    z-index: 1000;
-  }
   .reader-menu {
     display: block;
   }
@@ -493,42 +494,42 @@
     background: var(--ci-container);
   }
   .reader-menu-links {
-    position: fixed;
-    inset: 0;
-    z-index: 1;
+    position: absolute;
+    top: calc(100% + 8px);
+    inset-inline: 0;
+    width: 100%;
+    min-height: 168px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 16px;
-    width: 100vw;
-    min-height: 100dvh;
-    padding: 96px 32px 48px;
-    overflow: auto;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid var(--ci-divider);
+    border-radius: 20px;
     background: var(--ci-elevated);
+    box-shadow: var(--ci-shadow-floating);
+    z-index: 100;
   }
   .reader-menu-links a {
     display: flex;
     align-items: center;
-    min-height: 64px;
-    padding: 12px 16px;
-    border-radius: 16px;
+    min-height: 48px;
+    padding: 10px 16px;
+    border-radius: 12px;
     color: var(--ci-text);
-    font: 600 36px/40px var(--ci-font-reading);
+    font: 600 16px/24px var(--ci-font-ui);
     text-decoration: none;
+    transition:
+      background-color var(--ci-motion-fast) var(--ci-ease),
+      color var(--ci-motion-fast) var(--ci-ease);
   }
-  :root[data-ci-motion] .reader-menu[open] .reader-menu-links a {
-    animation: journal-menu 600ms var(--ci-ease) both;
-  }
-  :root[data-ci-motion] .reader-menu[open] .reader-menu-links a:nth-child(2) {
-    animation-delay: 60ms;
+  :root[data-ci-motion] .reader-menu[open] .reader-menu-links {
+    animation: menu-roll-down var(--ci-motion-standard) var(--ci-ease) both;
+    transform-origin: top center;
   }
   .reader-menu-links a[aria-current],
   .reader-menu-links a:hover {
     background: var(--ci-container);
     color: var(--ci-primary);
-  }
-  body:has(.reader-menu[open]) {
-    overflow: hidden;
   }
   .home-hero {
     padding: 48px 8px 40px;
@@ -655,10 +656,10 @@
     font-size: 30px;
   }
 }
-@keyframes journal-menu {
+@keyframes menu-roll-down {
   from {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(-8px) scaleY(0.96);
   }
   to {
     opacity: 1;
@@ -667,7 +668,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .home-card-meta .post-arrow,
-  .reader-menu-links a {
+  .reader-menu-links {
     animation: none;
     transition: none;
   }
