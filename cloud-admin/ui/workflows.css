@@ -60,7 +60,10 @@ button[aria-busy='true']::before {
   padding: 12px 16px;
   border: 1px solid var(--ci-divider);
   border-radius: 16px;
-  background: var(--ci-surface);
+  background: color-mix(in srgb, var(--ci-surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--ci-shadow-soft);
 }
 .editor-save-status {
   display: flex;
@@ -209,6 +212,10 @@ button[aria-busy='true']::before {
   border-radius: 12px;
   background: transparent;
   color: var(--ci-muted);
+  transition: background-color var(--ci-motion-fast) var(--ci-ease), color var(--ci-motion-fast) var(--ci-ease);
+}
+.editor-view-switch button:hover {
+  color: var(--ci-text);
 }
 .editor-view-switch [aria-pressed='true'] {
   background: var(--ci-surface);

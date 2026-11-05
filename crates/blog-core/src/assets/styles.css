@@ -366,9 +366,9 @@ html.is-animating .transition-fade {
 .reader-dialog img { display: block; max-width: 86vw; max-height: 75dvh; object-fit: contain; margin: auto; }
 .reader-dialog-close { position: absolute; right: 12px; top: 12px; padding: 8px 12px; cursor: pointer; color: var(--text); background: var(--paper-strong); border: 1px solid var(--border); border-radius: 6px; }
 .share-download { display: block; text-align: center; padding-top: 16px; }
-.code-block { position: relative; margin: 1.5em 0; padding-top: 36px; background: var(--pre-bg); border: 1px solid var(--pre-border); border-radius: 8px; }
+.code-block { position: relative; margin: 1.5em 0; background: var(--pre-bg); border: 1px solid var(--pre-border); border-radius: 8px; }
 .article-shell article .code-block pre { margin: 0; border: 0; }
-.copy-code { position: absolute; top: 6px; right: 8px; padding: 4px 10px; background: var(--paper); color: var(--text); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
+.copy-code { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--paper); color: var(--text); border: 1px solid var(--border); border-radius: 5px; cursor: pointer; }
 .copy-status { display: block; padding: 0 16px; color: var(--muted); font-size: 12px; }
 .share-container { flex-wrap: wrap; gap: 12px; }
 #share-status { font-size: 12px; color: var(--muted); }

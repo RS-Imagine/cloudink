@@ -777,18 +777,49 @@
 .short-card {
   border: 1px solid var(--ci-divider);
   border-radius: 16px;
-  padding: 20px 22px;
+  padding: 20px 24px;
   background: var(--ci-elevated);
+  box-shadow: var(--ci-shadow-soft);
+  transition:
+    transform var(--ci-motion-fast) var(--ci-ease),
+    border-color var(--ci-motion-fast) var(--ci-ease),
+    box-shadow var(--ci-motion-fast) var(--ci-ease);
+}
+.short-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ci-outline);
+  box-shadow: var(--ci-shadow-floating);
 }
 .short-time {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: 500 13px/20px var(--ci-font-ui);
   color: var(--ci-muted);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+.short-time::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ci-primary);
+  opacity: 0.7;
 }
 .short-body {
   font: 400 16px/28px var(--ci-font-reading);
+  color: var(--ci-text);
   overflow-wrap: break-word;
+}
+.short-body a {
+  color: var(--ci-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--ci-motion-fast) var(--ci-ease);
+}
+.short-body a:hover {
+  color: var(--ci-primary-strong);
 }
 .short-body p:first-child {
   margin-top: 0;

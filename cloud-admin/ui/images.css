@@ -9,10 +9,19 @@
   display: flex;
   flex-direction: column;
   padding: 8px;
-  border: 0;
+  border: 1px solid var(--ci-divider);
   border-radius: 24px;
   background: var(--ci-surface);
-  box-shadow: none;
+  box-shadow: var(--ci-shadow-soft);
+  transition:
+    transform var(--ci-motion-fast) var(--ci-ease),
+    border-color var(--ci-motion-fast) var(--ci-ease),
+    box-shadow var(--ci-motion-fast) var(--ci-ease);
+}
+.image-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ci-outline);
+  box-shadow: var(--ci-shadow-floating);
 }
 .image-thumbnail {
   position: relative;

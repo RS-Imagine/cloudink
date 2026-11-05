@@ -420,8 +420,52 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.className = 'code-block';
           pre.before(wrapper);
           wrapper.append(pre);
+
+          // Language badge detection from code class (e.g. language-bash, lang-toml, etc.)
+          const codeEl = pre.querySelector('code');
+          const codeClass = codeEl ? codeEl.className : '';
+          const langMatch = codeClass.match(/(?:language|lang)-([\w+-]+)/i);
+          const langName = langMatch ? langMatch[1].toUpperCase() : '';
+
+          // Build code header bar
+          const header = document.createElement('div');
+          header.className = 'code-header';
+
+          const meta = document.createElement('div');
+          meta.className = 'code-meta';
+
+          const dots = document.createElement('span');
+          dots.className = 'code-dots';
+          dots.setAttribute('aria-hidden', 'true');
+          dots.innerHTML = '<span class="code-dot dot-red"></span><span class="code-dot dot-yellow"></span><span class="code-dot dot-green"></span>';
+          meta.appendChild(dots);
+
+          if (langName) {
+            const langBadge = document.createElement('span');
+            langBadge.className = 'code-lang';
+            langBadge.textContent = langName;
+            meta.appendChild(langBadge);
+          }
+
+          const actions = document.createElement('div');
+          actions.className = 'code-actions';
+
+          const feedback = document.createElement('span');
+          feedback.className = 'copy-status';
+          feedback.setAttribute('role', 'status');
+
+          const button = document.createElement('button');
+          button.className = 'copy-code';
+          button.type = 'button';
+          button.setAttribute('aria-label', 'Copy code / 复制代码');
+          button.innerHTML = '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label">复制</span>';
+
+          actions.append(feedback, button);
+          header.append(meta, actions);
+          wrapper.prepend(header);
+
           // Line-number gutter: aria-hidden so it never pollutes copy or screen readers.
-          const codeText = pre.querySelector('code')?.textContent ?? pre.textContent;
+          const codeText = codeEl?.textContent ?? pre.textContent;
           const lineCount = codeText.replace(/\n$/, '').split('\n').length;
           if (lineCount > 1 && lineCount <= 5000) {
             wrapper.classList.add('has-gutter');
@@ -429,21 +473,24 @@ document.addEventListener('DOMContentLoaded', () => {
             gutter.className = 'code-gutter';
             gutter.setAttribute('aria-hidden', 'true');
             gutter.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join('\n');
-            wrapper.prepend(gutter);
+            pre.before(gutter);
           }
-          const button = document.createElement('button');
-          button.className = 'copy-code';
-          button.textContent = 'Copy / 复制';
-          const feedback = document.createElement('span');
-          feedback.className = 'copy-status';
-          feedback.setAttribute('role', 'status');
-          wrapper.prepend(button, feedback);
+
+          let resetTimer = null;
           button.addEventListener('click', async () => {
             try {
-              await navigator.clipboard.writeText(pre.querySelector('code')?.textContent || pre.textContent);
-              feedback.textContent = 'Copied / 已复制';
+              await navigator.clipboard.writeText(codeEl?.textContent || pre.textContent);
+              feedback.textContent = '已复制';
+              button.classList.add('copied');
+              button.innerHTML = '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="copy-label">已复制</span>';
+              clearTimeout(resetTimer);
+              resetTimer = setTimeout(() => {
+                button.classList.remove('copied');
+                feedback.textContent = '';
+                button.innerHTML = '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label">复制</span>';
+              }, 2000);
             } catch {
-              feedback.textContent = 'Select code to copy / 请选中代码复制';
+              feedback.textContent = '请选中代码复制';
             }
           });
         });

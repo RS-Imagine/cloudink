@@ -162,13 +162,67 @@
   line-height: 24px;
 }
 .code-block {
-  padding-top: 56px;
   border-radius: 16px;
   background: var(--ci-container);
   border: 1px solid var(--ci-divider);
   box-shadow: var(--ci-shadow-soft);
   position: relative;
   overflow: hidden;
+  margin: 1.5em 0;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--ci-container) 75%, var(--ci-divider) 25%);
+  border-bottom: 1px solid var(--ci-divider);
+  user-select: none;
+}
+.code-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.code-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.code-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.code-dot.dot-red {
+  background: #e06c75;
+  opacity: 0.85;
+}
+.code-dot.dot-yellow {
+  background: #e5c07b;
+  opacity: 0.85;
+}
+.code-dot.dot-green {
+  background: #98c379;
+  opacity: 0.85;
+}
+.code-lang {
+  font-family: var(--ci-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ci-muted);
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ci-divider) 45%, transparent);
+}
+.code-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 /* Code blocks scroll horizontally inside the padded shell. */
 .article-shell article .article-body pre {
@@ -178,11 +232,17 @@
 .code-block.has-gutter {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: 38px auto;
+}
+.code-block.has-gutter .code-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
 }
 .code-gutter {
   grid-column: 1;
   grid-row: 2;
-  padding: 24px 12px 24px 0;
+  padding: 16px 12px 16px 0;
+  border-inline-end: 1px solid color-mix(in srgb, var(--ci-divider) 60%, transparent);
   font-family: var(--ci-font-mono);
   font-size: 14px;
   line-height: 24px;
@@ -197,12 +257,17 @@
   grid-column: 2;
   grid-row: 2;
   min-width: 0;
-  padding-left: 12px;
+  margin: 0;
+  padding: 16px 16px 16px 12px;
   border-radius: 0 16px 16px 0;
 }
+.code-block:not(.has-gutter) pre {
+  margin: 0;
+  padding: 16px 20px;
+}
 .code-block.has-gutter .copy-status {
-  grid-column: 1 / -1;
-  grid-row: 1;
+  grid-column: auto;
+  grid-row: auto;
 }
 /* Tables get one horizontal scroll region on narrow screens. */
 .table-scroll {
@@ -249,18 +314,18 @@
   background: var(--ci-elevated);
 }
 .copy-code {
-  position: absolute;
-  top: 6px;
-  inset-inline-end: 8px;
-  min-height: 44px;
-  padding: 8px 14px;
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  min-height: 26px;
+  padding: 2px 10px;
   border: 1px solid var(--ci-divider);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--ci-surface) 90%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  background: var(--ci-surface);
   color: var(--ci-text);
-  font: 600 12px/16px var(--ci-font-ui);
+  font: 500 12px/1 var(--ci-font-ui);
   cursor: pointer;
   transition:
     background-color var(--ci-motion-fast) var(--ci-ease),
@@ -268,24 +333,49 @@
     color var(--ci-motion-fast) var(--ci-ease);
 }
 .copy-code:hover {
-  background: var(--ci-surface);
-  border-color: var(--ci-outline);
+  background: var(--ci-elevated);
+  border-color: var(--ci-primary);
   color: var(--ci-primary);
+}
+.copy-code.copied {
+  background: var(--ci-primary-container);
+  border-color: var(--ci-primary);
+  color: var(--ci-primary);
+}
+.copy-icon {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
 }
 .copy-status {
   font-family: var(--ci-font-ui);
+  font-size: 11px;
+  color: var(--ci-muted);
 }
 .article-shell article table {
+  width: 100%;
   border: 1px solid var(--ci-divider);
-  border-radius: 16px;
+  border-collapse: collapse;
+  border-radius: 12px;
   font: 14px/24px var(--ci-font-ui);
+  overflow: hidden;
 }
 .article-shell article th,
 .article-shell article td {
-  padding: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ci-divider);
 }
 .article-shell article thead th {
   background: var(--ci-container);
+  font-weight: 600;
+  color: var(--ci-text);
+  text-align: start;
+}
+.article-shell article tbody tr:last-child td {
+  border-bottom: none;
+}
+.article-shell article tbody tr:hover {
+  background: color-mix(in srgb, var(--ci-primary) 4%, transparent);
 }
 .article-shell .article-end {
   flex-wrap: wrap;
@@ -349,20 +439,31 @@
 }
 .toc-link {
   display: block;
-  min-height: 48px;
-  margin: 0;
-  padding: 12px 8px;
+  min-height: unset;
+  margin: 2px 0;
+  padding: 6px 10px;
   border: 0;
   border-radius: 8px;
+  border-inline-start: 2px solid transparent;
   color: var(--ci-muted);
-  font: 14px/24px var(--ci-font-ui);
+  font: 13px/20px var(--ci-font-ui);
   text-decoration: none;
   overflow-wrap: anywhere;
+  transition:
+    color var(--ci-motion-fast) var(--ci-ease),
+    background-color var(--ci-motion-fast) var(--ci-ease),
+    border-color var(--ci-motion-fast) var(--ci-ease);
+}
+.toc-link:hover {
+  color: var(--ci-text);
+  background: var(--ci-surface);
 }
 .toc-link.toc-active {
-  padding-inline-start: 8px;
+  padding-inline-start: 10px;
+  border-inline-start-color: var(--ci-primary);
   background: var(--ci-surface);
   color: var(--ci-primary);
+  font-weight: 600;
 }
 .toc-link.toc-level-3 {
   margin-inline-start: 8px;
@@ -621,6 +722,12 @@ dialog.search-modal .search-input {
     color: var(--ci-text);
     border: 1px solid var(--ci-divider);
   }
+  .toc-container .toc-link {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 24px;
+  }
 }
 @media (max-width: 759px) {
   .article-shell {
@@ -746,13 +853,30 @@ dialog.search-modal .search-input {
 }
 .article-shell article .article-body pre:not(.code-block pre) {
   margin: 1.5em 0;
-  border-top: 53px solid var(--ci-container);
+  border-top: 38px solid var(--ci-container);
 }
 
 /* Wide content reading: one code scroll region and natural table words. */
+.article-shell article .article-body pre,
+.article-shell article .article-body pre code,
 .article-shell article .article-body pre code.hljs {
-  overflow: visible;
-  padding: 0;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: inherit;
+}
+.article-shell article .article-body pre code.hljs {
+  overflow: visible !important;
+  padding: 0 !important;
+}
+.article-shell article :not(pre) > code {
+  font-family: var(--ci-font-mono);
+  font-size: 0.88em;
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  background: var(--ci-container);
+  border: 1px solid var(--ci-divider);
+  color: var(--ci-primary);
 }
 .article-shell article .katex-display:focus-visible {
   outline: 2px solid var(--ci-primary);

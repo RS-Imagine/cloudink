@@ -193,9 +193,6 @@ dialog::backdrop {
 }
 
 /* Accommodate existing compact controls while their layouts are migrated. */
-.code-block {
-  padding-top: 56px;
-}
 .reader-dialog {
   padding-top: 64px;
 }
