@@ -157,8 +157,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (draft.front_matter.slug !== slug)
       throw new HttpError(400, '备份文章地址与文件路径不一致。');
     draft.front_matter.draft = true;
-    if (key.startsWith('drafts/') || !drafts.has(slug))
-      drafts.set(slug, serializeDraft(draft));
+    if (key.startsWith('drafts/') || !drafts.has(slug)) drafts.set(slug, serializeDraft(draft));
   }
   let total = 0;
   const families = new Set<string>();
