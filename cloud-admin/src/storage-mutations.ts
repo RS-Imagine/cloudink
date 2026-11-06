@@ -42,7 +42,7 @@ export function changesContentReferences(path: string, method: string): boolean 
     /^\/api\/shorts\//.test(path) ||
     path === '/api/settings' ||
     path === '/api/publish' ||
-    /^\/api\/publish\/[a-f0-9-]{36}\/(?:commit|cancel)$/.test(path) ||
+    /^\/api\/publish\/[a-f0-9-]{36}\/(?:plan|commit|cancel)$/.test(path) ||
     path === '/api/backup/restore' ||
     path === '/api/backup/image' ||
     path === '/api/images' ||

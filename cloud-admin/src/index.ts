@@ -1,7 +1,13 @@
+import { maintainStorage, type MaintenanceStatus } from './maintenance';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
-import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish } from './browser-publishing';
+import {
+  stageBrowserPage,
+  commitBrowserPublish,
+  cancelBrowserPublish,
+  planBrowserPublish,
+} from './browser-publishing';
 import { ASSETS } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
@@ -31,7 +37,7 @@ import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
-import { imageLibraryRoute, ensureManagedImages } from './image-library';
+import { imageLibraryRoute, ensureManagedImages, imageReferenceMetadata } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
   const objects: R2Object[] = [];
@@ -81,6 +87,10 @@ async function apiRoute(
   path: string,
   session: Session,
 ): Promise<Response> {
+  if (path === '/api/maintenance' && request.method === 'GET')
+    return json(await readJson<MaintenanceStatus>(env.STORAGE, 'state/maintenance.json'));
+  if (path === '/api/maintenance' && request.method === 'POST')
+    return json({ maintenance: await maintainStorage(env) });
   if (path === '/api/site-icon' && request.method === 'POST')
     return uploadSiteIcon(request, env.STORAGE);
   if (path === '/api/images/optimize' && request.method === 'POST')
@@ -89,9 +99,10 @@ async function apiRoute(
   if (images) return images;
   const backup = await backupRoute(request, env, path);
   if (backup) return backup;
-  const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|commit|cancel)$/);
+  const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|plan|commit|cancel)$/);
   if (browserPublish) {
     const [, id, action] = browserPublish;
+    if (action === 'plan' && request.method === 'POST') return planBrowserPublish(request, env, id);
     if (action === 'file' && request.method === 'PUT') return stageBrowserPage(request, env, id);
     if (action === 'commit' && request.method === 'POST') return commitBrowserPublish(env, id);
     if (action === 'cancel' && request.method === 'POST') return cancelBrowserPublish(env, id);
@@ -113,9 +124,12 @@ async function apiRoute(
       id: string;
       postRedirects?: Record<string, string>;
       templateVersion?: string;
+      pages?: Record<string, string>;
     }>(env.STORAGE, 'state/published.json');
     const redirects = pointer?.postRedirects || {};
-    const publicInitialized = !!(await env.STORAGE.head(`public/${release.id}/index.html`));
+    const publicInitialized =
+      !!pointer?.pages?.['index.html'] ||
+      (!pointer?.pages && !!(await env.STORAGE.head(`public/${release.id}/index.html`)));
     const templateStatus = !publicInitialized
       ? 'unpublished'
       : pointer?.id === release.id && pointer.templateVersion === CURRENT_TEMPLATE_VERSION
@@ -274,7 +288,7 @@ async function apiRoute(
         throw new HttpError(409, '短记已删除，请重新打开。');
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-        customMetadata: { date: draft.front_matter.date },
+        customMetadata: { date: draft.front_matter.date, ...imageReferenceMetadata(source) },
         httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       });
       if (!object) throw new HttpError(409, '这条短记刚刚发生了修改，请重新打开。');

@@ -5,6 +5,7 @@ import {
   HttpError,
   json,
   limitedBody,
+  jsonInput,
   parseShortSource,
   parseSource,
   readJson,
@@ -25,10 +26,14 @@ const coreFiles = [
   'site.json',
   '_release.json',
 ];
-interface BrowserPointer {
+export interface BrowserPointer {
   id: string;
+  published_at?: string;
+  pages?: Record<string, string>;
+  previous_ids?: string[];
   publishing?: string;
   templateVersion?: string;
+  responseVersion?: string;
   clarityId?: string;
   postRedirects?: Record<string, string>;
 }
@@ -139,6 +144,87 @@ export async function sanitizePublicHtml(html: string): Promise<string> {
     .transform(new Response(html))
     .text();
 }
+export async function contentDigest(text: string): Promise<string> {
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))]
+    .map((n) => n.toString(16).padStart(2, '0'))
+    .join('');
+}
+export interface PageManifest {
+  sources: Record<string, string>;
+  pages: Record<string, string>;
+}
+export async function planBrowserPublish(
+  request: Request,
+  env: CloudInkEnv,
+  id: string,
+): Promise<Response> {
+  const { object, state } = await pendingVersion(env, id);
+  const input = await jsonInput(request, 150_000);
+  const sources = input.sources as Record<string, string>;
+  const files = (state.files || []).filter(
+    (path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path),
+  );
+  if (
+    !sources ||
+    typeof sources !== 'object' ||
+    Array.isArray(sources) ||
+    Object.keys(sources).length !== files.length ||
+    files.some(
+      (path) =>
+        !Object.hasOwn(sources, path) ||
+        typeof sources[path] !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(sources[path]),
+    )
+  )
+    throw new HttpError(400, '发布页面指纹不完整或无效。');
+  if (state.plan) {
+    if (files.some((path) => state.plan!.sources[path] !== sources[path]))
+      throw new HttpError(409, '这次发布的页面已确定，请重新发布。');
+    return json({ files: await missingPages(env.STORAGE, state.plan.pages) });
+  }
+  const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+  const prior =
+    pointer?.id === state.previous_id &&
+    pointer.templateVersion === state.template_version &&
+    pointer.responseVersion === state.response_version &&
+    !state.force_rebuild
+      ? await readJson<PageManifest>(env.STORAGE, `releases/${state.previous_id}.manifest.json`)
+      : null;
+  const pages: Record<string, string> = {};
+  const changed: string[] = [];
+  for (const path of files) {
+    if (prior?.sources[path] === sources[path] && /^[a-f0-9]{64}$/.test(prior.pages[path] || ''))
+      pages[path] = prior.pages[path];
+    else {
+      pages[path] = await contentDigest(
+        state.response_version +
+          ':' +
+          state.template_version +
+          ':' +
+          path +
+          ':' +
+          (state.force_rebuild ? id : '') +
+          ':' +
+          sources[path],
+      );
+      changed.push(path);
+    }
+  }
+  const plan = { sources, pages };
+  const saved = await env.STORAGE.put(
+    'state/pending.json',
+    JSON.stringify({ ...state, files, plan }),
+    { onlyIf: { etagMatches: object.etag } },
+  );
+  if (!saved) throw new HttpError(409, '发布状态已经变化，请重试。');
+  return json({ files: changed });
+}
+async function missingPages(storage: R2Bucket, pages: Record<string, string>): Promise<string[]> {
+  const missing: string[] = [];
+  for (const [path, hash] of Object.entries(pages))
+    if (!(await storage.head('public/content/' + hash))) missing.push(path);
+  return missing;
+}
 async function pendingVersion(
   env: CloudInkEnv,
   id: string,
@@ -165,6 +251,12 @@ export async function stageBrowserPage(
   let body = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(
     await limitedBody(request, 8_000_000),
   );
+  if (state.plan && (await contentDigest(body)) !== state.plan.sources[path])
+    throw new HttpError(409, '网页内容与本次发布指纹不一致，请重新生成。');
+  if (state.plan) {
+    const existing = await env.STORAGE.head('public/content/' + state.plan.pages[path]);
+    if (existing) return json({ ok: true, reused: true });
+  }
   if (path === '_release.json') {
     let marker;
     try {
@@ -183,10 +275,14 @@ export async function stageBrowserPage(
       new URL(request.url).origin,
     );
   // An already staged page stays immutable, including after commit begins.
-  await env.STORAGE.put(`public/${id}/${path}`, body, {
-    onlyIf: { etagDoesNotMatch: '*' },
-    httpMetadata: { contentType: publicType(path) },
-  });
+  await env.STORAGE.put(
+    state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`,
+    body,
+    {
+      onlyIf: { etagDoesNotMatch: '*' },
+      httpMetadata: { contentType: publicType(path) },
+    },
+  );
   return json({ ok: true });
 }
 export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promise<Response> {
@@ -200,12 +296,7 @@ export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promis
   if (pointer && value?.publishing === id) {
     const cleared = await env.STORAGE.put(
       'state/published.json',
-      JSON.stringify({
-        id: value.id,
-        clarityId: value.clarityId || '',
-        postRedirects: value.postRedirects,
-        templateVersion: value.templateVersion,
-      }),
+      JSON.stringify({ ...value, publishing: undefined }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
     if (!cleared) {
@@ -236,7 +327,9 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
   try {
     let size = 0;
     for (const path of state.files || []) {
-      const file = await env.STORAGE.head(`public/${id}/${path}`);
+      const file = await env.STORAGE.head(
+        state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`,
+      );
       if (!file) throw new HttpError(409, '页面尚未上传完整，请重新发布。');
       size += file.size;
     }
@@ -250,13 +343,21 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
     if (!pointer || current?.id !== state.previous_id || current.publishing !== id)
       throw new HttpError(409, '这次发布已取消或线上版本已经变化，请重新发布。');
     await assertRenameUnchanged(env.STORAGE, state);
+    if (state.plan)
+      await env.STORAGE.put(`releases/${id}.manifest.json`, JSON.stringify(state.plan), {
+        onlyIf: { etagDoesNotMatch: '*' },
+      });
     const saved = await env.STORAGE.put(
       'state/published.json',
       JSON.stringify({
         id,
+        published_at: new Date().toISOString(),
+        ...(state.plan ? { pages: state.plan.pages } : {}),
+        previous_ids: [current.id, ...(current.previous_ids || [])].slice(0, 2),
         clarityId: release.site.clarityId || '',
         postRedirects: postRedirects(release),
         templateVersion: state.template_version,
+        responseVersion: state.response_version,
       }),
       { onlyIf: { etagMatches: pointer.etag } },
     );

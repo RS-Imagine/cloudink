@@ -18,11 +18,30 @@ permissions:
 
 jobs:
   verify:
+    if: github.event_name != 'workflow_dispatch' || !inputs.visual_audit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select checks for changed files
+        id: scope
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync, appendFileSync} from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
+          const pr = event.pull_request;
+          const files = pr ? execFileSync('git', ['diff', '--name-only', 'HEAD^1', 'HEAD'], {encoding:'utf8'}).trim().split('\n') : null;
+          const code = !files || files.some(path => !/^(?:docs\/.*|README(?:\.[^/]*)?|LICENSE|.*\.md)$/.test(path));
+          const browser = code && (!files || files.some(path => /^(?:cloud-admin\/(?:ui\/|build-ui\.mjs$)|cloud-admin\/src\/(?:browser-publishing|publishing|image|media|models|site-icons|home-illustration)|cloud-web\/src\/|cloud-web\/test\/(?:.*browser|fixture\.mjs$)|assets\/|crates\/|scripts\/|.*package(?:-lock)?\.json$|wrangler\.jsonc$|\.github\/)/.test(path)));
+          const rust = code && (!files || files.some(path => /^(?:crates\/|Cargo\.|.*\/Cargo\.|rust-toolchain|\.github\/)/.test(path)));
+          for (const [key, value] of Object.entries({code, browser, rust})) appendFileSync(process.env.GITHUB_OUTPUT, key + '=' + value + '\n');
+          console.log(JSON.stringify({code, browser, rust, files}));
+          JS
       - uses: actions/setup-node@v4
+        if: steps.scope.outputs.code == 'true'
         with:
           node-version: 24
           cache: npm
@@ -30,12 +49,16 @@ jobs:
             package-lock.json
             cloud-admin/package-lock.json
       - name: Install project tools
+        if: steps.scope.outputs.code == 'true'
         run: npm ci
       - name: Check source formatting
+        if: steps.scope.outputs.code == 'true'
         run: npm run format:check
       - name: Build the browser deployment
+        if: steps.scope.outputs.code == 'true'
         run: npm run build
       - name: Report UI resource sizes
+        if: steps.scope.outputs.code == 'true'
         run: |
           node --input-type=module <<'JS'
           import {readFile} from 'node:fs/promises';
@@ -44,27 +67,35 @@ jobs:
             console.log(JSON.stringify({asset:path,gzip:gzipSync(await readFile(path)).length}));
           JS
       - name: Generate binding types and check TypeScript
+        if: steps.scope.outputs.code == 'true'
         run: npm run check
       - name: Bundle the Worker without deploying
+        if: steps.scope.outputs.code == 'true'
         run: |
           npx wrangler deploy --dry-run --outdir cloud-web/dist
       - name: Run storage, authentication and publication tests
+        if: steps.scope.outputs.code == 'true'
         run: |
           npm test
-          cargo test --workspace --locked
+      - name: Verify changed Rust code
+        if: steps.scope.outputs.rust == 'true'
+        run: cargo test --workspace --locked
       - name: Check touched Rust formatting and Clippy
+        if: steps.scope.outputs.rust == 'true'
         run: |
           rustup component add rustfmt clippy
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --locked
       - name: Install Chromium
+        if: steps.scope.outputs.browser == 'true'
         working-directory: cloud-admin
         run: npx playwright install --with-deps chromium
       - name: Verify onboarding and editor flows in Chromium
+        if: steps.scope.outputs.browser == 'true'
         run: |
           npm run test:web:browser
       - name: Save browser screenshots
-        if: always()
+        if: always() && steps.scope.outputs.browser == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: browser-screenshots
