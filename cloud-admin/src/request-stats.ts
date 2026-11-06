@@ -14,7 +14,14 @@ export function storageStats(storage: R2Bucket) {
         }
         try {
           const result = await Reflect.apply(value, target, args);
-          if (property === 'list') counts.objects += result.objects.length;
+          if (
+            property === 'list' &&
+            result &&
+            typeof result === 'object' &&
+            'objects' in result &&
+            Array.isArray(result.objects)
+          )
+            counts.objects += result.objects.length;
           return result;
         } catch (error) {
           counts.errors++;

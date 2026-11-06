@@ -47,6 +47,8 @@ test('selective publication reuses validated sizes across HTTP versions and veri
   });
   assert.equal(commit.status, 200, await commit.clone().text());
   assert.equal((await commit.json()).verification.heads, 0);
+  const originalPage = await (await f.request('/')).text();
+  await f.request('/');
   // Save unchanged site settings: only the version marker needs rendering.
   const settings = await (await f.request('/api/settings')).json();
   await f.request('/api/settings', 'PUT', settings);
@@ -66,6 +68,11 @@ test('selective publication reuses validated sizes across HTTP versions and veri
   const verified = (await result.json()).verification;
   assert.equal(verified.heads, 0);
   assert.ok(verified.reused >= 5);
+  const pointer = await (await bucket.get('state/published.json')).json();
+  await bucket.delete('public/content/' + pointer.pages['index.html']);
+  const sharedPage = await f.request('/');
+  assert.equal(sharedPage.headers.get('Cache-Status'), 'CloudInk; hit');
+  assert.equal(await sharedPage.text(), originalPage);
   const rebuilt = await f.prepare();
   const fresh = await planned(f, rebuilt);
   const path = Object.keys(fresh.receipts).find((path) => path !== '_release.json');
@@ -343,4 +350,52 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
   const live = { key: 'drafts/live.md', customMetadata: {} };
   const storage = { list: async () => ({ objects: [...removed, live], truncated: false }) };
   assert.deepEqual(await listActiveDrafts(storage, 'drafts/'), [live]);
+});
+
+test('request diagnostics keep bindings bound, isolate counters and exclude object keys and payloads', async () => {
+  const bundle = await build({
+    entryPoints: ['cloud-admin/src/request-stats.ts'],
+    bundle: true,
+    write: false,
+    format: 'esm',
+    platform: 'node',
+  });
+  const { storageStats } = await import(
+    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
+  );
+  const storage = {
+    async get() {
+      assert.equal(this, storage);
+      return null;
+    },
+    async list() {
+      assert.equal(this, storage);
+      return { objects: [{}, {}] };
+    },
+    async put() {
+      throw new Error('private payload');
+    },
+  };
+  const first = storageStats(storage),
+    second = storageStats(storage);
+  await first.bucket.get('auth/sessions/private-token');
+  await first.bucket.list({ prefix: 'drafts/' });
+  await assert.rejects(first.bucket.put('private', 'secret-body'));
+  const original = console.log,
+    logs = [];
+  console.log = (line) => logs.push(JSON.parse(line));
+  try {
+    first.report('request-a', '/api/posts', 'GET', 500, Date.now());
+    second.report('request-b', '/api/posts', 'GET', 500, Date.now());
+  } finally {
+    console.log = original;
+  }
+  assert.equal(logs[0].get, 1);
+  assert.equal(logs[0].list, 1);
+  assert.equal(logs[0].objects, 2);
+  assert.equal(logs[0].put, 1);
+  assert.equal(logs[0].errors, 1);
+  assert.equal(logs[1].get, 0);
+  assert.equal(logs[1].errors, 0);
+  assert.doesNotMatch(JSON.stringify(logs), /private-token|secret-body|private payload/);
 });

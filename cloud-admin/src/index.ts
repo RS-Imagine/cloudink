@@ -489,13 +489,15 @@ async function apiRoute(
   }
   if (path === '/api/settings' && request.method === 'PUT') {
     const data = await jsonInput(request, 500_000),
-      site = validateSite(data.site),
-      old = await env.STORAGE.get('draft-site.json');
+      site = validateSite(data.site);
     await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
     await ensureHomeIllustration(env.STORAGE, site);
     await ensureSiteIcon(env.STORAGE, site);
-    if (old && data.etag !== old.etag)
+    const old = await env.STORAGE.get('draft-site.json');
+    if (old && data.etag !== old.etag) {
+      await old.body.cancel();
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
+    }
     const text = JSON.stringify(site);
     if (old && JSON.stringify(validateSite(await old.json())) === text)
       return json({ site, etag: old.etag, unchanged: true });

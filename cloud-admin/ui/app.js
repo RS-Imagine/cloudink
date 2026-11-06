@@ -259,13 +259,15 @@ async function api(path, options = {}) {
   if (!cacheable) return requestApi(path, options);
   let entry = privateReads.get(path);
   if (!entry || entry.expires < Date.now()) {
+    if (privateReads.size >= 16) privateReads.delete(privateReads.keys().next().value);
     entry = { expires: Date.now() + 10000, promise: requestApi(path, options) };
     privateReads.set(path, entry);
   }
   try {
     return structuredClone(await entry.promise);
   } catch (error) {
-    if (privateReads.get(path) === entry) privateReads.delete(path);
+    if (error.status === 409) invalidateReads();
+    else if (privateReads.get(path) === entry) privateReads.delete(path);
     throw error;
   }
 }
