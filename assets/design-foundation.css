@@ -112,7 +112,7 @@ dialog::backdrop {
   font-family: var(--ci-font-reading);
 }
 .article-body :is(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--ci-font-ui);
+  font-family: var(--ci-font-reading);
 }
 .article-body code,
 .article-body pre,

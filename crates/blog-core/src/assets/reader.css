@@ -243,6 +243,7 @@
   grid-row: 2;
   padding: 16px 12px 16px 0;
   border-inline-end: 1px solid color-mix(in srgb, var(--ci-divider) 60%, transparent);
+  border-bottom-left-radius: 16px;
   font-family: var(--ci-font-mono);
   font-size: 14px;
   line-height: 24px;
@@ -299,7 +300,7 @@
   border-radius: 50%;
   background: var(--ci-surface);
   color: var(--ci-text);
-  box-shadow: var(--ci-shadow-overlay);
+  box-shadow: var(--ci-shadow-floating);
   cursor: pointer;
 }
 .to-top[hidden] {
@@ -653,9 +654,11 @@ dialog.search-modal .search-input {
   color: var(--ci-muted);
 }
 .search-results mark {
+  padding: 1px 4px;
+  border-radius: 4px;
   color: var(--ci-on-primary-container);
   background: var(--ci-primary-container);
-  border-radius: 3px;
+  font-weight: 600;
 }
 .search-hint {
   display: flex;

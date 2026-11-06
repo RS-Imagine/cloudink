@@ -101,6 +101,12 @@
 }
 .image-actions .danger {
   grid-column: auto;
+  color: var(--ci-error);
+  border-color: color-mix(in srgb, var(--ci-error) 30%, var(--ci-divider));
+}
+.image-actions .danger:hover {
+  background: var(--ci-error-container);
+  border-color: var(--ci-error);
 }
 .image-protection {
   margin: 12px 0 0;

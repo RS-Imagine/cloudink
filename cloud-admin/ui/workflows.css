@@ -1,4 +1,7 @@
 /* Writing, media and settings are surfaces of the same journal. */
+:root {
+  --ci-admin-sticky-top: 112px;
+}
 button[aria-busy='true'] {
   position: relative;
   white-space: nowrap;
@@ -33,12 +36,15 @@ button[aria-busy='true']::before,
 }
 button[aria-busy='true']::before {
   position: absolute;
-  inset-block-end: 3px;
-  inset-inline-start: 50%;
-  width: 8px;
-  height: 2px;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 3px;
   margin: 0;
-  transform: translateX(-50%);
+  transform: none;
+  background: currentColor;
+  opacity: 0.8;
+  animation: journal-pulse 800ms var(--ci-ease) infinite alternate;
 }
 .editor-view {
   padding: 0;
@@ -49,7 +55,7 @@ button[aria-busy='true']::before {
 }
 .editor-toolbar {
   position: sticky;
-  top: 112px;
+  top: var(--ci-admin-sticky-top, 112px);
   z-index: 8;
   display: flex;
   flex-direction: row;
@@ -72,17 +78,35 @@ button[aria-busy='true']::before {
   min-width: 0;
 }
 .status-dot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--ci-muted);
+  transition:
+    background-color var(--ci-motion-fast) var(--ci-ease),
+    transform var(--ci-motion-fast) var(--ci-ease);
 }
 .editor-save-status:has([data-tone='success']) .status-dot {
   background: var(--ci-success);
 }
+.editor-save-status:has([data-tone='success']) .status-dot::after {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 5px;
+  border: solid #ffffff;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-0.5px, -0.5px);
+}
 .editor-save-status:has([data-tone='error']) .status-dot {
   background: var(--ci-error);
+  border-radius: 2px;
+  transform: rotate(45deg);
 }
 #save-state {
   color: var(--ci-muted);
@@ -436,7 +460,7 @@ button[aria-busy='true']::before {
 }
 .settings-nav {
   position: sticky;
-  top: 112px;
+  top: var(--ci-admin-sticky-top, 112px);
   z-index: 6;
   display: flex;
   flex-direction: row;
@@ -580,12 +604,27 @@ button[aria-busy='true']::before {
 }
 .palette-options .palette-choice {
   position: relative;
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  min-height: 40px;
   margin: 0;
+  border: 1px solid var(--ci-divider);
+  border-radius: var(--ci-radius-pill, 9999px);
+  background: var(--ci-surface);
   cursor: pointer;
+  transition:
+    background-color var(--ci-motion-fast) var(--ci-ease),
+    border-color var(--ci-motion-fast) var(--ci-ease);
+}
+.palette-choice:hover {
+  background: var(--ci-hover);
+  border-color: var(--ci-outline);
+}
+.palette-choice:has(input:checked) {
+  border-color: var(--ci-primary);
+  background: var(--ci-primary-container);
 }
 .palette-choice input {
   position: absolute;
@@ -602,34 +641,41 @@ button[aria-busy='true']::before {
 .palette-swatch {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  flex: none;
+  width: 24px;
+  height: 24px;
   border: 2px solid transparent;
   border-radius: 50%;
   background: var(--swatch);
   background-clip: padding-box;
   box-shadow: 0 0 0 1px var(--ci-outline);
   color: transparent;
-  font: 600 18px/1 var(--ci-font-ui);
+  font: 600 14px/1 var(--ci-font-ui);
   pointer-events: none;
-  transition: transform 500ms var(--ci-ease);
+  transition: transform var(--ci-motion-fast) var(--ci-ease);
 }
 .palette-choice:hover .palette-swatch {
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 .palette-choice:active .palette-swatch {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 .palette-choice input:checked + .palette-swatch {
   color: #ffffff;
   box-shadow: 0 0 0 2px var(--ci-text);
 }
-.palette-choice input:focus + .palette-swatch {
+.palette-choice:has(input:focus-visible) {
   outline: 3px solid var(--ci-primary);
-  outline-offset: 4px;
+  outline-offset: 2px;
 }
 .palette-name {
-  display: none;
+  display: inline-block;
+  font: 500 13px/1.2 var(--ci-font-ui);
+  color: var(--ci-text);
+}
+.palette-choice:has(input:checked) .palette-name {
+  font-weight: 600;
+  color: var(--ci-on-primary-container);
 }
 @media (forced-colors: active) {
   .palette-options .palette-choice {
@@ -810,7 +856,12 @@ button[aria-busy='true']::before {
   .settings-nav {
     position: static;
     flex-wrap: nowrap;
-    overflow: auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
   }
   .settings-nav a {
     padding-inline: 12px;

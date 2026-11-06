@@ -94,7 +94,9 @@
   white-space: nowrap;
 }
 .studio-nav svg {
-  display: none;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
   flex: none;
 }
 .studio-nav small {
@@ -716,8 +718,10 @@
   object-fit: contain;
   margin: 24px 0 0 auto;
 }
+html:has(dialog[open]),
 body:has(dialog[open]) {
   overflow: hidden;
+  touch-action: none;
 }
 .confirmation-dialog,
 .image-preview-dialog {
