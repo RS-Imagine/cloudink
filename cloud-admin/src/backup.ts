@@ -209,6 +209,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     // Deleted originals can be restored, but retired rename sources stay retired.
     if (existing?.customMetadata?.deleted && !existing.customMetadata.renamedTo) {
       tombstones.set(key, existing.etag);
+      await existing.body.cancel();
     } else if (existing && (await existing.text()) !== source) {
       throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
     }
