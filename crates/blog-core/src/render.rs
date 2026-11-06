@@ -407,7 +407,6 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
     <div class="share-container article-end">
       <a class="back-link" href="/">&larr; 返回文章</a>
       <div class="article-share-actions">
-        <button id="copy-link" class="share-button">复制链接</button>
         <button id="share-btn" class="share-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 12v8h14v-8"/></svg>分享文章</button>
       </div>
       <span id="share-status" role="status"></span>
@@ -425,12 +424,19 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         body = post.body_html,
     );
 
+    let (icon_url, _) = site_icon(config);
     let extra_head = format!(
         r#"<meta property="og:title" content="{title}">
 <meta property="og:description" content="{description}">
-<meta property="og:type" content="article">"#,
+<meta property="og:type" content="article">
+<meta property="og:image" content="{icon_url}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{title}">
+<meta name="twitter:description" content="{description}">
+<meta name="twitter:image" content="{icon_url}">"#,
         title = escape_html(post.title()),
         description = escape_html(post.description()),
+        icon_url = escape_html(&icon_url),
     );
 
     page(

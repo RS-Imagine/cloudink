@@ -319,9 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
           dialog.dataset.sheet = 'compact';
           dialog.setAttribute('aria-label', label);
           const close = document.createElement('button');
-          close.className = 'reader-dialog-close';
+          close.className = 'reader-dialog-close reader-sr-only';
           close.textContent = 'Close / 关闭';
-          close.setAttribute('aria-label', '关闭预览');
+          close.setAttribute('aria-label', '关闭');
           dialog.append(close, content);
           document.body.append(dialog);
           const overflow = document.body.style.overflow;
@@ -524,143 +524,211 @@ document.addEventListener('DOMContentLoaded', () => {
           formula.setAttribute('role', 'region');
           formula.setAttribute('aria-label', 'Math formula, scroll horizontally / 公式，可横向滚动');
         });
-        const copyLink = document.getElementById('copy-link');
-        copyLink?.addEventListener('click', async () => {
-          const status = document.getElementById('share-status');
-          try {
-            const url = new URL(location.pathname, location.origin).href;
-            await navigator.clipboard.writeText(url);
-            status.textContent = 'Link copied / 链接已复制';
-          } catch { status.textContent = 'Copy the address from your browser / 请复制浏览器地址栏链接'; }
-        });
-      
       const shareBtn = document.getElementById('share-btn');
       if (shareBtn) {
-        shareBtn.addEventListener('click', () => {
+        shareBtn.addEventListener('click', async () => {
+          if (document.fonts?.ready) {
+            try { await document.fonts.ready; } catch (_) {}
+          }
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           const palette = getComputedStyle(document.documentElement);
-          const fontStack = palette.getPropertyValue('--font-body').trim();
-          const segmenter = new Intl.Segmenter(navigator.language || 'zh-CN', { granularity: 'word' });
-          
+          const readingFont = palette.getPropertyValue('--ci-font-reading').trim()
+            || "'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', serif";
+          const uiFont = palette.getPropertyValue('--ci-font-ui').trim()
+            || "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif";
+
+          const surfaceColor = palette.getPropertyValue('--ci-surface').trim() || '#fbf8f2';
+          const primaryColor = palette.getPropertyValue('--ci-primary').trim() || '#784d2b';
+          const textColor = palette.getPropertyValue('--ci-text').trim() || '#2c2520';
+          const mutedColor = palette.getPropertyValue('--ci-muted').trim() || '#786e65';
+          const dividerColor = palette.getPropertyValue('--ci-divider').trim() || '#e8e0d5';
+
+          const nonLeading = /^[，。？！、；：”’）》\?!,.:;]+$/;
           function getLines(text, font, maxWidth) {
-             ctx.font = font;
-             const words = Array.from(segmenter.segment(text)).map(s => s.segment);
-             let lines = [];
-             let currentLine = '';
-             for (let n = 0; n < words.length; n++) {
-                 const testLine = currentLine + words[n];
-                 if (ctx.measureText(testLine).width > maxWidth && n > 0) {
-                     lines.push(currentLine);
-                     currentLine = words[n];
-                 } else {
-                     currentLine = testLine;
-                 }
-             }
-             if (currentLine) lines.push(currentLine);
-             return lines;
+            ctx.font = font;
+            let words = [];
+            if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+              const segmenter = new Intl.Segmenter(navigator.language || 'zh-CN', { granularity: 'word' });
+              words = Array.from(segmenter.segment(text)).map(s => s.segment);
+            } else {
+              words = text.split(/(\s+)/);
+            }
+            let lines = [];
+            let currentLine = '';
+            for (let n = 0; n < words.length; n++) {
+              const word = words[n];
+              const testLine = currentLine + word;
+              if (ctx.measureText(testLine).width > maxWidth && currentLine.length > 0) {
+                if (nonLeading.test(word)) {
+                  currentLine = testLine;
+                } else {
+                  lines.push(currentLine);
+                  currentLine = word;
+                }
+              } else {
+                currentLine = testLine;
+              }
+            }
+            if (currentLine) lines.push(currentLine);
+            return lines;
           }
 
-          const title = document.querySelector('article h1').innerText;
-          const titleFont = `bold 56px ${fontStack}`;
-          const titleLines = getLines(title, titleFont, 600);
-          
-          const desc = document.querySelector('article p.meta')?.innerText ||
-            document.querySelector('meta[name="description"]')?.content || '';
-          const descFont = `bold 32px ${fontStack}`;
-          const descLines = desc ? getLines(desc, descFont, 600) : [];
-          
-          const paragraphs = Array.from(document.querySelectorAll('article p:not(.meta)'));
+          const title = (document.querySelector('article h1')?.innerText || document.title).trim();
+          const desc = (document.querySelector('article p.article-description, article p.meta')?.innerText ||
+            document.querySelector('meta[name="description"]')?.content || '').trim();
+          const paragraphs = Array.from(document.querySelectorAll('article .article-body p:not(.meta)'));
           let bodyText = paragraphs.map(p => p.innerText).join(' ').replace(/\s+/g, ' ').trim();
-          if (bodyText.length > 100) bodyText = bodyText.substring(0, 100) + '......';
-          const bodyFont = `26px ${fontStack}`;
-          const bodyLines = bodyText ? getLines(bodyText, bodyFont, 600) : [];
-          
-          let contentHeight = 140; 
-          contentHeight += titleLines.length * 76;
-          contentHeight += 20; 
-          
-          if (descLines.length > 0) {
-              contentHeight += descLines.length * 48;
-              contentHeight += 40;
-          }
-          
-          if (bodyLines.length > 0) {
-              contentHeight += bodyLines.length * 42;
-              contentHeight += 60;
-          }
-          
-          const footerHeight = 160;
-          const height = contentHeight + footerHeight;
+          if (bodyText.length > 130) bodyText = bodyText.substring(0, 130) + '……';
+
+          const date = (document.querySelector('.article-details time')?.innerText || '').trim();
+          const readTime = (document.querySelector('.article-details span')?.innerText || '').trim();
+          const siteName = (document.querySelector('.site-brand .site-title')?.innerText || document.title).trim();
+          const author = (document.querySelector('.article-author-name')?.innerText || '').trim();
+          const domain = window.location.host + window.location.pathname;
+
+          const titleFont = `600 46px ${readingFont}`;
+          const titleLines = getLines(title, titleFont, 630);
+
+          const descFont = `500 24px ${readingFont}`;
+          const descLines = desc ? getLines(desc, descFont, 630) : [];
+
+          const bodyFont = `400 22px ${readingFont}`;
+          const bodyLines = (!desc && bodyText) ? getLines(bodyText, bodyFont, 630) : (bodyText ? getLines(bodyText, bodyFont, 630).slice(0, 4) : []);
+
+          let contentHeight = 160;
+          contentHeight += titleLines.length * 64;
+          if (descLines.length > 0) contentHeight += 24 + descLines.length * 38;
+          if (bodyLines.length > 0) contentHeight += 24 + bodyLines.length * 36;
+          contentHeight += 120;
+
           const width = 800;
-          
+          const height = Math.max(480, contentHeight);
+
           canvas.width = width * 2;
           canvas.height = height * 2;
           canvas.style.width = width + 'px';
           canvas.style.height = height + 'px';
           ctx.scale(2, 2);
 
-          ctx.fillStyle = palette.getPropertyValue('--bg').trim();
-          ctx.fillRect(0, 0, width, height);
-          ctx.fillStyle = palette.getPropertyValue('--accent').trim();
-          ctx.fillRect(64, 96, 3, height - 192);
+          ctx.fillStyle = surfaceColor;
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(0, 0, width, height, 24);
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = dividerColor;
+            ctx.stroke();
+          } else {
+            ctx.fillRect(0, 0, width, height);
+          }
 
-          let drawY = 140;
-          
-          ctx.fillStyle = palette.getPropertyValue('--text').trim();
+          ctx.font = `600 20px ${uiFont}`;
+          ctx.fillStyle = textColor;
+          ctx.fillText(siteName, 64, 68);
+
+          if (date || readTime) {
+            const metaInfo = [date, readTime].filter(Boolean).join(' · ');
+            ctx.font = `500 15px ${uiFont}`;
+            ctx.fillStyle = mutedColor;
+            const metaWidth = ctx.measureText(metaInfo).width;
+            ctx.fillText(metaInfo, width - 64 - metaWidth, 68);
+          }
+
+          ctx.fillStyle = dividerColor;
+          ctx.fillRect(64, 96, width - 128, 1);
+
+          let drawY = 155;
+          const accentStartY = drawY - 36;
+          const accentHeight = titleLines.length * 64 + (descLines.length ? descLines.length * 38 + 20 : 0);
+          ctx.fillStyle = primaryColor;
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(64, accentStartY, 4, accentHeight, 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(64, accentStartY, 4, accentHeight);
+          }
+
+          ctx.fillStyle = textColor;
           ctx.font = titleFont;
-          for (let line of titleLines) {
-              ctx.fillText(line, 100, drawY);
-              drawY += 76;
+          for (const line of titleLines) {
+            ctx.fillText(line, 84, drawY);
+            drawY += 64;
           }
-          drawY += 20;
-          
-          if (descLines.length > 0) {
-              ctx.fillStyle = palette.getPropertyValue('--accent').trim();
-              ctx.font = descFont;
-              for (let line of descLines) {
-                  ctx.fillText(line, 100, drawY);
-                  drawY += 48;
-              }
-              drawY += 40;
-          }
-          
-          if (bodyLines.length > 0) {
-              ctx.fillStyle = palette.getPropertyValue('--muted').trim();
-              ctx.font = bodyFont;
-              for (let line of bodyLines) {
-                  ctx.fillText(line, 100, drawY);
-                  drawY += 42;
-              }
-              drawY += 60;
-          }
-          
-          const siteName = document.querySelector('.site-brand .site-title, .site-brand h1')?.innerText || document.title;
-          const domain = window.location.host + window.location.pathname;
-          
-          ctx.fillStyle = palette.getPropertyValue('--border').trim();
-          ctx.fillRect(100, height - 150, 600, 2);
 
-          ctx.font = `bold 28px ${fontStack}`;
-          ctx.fillStyle = palette.getPropertyValue('--text').trim();
-          ctx.fillText(siteName, 100, height - 100);
-          
-          ctx.font = `italic 24px ${fontStack}`;
-          ctx.fillStyle = palette.getPropertyValue('--muted').trim();
-          ctx.fillText(domain, 100, height - 60);
+          if (descLines.length > 0) {
+            drawY += 16;
+            ctx.fillStyle = primaryColor;
+            ctx.font = descFont;
+            for (const line of descLines) {
+              ctx.fillText(line, 84, drawY);
+              drawY += 38;
+            }
+          }
+
+          if (bodyLines.length > 0) {
+            drawY += 20;
+            ctx.fillStyle = mutedColor;
+            ctx.font = bodyFont;
+            for (const line of bodyLines) {
+              ctx.fillText(line, 84, drawY);
+              drawY += 36;
+            }
+          }
+
+          const footerY = height - 90;
+          ctx.fillStyle = dividerColor;
+          ctx.fillRect(64, footerY, width - 128, 1);
+
+          const authorText = author ? author + ' · ' + siteName : siteName;
+          ctx.font = `600 16px ${uiFont}`;
+          ctx.fillStyle = textColor;
+          ctx.fillText(authorText, 64, footerY + 45);
+
+          ctx.font = `500 14px ${uiFont}`;
+          ctx.fillStyle = mutedColor;
+          const domainWidth = ctx.measureText(domain).width;
+          ctx.fillText(domain, width - 64 - domainWidth, footerY + 45);
 
           const dataUrl = canvas.toDataURL('image/png');
-          
+
           const content = document.createElement('div');
+          content.className = 'share-dialog-content';
           const imgElement = document.createElement('img');
           imgElement.src = dataUrl;
-          imgElement.alt = title + ' — share card';
+          imgElement.alt = title + ' — 分享卡片';
+
+          const actions = document.createElement('div');
+          actions.className = 'share-actions-row';
+
           const download = document.createElement('a');
           download.href = dataUrl;
           download.download = 'cloudink-share.png';
           download.className = 'share-download';
-          download.textContent = 'Download image / 下载分享图片';
-          content.append(imgElement, download);
+          download.textContent = '下载分享图片';
+          actions.append(download);
+
+          if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+            const nativeBtn = document.createElement('button');
+            nativeBtn.type = 'button';
+            nativeBtn.className = 'share-native-btn';
+            nativeBtn.textContent = '微信 / 系统分享';
+            nativeBtn.addEventListener('click', async () => {
+              try {
+                await navigator.share({
+                  title: title,
+                  text: desc || title,
+                  url: window.location.href,
+                });
+              } catch (err) {
+                if (err && err.name !== 'AbortError') console.error(err);
+              }
+            });
+            actions.append(nativeBtn);
+          }
+
+          content.append(imgElement, actions);
           showDialog(content, 'Share card / 分享卡片', shareBtn);
         });
       }

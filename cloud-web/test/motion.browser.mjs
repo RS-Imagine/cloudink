@@ -16,7 +16,7 @@ export async function verifyMotion(browser, origin, output, engine) {
   const page = await context.newPage();
   await page.goto(origin + '/posts/slow-days/');
   await expect(page.locator('html')).toHaveAttribute('data-ci-motion', '');
-  const button = page.locator('#copy-link');
+  const button = page.locator('#share-btn');
   const idle = async () => {
     await expect
       .poll(() =>
@@ -109,12 +109,12 @@ export async function verifyMotion(browser, origin, output, engine) {
   assert.deepEqual(cancellation, [false, true, 0]);
   await idle();
   await page
-    .locator('#copy-link')
+    .locator('#share-btn')
     .dispatchEvent('pointerdown', { button: 0, pointerId: 56, isPrimary: true });
   await twoFrames();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await idle();
-  await expect(page.locator('#copy-link')).toHaveCSS('scale', 'none');
+  await expect(page.locator('#share-btn')).toHaveCSS('scale', 'none');
   await image.click();
   await expect(dialog).toBeVisible();
   assert.equal(await page.evaluate(() => CloudInkMotion.stats().effects), 0);
@@ -143,9 +143,9 @@ export async function verifyMotion(browser, origin, output, engine) {
     );
     const touchPage = await touch.newPage();
     await touchPage.goto(origin + '/posts/slow-days/');
-    await touchPage.locator('#copy-link').tap();
+    await touchPage.locator('#share-btn').tap();
     await expect(touchPage.locator('html')).toHaveAttribute('data-theme', 'light');
-    await expect(touchPage.locator('#copy-link')).toHaveCSS('scale', 'none');
+    await expect(touchPage.locator('#share-btn')).toHaveCSS('scale', 'none');
     await touch.close();
   }
 }

@@ -33,7 +33,7 @@ fn reading_metadata_is_escaped_and_mixed_text_has_an_estimate() {
     assert!(html.contains("更新于 <time datetime=\"2026-10-02\">2026-10-02</time>"));
     assert!(html.contains("<h2>Reading</h2><p>Words</p>"));
     assert!(html.contains("href=\"/\""));
-    assert!(html.contains("id=\"copy-link\"") && html.contains("id=\"share-btn\""));
+    assert!(html.contains("id=\"share-btn\""));
 }
 
 #[test]

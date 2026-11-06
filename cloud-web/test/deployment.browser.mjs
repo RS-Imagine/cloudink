@@ -191,8 +191,6 @@ try {
   });
   await live.locator('.copy-code').click();
   assert.equal(await live.evaluate(() => window.COPIED_TEXT), 'let x = 1;\n');
-  await live.locator('#copy-link').click();
-  assert.equal(await live.evaluate(() => window.COPIED_TEXT), live.url());
   await live.locator('#share-btn').click();
   await expect(live.locator('.share-download')).toHaveAttribute('download', 'cloudink-share.png');
   await live.keyboard.press('Escape');

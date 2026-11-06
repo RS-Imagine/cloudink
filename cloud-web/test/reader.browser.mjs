@@ -344,7 +344,6 @@ async function verifyShareFeedback(browser, origin) {
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         'long share feedback reflows at ' + width,
       );
-      await expect(page.locator('#copy-link')).toBeVisible();
       await expect(page.locator('#share-btn')).toBeVisible();
     }
   } finally {
