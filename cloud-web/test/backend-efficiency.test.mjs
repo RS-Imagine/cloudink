@@ -231,3 +231,79 @@ test('bounded mutation work stops before lease expiry and keeps normal saves ava
     Date.now = originalNow;
   }
 });
+
+test('ordinary saves skip identical persisted writes while stale editors and legacy export remain rejected', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  assert.equal((await f.request('/api/export')).status, 410);
+  const input = { draft: draft('same'), etag: null };
+  let response = await f.request('/api/posts/same', 'PUT', input);
+  assert.equal(response.status, 200);
+  const saved = await response.json();
+  const before = await bucket.head('drafts/same.md');
+  response = await f.request('/api/posts/same', 'PUT', { ...input, etag: saved.etag });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).unchanged, true);
+  assert.equal((await bucket.head(before.key)).version, before.version);
+  assert.equal((await f.request('/api/posts/same', 'PUT', { ...input, etag: 'stale' })).status, 409);
+  const changed = await f.request('/api/posts/same', 'PUT', { draft: draft('same', 'Changed'), etag: saved.etag });
+  assert.equal(changed.status, 200);
+  assert.notEqual((await bucket.head(before.key)).version, before.version);
+  const settings = await (await f.request('/api/settings')).json();
+  const firstSettings = await (await f.request('/api/settings', 'PUT', settings)).json();
+  const site = await bucket.head('draft-site.json');
+  assert.equal((await f.request('/api/settings', 'PUT', firstSettings)).status, 200);
+  assert.equal((await bucket.head(site.key)).version, site.version);
+  const short = { front_matter: { slug: 'same-short', date: '2026-11-06 18:00', draft: true }, body_markdown: 'Short' };
+  const firstShort = await (await f.request('/api/shorts/same-short', 'PUT', short)).json();
+  const shortObject = await bucket.head('shorts/same-short.md');
+  assert.equal((await f.request('/api/shorts/same-short', 'PUT', { ...short, etag: firstShort.etag })).status, 200);
+  assert.equal((await bucket.head(shortObject.key)).version, shortObject.version);
+});
+
+test('published short and media summaries support lists without reopening the source snapshot and preserve deletion protection', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const key = 'uploads/summary.png';
+  const image = await bucket.put(key, new Uint8Array([137,80,78,71]), { httpMetadata: { contentType: 'image/png' } });
+  const short = { front_matter: { slug: 'indexed-short', date: '2026-11-06 18:00', draft: true }, body_markdown: '![](/images/' + key + ')' };
+  const saved = await (await f.request('/api/shorts/indexed-short', 'PUT', short)).json();
+  const state = await f.prepare({shortSlug:'indexed-short', etag:saved.etag});
+  await f.stage(state);
+  assert.equal((await f.commit(state)).status, 200);
+  await bucket.delete(['releases/' + state.release_id + '.json', 'shorts/indexed-short.md']);
+  const page = await (await f.request('/api/shorts?limit=1')).json();
+  assert.equal(page.shorts[0].slug, 'indexed-short');
+  assert.match(page.shorts[0].snippet, /summary.png/);
+  const catalog = await (await f.request('/api/images?catalog=1')).json();
+  assert.equal(catalog.referencesChecked, true);
+  assert.ok(catalog.images[0].references.some(r => r.kind === 'published'));
+  assert.equal((await f.request('/api/images', 'DELETE', {key,etag:image.etag})).status, 409);
+  const indexKey = 'releases/' + state.release_id + '.posts.json';
+  const index = await (await bucket.get(indexKey)).json();
+  index.images.entries[0].keys = ['auth/account.json'];
+  await bucket.put(indexKey, JSON.stringify(index));
+  assert.equal((await (await f.request('/api/images?catalog=1')).json()).referencesChecked, false);
+  assert.equal((await f.request('/api/images', 'DELETE', {key,etag:image.etag})).status, 503);
+});
+
+test('short pagination rejects changed snapshots and tombstones do not consume live-item budgets', async (t) => {
+  const f = await fixture(t); await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  for (const slug of ['a','b','c']) await bucket.put('shorts/' + slug + '.md', 'not opened by list', {
+    customMetadata: { date: '2026-11-06 18:00', snippet: slug } });
+  const first = await (await f.request('/api/shorts?limit=2')).json();
+  assert.equal(first.shorts.length, 2); assert.ok(first.cursor);
+  const second = await (await f.request('/api/shorts?limit=2&cursor=' + encodeURIComponent(first.cursor))).json();
+  assert.equal(second.shorts.length, 1);
+  await bucket.put('shorts/new.md', 'new', {customMetadata:{date:'2026-11-07 18:00'}});
+  assert.equal((await f.request('/api/shorts?limit=2&cursor=' + encodeURIComponent(first.cursor))).status, 409);
+  const bundle = await build({ entryPoints: ['cloud-admin/src/draft-catalog.ts'], bundle:true, write:false,format:'esm',platform:'node' });
+  const {listActiveDrafts} = await import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+  const removed = Array.from({length:2100},(_,i)=>({key:'drafts/deleted-'+i+'.md',customMetadata:{deleted:'true'}}));
+  const live = {key:'drafts/live.md',customMetadata:{}};
+  const storage = {list:async()=>({objects:[...removed,live],truncated:false})};
+  assert.deepEqual(await listActiveDrafts(storage,'drafts/'),[live]);
+});

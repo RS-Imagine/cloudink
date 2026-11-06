@@ -132,7 +132,7 @@ const web = {
         : null;
       if (!cachedPointer && published) cacheWrite(ctx, pointerKey, Response.json(published), 30);
       const id = published?.id || null;
-      const pageVersion = key && published?.pages?.[key] ? published.pages[key] : id || 'initial';
+      const pageVersion = key && published?.pages?.[key] ? published.pages[key] + ':' + (published.clarityId || '') : id || 'initial';
       const pageKey = cacheKey(request, 'page', pageVersion);
       const cached = await cacheRead(pageKey);
       if (cached)
