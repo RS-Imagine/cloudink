@@ -26,7 +26,9 @@ export async function buildPostIndex(
   const posts: Record<string, PublishedSummary> = Object.create(null);
   for (const [slug, source] of Object.entries(release.markdown_posts)) {
     const old =
-      prior?.id === base?.id && Object.hasOwn(prior.posts, slug) ? prior.posts[slug] : undefined;
+      prior && prior.id === base?.id && Object.hasOwn(prior.posts, slug)
+        ? prior.posts[slug]
+        : undefined;
     if (old && base?.markdown_posts[slug] === source) {
       posts[slug] = old;
       continue;

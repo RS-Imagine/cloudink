@@ -1,3 +1,4 @@
+export { sanitizePublicHtml } from './page-rendering';
 import { sanitizePublicHtml } from './page-rendering';
 import { responsiveImages } from './image-variants';
 import { assertRenameUnchanged, finishRename, postRedirects } from './post-addresses';

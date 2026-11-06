@@ -95,6 +95,7 @@ export async function uploadImage(request: Request, storage: R2Bucket): Promise<
     info = imageInfo(bytes);
   const key = await contentImageKey(bytes, type.ext);
   const prepared = await prepareVariants(form, info, file.size, key);
+  const filename = file.name;
   async function existing(bucket = storage): Promise<Response | null> {
     const object = await bucket.head(key);
     if (!object) return null;
@@ -104,7 +105,7 @@ export async function uploadImage(request: Request, storage: R2Bucket): Promise<
     return json({
       key,
       url: '/images/' + key,
-      name: object.customMetadata?.name || file.name,
+      name: object.customMetadata?.name || filename,
       deduplicated: true,
       ...imagePresentation(object, variants),
     });
