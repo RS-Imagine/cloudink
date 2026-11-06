@@ -265,12 +265,14 @@ async function apiRoute(
       const draft = validateShortDraft(input);
       if (draft.front_matter.slug !== slug) throw new HttpError(400, '短记地址与请求地址不一致。');
       draft.front_matter.draft = true;
+      const source = serializeShortDraft(draft);
+      await ensureManagedImages(env.STORAGE, source, new URL(request.url).origin);
       const existing = await env.STORAGE.head(`shorts/${slug}.md`);
       if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
         throw new HttpError(409, '这条短记在另一个窗口中发生了修改，请重新打开。');
       if ((!existing || existing.customMetadata?.deleted) && input.etag)
         throw new HttpError(409, '短记已删除，请重新打开。');
-      const object = await env.STORAGE.put(`shorts/${slug}.md`, serializeShortDraft(draft), {
+      const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: { date: draft.front_matter.date },
         httpMetadata: { contentType: 'text/markdown; charset=utf-8' },

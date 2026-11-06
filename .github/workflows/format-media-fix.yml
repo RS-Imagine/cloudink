@@ -1,0 +1,22 @@
+name: Format image reference fixes
+on:
+  push:
+    branches: [fix/media-references-and-sharing]
+permissions:
+  contents: read
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: |
+          npx prettier --write cloud-admin/src/index.ts cloud-admin/src/publishing.ts cloud-admin/src/media.ts cloud-web/test/publication.test.mjs cloud-web/test/images.test.mjs cloud-web/test/reader.test.mjs docs/DEVELOPMENT.md
+          node --input-type=module <<'JS'
+          import {readFile} from 'node:fs/promises';
+          for (const path of ["cloud-admin/src/index.ts","cloud-admin/src/publishing.ts","cloud-admin/src/media.ts","cloud-web/test/publication.test.mjs","cloud-web/test/images.test.mjs","cloud-web/test/reader.test.mjs","docs/DEVELOPMENT.md"])
+            console.log('MEDIA_FORMAT ' + JSON.stringify({path,content:(await readFile(path)).toString('base64')}));
+          JS

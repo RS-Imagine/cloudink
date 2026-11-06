@@ -178,13 +178,15 @@ test('concurrent commit/cancel cannot revive an aborted release or corrupt the n
   assert.equal((await (await f.request('/_release.json')).json()).id, next.release_id);
 });
 
-test('image paths support same-origin referencing without exposing private bucket keys or accepting active files', async (t) => {
+test('public images support missing or same-origin Referer and reject cross-origin or private paths', async (t) => {
   const f = await fixture(t);
   const bucket = await f.mf.getR2Bucket('STORAGE');
   await bucket.put('uploads/image.png', new Uint8Array([137, 80, 78, 71]), {
     httpMetadata: { contentType: 'image/png' },
   });
-  assert.equal((await f.request('/images/uploads/image.png')).status, 403);
+  const anonymous = await f.request('/images/uploads/image.png');
+  assert.equal(anonymous.status, 200);
+  assert.equal(anonymous.headers.get('Vary'), 'Referer');
   const response = await f.request('/images/uploads/image.png', 'GET', undefined, {
     Referer: 'https://notes.reader.workers.dev/posts/public/',
   });
@@ -197,6 +199,14 @@ test('image paths support same-origin referencing without exposing private bucke
     ).status,
     403,
   );
+  for (const Referer of ['invalid URL', '', 'null', 'https://notes.reader.workers.dev.evil.example/']) {
+    const blocked = await f.request('/images/uploads/image.png', 'GET', undefined, { Referer });
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.headers.get('Cache-Control'), 'no-store');
+    assert.equal(blocked.headers.get('Vary'), 'Referer');
+  }
+  assert.equal((await f.request('/images/auth/account.json')).status, 404);
+  assert.equal((await f.request('/images/uploads/image.png', 'POST')).status, 405);
   await bucket.put('uploads/danger.png', '<script>bad()</script>', {
     httpMetadata: { contentType: 'text/html' },
   });

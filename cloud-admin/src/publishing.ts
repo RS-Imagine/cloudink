@@ -3,6 +3,7 @@ import { ensureHomeIllustration } from './home-illustration';
 import { ensureSiteIcon } from './site-icons';
 import { addressTarget, withAddress, postRedirects, finishRename } from './post-addresses';
 import { withContentMutation } from './storage-mutations';
+import { ensureManagedImages } from './image-library';
 import type { CloudInkEnv } from './env';
 import {
   requiredPages,
@@ -100,7 +101,9 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
     if (data.etag !== draft.etag)
       throw new HttpError(409, '短记刚刚发生了修改，请保存最新版本后再发布。');
     if (draft.customMetadata?.deleted) throw new HttpError(409, '短记已删除，请重新打开。');
-    const parsed = parseShortSource(await draft.text());
+    const source = await draft.text();
+    await ensureManagedImages(env.STORAGE, source, new URL(request.url).origin);
+    const parsed = parseShortSource(source);
     parsed.front_matter.draft = false;
     release.markdown_shorts = {
       ...(release.markdown_shorts || {}),
