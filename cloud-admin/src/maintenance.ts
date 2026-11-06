@@ -31,6 +31,7 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
       const prior = await readJson<MaintenanceStatus>(storage, STATUS_KEY);
       const state: MaintenanceStatus = {
         ...prior,
+        last_success_at: prior?.last_success_at || prior?.finished_at,
         last_attempt_at: attempted,
         status: 'running',
         reason: undefined,
@@ -176,6 +177,7 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
       return prior;
     const skipped: MaintenanceStatus = {
       ...prior,
+      last_success_at: prior?.last_success_at || prior?.finished_at,
       last_attempt_at: attempted,
       status: error instanceof HttpError && error.status === 503 ? 'skipped' : 'failed',
       reason:

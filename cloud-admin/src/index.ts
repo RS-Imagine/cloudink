@@ -11,7 +11,7 @@ import {
   cancelBrowserPublish,
   planBrowserPublish,
 } from './browser-publishing';
-import { ASSETS } from './assets.generated';
+import { ASSETS, PAGE_GENERATION_VERSION } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
 import { draftSummary } from './post-metadata';
@@ -80,11 +80,17 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-    customMetadata: await draftSummary(draft, env.STORAGE),
+    customMetadata: await draftSummary(draft, env.STORAGE, existing?.customMetadata),
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
-  return json({ draft, source, etag: saved.etag, saved_at: new Date().toISOString() });
+  return json({
+    draft,
+    source,
+    etag: saved.etag,
+    saved_at: new Date().toISOString(),
+    created: !existing || !!existing.customMetadata?.deleted,
+  });
 }
 async function apiRoute(
   request: Request,
@@ -134,7 +140,9 @@ async function apiRoute(
       (!pointer?.pages && !!(await env.STORAGE.head(`public/${release.id}/index.html`)));
     const templateStatus = !publicInitialized
       ? 'unpublished'
-      : pointer?.id === release.id && pointer.templateVersion === CURRENT_TEMPLATE_VERSION
+      : pointer?.id === release.id &&
+          pointer.templateVersion === CURRENT_TEMPLATE_VERSION &&
+          pointer.generationVersion === PAGE_GENERATION_VERSION
         ? 'current'
         : 'outdated';
     const posts = new Map<
@@ -368,7 +376,11 @@ async function apiRoute(
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: {
           date: draft.front_matter.date,
-          ...(await imageReferenceMetadata(source, env.STORAGE)),
+          ...(await imageReferenceMetadata(
+            source,
+            env.STORAGE,
+            existing?.customMetadata?.image_refs_hash,
+          )),
         },
         httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       });

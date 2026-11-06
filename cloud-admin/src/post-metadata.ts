@@ -16,13 +16,14 @@ export function editorial(draft: Draft): string {
 export async function draftSummary(
   draft: Draft,
   storage: R2Bucket,
+  previous?: Record<string, string>,
 ): Promise<Record<string, string>> {
   const f = draft.front_matter;
   return {
     title: f.title.slice(0, 120),
     date: f.date,
     description: f.description.slice(0, 240),
-    ...(await imageReferenceMetadata(draft.body_markdown, storage)),
+    ...(await imageReferenceMetadata(draft.body_markdown, storage, previous?.image_refs_hash)),
     digest: await digest(editorial(draft)),
   };
 }

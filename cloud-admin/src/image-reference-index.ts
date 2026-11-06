@@ -20,6 +20,7 @@ export async function readReferenceShard(storage: R2Bucket, key: string): Promis
 export async function imageReferenceMetadata(
   source: string,
   storage: R2Bucket,
+  knownHash?: string,
 ): Promise<Record<string, string>> {
   const keys = managedImageKeys(source).sort(),
     text = JSON.stringify(keys);
@@ -27,6 +28,7 @@ export async function imageReferenceMetadata(
   if (new TextEncoder().encode(text).byteLength <= 600) return { ...metadata, image_refs: text };
   const hash = await digest(text),
     key = referenceShardKey(hash);
+  if (hash === knownHash) return { ...metadata, image_refs_hash: hash };
   const shard = await readReferenceShard(storage, key);
   if (JSON.stringify(shard[hash]) !== text) {
     shard[hash] = keys;

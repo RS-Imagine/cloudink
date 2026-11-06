@@ -219,14 +219,14 @@ function localSaved(draft, result) {
     old = posts.find((p) => p.slug === slug),
     post = {
       ...draft.front_matter,
-      published: !!old?.published,
+      published: old?.published ?? (doc?.front_matter.slug === slug ? !!doc.published : false),
       has_draft: true,
       changed: true,
       etag: result.etag,
     };
   posts = posts.filter((p) => p.slug !== slug);
   posts.push(post);
-  if (!old && postCounts) {
+  if (result.created && postCounts) {
     postCounts.total++;
     postCounts.draft++;
   }
@@ -478,6 +478,7 @@ function badge(post) {
   return post.published ? (post.changed ? '有未发布修改' : '已发布') : '草稿';
 }
 function renderLists() {
+  const hasPosts = (postCounts?.total ?? posts.length) > 0;
   const query = $('search').value.trim().toLowerCase();
   const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
   $('post-count').textContent = postCounts?.total ?? posts.length;
@@ -540,12 +541,12 @@ function renderLists() {
     empty.className = 'studio-empty';
     const title = document.createElement('h3'),
       text = document.createElement('p');
-    title.textContent = posts.length ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
-    text.textContent = posts.length
+    title.textContent = hasPosts ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
+    text.textContent = hasPosts
       ? '换一个关键词，或查看全部文章。'
       : '点击“新文章”开始写作，也可以从更多操作导入原稿。';
     empty.append(title, text);
-    if (posts.length) {
+    if (hasPosts) {
       const reset = document.createElement('button');
       reset.textContent = '清除筛选';
       reset.addEventListener('click', () => {
@@ -561,7 +562,7 @@ function renderLists() {
   if (!$('post-list').childElementCount) {
     const empty = document.createElement('p');
     empty.className = 'studio-list-empty';
-    empty.textContent = posts.length
+    empty.textContent = hasPosts
       ? '没有匹配的文章，请修改搜索关键词。'
       : '还没有文章，先开始新文章。';
     $('post-list').append(empty);
@@ -642,7 +643,11 @@ function preview() {
 function fillEditor(draft, etag) {
   clearTimeout(previewTimer);
   invalidatePreview(true);
-  doc = { ...draft, etag };
+  doc = {
+    ...draft,
+    etag,
+    published: posts.some((p) => p.slug === draft.front_matter.slug && p.published),
+  };
   dirty = 0;
   savedVersion = 0;
   conflict = false;
