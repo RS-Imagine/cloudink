@@ -222,6 +222,22 @@ try {
   await live.screenshot({ path: resolve('cloud-web/dist/article.desktop.png'), fullPage: true });
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.post-card')).toHaveCount(1);
+  const offlineContext = await browser.newContext();
+  try {
+    const offlineReader = await offlineContext.newPage();
+    await offlineReader.goto('http://localhost:8791/');
+    await offlineReader.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await offlineReader.waitForFunction(() => !!navigator.serviceWorker.controller);
+    await offlineReader.reload();
+    await expect(offlineReader.locator('.post-card')).toHaveCount(1);
+    await offlineContext.setOffline(true);
+    await offlineReader.reload();
+    await expect(offlineReader.locator('.post-card')).toHaveCount(1);
+  } finally {
+    await offlineContext.close();
+  }
   await live.screenshot({ path: resolve('cloud-web/dist/home.desktop.png'), fullPage: true });
   await live.locator('.post-card h2 a').click();
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
