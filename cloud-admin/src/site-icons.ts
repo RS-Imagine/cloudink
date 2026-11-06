@@ -576,7 +576,7 @@ export async function uploadSiteIcon(request: Request, storage: R2Bucket): Promi
   )
     return json(
       { key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length), reused: true },
-      200,
+      201,
     );
   await storage.put(icon.key, icon.bytes, {
     onlyIf: { etagDoesNotMatch: '*' },

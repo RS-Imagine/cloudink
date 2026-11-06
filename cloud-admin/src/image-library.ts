@@ -156,7 +156,6 @@ async function references(
       if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
-      if (object.customMetadata?.deleted) continue;
       const slug = object.key.match(/^drafts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '原稿目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = {
@@ -216,7 +215,6 @@ async function references(
       if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
-      if (object.customMetadata?.deleted) continue;
       const slug = object.key.match(/^shorts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '短记目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = { kind: 'draft', title: slug, slug };
