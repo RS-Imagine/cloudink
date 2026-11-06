@@ -242,11 +242,19 @@ function localSaved(draft, result) {
 const privateReads = new Map();
 const invalidateReads = () => privateReads.clear();
 window.addEventListener('focus', invalidateReads);
-const readChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('cloudink-content') : null;
-if (readChannel) readChannel.onmessage = () => { invalidateReads(); window.dispatchEvent(new Event('cloudink-content-changed')); };
+const readChannel =
+  typeof BroadcastChannel === 'function' ? new BroadcastChannel('cloudink-content') : null;
+if (readChannel)
+  readChannel.onmessage = () => {
+    invalidateReads();
+    window.dispatchEvent(new Event('cloudink-content-changed'));
+  };
 async function api(path, options = {}) {
   const method = options.method || 'GET';
-  if (!['GET', 'HEAD'].includes(method)) { invalidateReads(); readChannel?.postMessage('changed'); }
+  if (!['GET', 'HEAD'].includes(method)) {
+    invalidateReads();
+    readChannel?.postMessage('changed');
+  }
   const cacheable = method === 'GET' && /^\/api\/(?:posts|shorts)(?:\?|$)/.test(path);
   if (!cacheable) return requestApi(path, options);
   let entry = privateReads.get(path);
@@ -254,8 +262,12 @@ async function api(path, options = {}) {
     entry = { expires: Date.now() + 10000, promise: requestApi(path, options) };
     privateReads.set(path, entry);
   }
-  try { return structuredClone(await entry.promise); }
-  catch (error) { if (privateReads.get(path) === entry) privateReads.delete(path); throw error; }
+  try {
+    return structuredClone(await entry.promise);
+  } catch (error) {
+    if (privateReads.get(path) === entry) privateReads.delete(path);
+    throw error;
+  }
 }
 async function requestApi(path, options = {}) {
   const { rawBody, ...init } = options;
@@ -290,7 +302,8 @@ async function requestApi(path, options = {}) {
     throw error;
   }
   if (options.method && !['GET', 'HEAD'].includes(options.method)) {
-    invalidateReads(); readChannel?.postMessage('changed');
+    invalidateReads();
+    readChannel?.postMessage('changed');
     window.dispatchEvent(new Event('cloudink-content-changed'));
   }
   return data;

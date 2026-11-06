@@ -101,7 +101,11 @@ async function references(
     const index = await readPostIndex(storage, id);
     if (index?.images?.version === IMAGE_REFERENCE_VERSION) {
       for (const entry of index.images.entries)
-        add(entry.keys, { kind: entry.settings ? 'settings' : kind, title: entry.title, ...(entry.slug ? {slug: entry.slug} : {}) });
+        add(entry.keys, {
+          kind: entry.settings ? 'settings' : kind,
+          title: entry.title,
+          ...(entry.slug ? { slug: entry.slug } : {}),
+        });
       return;
     }
     const object = await storage.get(`releases/${id}.json`);

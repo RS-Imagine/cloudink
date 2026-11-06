@@ -569,8 +569,15 @@ export async function ensureSiteIcon(storage: R2Bucket, site: SiteConfig): Promi
 export async function uploadSiteIcon(request: Request, storage: R2Bucket): Promise<Response> {
   const icon = await inspectSiteIcon(new Uint8Array(await limitedBody(request, MAX_SITE_ICON)));
   const existing = await storage.head(icon.key);
-  if (existing && existing.size === icon.bytes.byteLength && existing.httpMetadata?.contentType === icon.type)
-    return json({ key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length), reused: true }, 200);
+  if (
+    existing &&
+    existing.size === icon.bytes.byteLength &&
+    existing.httpMetadata?.contentType === icon.type
+  )
+    return json(
+      { key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length), reused: true },
+      200,
+    );
   await storage.put(icon.key, icon.bytes, {
     onlyIf: { etagDoesNotMatch: '*' },
     httpMetadata: { contentType: icon.type, cacheControl: 'public, max-age=31536000, immutable' },
@@ -578,7 +585,11 @@ export async function uploadSiteIcon(request: Request, storage: R2Bucket): Promi
   });
   return json({ key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length) }, 201);
 }
-export async function publicSiteIcon(request: Request, storage: R2Bucket, ctx?: ExecutionContext): Promise<Response> {
+export async function publicSiteIcon(
+  request: Request,
+  storage: R2Bucket,
+  ctx?: ExecutionContext,
+): Promise<Response> {
   if (!['GET', 'HEAD'].includes(request.method))
     return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
   const name = new URL(request.url).pathname.slice('/site-icon/'.length);

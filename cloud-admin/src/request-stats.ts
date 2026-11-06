@@ -16,15 +16,33 @@ export function storageStats(storage: R2Bucket) {
           const result = await Reflect.apply(value, target, args);
           if (property === 'list') counts.objects += result.objects.length;
           return result;
-        } catch (error) { counts.errors++; throw error; }
+        } catch (error) {
+          counts.errors++;
+          throw error;
+        }
       };
     },
   });
-  return { bucket, report(requestId: string, route: string, method: string, status: number, started: number) {
-    const total = counts.get + counts.head + counts.list + counts.put + counts.delete;
-    if (status < 500 && total < 150 && crypto.getRandomValues(new Uint32Array(1))[0] % 100 !== 0) return;
-    console.log(JSON.stringify({ event: 'storage_request', request_id: requestId, route, method, status,
-      code: status >= 500 ? 'request_failed' : total >= 150 ? 'storage_budget_warning' : 'sample',
-      stage, elapsed_ms: Date.now() - started, ...counts }));
-  }};
+  return {
+    bucket,
+    report(requestId: string, route: string, method: string, status: number, started: number) {
+      const total = counts.get + counts.head + counts.list + counts.put + counts.delete;
+      if (status < 500 && total < 150 && crypto.getRandomValues(new Uint32Array(1))[0] % 100 !== 0)
+        return;
+      console.log(
+        JSON.stringify({
+          event: 'storage_request',
+          request_id: requestId,
+          route,
+          method,
+          status,
+          code:
+            status >= 500 ? 'request_failed' : total >= 150 ? 'storage_budget_warning' : 'sample',
+          stage,
+          elapsed_ms: Date.now() - started,
+          ...counts,
+        }),
+      );
+    },
+  };
 }

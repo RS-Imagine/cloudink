@@ -10,9 +10,13 @@ function slugFor(date) {
   return 'short-' + date.replace(/\D/g, '').slice(0, 12) + '-' + crypto.randomUUID().slice(0, 8);
 }
 export function configureShorts({ api, notice, action, open, startPublish }) {
-  let shorts = [], cursor = null, loadRevision = 0;
+  let shorts = [],
+    cursor = null,
+    loadRevision = 0;
   const more = document.createElement('button');
-  more.id = 'short-more'; more.textContent = '加载更多短记'; more.hidden = true;
+  more.id = 'short-more';
+  more.textContent = '加载更多短记';
+  more.hidden = true;
   $('short-list').after(more);
   more.addEventListener('click', () => action('short-more', '正在加载…', () => load(true)));
   let editing = null; // { slug, etag } or null for new
@@ -146,13 +150,20 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
   async function load(append = false) {
     const revision = ++loadRevision;
     let data;
-    try { data = await api('/api/shorts?limit=50' + (append && cursor ? '&cursor=' + encodeURIComponent(cursor) : '')); }
-    catch (error) { if (append && error.status === 409) return load(); throw error; }
+    try {
+      data = await api(
+        '/api/shorts?limit=50' + (append && cursor ? '&cursor=' + encodeURIComponent(cursor) : ''),
+      );
+    } catch (error) {
+      if (append && error.status === 409) return load();
+      throw error;
+    }
     if (revision !== loadRevision) return;
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
     cursor = data.cursor;
     for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
-    render(); more.hidden = !cursor;
+    render();
+    more.hidden = !cursor;
   }
   function openEditor(item = null) {
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;

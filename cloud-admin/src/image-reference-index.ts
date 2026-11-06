@@ -58,7 +58,8 @@ export async function checkedReferenceKeys(shard: ReferenceShard, hash: string):
 /** One small shard per daily maintenance; live draft pointers are authoritative. */
 export async function pruneReferenceShard(storage: R2Bucket, key: string): Promise<number> {
   const live = new Set<string>();
-  let count = 0, scanned = 0;
+  let count = 0,
+    scanned = 0;
   for (const prefix of ['drafts/', 'shorts/']) {
     let cursor: string | undefined;
     do {

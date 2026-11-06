@@ -35,7 +35,6 @@ import {
   validateShortDraft,
   validateSite,
   type Draft,
-  type ShortDraft,
   type SiteConfig,
 } from './models';
 
@@ -65,11 +64,21 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
   if ((!existing || existing.customMetadata?.deleted) && input.etag)
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
-  if (existing && !existing.customMetadata?.deleted && await unchangedSource(existing, source))
-    return json({ draft, source, etag: existing.etag, saved_at: existing.uploaded.toISOString(), created: false, unchanged: true });
+  if (existing && !existing.customMetadata?.deleted && (await unchangedSource(existing, source)))
+    return json({
+      draft,
+      source,
+      etag: existing.etag,
+      saved_at: existing.uploaded.toISOString(),
+      created: false,
+      unchanged: true,
+    });
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-    customMetadata: { ...await draftSummary(draft, env.STORAGE, existing?.customMetadata), source_digest: await sourceDigest(source) },
+    customMetadata: {
+      ...(await draftSummary(draft, env.STORAGE, existing?.customMetadata)),
+      source_digest: await sourceDigest(source),
+    },
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
@@ -304,9 +313,21 @@ async function apiRoute(
     const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
     if (!pointer) throw new HttpError(503, '网站内容尚未初始化。');
     const stored = await readPostIndex(env.STORAGE, pointer.id);
-    const index = stored?.shorts ? stored : await buildPostIndex(await currentRelease(env, pointer));
+    const index = stored?.shorts
+      ? stored
+      : await buildPostIndex(await currentRelease(env, pointer));
     const published = new Map(Object.entries(index.shorts || {}));
-    const shorts = new Map<string, {slug:string;date:string;published:boolean;has_draft:boolean;etag?:string;snippet:string}>();
+    const shorts = new Map<
+      string,
+      {
+        slug: string;
+        date: string;
+        published: boolean;
+        has_draft: boolean;
+        etag?: string;
+        snippet: string;
+      }
+    >();
     for (const [slug, draft] of published)
       shorts.set(slug, {
         slug,
@@ -320,27 +341,44 @@ async function apiRoute(
       const slug = object.key.slice(7, -3);
       if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
       const meta = object.customMetadata || {};
-      shorts.set(slug, { slug, date: meta.date || published.get(slug)?.date || '',
-        published: published.has(slug), has_draft: true, etag: object.etag,
-        snippet: meta.snippet ?? published.get(slug)?.snippet ?? '' });
+      shorts.set(slug, {
+        slug,
+        date: meta.date || published.get(slug)?.date || '',
+        published: published.has(slug),
+        has_draft: true,
+        etag: object.etag,
+        snippet: meta.snippet ?? published.get(slug)?.snippet ?? '',
+      });
     }
-    const list = [...shorts.values()].sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
-    const url = new URL(request.url), rawLimit = url.searchParams.get('limit');
+    const list = [...shorts.values()].sort(
+      (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug),
+    );
+    const url = new URL(request.url),
+      rawLimit = url.searchParams.get('limit');
     const limit = rawLimit === null ? list.length || 1 : Number(rawLimit);
     if (!Number.isInteger(limit) || limit < 1 || (rawLimit !== null && limit > 100))
       throw new HttpError(400, '短记分页参数不正确。');
-    const snapshot = await digest(JSON.stringify([pointer.id, drafts.map(d => [d.key, d.etag])]));
+    const snapshot = await digest(JSON.stringify([pointer.id, drafts.map((d) => [d.key, d.etag])]));
     let offset = 0;
     if (url.searchParams.has('cursor')) {
       let cursor;
-      try { cursor = JSON.parse(url.searchParams.get('cursor')!); } catch { throw new HttpError(400, '分页位置不正确。'); }
-      if (!cursor || cursor.snapshot !== snapshot) throw new HttpError(409, '短记列表已变化，请重新读取。');
+      try {
+        cursor = JSON.parse(url.searchParams.get('cursor')!);
+      } catch {
+        throw new HttpError(400, '分页位置不正确。');
+      }
+      if (!cursor || cursor.snapshot !== snapshot)
+        throw new HttpError(409, '短记列表已变化，请重新读取。');
       if (!Number.isInteger(cursor.offset) || cursor.offset < 0 || cursor.offset > list.length)
         throw new HttpError(400, '分页位置不正确。');
       offset = cursor.offset;
     }
-    return json({ shorts: list.slice(offset, offset + limit), total: list.length,
-      cursor: offset + limit < list.length ? JSON.stringify({snapshot, offset: offset + limit}) : null });
+    return json({
+      shorts: list.slice(offset, offset + limit),
+      total: list.length,
+      cursor:
+        offset + limit < list.length ? JSON.stringify({ snapshot, offset: offset + limit }) : null,
+    });
   }
   const shortMatch = path.match(/^\/api\/shorts\/([A-Za-z0-9_-]+)$/);
   if (shortMatch) {
@@ -357,7 +395,11 @@ async function apiRoute(
         throw new HttpError(409, '这条短记在另一个窗口中发生了修改，请重新打开。');
       if ((!existing || existing.customMetadata?.deleted) && input.etag)
         throw new HttpError(409, '短记已删除，请重新打开。');
-      if (existing && !existing.customMetadata?.deleted && await unchangedSource(existing, source))
+      if (
+        existing &&
+        !existing.customMetadata?.deleted &&
+        (await unchangedSource(existing, source))
+      )
         return json({ ok: true, etag: existing.etag, unchanged: true });
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },

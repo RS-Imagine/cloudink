@@ -151,8 +151,12 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
         if (refs.truncated) state.cursors!.references = refs.cursor;
         else delete state.cursors!.references;
         state.stage = 'sessions';
-        const sessions = await storage.list({ prefix: 'auth/sessions/', limit: 32,
-          cursor: state.cursors?.sessions, include: ['customMetadata'] });
+        const sessions = await storage.list({
+          prefix: 'auth/sessions/',
+          limit: 32,
+          cursor: state.cursors?.sessions,
+          include: ['customMetadata'],
+        });
         const expired: string[] = [];
         for (const object of sessions.objects) {
           state.scanned_objects!++;
@@ -161,11 +165,15 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
           if (!Number.isFinite(expiry)) {
             const legacy = await storage.get(object.key);
             if (legacy && legacy.size <= 4096) {
-              try { expiry = Number((await legacy.json<{expires?: number}>()).expires); }
-              catch { /* Unknown objects are retained. */ }
+              try {
+                expiry = Number((await legacy.json<{ expires?: number }>()).expires);
+              } catch {
+                /* Unknown objects are retained. */
+              }
             } else if (legacy) await legacy.body.cancel();
           }
-          if (Number.isFinite(expiry) && expiry > 0 && expiry < Date.now()) expired.push(object.key);
+          if (Number.isFinite(expiry) && expiry > 0 && expiry < Date.now())
+            expired.push(object.key);
         }
         if (expired.length) await storage.delete(expired);
         state.expired_sessions = expired.length;
