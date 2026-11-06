@@ -308,8 +308,7 @@ async function apiRoute(
     }
     if (request.method === 'DELETE') {
       const release = await currentRelease(env);
-      if (ownValue(release.markdown_shorts, slug))
-        throw new HttpError(409, '请先取消发布，再删除草稿。');
+      if (ownValue(release.markdown_shorts, slug)) throw new HttpError(409, '请先取消发布，再删除草稿。');
       const input = await jsonInput(request, 4096),
         object = await env.STORAGE.head(`shorts/${slug}.md`);
       if (object && input.etag !== object.etag)
