@@ -308,3 +308,68 @@ test('a short save and image deletion cannot leave a stored dangling reference',
   if (await bucket.head('shorts/race.md')) assert.ok(await bucket.head(image.key));
   else assert.equal(await bucket.head(image.key), null);
 });
+
+test('encoded image references protect legacy indexes and reject missing local images', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const object = await seed(bucket, 'uploads/encoded.png');
+  const bodies = [
+    '![Photo](/images/uploads/encoded&period;png)',
+    '![Photo](/images/uploads/encoded\\.png)',
+    '![Photo][ref]\n\n[ref]: /images/uploads/encoded%2Epng',
+    '<img src="/images/up\nloads/encoded&period;png">',
+    '<img src="/images/uploads/folder/../encoded.png">',
+  ];
+  for (const [index, body] of bodies.entries()) {
+    const slug = 'encoded-' + index;
+    const saved = await f.request('/api/posts/' + slug, 'PUT', {
+      draft: draft(slug, body),
+      etag: null,
+    });
+    assert.equal(saved.status, 200, await saved.clone().text());
+    const key = 'drafts/' + slug + '.md';
+    const stored = await bucket.get(key);
+    const text = await stored.text();
+    assert.equal(stored.customMetadata.image_refs_version, '2');
+    // Simulate an existing, incorrectly empty index from the old extractor.
+    await bucket.put(key, text, {
+      customMetadata: { ...stored.customMetadata, image_refs: '[]', image_refs_version: '1' },
+    });
+    const image = (await catalog(f)).images[0];
+    assert.ok(image.references.some((ref) => ref.slug === slug));
+    const indexed = await f.request('/api/images/reindex', 'POST', {});
+    assert.equal(indexed.status, 200, await indexed.clone().text());
+    const reindexed = await bucket.get(key);
+    assert.equal(await reindexed.text(), text);
+    assert.equal(reindexed.customMetadata.image_refs_version, '2');
+    assert.equal(
+      (await f.request('/api/images', 'DELETE', { key: object.key, etag: object.etag })).status,
+      409,
+    );
+    assert.equal(
+      (await f.request('/api/posts/' + slug, 'DELETE', { etag: (await bucket.head(key)).etag }))
+        .status,
+      200,
+    );
+  }
+  assert.equal(
+    (
+      await f.request('/api/posts/missing-encoded', 'PUT', {
+        draft: draft('missing-encoded', '![Missing](/images/uploads/missing&period;png)'),
+        etag: null,
+      })
+    ).status,
+    400,
+  );
+  let next = {},
+    updated = 0;
+  do {
+    const response = await f.request('/api/images/reindex', 'POST', next);
+    assert.equal(response.status, 200, await response.clone().text());
+    const result = await response.json();
+    updated += result.updated;
+    next = result.next;
+  } while (next);
+  assert.equal(updated, 0, 'deleted drafts are not rewritten by reindexing');
+});

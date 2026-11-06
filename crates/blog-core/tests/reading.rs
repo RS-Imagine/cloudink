@@ -61,3 +61,23 @@ fn grouped_display_titles_escape_each_clause_and_keep_plain_metadata() {
     assert!(!html.contains("<img src=x>"));
     assert!(html.contains("<title>把日子，写成一封长信 &lt;img src=x&gt;"));
 }
+
+#[test]
+fn image_urls_decode_entities_and_commonmark_escapes() {
+    for body in [
+        "![Photo](/images/uploads/encoded&period;png)",
+        r"![Photo](/images/uploads/encoded\.png)",
+        "![Photo][ref]\n\n[ref]: /images/uploads/encoded.png",
+    ] {
+        let source = format!(
+            "+++\ntitle = \"Image\"\nslug = \"image\"\ndate = \"2026-11-06\"\ndraft = false\n+++\n\n{body}"
+        );
+        let post = blog_core::content::parse_post(&source).unwrap();
+        assert!(
+            post.body_html
+                .contains("src=\"/images/uploads/encoded.png\""),
+            "{}",
+            post.body_html
+        );
+    }
+}

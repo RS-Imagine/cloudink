@@ -46,6 +46,7 @@ export function changesContentReferences(path: string, method: string): boolean 
     path === '/api/backup/restore' ||
     path === '/api/backup/image' ||
     path === '/api/images' ||
-    path === '/api/images/optimize'
+    path === '/api/images/optimize' ||
+    path === '/api/images/reindex'
   );
 }

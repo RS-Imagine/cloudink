@@ -283,6 +283,7 @@ export function configureImages({
       const combined = new Map((reset ? [] : images).map((image) => [image.key, image]));
       for (const image of page) combined.set(image.key, image);
       images = [...combined.values()];
+      $('image-library-reindex').hidden = !data.reindexRequired;
       cursor = data.cursor;
       completeCatalog = data.catalog === true;
       loadedAt = Date.now();
@@ -314,6 +315,20 @@ export function configureImages({
     if (loadedAt && Date.now() - loadedAt < 30_000 && !loadError && !loading) render();
     else await load();
   }
+  $('image-library-reindex').addEventListener('click', () =>
+    action('image-library-reindex', '正在更新…', async () => {
+      let next = {},
+        updated = 0;
+      do {
+        const result = await api('/api/images/reindex', { method: 'POST', body: next });
+        updated += result.updated;
+        next = result.next;
+        status('已更新 ' + updated + ' 份原稿的引用索引…');
+      } while (next);
+      await load();
+      notice('引用索引已更新，原稿内容保持不变。', 'success');
+    }),
+  );
   $('image-library-refresh').addEventListener('click', () =>
     action('image-library-refresh', '正在刷新…', () => load()),
   );
