@@ -269,6 +269,32 @@ try {
     resolve('cloud-web/dist'),
     'chromium',
   );
+
+  for (let i = 0; i < 55; i++) {
+    const slug = 'page-' + String(i).padStart(3, '0');
+    await bucket.put(
+      'drafts/' + slug + '.md',
+      '+++\ntitle = "' + slug + '"\nslug = "' + slug + '"\ndate = "2026-11-06"\n+++\n\nPage body',
+      { customMetadata: { title: slug, date: '2026-11-06', description: '' } },
+    );
+  }
+  const paging = await browser.newPage();
+  await paging.goto('http://localhost:8788/admin');
+  await paging.locator('#login-form input[name=email]').fill(owner);
+  await paging.locator('#login-form input[name=password]').fill(password);
+  await paging.locator('#login-submit').click();
+  await expect(paging.locator('.article-card')).toHaveCount(50);
+  await paging.locator('#search').fill('page-000');
+  await expect(paging.locator('.article-card')).toHaveCount(1);
+  await paging.locator('#search').fill('no-matching-article-123');
+  await expect(paging.locator('.studio-empty h3')).toHaveText('还没有找到匹配的文章');
+  await paging.locator('.studio-empty button').click();
+  await expect(paging.locator('#search')).toHaveValue('');
+  await expect(paging.locator('.article-card')).toHaveCount(50);
+  const total = Number(await paging.locator('#post-count').textContent());
+  await paging.locator('#load-more-posts').click();
+  await expect(paging.locator('.article-card')).toHaveCount(total);
+  await paging.close();
 } finally {
   await browser?.close();
   await mf.dispose();

@@ -61,8 +61,14 @@ export interface Publishing {
   files?: string[];
   template_version?: string;
   response_version?: string;
+  generation_version?: string;
+  render_files?: string[];
   force_rebuild?: boolean;
-  plan?: { sources: Record<string, string>; pages: Record<string, string> };
+  plan?: {
+    sources: Record<string, string>;
+    pages: Record<string, string>;
+    sizes?: Record<string, number>;
+  };
   rename?: { from: string; to: string; etag: string; targetEtag: string | null };
 }
 

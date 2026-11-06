@@ -1,3 +1,5 @@
+import { buildPostIndex, readPostIndex } from './post-index';
+import type { BrowserPointer } from './browser-publishing';
 import { backupJobRoute } from './backup-jobs';
 import { maintainStorage, type MaintenanceStatus } from './maintenance';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
@@ -9,10 +11,10 @@ import {
   cancelBrowserPublish,
   planBrowserPublish,
 } from './browser-publishing';
-import { ASSETS } from './assets.generated';
+import { ASSETS, PAGE_GENERATION_VERSION } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
-import { editorial, draftSummary } from './post-metadata';
+import { draftSummary } from './post-metadata';
 import { assertWritableAddress, renameDraft } from './post-addresses';
 import { currentRelease, publish, publishStatus } from './publishing';
 import {
@@ -52,6 +54,7 @@ async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
       cursor,
     });
     objects.push(...page.objects);
+    if (objects.length > 2000) throw new HttpError(413, '原稿超过 2000 篇，暂时无法完整读取列表。');
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
   return objects;
@@ -77,11 +80,17 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-    customMetadata: await draftSummary(draft),
+    customMetadata: await draftSummary(draft, env.STORAGE, existing?.customMetadata),
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
-  return json({ draft, source, etag: saved.etag, saved_at: new Date().toISOString() });
+  return json({
+    draft,
+    source,
+    etag: saved.etag,
+    saved_at: new Date().toISOString(),
+    created: !existing || !!existing.customMetadata?.deleted,
+  });
 }
 async function apiRoute(
   request: Request,
@@ -108,41 +117,59 @@ async function apiRoute(
     const [, id, action] = browserPublish;
     if (action === 'plan' && request.method === 'POST') return planBrowserPublish(request, env, id);
     if (action === 'file' && request.method === 'PUT') return stageBrowserPage(request, env, id);
-    if (action === 'commit' && request.method === 'POST') return commitBrowserPublish(env, id);
+    if (action === 'commit' && request.method === 'POST')
+      return commitBrowserPublish(env, id, request);
     if (action === 'cancel' && request.method === 'POST') return cancelBrowserPublish(env, id);
     throw new HttpError(405, '请求方式不正确。');
   }
   if (path === '/api/posts' && request.method === 'GET') {
-    const publishing = await publishStatus(env);
-    const [release, drafts, savedSite] = await Promise.all([
-      currentRelease(env),
+    const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+    if (!pointer) throw new HttpError(503, '网站内容尚未初始化。');
+    const [publishing, drafts, savedSite, storedIndex] = await Promise.all([
+      publishStatus(env, false, pointer),
       listDrafts(env.STORAGE),
       readJson<SiteConfig>(env.STORAGE, 'draft-site.json'),
+      readPostIndex(env.STORAGE, pointer.id),
     ]);
-    const published = new Map<string, { draft: Draft; digest: string }>();
-    for (const [slug, source] of Object.entries(release.markdown_posts)) {
-      const draft = parseSource(source);
-      published.set(slug, { draft, digest: await digest(editorial(draft)) });
-    }
-    const pointer = await readJson<{
-      id: string;
-      postRedirects?: Record<string, string>;
-      templateVersion?: string;
-      pages?: Record<string, string>;
-    }>(env.STORAGE, 'state/published.json');
+    const index = storedIndex || (await buildPostIndex(await currentRelease(env, pointer)));
+    const published = new Map(Object.entries(index.posts));
+    const release = { id: pointer.id, site: index.site };
     const redirects = pointer?.postRedirects || {};
     const publicInitialized =
       !!pointer?.pages?.['index.html'] ||
       (!pointer?.pages && !!(await env.STORAGE.head(`public/${release.id}/index.html`)));
     const templateStatus = !publicInitialized
       ? 'unpublished'
-      : pointer?.id === release.id && pointer.templateVersion === CURRENT_TEMPLATE_VERSION
+      : pointer?.id === release.id &&
+          pointer.templateVersion === CURRENT_TEMPLATE_VERSION &&
+          pointer.generationVersion === PAGE_GENERATION_VERSION
         ? 'current'
         : 'outdated';
-    const posts = new Map<string, unknown>();
+    const posts = new Map<
+      string,
+      {
+        slug: string;
+        title: string;
+        date: string;
+        description: string;
+        aliases?: string[];
+        draft?: boolean;
+        published: boolean;
+        has_draft: boolean;
+        changed: boolean;
+        updated?: string;
+        etag?: string;
+      }
+    >();
     for (const [slug, p] of published)
       posts.set(slug, {
-        ...p.draft.front_matter,
+        title: p.title,
+        slug,
+        date: p.date,
+        description: p.description,
+        ...(p.updated ? { updated: p.updated } : {}),
+        ...(p.aliases?.length ? { aliases: p.aliases } : {}),
+        draft: p.draft,
         published: true,
         has_draft: false,
         changed: false,
@@ -163,8 +190,62 @@ async function apiRoute(
         etag: object.etag,
       });
     }
+    const all = [...posts.values()].sort(
+      (a, b) => b.date.localeCompare(a.date) || b.slug.localeCompare(a.slug),
+    );
+    const counts = {
+      total: all.length,
+      published: all.filter((p) => p.published).length,
+      draft: all.filter((p) => !p.published).length,
+    };
+    const url = new URL(request.url),
+      rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? all.length || 1 : Number(rawLimit);
+    const query = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const filter = url.searchParams.get('filter') || 'all';
+    if (
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      (rawLimit !== null && limit > 100) ||
+      query.length > 300 ||
+      !['all', 'published', 'draft'].includes(filter)
+    )
+      throw new HttpError(400, '文章列表分页参数不正确。');
+    const selected = all.filter(
+      (p) =>
+        (!query || (p.title + ' ' + p.description + ' ' + p.slug).toLowerCase().includes(query)) &&
+        (filter === 'all' || (filter === 'published' ? p.published : !p.published)),
+    );
+    const snapshot = await digest(
+      JSON.stringify([pointer.id, drafts.map((d) => [d.key, d.etag]), query, filter]),
+    );
+    let offset = 0;
+    const cursor = url.searchParams.get('cursor');
+    if (cursor) {
+      let decoded;
+      try {
+        decoded = JSON.parse(cursor);
+      } catch {
+        throw new HttpError(400, '分页位置不正确。');
+      }
+      if (!decoded || decoded.snapshot !== snapshot)
+        throw new HttpError(409, '文章列表已变化，请重新读取。');
+      if (
+        !Number.isInteger(decoded.offset) ||
+        decoded.offset < 0 ||
+        decoded.offset > selected.length
+      )
+        throw new HttpError(400, '分页位置不正确。');
+      offset = decoded.offset;
+    }
     return json({
-      posts: [...posts.values()],
+      posts: selected.slice(offset, offset + limit),
+      counts,
+      matching: selected.length,
+      cursor:
+        offset + limit < selected.length
+          ? JSON.stringify({ snapshot, offset: offset + limit })
+          : null,
       site: release.site,
       appearance: {
         themePalette: (savedSite || release.site).themePalette || 'ink',
@@ -293,7 +374,14 @@ async function apiRoute(
         throw new HttpError(409, '短记已删除，请重新打开。');
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-        customMetadata: { date: draft.front_matter.date, ...imageReferenceMetadata(source) },
+        customMetadata: {
+          date: draft.front_matter.date,
+          ...(await imageReferenceMetadata(
+            source,
+            env.STORAGE,
+            existing?.customMetadata?.image_refs_hash,
+          )),
+        },
         httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       });
       if (!object) throw new HttpError(409, '这条短记刚刚发生了修改，请重新打开。');
@@ -443,11 +531,12 @@ export default {
       if (auth) return protect(auth);
       if (path.startsWith('/api/')) {
         const session = await requireSession(request, env);
-        const route = () => apiRoute(request, env, path, session);
+        const route = (storage = env.STORAGE) =>
+          apiRoute(request, { ...env, STORAGE: storage }, path, session);
         const response = changesContentReferences(path, request.method)
           ? withContentMutation(env.STORAGE, route)
           : route();
-        if (path.startsWith('/api/backup/jobs'))
+        if (changesContentReferences(path, request.method) || path === '/api/upload')
           ctx?.waitUntil(
             response.then(
               () => {},
@@ -460,7 +549,12 @@ export default {
     } catch (e) {
       if (e instanceof HttpError) return protect(json({ error: e.message }, e.status));
       console.error(
-        JSON.stringify({ event: 'request_failed', type: e instanceof Error ? e.name : 'unknown' }),
+        JSON.stringify({
+          event: 'request_failed',
+          route: new URL(request.url).pathname.replace(/\/[A-Za-z0-9_-]{20,}/g, '/:id'),
+          method: request.method,
+          type: e instanceof Error ? e.name : 'unknown',
+        }),
       );
       return protect(json({ error: '操作未完成，请稍后重试。' }, 500));
     }

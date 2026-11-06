@@ -4,12 +4,16 @@ export async function publishInBrowser(
 ) {
   try {
     showPublishing({ ...result, status: 'building' });
-    const rendered = await engineTask('site', { release: result.browser_release });
+    const rendered = await engineTask('site', {
+      release: result.browser_release,
+      paths: result.render_files,
+    });
     const marker = JSON.parse(rendered['_release.json'] || 'null');
     if (marker?.id !== result.release_id) throw new Error('网页版本与当前发布不一致，请重新生成。');
     if (result.template_version && marker?.template_version !== result.template_version)
       throw new Error('后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。');
-    let files = [...result.files];
+    let files = [...(result.render_files || result.files)];
+    const receipts = {};
     if (result.incremental) {
       const sources = {};
       for (const path of files.filter(
@@ -33,12 +37,16 @@ export async function publishInBrowser(
         while (files.length) {
           const path = files.shift();
           if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
-          await api(`/api/publish/${result.release_id}/file?path=${encodeURIComponent(path)}`, {
-            method: 'PUT',
-            body: rendered[path],
-            rawBody: true,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
+          const uploaded = await api(
+            `/api/publish/${result.release_id}/file?path=${encodeURIComponent(path)}`,
+            {
+              method: 'PUT',
+              body: rendered[path],
+              rawBody: true,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            },
+          );
+          if (uploaded.receipt) receipts[path] = uploaded.receipt;
         }
       }),
     );
@@ -47,7 +55,7 @@ export async function publishInBrowser(
     showPublishing({ ...result, status: 'built' });
     const done = await api(`/api/publish/${result.release_id}/commit`, {
       method: 'POST',
-      body: {},
+      body: { receipts },
     });
     showPublishing(done);
   } catch (error) {

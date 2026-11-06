@@ -152,7 +152,10 @@ test('bounded retention removes only expired generated objects and protects shar
     'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
   );
   const initialized = await (await bucket.get('state/published.json')).json();
-  await bucket.delete('releases/' + initialized.id + '.json');
+  await bucket.delete([
+    'releases/' + initialized.id + '.json',
+    'releases/' + initialized.id + '.posts.json',
+  ]);
   const ids = [
     '11111111-1111-4111-8111-111111111111',
     '22222222-2222-4222-8222-222222222222',
@@ -206,11 +209,14 @@ test('bounded retention removes only expired generated objects and protects shar
     'state/pending.json',
     JSON.stringify({ release_id: old, status: 'building', started_at: new Date().toISOString() }),
   );
-  assert.equal(await maintainStorage({ STORAGE: storage }), null);
+  assert.equal((await maintainStorage({ STORAGE: storage })).reason, 'publication_busy');
   assert.ok(await bucket.head('public/content/' + orphan));
   await bucket.delete('state/pending.json');
   const result = await maintainStorage({ STORAGE: storage });
   assert.equal(result.deleted_objects, 3);
+  assert.equal(result.status, 'success');
+  assert.ok(result.last_attempt_at);
+  assert.ok(result.last_success_at);
   for (const key of [
     `public/${old}/index.html`,
     `releases/${old}.json`,
@@ -228,6 +234,15 @@ test('bounded retention removes only expired generated objects and protects shar
   ])
     assert.ok(await bucket.head(key), key);
   assert.equal((await f.request('/api/maintenance')).status, 200);
+  await bucket.put(
+    `releases/${current}.manifest.json`,
+    JSON.stringify({ pages: { bad: 'invalid' } }),
+  );
+  const failed = await maintainStorage({ STORAGE: storage });
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.stage, 'retained_manifests');
+  assert.equal(failed.last_success_at, result.last_success_at);
+  assert.equal((await (await bucket.get('state/maintenance.json')).json()).status, 'failed');
 });
 
 test('legacy short-note references remain protected before indexing', async (t) => {

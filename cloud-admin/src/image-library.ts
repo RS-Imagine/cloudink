@@ -1,3 +1,11 @@
+import {
+  imageReferenceMetadata,
+  referenceShardKey,
+  readReferenceShard,
+  checkedReferenceKeys,
+  type ReferenceShard,
+} from './image-reference-index';
+export { imageReferenceMetadata } from './image-reference-index';
 import { activeBackup } from './backup-jobs';
 import { managedImageKeys, localImageKeys, IMAGE_REFERENCE_VERSION } from './image-references';
 export { managedImageKeys } from './image-references';
@@ -13,13 +21,6 @@ export interface ImageReference {
   kind: 'published' | 'draft' | 'settings' | 'pending' | 'backup';
   title: string;
   slug?: string;
-}
-export function imageReferenceMetadata(source: string): Record<string, string> {
-  const value = JSON.stringify(managedImageKeys(source));
-  return {
-    image_refs_version: IMAGE_REFERENCE_VERSION,
-    ...(new TextEncoder().encode(value).byteLength <= 600 ? { image_refs: value } : {}),
-  };
 }
 export async function ensureManagedImages(
   storage: R2Bucket,
@@ -57,6 +58,21 @@ async function references(
 ): Promise<Map<string, ImageReference[]>> {
   const result = new Map(keys.map((key) => [key, [] as ImageReference[]]));
   if (!keys.length) return result;
+  const shards = new Map<string, Promise<ReferenceShard>>();
+  let shardBytes = 0;
+  function shard(key: string): Promise<ReferenceShard> {
+    if (!shards.has(key))
+      shards.set(
+        key,
+        readReferenceShard(storage, key).then((value) => {
+          shardBytes += new TextEncoder().encode(JSON.stringify(value)).byteLength;
+          if (shardBytes > MAX_TEXT_BYTES)
+            throw new HttpError(413, '引用索引超过安全检查上限；图片仍受保护。');
+          return value;
+        }),
+      );
+    return shards.get(key)!;
+  }
   let bytes = 0,
     count = 0,
     unindexed = 0;
@@ -137,6 +153,7 @@ async function references(
       const currentIndex = object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION;
       if (!currentIndex && check) check.reindexRequired = true;
       const indexed = currentIndex ? object.customMetadata?.image_refs : undefined;
+      const hash = currentIndex ? object.customMetadata?.image_refs_hash : undefined;
       if (indexed !== undefined) {
         let parsed: unknown;
         try {
@@ -150,7 +167,16 @@ async function references(
         )
           throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
         add(parsed, ref);
+      } else if (hash && /^[a-f0-9]{64}$/.test(hash)) {
+        const key = referenceShardKey(hash);
+        try {
+          add(await checkedReferenceKeys(await shard(key), hash), ref);
+        } catch (error) {
+          if (check) check.reindexRequired = true;
+          throw error;
+        }
       } else {
+        if (check) check.reindexRequired = true;
         if (++unindexed > MAX_UNINDEXED)
           throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
         if (bytes + object.size > MAX_TEXT_BYTES)
@@ -181,6 +207,7 @@ async function references(
       const currentIndex = object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION;
       if (!currentIndex && check) check.reindexRequired = true;
       const indexed = currentIndex ? object.customMetadata?.image_refs : undefined;
+      const hash = currentIndex ? object.customMetadata?.image_refs_hash : undefined;
       if (indexed !== undefined) {
         let parsed: unknown;
         try {
@@ -194,7 +221,16 @@ async function references(
         )
           throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
         add(parsed, ref);
+      } else if (hash && /^[a-f0-9]{64}$/.test(hash)) {
+        const key = referenceShardKey(hash);
+        try {
+          add(await checkedReferenceKeys(await shard(key), hash), ref);
+        } catch (error) {
+          if (check) check.reindexRequired = true;
+          throw error;
+        }
       } else {
+        if (check) check.reindexRequired = true;
         if (++unindexed > MAX_UNINDEXED * 3)
           throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
         if (bytes + object.size > MAX_TEXT_BYTES)
@@ -231,9 +267,26 @@ async function reindexImages(request: Request, storage: R2Bucket): Promise<Respo
   for (const object of page.objects) {
     if (
       object.customMetadata?.deleted ||
-      object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION
+      (object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION &&
+        object.customMetadata?.image_refs !== undefined)
     )
       continue;
+    const hash = object.customMetadata?.image_refs_hash;
+    if (
+      object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION &&
+      hash &&
+      /^[a-f0-9]{64}$/.test(hash)
+    ) {
+      try {
+        await checkedReferenceKeys(
+          await readReferenceShard(storage, referenceShardKey(hash)),
+          hash,
+        );
+        continue;
+      } catch (error) {
+        if (!(error instanceof HttpError) || error.status !== 503) throw error;
+      }
+    }
     if (
       !/^(?:drafts|shorts)\/[A-Za-z0-9_-]{1,100}\.md$/.test(object.key) ||
       object.size > 2_100_000
@@ -245,7 +298,7 @@ async function reindexImages(request: Request, storage: R2Bucket): Promise<Respo
     const text = await body.text();
     const saved = await storage.put(object.key, text, {
       onlyIf: { etagMatches: body.etag },
-      customMetadata: { ...body.customMetadata, ...imageReferenceMetadata(text) },
+      customMetadata: { ...body.customMetadata, ...(await imageReferenceMetadata(text, storage)) },
       httpMetadata: body.httpMetadata,
     });
     if (!saved) throw new HttpError(409, '原稿已变化，请重新更新索引。');

@@ -26,7 +26,9 @@ self.onmessage = async ({ data }) => {
     if (data.type === 'import') result = JSON.parse(m.import_markdown(JSON.stringify(data)));
     else if (data.type === 'parse') result = JSON.parse(m.parse_markdown(data.source));
     else if (data.type === 'site')
-      result = JSON.parse(m.render_release(JSON.stringify(data.release)));
+      result = JSON.parse(
+        m.render_release(JSON.stringify({ ...data.release, render_paths: data.paths })),
+      );
     else if (data.type === 'warm') result = true;
     else {
       let html = m.render_preview(JSON.stringify({ config: data.config, draft: data.draft }));

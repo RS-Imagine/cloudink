@@ -461,8 +461,11 @@ async function apply(
     const saved = await env.STORAGE.put(item.key, item.source, {
       onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
       customMetadata: short
-        ? { date: draft.front_matter.date, ...imageReferenceMetadata(item.source) }
-        : await draftSummary(draft as ReturnType<typeof parseSource>),
+        ? {
+            date: draft.front_matter.date,
+            ...(await imageReferenceMetadata(item.source, env.STORAGE)),
+          }
+        : await draftSummary(draft as ReturnType<typeof parseSource>, env.STORAGE),
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
     });
     if (!saved) throw new HttpError(409, '原稿刚刚发生变化，请重新读取任务进度。');
