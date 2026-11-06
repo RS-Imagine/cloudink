@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture, draft, origin } from './fixture.mjs';
@@ -272,4 +274,41 @@ test('the generated social cover can be fetched anonymously without Referer', as
   });
   assert.equal(cached.status, 304);
   assert.equal(await cached.text(), '');
+});
+
+test('native transition cancellation is handled while DOM replacement failures still reject', async () => {
+  const source = await readFile('assets/reader-runtime.js', 'utf8');
+  const hooks = new Map();
+  const window = { addEventListener() {} };
+  const document = {
+    startViewTransition(callback) {
+      return {
+        ready: Promise.reject(new Error('visual transition cancelled')),
+        finished: Promise.reject(new Error('visual transition cancelled')),
+        updateCallbackDone: Promise.resolve().then(callback),
+      };
+    },
+  };
+  runInNewContext(source, { window, document });
+  window.CloudInkReader.attach({
+    performNavigation() {},
+    hooks: {
+      replace(name, callback) {
+        hooks.set(name, callback);
+      },
+      on() {},
+    },
+  });
+  const replace = hooks.get('content:replace');
+  let updates = 0;
+  await replace({}, {}, async () => {
+    updates++;
+  });
+  assert.equal(updates, 1);
+  await assert.rejects(
+    replace({}, {}, async () => {
+      throw new Error('DOM replacement failed');
+    }),
+    /DOM replacement failed/,
+  );
 });
