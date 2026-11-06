@@ -37,13 +37,22 @@ export async function publicImage(request: Request, storage: R2Bucket): Promise<
     return new Response('Invalid image path', { status: 400 });
   }
   if (!validImageKey(key)) return new Response('Not found', { status: 404 });
-  let referrer = '';
-  try {
-    referrer = new URL(request.headers.get('Referer') || '').origin;
-  } catch {
-    // Missing or invalid referrers are not eligible for public image hosting.
+  // Preview crawlers, direct links and privacy settings may omit Referer.
+  // This is a hotlink check, not authorization for private bucket objects.
+  const referrer = request.headers.get('Referer');
+  let allowed = referrer === null;
+  if (referrer !== null) {
+    try {
+      allowed = new URL(referrer).origin === new URL(request.url).origin;
+    } catch {
+      allowed = false;
+    }
   }
-  if (referrer !== new URL(request.url).origin) return new Response('Forbidden', { status: 403 });
+  if (!allowed)
+    return new Response('Forbidden', {
+      status: 403,
+      headers: { Vary: 'Referer', 'Cache-Control': 'no-store' },
+    });
   const body = request.method === 'GET' ? await storage.get(key) : null;
   const object = request.method === 'HEAD' ? await storage.head(key) : body;
   if (!object) return new Response('Not found', { status: 404 });
