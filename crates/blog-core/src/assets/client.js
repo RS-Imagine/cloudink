@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const codeEl = pre.querySelector('code');
           const codeClass = codeEl ? codeEl.className : '';
           const langMatch = codeClass.match(/(?:language|lang)-([\w+-]+)/i);
-          const langName = langMatch ? langMatch[1].toUpperCase() : '';
+          const langName = langMatch ? langMatch[1].toLowerCase() : 'text';
 
           // Build code header bar
           const header = document.createElement('div');
@@ -470,17 +470,24 @@ document.addEventListener('DOMContentLoaded', () => {
           const meta = document.createElement('div');
           meta.className = 'code-meta';
 
-          const dots = document.createElement('span');
-          dots.className = 'code-dots';
-          dots.setAttribute('aria-hidden', 'true');
-          dots.innerHTML = '<span class="code-dot dot-red"></span><span class="code-dot dot-yellow"></span><span class="code-dot dot-green"></span>';
-          meta.appendChild(dots);
+          const langBadge = document.createElement('span');
+          langBadge.className = 'code-lang';
+          langBadge.textContent = langName;
+          meta.appendChild(langBadge);
 
-          if (langName) {
-            const langBadge = document.createElement('span');
-            langBadge.className = 'code-lang';
-            langBadge.textContent = langName;
-            meta.appendChild(langBadge);
+          // If line count > 25, add a collapse/expand toggle
+          const codeText = codeEl?.textContent ?? pre.textContent;
+          const lineCount = codeText.replace(/\n$/, '').split('\n').length;
+          if (lineCount > 25) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'code-toggle-expand';
+            toggleBtn.type = 'button';
+            toggleBtn.textContent = t('折叠代码', 'Collapse');
+            toggleBtn.addEventListener('click', () => {
+              const isCollapsed = wrapper.classList.toggle('is-collapsed');
+              toggleBtn.textContent = isCollapsed ? t(`展开代码 (${lineCount} 行)`, `Expand (${lineCount} lines)`) : t('折叠代码', 'Collapse');
+            });
+            meta.appendChild(toggleBtn);
           }
 
           const actions = document.createElement('div');

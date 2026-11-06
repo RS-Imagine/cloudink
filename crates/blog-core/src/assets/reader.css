@@ -259,6 +259,28 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--ci-divider) 45%, transparent);
 }
+.code-toggle-expand {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--ci-divider) 60%, transparent);
+  color: var(--ci-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.code-toggle-expand:hover {
+  background: color-mix(in srgb, var(--ci-divider) 30%, transparent);
+  color: var(--ci-primary);
+}
+.code-block.is-collapsed pre,
+.code-block.is-collapsed .code-gutter {
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  overflow: hidden !important;
+}
+}
 .code-actions {
   display: inline-flex;
   align-items: center;

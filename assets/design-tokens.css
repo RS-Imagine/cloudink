@@ -73,6 +73,8 @@
   --ci-on-error-container: var(--ci-light-on-error-container);
   --ci-success: var(--ci-light-success);
   --ci-warning: var(--ci-light-warning);
+  --ci-info: #0284c7;
+  --ci-disabled: #94a3b8;
   --ci-hover: var(--ci-light-hover);
   --ci-pressed: var(--ci-light-pressed);
   --ci-overlay: var(--ci-light-overlay);
@@ -268,7 +270,7 @@
   --ci-light-text: #241c2c;
   --ci-dark-text: #f0e6f8;
   --ci-light-muted: #6b5c78;
-  --ci-dark-muted: #cbb9dc;
+  --ci-dark-muted: #d8c7e8;
   --ci-light-outline: #8e7c9e;
   --ci-dark-outline: #9f8bb2;
   --ci-light-divider: #e0d4eb;
@@ -301,7 +303,7 @@
   --ci-light-text: #2c1a22;
   --ci-dark-text: #f8e6ed;
   --ci-light-muted: #785a67;
-  --ci-dark-muted: #dcbac9;
+  --ci-dark-muted: #e4c9d6;
   --ci-light-outline: #9e7a8b;
   --ci-dark-outline: #b28a9c;
   --ci-light-divider: #ebd3dc;
@@ -343,6 +345,8 @@
     --ci-on-error-container: var(--ci-dark-on-error-container);
     --ci-success: var(--ci-dark-success);
     --ci-warning: var(--ci-dark-warning);
+    --ci-info: #38bdf8;
+    --ci-disabled: #64748b;
     --ci-hover: var(--ci-dark-hover);
     --ci-pressed: var(--ci-dark-pressed);
     --ci-overlay: var(--ci-dark-overlay);
@@ -371,6 +375,8 @@
   --ci-on-error-container: var(--ci-dark-on-error-container);
   --ci-success: var(--ci-dark-success);
   --ci-warning: var(--ci-dark-warning);
+  --ci-info: #38bdf8;
+  --ci-disabled: #64748b;
   --ci-hover: var(--ci-dark-hover);
   --ci-pressed: var(--ci-dark-pressed);
   --ci-overlay: var(--ci-dark-overlay);

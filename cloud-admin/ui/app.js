@@ -1615,3 +1615,15 @@ configureBackup({
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
   },
 });
+
+if (typeof window !== 'undefined' && window.visualViewport) {
+  const syncVisualViewport = () => {
+    const vh = window.visualViewport.height;
+    const top = window.visualViewport.offsetTop;
+    document.documentElement.style.setProperty('--ci-visual-vh', `${vh}px`);
+    document.documentElement.style.setProperty('--ci-visual-top', `${top}px`);
+  };
+  window.visualViewport.addEventListener('resize', syncVisualViewport, { passive: true });
+  window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
+  syncVisualViewport();
+}
