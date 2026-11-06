@@ -474,19 +474,8 @@ async function apiRoute(
     if (!saved) throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     return json({ site, etag: saved.etag });
   }
-  if (path === '/api/export' && request.method === 'GET') {
-    const release = await currentRelease(env),
-      drafts = await listDrafts(env.STORAGE),
-      files: Record<string, string> = {};
-    for (const [slug, source] of Object.entries(release.markdown_posts))
-      files[`published/${slug}.md`] = source;
-    for (const obj of drafts) {
-      const source = await env.STORAGE.get(obj.key);
-      if (source && !obj.customMetadata?.deleted) files[obj.key] = await source.text();
-    }
-    files['site.json'] = JSON.stringify(release.site); // UI writes this as site.json.
-    return json({ files, release_id: release.id });
-  }
+  if (path === '/api/export' && request.method === 'GET')
+    throw new HttpError(410, '此导出接口已停用，请刷新后台并使用分批备份。');
   throw new HttpError(404, '接口不存在。');
 }
 function protect(response: Response, asset = false): Response {
