@@ -1,3 +1,5 @@
+import { managedImageKeys, localImageKeys, IMAGE_REFERENCE_VERSION } from './image-references';
+export { managedImageKeys } from './image-references';
 import { parentImageKey, imagePresentation, IMAGE_WIDTHS } from './image-variants';
 import type { CloudInkEnv } from './env';
 import { HttpError, json, jsonInput, readJson, type Publishing, type Release } from './models';
@@ -11,58 +13,12 @@ export interface ImageReference {
   title: string;
   slug?: string;
 }
-function normalizePaths(source: string): string {
-  return source
-    .replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)))
-    .replace(/&#(x[0-9a-f]+|[0-9]+);/gi, (_, code: string) => {
-      const value = code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : Number(code);
-      return value > 0 && value < 128 ? String.fromCharCode(value) : '';
-    })
-    .replace(/&sol;/g, '/');
-}
-export function managedImageKeys(source: string): string[] {
-  // Conservatively protect literal mentions as well as rendered references.
-  const normalized = normalizePaths(source);
-  const matches =
-    normalized.match(/uploads\/[A-Za-z0-9_./-]+\.(?:jpeg|jpg|png|webp|gif|avif|svg|ico)\b/g) || [];
-  return [...new Set(matches.filter(validImageKey))];
-}
 export function imageReferenceMetadata(source: string): Record<string, string> {
   const value = JSON.stringify(managedImageKeys(source));
-  // Metadata is bounded; oversized reference sets are checked from the source.
-  return new TextEncoder().encode(value).byteLength <= 600 ? { image_refs: value } : {};
-}
-function localImageKeys(source: string, origin: string): string[] {
-  // Validation applies to image URLs, not examples of bucket keys in prose or
-  // code. External image hosts remain supported. Cleanup matching is broader.
-  const text = normalizePaths(source)
-    .replace(/^\+\+\+[\s\S]*?\r?\n\+\+\+\r?\n/, '')
-    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`]*`/g, '');
-  const urls: string[] = [];
-  for (const match of text.matchAll(/!\[[^\]]*\]\(\s*(?:<([^>]+)>|([^\s)]+))/g))
-    urls.push(match[1] || match[2]);
-  for (const match of text.matchAll(/^\s*\[[^\]]+\]:\s*(?:<([^>]+)>|([^\s]+))/gm))
-    urls.push(match[1] || match[2]);
-  for (const tag of text.matchAll(/<(?:img|source)\b[^>]*>/gi))
-    for (const match of tag[0].matchAll(
-      /\b(?:src|srcset)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
-    ))
-      urls.push(
-        ...(match[1] || match[2] || match[3]).split(',').map((part) => part.trim().split(/\s/)[0]),
-      );
-  const keys = new Set<string>();
-  for (const input of urls) {
-    let url: URL;
-    try {
-      url = new URL(input, origin);
-    } catch {
-      continue;
-    }
-    if (url.origin !== origin || !url.pathname.startsWith('/images/')) continue;
-    const key = url.pathname.slice('/images/'.length);
-    if (validImageKey(key)) keys.add(key);
-  }
-  return [...keys];
+  return {
+    image_refs_version: IMAGE_REFERENCE_VERSION,
+    ...(new TextEncoder().encode(value).byteLength <= 600 ? { image_refs: value } : {}),
+  };
 }
 export async function ensureManagedImages(
   storage: R2Bucket,
@@ -71,7 +27,7 @@ export async function ensureManagedImages(
 ): Promise<void> {
   const needed = new Set<string>();
   for (const text of typeof source === 'string' ? [source] : source)
-    for (const key of localImageKeys(text, origin)) needed.add(key);
+    for (const key of await localImageKeys(text, origin)) needed.add(key);
   if (!needed.size) return;
   // Small reference sets use cheaper Class B HEADs instead of a Class A
   // bucket scan. Large sets keep the bounded LIST path.
@@ -96,6 +52,7 @@ export async function ensureManagedImages(
 async function references(
   storage: R2Bucket,
   keys: string[],
+  check?: { reindexRequired: boolean },
 ): Promise<Map<string, ImageReference[]>> {
   const result = new Map(keys.map((key) => [key, [] as ImageReference[]]));
   if (!keys.length) return result;
@@ -169,7 +126,9 @@ async function references(
         title: object.customMetadata?.title || slug,
         slug,
       };
-      const indexed = object.customMetadata?.image_refs;
+      const currentIndex = object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION;
+      if (!currentIndex && check) check.reindexRequired = true;
+      const indexed = currentIndex ? object.customMetadata?.image_refs : undefined;
       if (indexed !== undefined) {
         let parsed: unknown;
         try {
@@ -211,7 +170,9 @@ async function references(
       const slug = object.key.match(/^shorts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '短记目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = { kind: 'draft', title: slug, slug };
-      const indexed = object.customMetadata?.image_refs;
+      const currentIndex = object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION;
+      if (!currentIndex && check) check.reindexRequired = true;
+      const indexed = currentIndex ? object.customMetadata?.image_refs : undefined;
       if (indexed !== undefined) {
         let parsed: unknown;
         try {
@@ -226,6 +187,8 @@ async function references(
           throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
         add(parsed, ref);
       } else {
+        if (++unindexed > MAX_UNINDEXED * 3)
+          throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
         if (bytes + object.size > MAX_TEXT_BYTES)
           throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
         const body = await storage.get(object.key);
@@ -237,11 +200,65 @@ async function references(
   } while (cursor);
   return result;
 }
+async function reindexImages(request: Request, storage: R2Bucket): Promise<Response> {
+  const input = await jsonInput(request, 4096);
+  const prefix =
+    input.prefix === 'shorts/'
+      ? 'shorts/'
+      : input.prefix === undefined || input.prefix === 'drafts/'
+        ? 'drafts/'
+        : '';
+  if (
+    !prefix ||
+    (input.cursor !== undefined && (typeof input.cursor !== 'string' || input.cursor.length > 2048))
+  )
+    throw new HttpError(400, '引用索引分页参数不正确。');
+  const page = await storage.list({
+    prefix,
+    cursor: input.cursor as string | undefined,
+    limit: 8,
+    include: ['customMetadata'],
+  });
+  let updated = 0;
+  for (const object of page.objects) {
+    if (
+      object.customMetadata?.deleted ||
+      object.customMetadata?.image_refs_version === IMAGE_REFERENCE_VERSION
+    )
+      continue;
+    if (
+      !/^(?:drafts|shorts)\/[A-Za-z0-9_-]{1,100}\.md$/.test(object.key) ||
+      object.size > 2_100_000
+    )
+      throw new HttpError(413, '原稿格式或大小超出引用索引更新范围；图片仍受保护。');
+    const body = await storage.get(object.key);
+    if (!body || body.etag !== object.etag)
+      throw new HttpError(409, '原稿已变化，请重新更新索引。');
+    const text = await body.text();
+    const saved = await storage.put(object.key, text, {
+      onlyIf: { etagMatches: body.etag },
+      customMetadata: { ...body.customMetadata, ...imageReferenceMetadata(text) },
+      httpMetadata: body.httpMetadata,
+    });
+    if (!saved) throw new HttpError(409, '原稿已变化，请重新更新索引。');
+    updated++;
+  }
+  return json({
+    updated,
+    next: page.truncated
+      ? { prefix, cursor: page.cursor }
+      : prefix === 'drafts/'
+        ? { prefix: 'shorts/' }
+        : null,
+  });
+}
 export async function imageLibraryRoute(
   request: Request,
   env: CloudInkEnv,
   path: string,
 ): Promise<Response | null> {
+  if (path === '/api/images/reindex' && request.method === 'POST')
+    return reindexImages(request, env.STORAGE);
   if (path !== '/api/images') return null;
   if (request.method === 'GET') {
     const cursor = new URL(request.url).searchParams.get('cursor');
@@ -310,12 +327,14 @@ export async function imageLibraryRoute(
       family.push(item);
       families.set(parent, family);
     }
+    const check = { reindexRequired: false };
     let refs = new Map<string, ImageReference[]>(),
       referenceError = '';
     try {
       refs = await references(
         env.STORAGE,
         images.map((object) => object.key),
+        check,
       );
     } catch (error) {
       if (!(error instanceof HttpError)) throw error;
@@ -338,6 +357,7 @@ export async function imageLibraryRoute(
         etag: object.etag,
         references: refs.get(object.key) || [],
       })),
+      reindexRequired: check.reindexRequired,
       referencesChecked: !referenceError,
       referenceError,
       cursor: nextCursor,
