@@ -1,3 +1,4 @@
+import { backupSource, legacyHistoryKey } from './backup-contract';
 import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
@@ -53,18 +54,11 @@ async function objects(bucket: R2Bucket, prefix: string, limit = MAX_FILES): Pro
   } while (cursor);
   return result;
 }
-// Backups made before version history was removed may still contain these.
-function legacyHistoryKey(key: string): boolean {
-  return /^history\/[A-Za-z0-9_-]{1,100}\/[a-f0-9-]+\.md$/.test(key);
-}
 function sourceSlug(key: string): string | null {
-  return (
-    key.match(/^(?:published|drafts|published-shorts|shorts)\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1] ||
-    null
-  );
+  return backupSource(key)?.slug || null;
 }
 function isShortKey(key: string): boolean {
-  return /^(?:published-shorts|shorts)\//.test(key);
+  return backupSource(key)?.short || false;
 }
 async function createBackup(env: CloudInkEnv): Promise<Backup> {
   const release = await currentRelease(env);
