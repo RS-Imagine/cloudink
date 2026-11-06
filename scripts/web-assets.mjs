@@ -160,6 +160,7 @@ if (process.argv[2] === 'seed') {
   await copyFile(resolve(highlightRoot, 'LICENSE'), resolve(vendor, 'highlight-LICENSE.txt'));
   await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'assets/theme.js')));
   await copyFile(resolve(root, 'assets/manifest.webmanifest'), resolve(output, 'manifest.webmanifest'));
+  await copyFile(resolve(root, 'assets/sw.js'), resolve(output, 'sw.js'));
   await writeFile(
     resolve(output, '_headers'),
     [
@@ -175,6 +176,9 @@ if (process.argv[2] === 'seed') {
       '/manifest.webmanifest',
       '  X-Content-Type-Options: nosniff',
       '  Content-Type: application/manifest+json; charset=utf-8',
+      '/sw.js',
+      '  X-Content-Type-Options: nosniff',
+      '  Content-Type: application/javascript; charset=utf-8',
       '/reader-assets/*',
       '  X-Content-Type-Options: nosniff',
     ].join('\n') + '\n',

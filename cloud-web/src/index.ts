@@ -29,6 +29,7 @@ const compiledAssets = new Set([
   '/styles.css',
   '/favicon.svg',
   '/manifest.webmanifest',
+  '/sw.js',
 ]);
 function protect(response: Response, analytics = false): Response {
   const headers = new Headers(response.headers);

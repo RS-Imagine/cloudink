@@ -40,6 +40,11 @@ pub fn manifest_json() -> &'static str {
     include_str!("../../../assets/manifest.webmanifest")
 }
 
+/// Returns the CloudInk Service Worker source.
+pub fn sw_js() -> &'static str {
+    include_str!("../../../assets/sw.js")
+}
+
 fn site_icon(config: &SiteConfig) -> (String, &'static str) {
     if let Some(key) = config.site_icon.as_deref() {
         if let Some(name) = key.strip_prefix("uploads/icons/") {

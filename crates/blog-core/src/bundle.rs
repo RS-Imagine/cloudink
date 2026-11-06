@@ -47,6 +47,7 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
                         | "client.js"
                         | "favicon.svg"
                         | "manifest.webmanifest"
+                        | "sw.js"
                         | "search_index.json"
                         | "site.json"
                         | "_release.json"
@@ -91,6 +92,9 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
     }
     if wants("manifest.webmanifest") {
         files.insert("manifest.webmanifest".into(), render::manifest_json().into());
+    }
+    if wants("sw.js") {
+        files.insert("sw.js".into(), render::sw_js().into());
     }
     if wants("index.html") {
         files.insert(

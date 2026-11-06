@@ -1079,4 +1079,9 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('pagehide', nativeRestoration);
         window.addEventListener('pageshow', managedRestoration);
       }
+      if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
     });

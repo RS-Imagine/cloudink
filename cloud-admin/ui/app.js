@@ -16,6 +16,7 @@ import {
   disposePreview,
   configurePreview,
 } from './preview.js';
+import { editorStore } from './store.js';
 
 const motion = window.CloudInkMotion;
 motion.mount();
@@ -691,6 +692,12 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
+  editorStore.update((s) => ({
+    ...s,
+    dirty,
+    slug: doc?.front_matter?.slug || '',
+    title: $('title')?.value || '',
+  }));
   saveLocalSnapshot(doc.front_matter?.slug, currentDraft());
   feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
