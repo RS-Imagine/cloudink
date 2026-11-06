@@ -68,9 +68,7 @@ export async function buildPostIndex(
   }
   const entries: ReleaseImageEntry[] = [];
   const oldImages =
-    prior &&
-    prior.id === base?.id &&
-    prior.images?.version === IMAGE_REFERENCE_VERSION
+    prior && prior.id === base?.id && prior.images?.version === IMAGE_REFERENCE_VERSION
       ? new Map(prior.images.entries.map((e) => [e.scope, e]))
       : new Map<string, ReleaseImageEntry>();
   const addImages = (
