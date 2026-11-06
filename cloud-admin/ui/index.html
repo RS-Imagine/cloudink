@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>写作后台 · CloudInk 云砚</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#24594f" />
     <script src="/admin-theme.js"></script>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/reader-assets/editorial-font.css" />
@@ -731,6 +733,17 @@
                 预览
               </button>
             </div>
+            <div class="editor-format-actions" role="toolbar" aria-label="Markdown 格式工具栏">
+              <button type="button" class="quiet tool-btn" data-format="bold" title="加粗 (Ctrl+B)" aria-label="加粗"><strong>B</strong></button>
+              <button type="button" class="quiet tool-btn" data-format="italic" title="斜体 (Ctrl+I)" aria-label="斜体"><em>I</em></button>
+              <button type="button" class="quiet tool-btn" data-format="heading" title="标题 H2-H4" aria-label="标题">H</button>
+              <button type="button" class="quiet tool-btn" data-format="quote" title="引用" aria-label="引用">“”</button>
+              <button type="button" class="quiet tool-btn" data-format="code" title="行内代码/代码块" aria-label="代码"><code>&lt;&gt;</code></button>
+              <button type="button" class="quiet tool-btn" data-format="link" title="超链接 (Ctrl+K)" aria-label="超链接">🔗</button>
+              <button type="button" class="quiet tool-btn" data-format="ul" title="无序列表" aria-label="无序列表">•–</button>
+              <button type="button" class="quiet tool-btn" data-format="ol" title="有序列表" aria-label="有序列表">1.</button>
+              <button type="button" class="quiet tool-btn" data-format="zen" id="toggle-zen" title="专注全屏写作" aria-label="专注全屏写作">⛶</button>
+            </div>
             <div class="editor-image-actions">
               <button id="choose-library-image" class="quiet" aria-label="图片库" title="图片库">
                 <svg
@@ -782,6 +795,7 @@
               aria-label="Markdown 正文"
               aria-describedby="writing-help"
             ></textarea>
+            <div id="editor-splitter" class="editor-splitter" role="separator" aria-orientation="vertical" title="拖动调整分栏比例"></div>
             <div class="preview-pane">
               <iframe
                 id="preview-frame"

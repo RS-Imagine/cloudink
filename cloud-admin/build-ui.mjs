@@ -78,6 +78,7 @@ const paths = [
   ['/admin-theme.js', '../assets/theme.js', 'text/javascript; charset=utf-8'],
   ['/', 'ui/index.html', 'text/html; charset=utf-8'],
   ['/favicon.svg', '../assets/cloudink.svg', 'image/svg+xml'],
+  ['/manifest.webmanifest', '../assets/manifest.webmanifest', 'application/manifest+json; charset=utf-8'],
   ['/style.css', 'ui/style.css', 'text/css; charset=utf-8'],
   ['/app.js', 'ui/app.generated.js', 'text/javascript; charset=utf-8'],
   ['/preview.worker.js', 'ui/preview.worker.generated.js', 'text/javascript; charset=utf-8'],

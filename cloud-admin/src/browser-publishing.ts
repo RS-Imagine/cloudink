@@ -24,6 +24,7 @@ const coreFiles = [
   'styles.css',
   'client.js',
   'favicon.svg',
+  'manifest.webmanifest',
   'search_index.json',
   'site.json',
   '_release.json',
@@ -102,6 +103,7 @@ export function publicType(path: string): string {
   if (path === 'client.js') return 'text/javascript; charset=utf-8';
   if (path === 'styles.css') return 'text/css; charset=utf-8';
   if (path === 'favicon.svg') return 'image/svg+xml';
+  if (path === 'manifest.webmanifest') return 'application/manifest+json; charset=utf-8';
   const ext = path.split('.').pop()?.toLowerCase();
   return (
     (
@@ -131,7 +133,9 @@ export interface PageManifest {
   sizes?: Record<string, number>;
 }
 const generatedFiles = (state: Publishing) =>
-  (state.files || []).filter((path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path));
+  (state.files || []).filter(
+    (path) => !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest'].includes(path),
+  );
 function compatible(pointer: BrowserPointer | null, state: Publishing): boolean {
   return (
     pointer?.id === state.previous_id &&

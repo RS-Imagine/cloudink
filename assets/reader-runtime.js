@@ -369,6 +369,19 @@
       'page:load',
       (visit, args, original) => visit.meta.readerPage || original(visit, args),
     );
+    if (
+      typeof document.startViewTransition === 'function' &&
+      !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    ) {
+      swup.hooks.replace('content:replace', (visit, args, original) => {
+        return new Promise((resolve) => {
+          document.startViewTransition(async () => {
+            await original(visit, args);
+            resolve();
+          });
+        });
+      });
+    }
     swup.hooks.on('page:view', (visit) => {
       if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
     });

@@ -35,6 +35,11 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
+/// Returns the shared CloudInk Web App Manifest source.
+pub fn manifest_json() -> &'static str {
+    include_str!("../../../assets/manifest.webmanifest")
+}
+
 fn site_icon(config: &SiteConfig) -> (String, &'static str) {
     if let Some(key) = config.site_icon.as_deref() {
         if let Some(name) = key.strip_prefix("uploads/icons/") {
@@ -548,6 +553,8 @@ fn page(
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
   <link rel="stylesheet" href="/reader-assets/editorial-font.css">
   <link rel="icon" type="{icon_type}" href="{icon_url}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#24594f">
   <link rel="alternate" type="application/rss+xml" title="{site_title}" href="/feed.xml">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">

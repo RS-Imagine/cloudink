@@ -23,7 +23,13 @@ const editorAssets = new Set([
   '/blog_wasm.js',
   '/blog_wasm_bg.wasm',
 ]);
-const compiledAssets = new Set(['/client.js', '/theme.js', '/styles.css', '/favicon.svg']);
+const compiledAssets = new Set([
+  '/client.js',
+  '/theme.js',
+  '/styles.css',
+  '/favicon.svg',
+  '/manifest.webmanifest',
+]);
 function protect(response: Response, analytics = false): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Content-Type-Options', 'nosniff');

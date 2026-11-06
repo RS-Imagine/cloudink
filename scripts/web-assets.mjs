@@ -159,6 +159,7 @@ if (process.argv[2] === 'seed') {
   await copyFile(resolve(mathRoot, 'LICENSE'), resolve(vendor, 'katex-LICENSE.txt'));
   await copyFile(resolve(highlightRoot, 'LICENSE'), resolve(vendor, 'highlight-LICENSE.txt'));
   await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'assets/theme.js')));
+  await copyFile(resolve(root, 'assets/manifest.webmanifest'), resolve(output, 'manifest.webmanifest'));
   await writeFile(
     resolve(output, '_headers'),
     [
@@ -171,6 +172,9 @@ if (process.argv[2] === 'seed') {
       '/favicon.svg',
       '  X-Content-Type-Options: nosniff',
       "  Content-Security-Policy: sandbox; default-src 'none'",
+      '/manifest.webmanifest',
+      '  X-Content-Type-Options: nosniff',
+      '  Content-Type: application/manifest+json; charset=utf-8',
       '/reader-assets/*',
       '  X-Content-Type-Options: nosniff',
     ].join('\n') + '\n',

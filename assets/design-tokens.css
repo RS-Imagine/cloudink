@@ -72,7 +72,7 @@
   --ci-error-container: var(--ci-light-error-container);
   --ci-on-error-container: var(--ci-light-on-error-container);
   --ci-success: var(--ci-light-success);
-  --ci-warning: var(--ci-warning);
+  --ci-warning: var(--ci-light-warning);
   --ci-hover: var(--ci-light-hover);
   --ci-pressed: var(--ci-light-pressed);
   --ci-overlay: var(--ci-light-overlay);

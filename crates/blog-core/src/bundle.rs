@@ -88,6 +88,9 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
     if wants("favicon.svg") {
         files.insert("favicon.svg".into(), render::favicon_svg().into());
     }
+    if wants("manifest.webmanifest") {
+        files.insert("manifest.webmanifest".into(), render::manifest_json().into());
+    }
     if wants("index.html") {
         files.insert(
             "index.html".into(),

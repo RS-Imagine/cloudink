@@ -1,0 +1,18 @@
+{
+  "name": "CloudInk · 云砚",
+  "short_name": "CloudInk",
+  "description": "让文字，有一处归所。依托 Cloudflare 的个人独立博客与写作空间。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f5f1",
+  "theme_color": "#24594f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

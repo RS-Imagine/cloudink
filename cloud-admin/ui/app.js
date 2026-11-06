@@ -667,6 +667,19 @@ function fillEditor(draft, etag) {
   wordCount();
   void preview();
 }
+function saveLocalSnapshot(slug, draft) {
+  if (!slug || !draft) return;
+  try {
+    localStorage.setItem(
+      `cloudink-snapshot:${slug}`,
+      JSON.stringify({
+        time: Date.now(),
+        title: draft.front_matter?.title || '',
+        draft,
+      }),
+    );
+  } catch {}
+}
 function wordCount() {
   $('word-count').textContent =
     `${$('body').value.replace(/\s/g, '').length.toLocaleString()} 个字符`;
@@ -675,6 +688,7 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
+  saveLocalSnapshot(doc.front_matter?.slug, currentDraft());
   feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
   clearTimeout(autosaveTimer);
@@ -1171,6 +1185,247 @@ $('body').addEventListener('drop', (e) => {
   e.preventDefault();
   void uploadFiles(images);
 });
+
+function setupEditorEnhancements() {
+  const textarea = $('body');
+  if (!textarea) return;
+
+  function applyFormat(type) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.slice(start, end);
+    let replacement = '',
+      newCursor = start;
+
+    switch (type) {
+      case 'bold':
+        replacement = selected ? `**${selected}**` : '****';
+        newCursor = selected ? end + 4 : start + 2;
+        break;
+      case 'italic':
+        replacement = selected ? `*${selected}*` : '**';
+        newCursor = selected ? end + 2 : start + 1;
+        break;
+      case 'code':
+        if (selected.includes('\n')) {
+          replacement = `\`\`\`\n${selected || ''}\n\`\`\`\n`;
+          newCursor = selected ? end + 8 : start + 4;
+        } else {
+          replacement = selected ? `\`${selected}\`` : '``';
+          newCursor = selected ? end + 2 : start + 1;
+        }
+        break;
+      case 'quote':
+        replacement = selected ? selected.split('\n').map((l) => `> ${l}`).join('\n') : '> ';
+        newCursor = start + replacement.length;
+        break;
+      case 'ul':
+        replacement = selected ? selected.split('\n').map((l) => `- ${l}`).join('\n') : '- ';
+        newCursor = start + replacement.length;
+        break;
+      case 'ol':
+        replacement = selected
+          ? selected.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n')
+          : '1. ';
+        newCursor = start + replacement.length;
+        break;
+      case 'heading': {
+        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+        const lineEnd = text.indexOf('\n', start);
+        const fullLineEnd = lineEnd === -1 ? text.length : lineEnd;
+        const currentLine = text.slice(lineStart, fullLineEnd);
+        let newLine = currentLine;
+        if (currentLine.startsWith('## ')) newLine = '### ' + currentLine.slice(3);
+        else if (currentLine.startsWith('### ')) newLine = '#### ' + currentLine.slice(4);
+        else if (currentLine.startsWith('#### ')) newLine = currentLine.slice(5);
+        else newLine = '## ' + currentLine;
+        textarea.setRangeText(newLine, lineStart, fullLineEnd, 'select');
+        changed();
+        textarea.focus();
+        return;
+      }
+      case 'link':
+        replacement = `[${selected || '链接文本'}](https://)`;
+        newCursor = selected ? end + 11 : start + 1;
+        break;
+      case 'zen':
+        $('app-view')?.classList.toggle('zen-mode');
+        return;
+    }
+
+    if (replacement) {
+      textarea.setRangeText(replacement, start, end, 'end');
+      textarea.setSelectionRange(newCursor, newCursor);
+      textarea.focus();
+      changed();
+    }
+  }
+
+  document.querySelectorAll('.editor-format-actions [data-format]').forEach((btn) => {
+    btn.addEventListener('click', () => applyFormat(btn.dataset.format));
+  });
+
+  textarea.addEventListener('keydown', (e) => {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (start === end) {
+        textarea.setRangeText('  ', start, end, 'end');
+      } else {
+        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+        const lineEnd = text.indexOf('\n', end);
+        const rangeEnd = lineEnd === -1 ? text.length : lineEnd;
+        const lines = text.slice(lineStart, rangeEnd).split('\n');
+        if (e.shiftKey) {
+          const unindented = lines
+            .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
+            .join('\n');
+          textarea.setRangeText(unindented, lineStart, rangeEnd, 'select');
+        } else {
+          const indented = lines.map((l) => '  ' + l).join('\n');
+          textarea.setRangeText(indented, lineStart, rangeEnd, 'select');
+        }
+      }
+      changed();
+      return;
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+      const currentLine = text.slice(lineStart, start);
+      const ulMatch = currentLine.match(/^(\s*)([-*+]\s+)/);
+      const olMatch = currentLine.match(/^(\s*)(\d+)\.\s+/);
+      if (ulMatch) {
+        if (currentLine.trim() === ulMatch[2].trim()) {
+          e.preventDefault();
+          textarea.setRangeText('', lineStart, start, 'end');
+          changed();
+          return;
+        }
+        e.preventDefault();
+        textarea.setRangeText('\n' + ulMatch[1] + ulMatch[2], start, end, 'end');
+        changed();
+        return;
+      } else if (olMatch) {
+        if (currentLine.trim() === olMatch[2] + '.') {
+          e.preventDefault();
+          textarea.setRangeText('', lineStart, start, 'end');
+          changed();
+          return;
+        }
+        e.preventDefault();
+        const nextNum = parseInt(olMatch[2], 10) + 1;
+        textarea.setRangeText('\n' + olMatch[1] + nextNum + '. ', start, end, 'end');
+        changed();
+        return;
+      }
+    }
+
+    const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`', '*': '*', _: '_' };
+    if (start !== end && pairs[e.key]) {
+      e.preventDefault();
+      const openChar = e.key;
+      const closeChar = pairs[openChar];
+      const selected = text.slice(start, end);
+      textarea.setRangeText(`${openChar}${selected}${closeChar}`, start, end, 'select');
+      changed();
+      return;
+    }
+
+    if (e.ctrlKey || e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'b') {
+        e.preventDefault();
+        applyFormat('bold');
+      } else if (k === 'i') {
+        e.preventDefault();
+        applyFormat('italic');
+      } else if (k === 'k') {
+        e.preventDefault();
+        applyFormat('link');
+      } else if (k === 's') {
+        e.preventDefault();
+        saveCurrent()
+          .then(() => notice('草稿已保存。', 'success'))
+          .catch((err) => notice(err.message, 'error'));
+      }
+    }
+
+    if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) {
+      $('app-view')?.classList.remove('zen-mode');
+    }
+  });
+
+  let scrollSyncing = false;
+  textarea.addEventListener(
+    'scroll',
+    () => {
+      if (scrollSyncing) return;
+      const scrollable = textarea.scrollHeight - textarea.clientHeight;
+      if (scrollable <= 0) return;
+      const progress = textarea.scrollTop / scrollable;
+      const frameWin = $('preview-frame')?.contentWindow;
+      const frameDoc = $('preview-frame')?.contentDocument;
+      if (!frameWin || !frameDoc) return;
+      const frameScrollable = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
+      if (frameScrollable > 0) {
+        scrollSyncing = true;
+        frameWin.scrollTo({ top: progress * frameScrollable, behavior: 'auto' });
+        requestAnimationFrame(() => {
+          scrollSyncing = false;
+        });
+      }
+    },
+    { passive: true },
+  );
+
+  const splitter = $('editor-splitter');
+  const panes = $('editor-panes');
+  if (splitter && panes) {
+    try {
+      const savedPercent = localStorage.getItem('cloudink-split-percent');
+      if (savedPercent) {
+        panes.style.setProperty('--editor-split-left', savedPercent);
+        panes.style.setProperty('--editor-split-right', `${100 - parseFloat(savedPercent)}%`);
+        panes.style.setProperty('--editor-split-percent', savedPercent);
+      }
+    } catch {}
+
+    let dragging = false;
+    splitter.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      splitter.classList.add('is-dragging');
+      splitter.setPointerCapture(e.pointerId);
+    });
+    splitter.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const rect = panes.getBoundingClientRect();
+      const percent = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
+      panes.style.setProperty('--editor-split-left', `${percent}%`);
+      panes.style.setProperty('--editor-split-right', `${100 - percent}%`);
+      panes.style.setProperty('--editor-split-percent', `${percent}%`);
+    });
+    const stopDrag = () => {
+      if (dragging) {
+        dragging = false;
+        splitter.classList.remove('is-dragging');
+        try {
+          localStorage.setItem(
+            'cloudink-split-percent',
+            panes.style.getPropertyValue('--editor-split-percent'),
+          );
+        } catch {}
+      }
+    };
+    splitter.addEventListener('pointerup', stopDrag);
+    splitter.addEventListener('pointercancel', stopDrag);
+  }
+}
+setupEditorEnhancements();
 configureMarkdownImport({
   api,
   engineTask,

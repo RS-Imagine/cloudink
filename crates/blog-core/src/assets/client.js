@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
+      const isZh = (document.documentElement.lang || 'zh').toLowerCase().startsWith('zh');
+      const t = (zh, en) => (isZh ? zh : en);
       const motion = window.CloudInkMotion;
       motion?.mount();
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -51,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toTop.id = 'to-top';
       toTop.type = 'button';
       toTop.className = 'to-top';
-      toTop.setAttribute('aria-label', '回到顶部 / Back to top');
+      toTop.setAttribute('aria-label', t('回到顶部', 'Back to top'));
       toTop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l-7 7 1.4 1.4L11 8.8V19h2V8.8l4.6 4.6L19 12z"/></svg>';
       toTop.hidden = true;
       document.body.append(toTop);
@@ -320,8 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
           dialog.setAttribute('aria-label', label);
           const close = document.createElement('button');
           close.className = 'reader-dialog-close reader-sr-only';
-          close.textContent = 'Close / 关闭';
-          close.setAttribute('aria-label', '关闭');
+          close.textContent = t('关闭', 'Close');
+          close.setAttribute('aria-label', t('关闭', 'Close'));
           dialog.append(close, content);
           document.body.append(dialog);
           const overflow = document.body.style.overflow;
@@ -347,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (img.closest('a,button')) return;
           img.tabIndex = 0;
           img.setAttribute('role', 'button');
-          img.setAttribute('aria-label', 'Enlarge image / 放大图片' + (img.alt ? ': ' + img.alt : ''));
+          img.setAttribute('aria-label', t('放大图片', 'Enlarge image') + (img.alt ? ': ' + img.alt : ''));
           const open = () => {
             const content = document.createElement('figure');
             content.className = 'image-lightbox';
@@ -413,10 +415,29 @@ document.addEventListener('DOMContentLoaded', () => {
               pending.src = full;
             };
             retry.addEventListener('click', load);
-            showDialog(content, img.alt || 'Image preview / 图片预览', img, () => {
+            const initialRect = img.getBoundingClientRect();
+            showDialog(content, img.alt || t('图片预览', 'Image preview'), img, () => {
               disposed = true;
               cancel();
             });
+            if (!reducedMotion.matches && 'animate' in clone) {
+              requestAnimationFrame(() => {
+                const finalRect = clone.getBoundingClientRect();
+                if (finalRect.width > 0 && finalRect.height > 0) {
+                  const scaleX = initialRect.width / finalRect.width;
+                  const scaleY = initialRect.height / finalRect.height;
+                  const translateX = initialRect.left + initialRect.width / 2 - (finalRect.left + finalRect.width / 2);
+                  const translateY = initialRect.top + initialRect.height / 2 - (finalRect.top + finalRect.height / 2);
+                  clone.animate([
+                    { transform: `translate(${translateX.toFixed(1)}px, ${translateY.toFixed(1)}px) scale(${scaleX.toFixed(3)}, ${scaleY.toFixed(3)})`, opacity: 0.85 },
+                    { transform: 'none', opacity: 1 }
+                  ], {
+                    duration: 260,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+                  });
+                }
+              });
+            }
             if (full === new URL(preview, location.href).href) {
               message.textContent = '原图已加载';
             } else load();
@@ -429,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.querySelectorAll('.article-body pre').forEach(pre => {
           pre.tabIndex = 0;
-          pre.setAttribute('aria-label', 'Code block, scroll horizontally / 代码块，可横向滚动');
+          pre.setAttribute('aria-label', t('代码块，可横向滚动', 'Code block, scroll horizontally'));
           if (pre.parentElement.classList.contains('code-block')) return;
           const wrapper = document.createElement('div');
           wrapper.className = 'code-block';
@@ -472,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const button = document.createElement('button');
           button.className = 'copy-code';
           button.type = 'button';
-          button.setAttribute('aria-label', 'Copy code / 复制代码');
+          button.setAttribute('aria-label', t('复制代码', 'Copy code'));
           button.innerHTML = '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label">复制</span>';
 
           actions.append(feedback, button);
@@ -515,14 +536,14 @@ document.addEventListener('DOMContentLoaded', () => {
           scroller.className = 'table-scroll';
           scroller.tabIndex = 0;
           scroller.setAttribute('role', 'region');
-          scroller.setAttribute('aria-label', 'Table, scroll horizontally / 表格，可横向滚动');
+          scroller.setAttribute('aria-label', t('表格，可横向滚动', 'Table, scroll horizontally'));
           table.before(scroller);
           scroller.append(table);
         });
         document.querySelectorAll('.article-body .katex-display').forEach(formula => {
           formula.tabIndex = 0;
           formula.setAttribute('role', 'region');
-          formula.setAttribute('aria-label', 'Math formula, scroll horizontally / 公式，可横向滚动');
+          formula.setAttribute('aria-label', t('公式，可横向滚动', 'Math formula, scroll horizontally'));
         });
       const shareBtn = document.getElementById('share-btn');
       if (shareBtn) {
@@ -713,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const nativeBtn = document.createElement('button');
             nativeBtn.type = 'button';
             nativeBtn.className = 'share-native-btn';
-            nativeBtn.textContent = '微信 / 系统分享';
+            nativeBtn.textContent = t('系统分享', 'Share via system');
             nativeBtn.addEventListener('click', async () => {
               try {
                 await navigator.share({
@@ -729,7 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           content.append(imgElement, actions);
-          showDialog(content, 'Share card / 分享卡片', shareBtn);
+          showDialog(content, t('分享卡片', 'Share card'), shareBtn);
         });
       }
       
@@ -812,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
           let tocDisposed = false;
           const tocClose = document.createElement('button');
           tocClose.className = 'toc-close';
-          tocClose.textContent = 'Close / 关闭目录';
+          tocClose.textContent = t('关闭目录', 'Close');
           tocContainer.append(tocClose);
           const syncToc = () => {
             if (tocDisposed) return;

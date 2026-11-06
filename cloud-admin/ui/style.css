@@ -427,6 +427,33 @@ summary {
   align-items: center;
   padding-top: 15px;
   margin-bottom: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.editor-format-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.editor-format-actions .tool-btn {
+  font-size: 13px;
+  padding: 6px 8px;
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--ink);
+  transition: background-color 0.15s, color 0.15s;
+}
+.editor-format-actions .tool-btn:hover {
+  background: var(--pale);
+  color: var(--accent);
+}
+.editor-format-actions .tool-btn code {
+  font-size: 11px;
 }
 .tab {
   font-size: 12px;
@@ -444,10 +471,47 @@ summary {
 }
 .editor-panes {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, var(--editor-split-left, 1fr)) minmax(0, var(--editor-split-right, 1fr));
   height: max(500px, calc(100dvh - 390px));
   border: 1px solid var(--line);
   border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+.editor-splitter {
+  width: 6px;
+  cursor: col-resize;
+  background: var(--line);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--editor-split-percent, 50%) - 3px);
+  z-index: 10;
+  transition: background 0.15s;
+}
+.editor-splitter:hover,
+.editor-splitter.is-dragging {
+  background: var(--accent);
+}
+.editor-panes.preview-only .editor-splitter,
+.editor-panes.writing-only .editor-splitter {
+  display: none !important;
+}
+.app.zen-mode .workspace-header,
+.app.zen-mode .editor-toolbar,
+.app.zen-mode .editor-document,
+.app.zen-mode .editor-footer,
+.app.zen-mode .editor-danger-zone {
+  display: none !important;
+}
+.app.zen-mode .editor-view {
+  padding: 0 !important;
+}
+.app.zen-mode .editor-panes {
+  height: calc(100dvh - 60px) !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
   overflow: hidden;
 }
 .markdown-input {
@@ -1271,12 +1335,44 @@ dialog {
 .short-admin-card {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 16px;
   background: var(--paper);
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.short-admin-card:hover {
+  border-color: var(--accent);
+}
+.short-card-header {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+.short-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.short-card-preview {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 4.8em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.short-card-preview.is-empty {
+  color: var(--muted);
+  font-style: italic;
 }
 .short-admin-card .image-actions {
   margin-top: 0;

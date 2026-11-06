@@ -185,15 +185,41 @@ async function pump() {
     });
     // Scripts stay disabled by the sandbox. Same-origin lets the parent insert
     // authenticated images after the text is visible, without reloading the frame.
-    frame.onload = () => {
-      if (job.version === generation) {
-        applyPreviewTheme(frame.contentDocument);
-        loading.hidden = true;
-        void hydrateImages(job.version);
+    const targetDoc = frame.contentDocument;
+    const existingShell = targetDoc?.querySelector('.article-shell');
+    const newShell = page.querySelector('.article-shell');
+
+    if (existingShell && newShell && targetDoc?.body) {
+      const scrollY = targetDoc.documentElement.scrollTop || targetDoc.body.scrollTop;
+      existingShell.replaceWith(newShell);
+      if (page.querySelector('.katex') && !targetDoc.querySelector('link[href*="katex"]')) {
+        const math = targetDoc.createElement('link');
+        math.rel = 'stylesheet';
+        math.href = '/reader-assets/katex.css';
+        targetDoc.head.append(math);
       }
-    };
-    frame.srcdoc = '<!doctype html>' + page.documentElement.outerHTML;
-    loading.hidden = true;
+      if (page.querySelector('pre code') && !targetDoc.getElementById('preview-highlight')) {
+        const highlight = targetDoc.createElement('link');
+        highlight.id = 'preview-highlight';
+        highlight.rel = 'stylesheet';
+        highlight.href = '/reader-assets/code.css';
+        targetDoc.head.append(highlight);
+      }
+      applyPreviewTheme(targetDoc);
+      targetDoc.documentElement.scrollTop = scrollY;
+      loading.hidden = true;
+      void hydrateImages(job.version);
+    } else {
+      frame.onload = () => {
+        if (job.version === generation) {
+          applyPreviewTheme(frame.contentDocument);
+          loading.hidden = true;
+          void hydrateImages(job.version);
+        }
+      };
+      frame.srcdoc = '<!doctype html>' + page.documentElement.outerHTML;
+      loading.hidden = true;
+    }
   } catch (error) {
     if (job.version === generation) {
       loading.hidden = false;

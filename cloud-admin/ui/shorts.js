@@ -12,11 +12,18 @@ function slugFor(date) {
 export function configureShorts({ api, notice, action, open, startPublish }) {
   let shorts = [];
   let editing = null; // { slug, etag } or null for new
+  const contentCache = new Map();
   function status(message, tone = '') {
     const el = $('short-status');
     el.textContent = message;
     el.dataset.tone = tone;
   }
+  function updateWordCount() {
+    const body = $('short-body')?.value || '';
+    const count = body.replace(/\s/g, '').length;
+    status(count ? `${count} 个字符` : '');
+  }
+  $('short-body')?.addEventListener('input', updateWordCount);
   function render() {
     const list = $('short-list');
     list.replaceChildren();
@@ -24,9 +31,23 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
     for (const item of shorts) {
       const card = document.createElement('article');
       card.className = 'short-admin-card';
+
+      const header = document.createElement('div');
+      header.className = 'short-card-header';
+
+      const meta = document.createElement('div');
+      meta.className = 'short-card-meta';
+
       const time = document.createElement('time');
       time.className = 'muted';
       time.textContent = item.date;
+
+      const badge = document.createElement('span');
+      badge.className = 'badge' + (item.published ? '' : ' draft');
+      badge.textContent = item.published ? (item.has_draft ? '已发布·有草稿' : '已发布') : '草稿';
+
+      meta.append(time, badge);
+
       const actions = document.createElement('div');
       actions.className = 'image-actions';
       const edit = document.createElement('button');
@@ -63,15 +84,25 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
             method: 'DELETE',
             body: { etag: item.etag || '' },
           });
+          contentCache.delete(item.slug);
           notice('短记已删除。', 'success');
           await load();
         });
       });
       actions.append(edit, pub, del);
-      const badge = document.createElement('span');
-      badge.className = 'badge' + (item.published ? '' : ' draft');
-      badge.textContent = item.published ? (item.has_draft ? '已发布·有草稿' : '已发布') : '草稿';
-      card.append(time, badge, actions);
+      header.append(meta, actions);
+
+      const preview = document.createElement('p');
+      preview.className = 'short-card-preview';
+      const cached = contentCache.get(item.slug);
+      if (cached) {
+        preview.textContent = cached;
+      } else {
+        preview.textContent = '点击编辑查看内容…';
+        preview.classList.add('is-empty');
+      }
+
+      card.append(header, preview);
       list.append(card);
     }
   }
@@ -83,16 +114,20 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
   function openEditor(item = null) {
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;
     $('short-date').value = item ? item.date : nowMinute();
-    $('short-body').value = '';
+    $('short-body').value = (item && contentCache.get(item.slug)) || '';
     $('short-editor').hidden = false;
-    status('');
+    updateWordCount();
     if (item) {
       api(`/api/shorts/${encodeURIComponent(item.slug)}`).then(
         (data) => {
+          const body = data.draft.body_markdown || '';
+          contentCache.set(item.slug, body);
           if (editing && editing.slug === item.slug) {
-            $('short-body').value = data.draft.body_markdown || '';
+            $('short-body').value = body;
             editing.etag = data.etag;
+            updateWordCount();
           }
+          render();
         },
         (error) => status(error.message, 'error'),
       );
@@ -129,6 +164,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       const draft = await collect();
       if (!draft) return;
       const slug = draft.front_matter.slug;
+      contentCache.set(slug, draft.body_markdown);
       const result = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
         body: { ...draft, etag: editing?.etag || null },
@@ -144,6 +180,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       const draft = await collect();
       if (!draft) return;
       const slug = draft.front_matter.slug;
+      contentCache.set(slug, draft.body_markdown);
       const saved = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
         body: { ...draft, etag: editing?.etag || null },

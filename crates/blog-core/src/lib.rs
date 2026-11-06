@@ -62,6 +62,7 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     let css_hash = content_hash(css);
     write_if_changed(output_root.join("styles.css"), css)?;
     write_if_changed(output_root.join("favicon.svg"), render::favicon_svg())?;
+    write_if_changed(output_root.join("manifest.webmanifest"), render::manifest_json())?;
     write_if_changed(
         output_root.join("editorial-botanical.webp"),
         include_bytes!("../../../assets/editorial-botanical.webp"),
