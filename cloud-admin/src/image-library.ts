@@ -75,6 +75,7 @@ async function references(
   }
   let bytes = 0,
     count = 0,
+    scanned = 0,
     unindexed = 0;
   function add(imageKeys: string[], reference: ImageReference): void {
     for (const key of imageKeys) {
@@ -140,6 +141,8 @@ async function references(
       include: ['customMetadata'],
     });
     for (const object of page.objects) {
+      if (++scanned > 10000) throw new HttpError(413, '原稿目录超过安全扫描上限；图片仍受保护。');
+      if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
       if (object.customMetadata?.deleted) continue;
@@ -198,6 +201,8 @@ async function references(
       include: ['customMetadata'],
     });
     for (const object of page.objects) {
+      if (++scanned > 10000) throw new HttpError(413, '原稿目录超过安全扫描上限；图片仍受保护。');
+      if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
       if (object.customMetadata?.deleted) continue;

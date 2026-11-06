@@ -7,10 +7,14 @@ function nowMinute() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 function slugFor(date) {
-  return 'short-' + date.replace(/\D/g, '').slice(0, 12);
+  return 'short-' + date.replace(/\D/g, '').slice(0, 12) + '-' + crypto.randomUUID().slice(0, 8);
 }
 export function configureShorts({ api, notice, action, open, startPublish }) {
-  let shorts = [];
+  let shorts = [], cursor = null, loadRevision = 0;
+  const more = document.createElement('button');
+  more.id = 'short-more'; more.textContent = '加载更多短记'; more.hidden = true;
+  $('short-list').after(more);
+  more.addEventListener('click', () => action('short-more', '正在加载…', () => load(true)));
   let editing = null; // { slug, etag } or null for new
   const contentCache = new Map();
   function status(message, tone = '') {
@@ -131,8 +135,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
         }
         bodyWrapper.append(footer);
       } else {
-        preview.textContent = '正在载入内容…';
-        preview.classList.add('is-loading');
+        preview.textContent = '空白短记';
         bodyWrapper.append(preview);
       }
 
@@ -140,29 +143,16 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       list.append(card);
     }
   }
-  async function load() {
-    const data = await api('/api/shorts');
-    shorts = data.shorts || [];
-    for (const item of shorts) {
-      if (item.snippet) {
-        contentCache.set(item.slug, item.snippet);
-      }
-    }
-    render();
-    const missing = shorts.filter((item) => !contentCache.has(item.slug));
-    if (missing.length > 0) {
-      for (const item of missing.slice(0, 10)) {
-        api(`/api/shorts/${encodeURIComponent(item.slug)}`)
-          .then((res) => {
-            const body = res?.draft?.body_markdown || '';
-            if (body) {
-              contentCache.set(item.slug, body);
-              render();
-            }
-          })
-          .catch(() => {});
-      }
-    }
+  async function load(append = false) {
+    const revision = ++loadRevision;
+    let data;
+    try { data = await api('/api/shorts?limit=50' + (append && cursor ? '&cursor=' + encodeURIComponent(cursor) : '')); }
+    catch (error) { if (append && error.status === 409) return load(); throw error; }
+    if (revision !== loadRevision) return;
+    shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
+    cursor = data.cursor;
+    for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
+    render(); more.hidden = !cursor;
   }
   function openEditor(item = null) {
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;

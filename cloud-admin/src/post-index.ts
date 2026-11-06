@@ -3,6 +3,7 @@ import { editorial } from './post-metadata';
 import {
   HttpError,
   parseSource,
+  parseShortSource,
   readJson,
   type FrontMatter,
   type Release,
@@ -16,6 +17,7 @@ export interface PostIndex {
   id: string;
   site: SiteConfig;
   posts: Record<string, PublishedSummary>;
+  shorts?: Record<string, { date: string; snippet: string }>;
 }
 export const postIndexKey = (id: string) => 'releases/' + id + '.posts.json';
 export async function buildPostIndex(
@@ -38,7 +40,16 @@ export async function buildPostIndex(
     if (!draft.front_matter.draft)
       posts[slug] = { ...draft.front_matter, digest: await digest(editorial(draft)) };
   }
-  return { schema_version: 1, id: release.id, site: release.site, posts };
+  const shorts: NonNullable<PostIndex['shorts']> = Object.create(null);
+  for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
+    if (prior?.id === base?.id && base?.markdown_shorts?.[slug] === source && Object.hasOwn(prior.shorts || {}, slug)) {
+      shorts[slug] = prior.shorts![slug]; continue;
+    }
+    const draft = parseShortSource(source);
+    if (draft.front_matter.slug !== slug) throw new HttpError(400, '短记地址与原稿不一致。');
+    if (!draft.front_matter.draft) shorts[slug] = { date: draft.front_matter.date, snippet: draft.body_markdown.slice(0,300) };
+  }
+  return { schema_version: 1, id: release.id, site: release.site, posts, shorts };
 }
 export async function readPostIndex(storage: R2Bucket, id: string): Promise<PostIndex | null> {
   const index = await readJson<PostIndex>(storage, postIndexKey(id));
@@ -48,6 +59,7 @@ export async function readPostIndex(storage: R2Bucket, id: string): Promise<Post
     index.id !== id ||
     !index.site ||
     !index.posts ||
+    (index.shorts !== undefined && (!index.shorts || typeof index.shorts !== 'object' || Array.isArray(index.shorts) || Object.values(index.shorts).some(s => !s || typeof s.date !== 'string' || typeof s.snippet !== 'string'))) ||
     Object.values(index.posts).some(
       (p) =>
         !p ||

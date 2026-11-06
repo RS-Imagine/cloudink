@@ -1,3 +1,4 @@
+import { listActiveDrafts } from './draft-catalog';
 import { buildPostIndex, readPostIndex } from './post-index';
 import type { BrowserPointer } from './browser-publishing';
 import { backupJobRoute } from './backup-jobs';
@@ -44,22 +45,7 @@ import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
 import { imageLibraryRoute, ensureManagedImages, imageReferenceMetadata } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
-async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
-  const objects: R2Object[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await bucket.list({
-      prefix: 'drafts/',
-      limit: 1000,
-      include: ['customMetadata'],
-      cursor,
-    });
-    objects.push(...page.objects);
-    if (objects.length > 2000) throw new HttpError(413, '原稿超过 2000 篇，暂时无法完整读取列表。');
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
-  return objects;
-}
+const listDrafts = (bucket: R2Bucket) => listActiveDrafts(bucket, 'drafts/');
 async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
   await assertWritableAddress(env.STORAGE, slug);
   const input = await jsonInput(request);
@@ -315,52 +301,46 @@ async function apiRoute(
   }
   // ---- Shorts ("短记") ------------------------------------------------------
   if (path === '/api/shorts' && request.method === 'GET') {
-    const release = await currentRelease(env);
-    const published = new Map<string, ShortDraft>();
-    for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
-      try {
-        published.set(slug, parseShortSource(source));
-      } catch {
-        // Skip malformed entries; they will surface on publish validation.
-      }
-    }
-    const shorts = new Map<string, unknown>();
+    const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+    if (!pointer) throw new HttpError(503, '网站内容尚未初始化。');
+    const stored = await readPostIndex(env.STORAGE, pointer.id);
+    const index = stored?.shorts ? stored : await buildPostIndex(await currentRelease(env, pointer));
+    const published = new Map(Object.entries(index.shorts || {}));
+    const shorts = new Map<string, {slug:string;date:string;published:boolean;has_draft:boolean;etag?:string;snippet:string}>();
     for (const [slug, draft] of published)
       shorts.set(slug, {
         slug,
-        date: draft.front_matter.date,
+        date: draft.date,
         published: true,
         has_draft: false,
-        snippet: draft.body_markdown.slice(0, 300),
+        snippet: draft.snippet,
       });
-    let cursor: string | undefined;
-    do {
-      const page = await env.STORAGE.list({
-        prefix: 'shorts/',
-        cursor,
-        limit: 1000,
-        include: ['customMetadata'],
-      });
-      for (const object of page.objects) {
-        if (object.customMetadata?.deleted) continue;
-        const slug = object.key.slice(7, -3);
-        if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
-        const meta = object.customMetadata || {};
-        shorts.set(slug, {
-          slug,
-          date: meta.date || published.get(slug)?.front_matter.date || '',
-          published: published.has(slug),
-          has_draft: true,
-          etag: object.etag,
-          snippet: meta.snippet || published.get(slug)?.body_markdown.slice(0, 300) || '',
-        });
-      }
-      cursor = page.truncated ? page.cursor : undefined;
-    } while (cursor);
-    const list = [...shorts.values()].sort((a: any, b: any) =>
-      String(b.date).localeCompare(String(a.date)),
-    );
-    return json({ shorts: list });
+    const drafts = await listActiveDrafts(env.STORAGE, 'shorts/');
+    for (const object of drafts) {
+      const slug = object.key.slice(7, -3);
+      if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
+      const meta = object.customMetadata || {};
+      shorts.set(slug, { slug, date: meta.date || published.get(slug)?.date || '',
+        published: published.has(slug), has_draft: true, etag: object.etag,
+        snippet: meta.snippet ?? published.get(slug)?.snippet ?? '' });
+    }
+    const list = [...shorts.values()].sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug));
+    const url = new URL(request.url), rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? list.length || 1 : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || (rawLimit !== null && limit > 100))
+      throw new HttpError(400, '短记分页参数不正确。');
+    const snapshot = await digest(JSON.stringify([pointer.id, drafts.map(d => [d.key, d.etag])]));
+    let offset = 0;
+    if (url.searchParams.has('cursor')) {
+      let cursor;
+      try { cursor = JSON.parse(url.searchParams.get('cursor')!); } catch { throw new HttpError(400, '分页位置不正确。'); }
+      if (!cursor || cursor.snapshot !== snapshot) throw new HttpError(409, '短记列表已变化，请重新读取。');
+      if (!Number.isInteger(cursor.offset) || cursor.offset < 0 || cursor.offset > list.length)
+        throw new HttpError(400, '分页位置不正确。');
+      offset = cursor.offset;
+    }
+    return json({ shorts: list.slice(offset, offset + limit), total: list.length,
+      cursor: offset + limit < list.length ? JSON.stringify({snapshot, offset: offset + limit}) : null });
   }
   const shortMatch = path.match(/^\/api\/shorts\/([A-Za-z0-9_-]+)$/);
   if (shortMatch) {

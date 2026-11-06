@@ -58,12 +58,14 @@ export async function checkedReferenceKeys(shard: ReferenceShard, hash: string):
 /** One small shard per daily maintenance; live draft pointers are authoritative. */
 export async function pruneReferenceShard(storage: R2Bucket, key: string): Promise<number> {
   const live = new Set<string>();
-  let count = 0;
+  let count = 0, scanned = 0;
   for (const prefix of ['drafts/', 'shorts/']) {
     let cursor: string | undefined;
     do {
       const page = await storage.list({ prefix, cursor, limit: 1000, include: ['customMetadata'] });
       for (const object of page.objects) {
+        if (++scanned > 10000) throw new HttpError(413, '原稿目录超过安全扫描上限。');
+        if (object.customMetadata?.deleted) continue;
         if (++count > 2000) throw new HttpError(413, '原稿数量超过引用索引维护上限。');
         if (!object.customMetadata?.deleted && object.customMetadata?.image_refs_hash)
           live.add(object.customMetadata.image_refs_hash);

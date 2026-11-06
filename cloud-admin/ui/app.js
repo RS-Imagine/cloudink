@@ -239,7 +239,25 @@ function localSaved(draft, result) {
   renderLists();
 }
 
+const privateReads = new Map();
+const invalidateReads = () => privateReads.clear();
+window.addEventListener('focus', invalidateReads);
+const readChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('cloudink-content') : null;
+if (readChannel) readChannel.onmessage = invalidateReads;
 async function api(path, options = {}) {
+  const method = options.method || 'GET';
+  if (!['GET', 'HEAD'].includes(method)) { invalidateReads(); readChannel?.postMessage('changed'); }
+  const cacheable = method === 'GET' && /^\/api\/(?:posts|shorts)(?:\?|$)/.test(path);
+  if (!cacheable) return requestApi(path, options);
+  let entry = privateReads.get(path);
+  if (!entry || entry.expires < Date.now()) {
+    entry = { expires: Date.now() + 10000, promise: requestApi(path, options) };
+    privateReads.set(path, entry);
+  }
+  try { return structuredClone(await entry.promise); }
+  catch (error) { if (privateReads.get(path) === entry) privateReads.delete(path); throw error; }
+}
+async function requestApi(path, options = {}) {
   const { rawBody, ...init } = options;
   options = init;
   const headers = new Headers(options.headers);
@@ -267,11 +285,14 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.error || '操作未完成。');
     error.status = response.status;
+    if (response.status === 401) invalidateReads();
     if (response.status === 401 && path !== '/api/login' && !booting) showLogin({ focus: true });
     throw error;
   }
-  if (options.method && !['GET', 'HEAD'].includes(options.method))
+  if (options.method && !['GET', 'HEAD'].includes(options.method)) {
+    invalidateReads(); readChannel?.postMessage('changed');
     window.dispatchEvent(new Event('cloudink-content-changed'));
+  }
   return data;
 }
 function showLogin({ focus = false } = {}) {
