@@ -57,7 +57,7 @@ a:hover { color: var(--accent-strong); }
 .article-shell article { max-width: 672px; margin: 0 auto; padding: 0; overflow-wrap: anywhere; }
 .article-shell article h1 { margin: 16px 0 24px; font-family: var(--font-heading); font-size: clamp(2rem, 5vw, 4rem); font-weight: 600; line-height: 1.25; letter-spacing: -0.025em; text-wrap: balance; }
 .article-shell article > p.meta { font-size: 17px; margin: 0 0 40px; padding-bottom: 32px; border-bottom: 1px solid var(--border-soft); }
-.article-body { font-size: 17px; line-height: 1.9; }
+.article-body { font-size: 17px; line-height: 1.9; text-align: justify; text-justify: inter-ideograph; text-align-last: left; }
 .article-shell article h2, .article-shell article h3, .article-shell article h4 { margin: 2em 0 0.75em; font-family: var(--font-heading); font-weight: 600; line-height: 1.4; scroll-margin-top: 32px; }
 .article-shell article h2 { font-size: 25px; }
 .article-shell article h3 { font-size: 20px; }

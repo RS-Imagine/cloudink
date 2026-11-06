@@ -63,7 +63,11 @@
   border: 0;
   color: var(--ci-muted);
   font: 18px/28px var(--ci-font-reading);
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
   text-wrap: pretty;
+  hyphens: auto;
 }
 .article-author {
   display: flex;
@@ -72,6 +76,9 @@
   padding-bottom: 32px;
   border-bottom: 1px solid var(--ci-divider);
   font: 14px/20px var(--ci-font-ui);
+}
+.article-details time {
+  font-variant-numeric: tabular-nums;
 }
 .home-avatar {
   display: grid;
@@ -98,46 +105,79 @@
   font: 12px/16px var(--ci-font-ui);
 }
 .article-body {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
   font: 18px/32px var(--ci-font-reading);
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
+  hanging-punctuation: first allow-end last;
+  hyphens: auto;
 }
 .article-shell article .article-body h2,
 .article-shell article .article-body h3,
 .article-shell article .article-body h4 {
   font-family: var(--ci-font-reading);
   scroll-margin-top: 80px;
+  text-wrap: balance;
+  text-align: left;
 }
 .article-shell article .article-body h2 {
   margin: 48px 0 24px;
   font-size: 30px;
   line-height: 40px;
+  letter-spacing: -0.02em;
 }
 .article-shell article .article-body h3 {
+  margin: 36px 0 18px;
   font-size: 24px;
   line-height: 32px;
+  letter-spacing: -0.015em;
 }
 .article-shell article .article-body h4 {
+  margin: 28px 0 14px;
   font-size: 20px;
   line-height: 28px;
 }
-.article-shell article .article-body p,
+.article-shell article .article-body p {
+  margin-block: 24px;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
+  text-wrap: pretty;
+  hyphens: auto;
+}
 .article-shell article .article-body ul,
 .article-shell article .article-body ol {
-  max-width: 65ch;
   margin-block: 20px;
+  padding-inline-start: 28px;
+}
+.article-shell article .article-body li {
+  margin-block: 8px;
+  line-height: 30px;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
+  text-wrap: pretty;
 }
 .article-shell article .article-body blockquote {
   margin: 28px 0;
-  padding: 20px 24px 20px 24px;
+  padding: 20px 24px;
   border: 0;
   border-inline-start: 4px solid var(--ci-primary);
   border-radius: 0 16px 16px 0;
   background: var(--ci-container);
   color: var(--ci-text);
-  font-style: italic;
+  font-style: normal;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
 }
 .article-shell article .article-body blockquote p {
   margin-block: 0;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
 }
 .article-shell article figure {
   margin: 32px 0;
@@ -954,6 +994,7 @@ dialog.search-modal .search-input {
   font-family: var(--ci-font-mono);
   font-size: 0.88em;
   padding: 0.15em 0.4em;
+  margin-inline: 0.25em;
   border-radius: 6px;
   background: var(--ci-container);
   border: 1px solid var(--ci-divider);

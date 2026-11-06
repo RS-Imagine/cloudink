@@ -110,6 +110,9 @@ dialog::backdrop {
 }
 .article-body {
   font-family: var(--ci-font-reading);
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
 }
 .article-body :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--ci-font-reading);
@@ -193,9 +196,6 @@ dialog::backdrop {
 }
 
 /* Accommodate existing compact controls while their layouts are migrated. */
-.reader-dialog {
-  padding-top: 64px;
-}
 .theme-btn,
 .theme-toggle {
   min-width: 44px;

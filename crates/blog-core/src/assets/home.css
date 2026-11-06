@@ -324,8 +324,13 @@
   margin: 0;
   color: var(--ci-muted);
   font: 14px/24px var(--ci-font-reading);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
   text-wrap: pretty;
+  hyphens: auto;
 }
 .home-card-meta .post-arrow {
   pointer-events: none;
@@ -826,6 +831,12 @@
   font: 400 16px/28px var(--ci-font-reading);
   color: var(--ci-text);
   overflow-wrap: break-word;
+  word-break: break-word;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
+  hanging-punctuation: first allow-end last;
+  hyphens: auto;
 }
 .short-body a {
   color: var(--ci-primary);
@@ -835,6 +846,14 @@
 }
 .short-body a:hover {
   color: var(--ci-primary-strong);
+}
+.short-body p {
+  margin-block: 14px;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
+  text-wrap: pretty;
+  hyphens: auto;
 }
 .short-body p:first-child {
   margin-top: 0;
