@@ -230,14 +230,22 @@ test('the generated social cover can be fetched anonymously without Referer', as
   const f = await fixture(t);
   await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
-  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=', 'base64');
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfYQAAAAASUVORK5CYII=',
+    'base64',
+  );
   await bucket.put('uploads/cover.png', png, { httpMetadata: { contentType: 'image/png' } });
   const saved = await f.request('/api/posts/cover', 'PUT', {
-    draft: draft('cover', '![Cover](/images/uploads/cover.png)'), etag: null,
+    draft: draft('cover', '![Cover](/images/uploads/cover.png)'),
+    etag: null,
   });
   const { etag } = await saved.json();
   const release = await f.prepare({ slug: 'cover', etag });
-  await f.stage(release, [], '<!doctype html><html><head><title>Cover</title></head><body><div class="article-body"><img src="/images/uploads/cover.png" alt="Cover"></div></body></html>');
+  await f.stage(
+    release,
+    [],
+    '<!doctype html><html><head><title>Cover</title></head><body><div class="article-body"><img src="/images/uploads/cover.png" alt="Cover"></div></body></html>',
+  );
   assert.equal((await f.commit(release)).status, 200);
   const html = await (await f.request('/posts/cover/')).text();
   const url = html.match(/property="og:image" content="([^"]+)"/)?.[1];
@@ -250,7 +258,9 @@ test('the generated social cover can be fetched anonymously without Referer', as
   assert.equal(head.status, 200);
   assert.equal(await head.text(), '');
   assert.equal(head.headers.get('ETag'), image.headers.get('ETag'));
-  const cached = await f.mf.dispatchFetch(url, { headers: { 'If-None-Match': image.headers.get('ETag') } });
+  const cached = await f.mf.dispatchFetch(url, {
+    headers: { 'If-None-Match': image.headers.get('ETag') },
+  });
   assert.equal(cached.status, 304);
   assert.equal(await cached.text(), '');
 });

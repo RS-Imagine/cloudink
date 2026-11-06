@@ -199,7 +199,12 @@ test('public images support missing or same-origin Referer and reject cross-orig
     ).status,
     403,
   );
-  for (const Referer of ['invalid URL', '', 'null', 'https://notes.reader.workers.dev.evil.example/']) {
+  for (const Referer of [
+    'invalid URL',
+    '',
+    'null',
+    'https://notes.reader.workers.dev.evil.example/',
+  ]) {
     const blocked = await f.request('/images/uploads/image.png', 'GET', undefined, { Referer });
     assert.equal(blocked.status, 403);
     assert.equal(blocked.headers.get('Cache-Control'), 'no-store');

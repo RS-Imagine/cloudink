@@ -205,7 +205,8 @@ test('short drafts validate local images and retain the last saved content on fa
   await seed(bucket, 'uploads/short.png');
   const body = '![Photo](/images/uploads/short.png)';
   const saved = await f.request('/api/shorts/note', 'PUT', {
-    ...shortDraft('note', body), etag: null,
+    ...shortDraft('note', body),
+    etag: null,
   });
   assert.equal(saved.status, 200, await saved.clone().text());
   const { etag } = await saved.json();
@@ -213,7 +214,8 @@ test('short drafts validate local images and retain the last saved content on fa
   assert.ok(image.references.some((ref) => ref.kind === 'draft' && ref.slug === 'note'));
   assert.equal((await f.request('/api/images', 'DELETE', image)).status, 409);
   const rejected = await f.request('/api/shorts/note', 'PUT', {
-    ...shortDraft('note', '![Removed](/images/uploads/missing.png)'), etag,
+    ...shortDraft('note', '![Removed](/images/uploads/missing.png)'),
+    etag,
   });
   assert.equal(rejected.status, 400);
   const retained = await (await f.request('/api/shorts/note')).json();
@@ -227,13 +229,22 @@ test('short drafts validate local images and retain the last saved content on fa
   ];
   for (const [index, body] of invalidBodies.entries()) {
     const slug = 'invalid-' + index;
-    assert.equal((await f.request('/api/shorts/' + slug, 'PUT', {
-      ...shortDraft(slug, body), etag: null,
-    })).status, 400);
+    assert.equal(
+      (
+        await f.request('/api/shorts/' + slug, 'PUT', {
+          ...shortDraft(slug, body),
+          etag: null,
+        })
+      ).status,
+      400,
+    );
     assert.equal(await bucket.head('shorts/' + slug + '.md'), null);
   }
   const external = await f.request('/api/shorts/external', 'PUT', {
-    ...shortDraft('external', '![External](https://photos.example.org/image.png)\n\nExample: `/images/uploads/missing.png`'),
+    ...shortDraft(
+      'external',
+      '![External](https://photos.example.org/image.png)\n\nExample: `/images/uploads/missing.png`',
+    ),
     etag: null,
   });
   assert.equal(external.status, 200, await external.clone().text());
@@ -243,13 +254,15 @@ test('short publication validates legacy image references before starting a rele
   const f = await fixture(t);
   await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
-  const source = '+++\nslug = "legacy"\ndate = "2026-11-06 12:00"\ndraft = true\n+++\n\n![Photo](/images/uploads/legacy.png)';
+  const source =
+    '+++\nslug = "legacy"\ndate = "2026-11-06 12:00"\ndraft = true\n+++\n\n![Photo](/images/uploads/legacy.png)';
   const original = await bucket.put('shorts/legacy.md', source, {
     customMetadata: { date: '2026-11-06 12:00' },
   });
   const pointer = await (await bucket.get('state/published.json')).text();
   const rejected = await f.request('/api/publish', 'POST', {
-    shortSlug: 'legacy', etag: original.etag,
+    shortSlug: 'legacy',
+    etag: original.etag,
   });
   assert.equal(rejected.status, 400);
   assert.equal(await bucket.head('state/pending.json'), null);
@@ -263,7 +276,8 @@ test('short publication validates legacy image references before starting a rele
   await f.stage(release);
   assert.equal((await f.commit(release)).status, 200);
   const updated = await f.request('/api/shorts/legacy', 'PUT', {
-    ...shortDraft('legacy', 'Photo removed from draft'), etag: original.etag,
+    ...shortDraft('legacy', 'Photo removed from draft'),
+    etag: original.etag,
   });
   assert.equal(updated.status, 200, await updated.clone().text());
   image = (await catalog(f)).images[0];
@@ -285,7 +299,8 @@ test('a short save and image deletion cannot leave a stored dangling reference',
   const [removed, saved] = await Promise.all([
     f.request('/api/images', 'DELETE', image),
     f.request('/api/shorts/race', 'PUT', {
-      ...shortDraft('race', '![Photo](/images/uploads/unused.png)'), etag: null,
+      ...shortDraft('race', '![Photo](/images/uploads/unused.png)'),
+      etag: null,
     }),
   ]);
   assert.ok([200, 409].includes(removed.status));
