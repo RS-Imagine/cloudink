@@ -105,7 +105,7 @@ export default {
         return response;
       }
       if (path.startsWith('/images/')) return publicImage(request, env.STORAGE, ctx);
-      if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE);
+      if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE, ctx);
       if (!['GET', 'HEAD'].includes(request.method))
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
@@ -131,7 +131,8 @@ export default {
         : null;
       if (!cachedPointer && published) cacheWrite(ctx, pointerKey, Response.json(published), 30);
       const id = published?.id || null;
-      const pageKey = cacheKey(request, 'page', id || 'initial');
+      const pageVersion = key && published?.pages?.[key] ? published.pages[key] : id || 'initial';
+      const pageKey = cacheKey(request, 'page', pageVersion);
       const cached = await cacheRead(pageKey);
       if (cached)
         return protect(

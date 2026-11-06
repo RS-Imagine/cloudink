@@ -1,3 +1,4 @@
+import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
 import { SaxesParser } from 'saxes';
 import { HttpError, json, limitedBody, validSiteIconKey, type SiteConfig } from './models';
 
@@ -577,12 +578,15 @@ export async function uploadSiteIcon(request: Request, storage: R2Bucket): Promi
   });
   return json({ key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length) }, 201);
 }
-export async function publicSiteIcon(request: Request, storage: R2Bucket): Promise<Response> {
+export async function publicSiteIcon(request: Request, storage: R2Bucket, ctx?: ExecutionContext): Promise<Response> {
   if (!['GET', 'HEAD'].includes(request.method))
     return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
   const name = new URL(request.url).pathname.slice('/site-icon/'.length);
   const key = 'uploads/icons/' + name;
   if (!validSiteIconKey(key)) return new Response('Not found', { status: 404 });
+  const cache = cacheKey(request, 'image');
+  const cached = ctx ? await cacheRead(cache) : undefined;
+  if (cached) return clientResponse(cached, request, true);
   const body = request.method === 'GET' ? await storage.get(key) : null;
   const object = request.method === 'HEAD' ? await storage.head(key) : body;
   const type = name.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
@@ -606,5 +610,7 @@ export async function publicSiteIcon(request: Request, storage: R2Bucket): Promi
     if (body) await body.body.cancel();
     return new Response(null, { status: 304, headers });
   }
-  return new Response(body?.body || null, { headers });
+  const response = new Response(body?.body || null, { headers });
+  if (ctx && request.method === 'GET') cacheWrite(ctx, cache, response, 3600);
+  return response;
 }
