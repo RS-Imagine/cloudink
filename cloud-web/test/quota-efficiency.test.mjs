@@ -8,7 +8,12 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 async function rendered(f, state, overrides = {}) {
   const values = Object.fromEntries(
     state.files
-      .filter((path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path))
+      .filter(
+        (path) =>
+          !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(
+            path,
+          ),
+      )
       .map((path) => [
         path,
         path === '_release.json'

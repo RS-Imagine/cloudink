@@ -1285,16 +1285,29 @@ function setupEditorEnhancements() {
         }
         break;
       case 'quote':
-        replacement = selected ? selected.split('\n').map((l) => `> ${l}`).join('\n') : '> ';
+        replacement = selected
+          ? selected
+              .split('\n')
+              .map((l) => `> ${l}`)
+              .join('\n')
+          : '> ';
         newCursor = start + replacement.length;
         break;
       case 'ul':
-        replacement = selected ? selected.split('\n').map((l) => `- ${l}`).join('\n') : '- ';
+        replacement = selected
+          ? selected
+              .split('\n')
+              .map((l) => `- ${l}`)
+              .join('\n')
+          : '- ';
         newCursor = start + replacement.length;
         break;
       case 'ol':
         replacement = selected
-          ? selected.split('\n').map((l, i) => `${i + 1}. ${l}`).join('\n')
+          ? selected
+              .split('\n')
+              .map((l, i) => `${i + 1}. ${l}`)
+              .join('\n')
           : '1. ';
         newCursor = start + replacement.length;
         break;

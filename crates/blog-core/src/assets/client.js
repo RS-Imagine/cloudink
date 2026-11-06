@@ -508,8 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
           wrapper.prepend(header);
 
           // Line-number gutter: aria-hidden so it never pollutes copy or screen readers.
-          const codeText = codeEl?.textContent ?? pre.textContent;
-          const lineCount = codeText.replace(/\n$/, '').split('\n').length;
           if (lineCount > 1 && lineCount <= 5000) {
             wrapper.classList.add('has-gutter');
             const gutter = document.createElement('div');
