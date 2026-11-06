@@ -195,3 +195,27 @@ test('rename commit rejects changed source or destination while retaining the pr
   assert.equal((await f.request('/posts/new/')).status, 404);
   assert.equal((await f.request('/api/posts/new')).status, 200);
 });
+
+test('inherited property names remain valid article and short addresses', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  for (const slug of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    for (const kind of ['posts', 'shorts']) {
+      const path = '/api/' + kind + '/' + slug;
+      assert.equal((await f.request(path)).status, 404);
+      const input =
+        kind === 'posts'
+          ? draft(slug, 'Special address')
+          : {
+              front_matter: { slug, date: '2026-11-06 12:00', draft: true },
+              body_markdown: 'Special address',
+            };
+      const saved = await f.request(path, 'PUT', { ...input, draft: input, etag: null });
+      assert.equal(saved.status, 200, await saved.clone().text());
+      const opened = await (await f.request(path)).json();
+      assert.equal(opened.draft.front_matter.slug, slug);
+      assert.equal((await f.request(path, 'DELETE', { etag: opened.etag })).status, 200);
+      assert.equal((await f.request(path)).status, 404);
+    }
+  }
+});
