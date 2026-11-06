@@ -1,3 +1,4 @@
+import { readPostIndex } from './post-index';
 import {
   imageReferenceMetadata,
   referenceShardKey,
@@ -97,6 +98,12 @@ async function references(
     add(managedImageKeys(text), reference);
   }
   async function release(id: string, kind: 'published' | 'pending'): Promise<void> {
+    const index = await readPostIndex(storage, id);
+    if (index?.images?.version === IMAGE_REFERENCE_VERSION) {
+      for (const entry of index.images.entries)
+        add(entry.keys, { kind: entry.settings ? 'settings' : kind, title: entry.title, ...(entry.slug ? {slug: entry.slug} : {}) });
+      return;
+    }
     const object = await storage.get(`releases/${id}.json`);
     if (!object || object.size > 16_000_000)
       throw new HttpError(503, '发布版本无法完整读取，暂时不能安全检查图片引用。');

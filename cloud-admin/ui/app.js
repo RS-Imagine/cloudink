@@ -243,7 +243,7 @@ const privateReads = new Map();
 const invalidateReads = () => privateReads.clear();
 window.addEventListener('focus', invalidateReads);
 const readChannel = typeof BroadcastChannel === 'function' ? new BroadcastChannel('cloudink-content') : null;
-if (readChannel) readChannel.onmessage = invalidateReads;
+if (readChannel) readChannel.onmessage = () => { invalidateReads(); window.dispatchEvent(new Event('cloudink-content-changed')); };
 async function api(path, options = {}) {
   const method = options.method || 'GET';
   if (!['GET', 'HEAD'].includes(method)) { invalidateReads(); readChannel?.postMessage('changed'); }
