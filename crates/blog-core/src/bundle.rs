@@ -91,7 +91,10 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
         files.insert("favicon.svg".into(), render::favicon_svg().into());
     }
     if wants("manifest.webmanifest") {
-        files.insert("manifest.webmanifest".into(), render::manifest_json().into());
+        files.insert(
+            "manifest.webmanifest".into(),
+            render::manifest_json().into(),
+        );
     }
     if wants("sw.js") {
         files.insert("sw.js".into(), render::sw_js().into());

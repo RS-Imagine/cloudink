@@ -18,7 +18,9 @@ export async function publishInBrowser(
       const sources = {};
       for (const path of files.filter(
         (path) =>
-          !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(path),
+          !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(
+            path,
+          ),
       )) {
         if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
         sources[path] = [
