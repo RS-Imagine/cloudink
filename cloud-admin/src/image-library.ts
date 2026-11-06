@@ -1,3 +1,4 @@
+import { activeBackup } from './backup-jobs';
 import { managedImageKeys, localImageKeys, IMAGE_REFERENCE_VERSION } from './image-references';
 export { managedImageKeys } from './image-references';
 import { parentImageKey, imagePresentation, IMAGE_WIDTHS } from './image-variants';
@@ -9,7 +10,7 @@ const MAX_SOURCES = 2000;
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const MAX_UNINDEXED = 30;
 export interface ImageReference {
-  kind: 'published' | 'draft' | 'settings' | 'pending';
+  kind: 'published' | 'draft' | 'settings' | 'pending' | 'backup';
   title: string;
   slug?: string;
 }
@@ -102,6 +103,13 @@ async function references(
     pending.release_id !== pointer?.id
   )
     await release(pending.release_id, 'pending');
+  const task = await activeBackup(storage);
+  if (task)
+    for (const image of task.images)
+      add([image.key], {
+        kind: 'backup',
+        title: task.mode === 'restore' ? '正在恢复的备份' : '正在下载的备份',
+      });
   const settings = await storage.get('draft-site.json');
   if (settings) {
     if (settings.size > 500_000) throw new HttpError(413, '网站设置过大，无法安全检查图片引用。');

@@ -4,6 +4,7 @@ const kinds = {
   draft: '草稿',
   settings: '网站设置',
   pending: '正在发布',
+  backup: '备份任务',
 };
 function size(bytes) {
   return bytes < 1024 * 1024

@@ -76,14 +76,18 @@ async function createBackup(env: CloudInkEnv): Promise<Backup> {
     add(`published/${slug}.md`, source);
   for (const [slug, source] of Object.entries(release.markdown_shorts || {}))
     add(`published-shorts/${slug}.md`, source);
-  for (const object of await objects(env.STORAGE, 'drafts/')) {
+  const draftObjects = await objects(env.STORAGE, 'drafts/');
+  const shortObjects = await objects(env.STORAGE, 'shorts/');
+  if (draftObjects.length + shortObjects.length > 32)
+    throw new HttpError(409, '请刷新后台，使用分批备份功能导出。');
+  for (const object of draftObjects) {
     if (object.customMetadata?.deleted) continue;
     if (textBytes + object.size > MAX_TEXT)
       throw new HttpError(413, '原稿超过网页备份限制，请通过 Cloudflare R2 备份。');
     const value = await env.STORAGE.get(object.key);
     if (value) add(object.key, await value.text());
   }
-  for (const object of await objects(env.STORAGE, 'shorts/')) {
+  for (const object of shortObjects) {
     if (object.customMetadata?.deleted) continue;
     if (textBytes + object.size > MAX_TEXT)
       throw new HttpError(413, '原稿超过网页备份限制，请通过 Cloudflare R2 备份。');
@@ -130,6 +134,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   const files = Object.entries(value.files);
   if (files.length > MAX_FILES || value.images.length > MAX_IMAGE_OBJECTS)
     throw new HttpError(413, '备份文件数量过多。');
+  if (files.length > 32) throw new HttpError(409, '请刷新后台，使用分批恢复功能导入。');
   const drafts = new Map<string, string>();
   const shortDrafts = new Map<string, string>();
   // Validate the whole manifest before writing. Drafts take precedence over
@@ -257,6 +262,18 @@ export async function backupRoute(
     )
       throw new HttpError(400, '备份图标与其内容地址不一致。');
     const content = 'bytes' in type ? type.bytes : bytes;
+    const existing = await env.STORAGE.get(key);
+    if (existing) {
+      if (
+        existing.size !== content.byteLength ||
+        !crypto.subtle.timingSafeEqual(
+          await crypto.subtle.digest('SHA-256', content),
+          await crypto.subtle.digest('SHA-256', await existing.arrayBuffer()),
+        )
+      )
+        throw new HttpError(409, '已有同名的不同图片，恢复不会覆盖它。');
+      return json({ ok: true });
+    }
     const saved = await env.STORAGE.put(key, content, {
       onlyIf: { etagDoesNotMatch: '*' },
       customMetadata: imageDimensions(content),

@@ -1,3 +1,4 @@
+import { activeBackup } from './backup-jobs';
 import type { CloudInkEnv } from './env';
 import { readJson, type Publishing } from './models';
 import { withContentMutation } from './storage-mutations';
@@ -10,9 +11,9 @@ export interface MaintenanceStatus {
   finished_at?: string;
   deleted_objects?: number;
   deleted_bytes?: number;
-  cursors?: { public?: string; releases?: string };
+  cursors?: { public?: string; releases?: string; 'backup-tasks'?: string };
 }
-// Bounded daily work: two LIST calls, at most 350 deletes. Never inspect or
+// Bounded daily work: three LIST calls, at most 450 deletes. Never inspect or
 // delete user sources, media, accounts, settings or concurrency tombstones.
 export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStatus | null> {
   return withContentMutation(env.STORAGE, async () => {
@@ -29,7 +30,12 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
       Date.now() - Date.parse(pending.started_at) <= 30 * 60_000
     )
       return null;
-    const retained = new Set([pointer.id, ...(pointer.previous_ids || [])]);
+    const task = await activeBackup(env.STORAGE);
+    const retained = new Set([
+      pointer.id,
+      ...(pointer.previous_ids || []),
+      ...(task?.mode === 'export' && task.releaseId ? [task.releaseId] : []),
+    ]);
     const referenced = new Set(Object.values(pointer.pages || {}));
     for (const id of retained) {
       const manifest = await readJson<PageManifest>(env.STORAGE, `releases/${id}.manifest.json`);
@@ -47,7 +53,7 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
     const cursors: MaintenanceStatus['cursors'] = {};
     let deleted_objects = 0,
       deleted_bytes = 0;
-    for (const prefix of ['public', 'releases'] as const) {
+    for (const prefix of ['public', 'releases', 'backup-tasks'] as const) {
       const page = await env.STORAGE.list({
         prefix: prefix + '/',
         limit: prefix === 'public' ? 250 : 100,
@@ -60,9 +66,14 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
         const version = object.key.match(
           new RegExp('^(?:public/(' + UUID + ')/|releases/(' + UUID + ')(?:\\.manifest)?\\.json$)'),
         );
-        const obsolete = content
-          ? !referenced.has(content[1])
-          : version && !retained.has(version[1] || version[2]);
+        const temporary = object.key.match(
+          /^backup-tasks\/([a-f0-9-]{36})\/(?:state|chunks\/\d+)\.json$/,
+        );
+        const obsolete = temporary
+          ? temporary[1] !== task?.id
+          : content
+            ? !referenced.has(content[1])
+            : version && !retained.has(version[1] || version[2]);
         if (obsolete) {
           remove.push(object.key);
           deleted_bytes += object.size;
