@@ -188,6 +188,6 @@ R2 Standard 当前免费额度为每月 10 GB-month、100 万次 A 类操作、1
 
 维护新增每批最多 32 个过期会话检查，常规五次 LIST、四次 PUT，旧会话另增加最多 32 次读取；引用分片维护仍可能增加原稿目录扫描。删除及改址标记保留防止旧窗口重新写回，其数量与有效原稿数量分别限制。
 
-运行日志采用采样，遇到请求失败可记录响应中的 `X-Request-ID`，在 Cloudflare 日志中查找 `storage_request`。日志中的经过时间不是 CPU 使用量，也不是账号账单。无需为日志计数提供新的 R2 对象。
+平台日志按 10% 采样，traces 默认关闭。Cloudflare 已公布持久化 traces 从 2026 年 12 月 1 日起计入可观测性用量，参见 [官方追踪说明](https://developers.cloudflare.com/workers/observability/traces/#limits-and-pricing)。需要临时追踪时可在 Wrangler 配置中开启并设置低采样率，先确认账号额度，排查结束后关闭。遇到请求失败可记录响应中的 `X-Request-ID`，在 Cloudflare 日志中查找 `storage_request`。日志中的经过时间不是 CPU 使用量，也不是账号账单。无需为日志计数提供新的 R2 对象。
 
 回退本次改进可以 revert 对应 PR：新增摘要字段、原稿摘要元数据、会话到期元数据均为可选信息，旧版本可忽略。先完成或取消正在进行的发布和备份；回退不需要清空数据。本次没有改变发布指针、备份格式和原稿格式。

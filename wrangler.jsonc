@@ -16,7 +16,7 @@
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.1,
-    "traces": { "enabled": true, "head_sampling_rate": 0.01 },
+    "traces": { "enabled": false },
   },
   "assets": {
     "directory": "build-work/web-public",
