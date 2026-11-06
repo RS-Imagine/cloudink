@@ -101,7 +101,9 @@ async function loginResponse(env: CloudInkEnv, account: Account): Promise<Respon
     expires: Date.now() + 7 * 86400_000,
     version: account.version,
   };
-  await env.STORAGE.put(`auth/sessions/${await digest(token)}`, JSON.stringify(session));
+  await env.STORAGE.put(`auth/sessions/${await digest(token)}`, JSON.stringify(session), {
+    customMetadata: { expires: String(session.expires) },
+  });
   return json({ email: account.email, csrf: session.csrf }, 200, {
     'Set-Cookie': cookie(token, 7 * 86400),
   });

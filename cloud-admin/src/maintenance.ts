@@ -8,7 +8,7 @@ import { REFERENCE_ROOT, pruneReferenceShard } from './image-reference-index';
 const STATUS_KEY = 'state/maintenance.json';
 const UUID = '[a-f0-9-]{36}';
 const GRACE = 24 * 60 * 60_000;
-type Prefix = 'public' | 'releases' | 'backup-tasks' | 'references';
+type Prefix = 'public' | 'releases' | 'backup-tasks' | 'references' | 'sessions';
 export interface MaintenanceStatus {
   last_attempt_at?: string;
   status?: 'running' | 'success' | 'skipped' | 'failed';
@@ -20,6 +20,7 @@ export interface MaintenanceStatus {
   deleted_objects?: number;
   deleted_bytes?: number;
   pruned_references?: number;
+  expired_sessions?: number;
   cursors?: Partial<Record<Prefix, string>>;
 }
 export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStatus> {
@@ -40,6 +41,7 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
         deleted_objects: 0,
         deleted_bytes: 0,
         pruned_references: 0,
+        expired_sessions: 0,
         cursors: { ...prior?.cursors },
       };
       const started = await storage.put(STATUS_KEY, JSON.stringify(state));
@@ -148,6 +150,27 @@ export async function maintainStorage(env: CloudInkEnv): Promise<MaintenanceStat
         }
         if (refs.truncated) state.cursors!.references = refs.cursor;
         else delete state.cursors!.references;
+        state.stage = 'sessions';
+        const sessions = await storage.list({ prefix: 'auth/sessions/', limit: 32,
+          cursor: state.cursors?.sessions, include: ['customMetadata'] });
+        const expired: string[] = [];
+        for (const object of sessions.objects) {
+          state.scanned_objects!++;
+          if (!/^auth\/sessions\/[a-f0-9]{64}$/.test(object.key)) continue;
+          let expiry = Number(object.customMetadata?.expires || NaN);
+          if (!Number.isFinite(expiry)) {
+            const legacy = await storage.get(object.key);
+            if (legacy && legacy.size <= 4096) {
+              try { expiry = Number((await legacy.json<{expires?: number}>()).expires); }
+              catch { /* Unknown objects are retained. */ }
+            } else if (legacy) await legacy.body.cancel();
+          }
+          if (Number.isFinite(expiry) && expiry > 0 && expiry < Date.now()) expired.push(object.key);
+        }
+        if (expired.length) await storage.delete(expired);
+        state.expired_sessions = expired.length;
+        if (sessions.truncated) state.cursors!.sessions = sessions.cursor;
+        else delete state.cursors!.sessions;
         state.stage = 'complete';
         return finish('success');
       } catch (error) {

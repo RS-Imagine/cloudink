@@ -1,3 +1,4 @@
+import { storageStats } from '../../cloud-admin/src/request-stats';
 import { maintainStorage } from '../../cloud-admin/src/maintenance';
 import { cacheKey, cacheRead, cacheWrite, clientResponse, invalidatePointer } from './cache';
 import { readerHtml, readerEtag, discovery } from './reader';
@@ -79,7 +80,7 @@ function publicPath(path: string): string | null {
   if (post) return `posts/${post[1]}/index.html`;
   return null;
 }
-export default {
+const web = {
   async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url),
@@ -268,4 +269,17 @@ export default {
       }),
     );
   },
+} satisfies ExportedHandler<WebBindings>;
+
+export default {
+  async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
+    const stats = storageStats(env.STORAGE), started = Date.now(), id = crypto.randomUUID();
+    const response = await web.fetch(request, { ...env, STORAGE: stats.bucket }, ctx);
+    const route = new URL(request.url).pathname.split('/').slice(0, 3).join('/').replace(/\/[A-Za-z0-9_-]{20,}/g, '/:id');
+    stats.report(id, route, request.method, response.status, started);
+    const headers = new Headers(response.headers);
+    headers.set('X-Request-ID', id);
+    return new Response(response.body, { status: response.status, headers });
+  },
+  scheduled: web.scheduled,
 } satisfies ExportedHandler<WebBindings>;
