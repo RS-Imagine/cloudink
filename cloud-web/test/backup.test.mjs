@@ -1,3 +1,4 @@
+import { backupEntry } from '../../cloud-admin/src/backup-contract.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture, draft } from './fixture.mjs';
@@ -298,4 +299,17 @@ test('restore keeps a renamed source retired', async (t) => {
     (await (await f.request('/api/posts/new')).json()).draft.body_markdown,
     'Moved article',
   );
+});
+
+test('ZIP path contract accepts all source kinds and rejects private or traversing entries', () => {
+  for (const kind of ['published', 'drafts', 'published-shorts', 'shorts'])
+    assert.equal(backupEntry('content/' + kind + '/valid-slug.md'), true);
+  for (const name of [
+    'content/auth/account.json',
+    'content/shorts/../private.md',
+    'media/uploads/../auth/account.json',
+    'media/uploads/icons/arbitrary.svg',
+    'content/shorts/nested/note.md',
+  ])
+    assert.equal(backupEntry(name), false, name);
 });

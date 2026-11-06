@@ -303,6 +303,19 @@ try {
     'href',
     '/site-icon/' + icoIconKey.split('/').pop(),
   );
+  await page.evaluate(async () => {
+    const session = await (await fetch('/api/session')).json();
+    const response = await fetch('/api/shorts/backup-note', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf },
+      body: JSON.stringify({
+        front_matter: { slug: 'backup-note', date: '2026-11-06 12:00', draft: true },
+        body_markdown: 'Short note survives the ZIP round trip.',
+        etag: null,
+      }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+  });
   const downloaded = page.waitForEvent('download');
   await page.locator('#download-backup').click();
   const backup = await downloaded;
@@ -316,6 +329,10 @@ try {
   await page.locator('#backup-file').setInputFiles(backupPath);
   await acceptConfirmation(page);
   await expect(page.locator('#backup-status')).toContainText('已恢复');
+  const restoredShort = await page.evaluate(async () =>
+    (await fetch('/api/shorts/backup-note')).json(),
+  );
+  assert.equal(restoredShort.draft.body_markdown, 'Short note survives the ZIP round trip.');
   await expect(page.locator('#site-icon-value')).toHaveValue(icoIconKey);
   await expect(page.locator('head link[rel=icon]')).toHaveAttribute(
     'href',

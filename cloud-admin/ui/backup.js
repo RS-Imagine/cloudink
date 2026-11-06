@@ -1,3 +1,4 @@
+import { backupEntry } from '../src/backup-contract.ts';
 import { confirmAction } from './workflows.js';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 
@@ -85,12 +86,7 @@ export function configureBackup({
             total += entry.originalSize;
             if (++count > 10001 || total > MAX_ARCHIVE + 8_000_000)
               throw new Error('备份解压后的大小或文件数量超过限制。');
-            // Older backups may contain content/history/, which the server skips.
-            if (
-              entry.name !== 'manifest.json' &&
-              !/^(?:content\/(?:published|drafts|history)\/|media\/uploads\/)/.test(entry.name)
-            )
-              throw new Error('备份包含不支持的文件。');
+            if (!backupEntry(entry.name)) throw new Error('备份包含不支持的文件。');
             return true;
           },
         });
