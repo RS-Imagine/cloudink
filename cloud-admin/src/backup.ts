@@ -21,7 +21,7 @@ import {
   validSiteIconKey,
 } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
-import { ensureManagedImages } from './image-library';
+import { ensureManagedImages, imageReferenceMetadata } from './image-library';
 
 const MAX_TEXT = 8_000_000;
 const MAX_MANIFEST = 18_000_000;
@@ -223,7 +223,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       onlyIf: tombstoneEtag ? { etagMatches: tombstoneEtag } : { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       customMetadata: isShort
-        ? { date: (draft as ShortDraft).front_matter.date }
+        ? { date: (draft as ShortDraft).front_matter.date, ...imageReferenceMetadata(source) }
         : await draftSummary(draft as Draft),
     });
     if (saved) restored++;

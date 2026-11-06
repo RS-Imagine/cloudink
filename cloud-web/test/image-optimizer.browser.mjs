@@ -32,7 +32,7 @@ export async function verifyImageOptimizer(browser, origin) {
   try {
     await page.goto(origin + '/admin');
     const result = await page.evaluate(async () => {
-      const optimize = (file) =>
+      const optimize = (file, compact = false) =>
         new Promise((resolve, reject) => {
           const worker = new Worker('/image.worker.js', { type: 'module' });
           const timer = setTimeout(() => {
@@ -49,7 +49,7 @@ export async function verifyImageOptimizer(browser, origin) {
             worker.terminate();
             reject(new Error(error.message));
           };
-          worker.postMessage(file);
+          worker.postMessage(compact ? { file, compact: true } : file);
         });
       const canvas = document.createElement('canvas');
       canvas.width = 1400;
@@ -86,7 +86,17 @@ export async function verifyImageOptimizer(browser, origin) {
         [bytes.slice(0, 33), chunk, bytes.slice(33), new Uint8Array(90000)],
         'animated.png',
       );
-      return { decoded, animatedCount: (await optimize(animated)).length };
+      const compact = await optimize(file, true);
+      const main = await createImageBitmap(compact.main);
+      const compactWidth = main.width;
+      main.close();
+      return {
+        decoded, animatedCount: (await optimize(animated, true)).length,
+        compactWidth,
+        compactTotal: compact.main.size + compact.variants.reduce((sum, item) => sum + item.blob.size, 0),
+        originalSize: file.size,
+        compactVariants: compact.variants.map(item => item.width),
+      };
     });
     assert.deepEqual(
       result.decoded.map((x) => x.width),
@@ -94,6 +104,9 @@ export async function verifyImageOptimizer(browser, origin) {
     );
     assert.ok(result.decoded.every((x) => x.type === 'image/webp' && x.alpha === 0));
     assert.equal(result.animatedCount, 0);
+    assert.equal(result.compactWidth, 1400);
+    assert.ok(result.compactTotal < result.originalSize);
+    assert.ok(result.compactVariants.every(width => width < result.compactWidth));
   } finally {
     await context.close();
   }

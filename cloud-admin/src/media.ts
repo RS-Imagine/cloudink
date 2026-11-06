@@ -1,3 +1,4 @@
+import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
 import { HttpError, validSiteIconKey } from './models';
 
 export const MAX_IMAGE = 10 * 1024 * 1024;
@@ -27,7 +28,7 @@ export function imageType(bytes: Uint8Array): { type: string; ext: string } {
 }
 
 /** The only public image route: uploaded media, never arbitrary bucket objects. */
-export async function publicImage(request: Request, storage: R2Bucket): Promise<Response> {
+export async function publicImage(request: Request, storage: R2Bucket, ctx?: ExecutionContext): Promise<Response> {
   if (!['GET', 'HEAD'].includes(request.method))
     return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
   let key: string;
@@ -53,6 +54,13 @@ export async function publicImage(request: Request, storage: R2Bucket): Promise<
       status: 403,
       headers: { Vary: 'Referer', 'Cache-Control': 'no-store' },
     });
+  const keyRequest = cacheKey(request, 'image');
+  const cached = ctx ? await cacheRead(keyRequest) : undefined;
+  if (cached) {
+    const headers = new Headers(cached.headers);
+    headers.set('Vary', 'Referer');
+    return clientResponse(new Response(cached.body, { headers }), request, true);
+  }
   const body = request.method === 'GET' ? await storage.get(key) : null;
   const object = request.method === 'HEAD' ? await storage.head(key) : body;
   if (!object) return new Response('Not found', { status: 404 });
@@ -78,5 +86,7 @@ export async function publicImage(request: Request, storage: R2Bucket): Promise<
     if (body) await body.body.cancel();
     return new Response(null, { status: 304, headers });
   }
-  return new Response(body?.body || null, { headers });
+  const response = new Response(body?.body || null, { headers });
+  if (ctx && request.method === 'GET') cacheWrite(ctx, keyRequest, response, 3600);
+  return response;
 }

@@ -1,4 +1,4 @@
-import { imageUploadForm } from './image-upload.js';
+import { imageUploadForm as prepareImageUploadForm } from './image-upload.js';
 import '../../assets/motion.js';
 import '../../assets/mobile.js';
 import { mountStudioShell } from './shell.js';
@@ -23,6 +23,14 @@ const shell = mountStudioShell();
 let postFilter = 'all';
 
 const $ = (id) => document.getElementById(id);
+const keepOriginal = $('image-keep-original');
+try { keepOriginal.checked = localStorage.getItem('cloudink-keep-original') === 'true'; } catch {}
+keepOriginal.addEventListener('change', () => {
+  try { localStorage.setItem('cloudink-keep-original', String(keepOriginal.checked)); } catch {}
+});
+function imageUploadForm(file, options) {
+  return prepareImageUploadForm(file, options || { compact: !keepOriginal.checked });
+}
 const fields = ['title', 'description', 'date', 'slug', 'body'];
 let csrf = '',
   posts = [],
@@ -249,6 +257,8 @@ async function api(path, options = {}) {
     if (response.status === 401 && path !== '/api/login' && !booting) showLogin({ focus: true });
     throw error;
   }
+  if (options.method && !['GET', 'HEAD'].includes(options.method))
+    window.dispatchEvent(new Event('cloudink-content-changed'));
   return data;
 }
 function showLogin({ focus = false } = {}) {
@@ -1165,6 +1175,11 @@ $('settings').addEventListener('click', async () => {
       if (!data.site[key]) $('site-form').elements[key].value = '';
     invalidatePreview();
     view('settings');
+    void api('/api/maintenance').then(status => {
+      $('storage-maintenance-status').textContent = status?.finished_at
+        ? '最近清理：' + new Date(status.finished_at).toLocaleString() + '，移除 ' + status.deleted_objects + ' 个过期发布文件，释放 ' + (status.deleted_bytes / 1024 / 1024).toFixed(1) + ' MB。'
+        : '每日自动清理尚未运行；当前和最近两个发布版本会保留。';
+    }).catch(() => { $('storage-maintenance-status').textContent = '暂时无法读取清理记录；不影响保存与发布。'; });
   } catch (error) {
     notice(error.message, 'error');
   } finally {

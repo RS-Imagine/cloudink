@@ -29,7 +29,10 @@ export function configureImages({
     requestVersion = 0,
     loading = false,
     referenceError = '',
-    loadError = '';
+    loadError = '',
+    loadedAt = 0,
+    completeCatalog = false,
+    visibleLimit = 24;
   for (const [id, operation] of [
     ['image-library-optimize', 'optimize'],
     ['image-library-republish', 'republish'],
@@ -43,11 +46,12 @@ export function configureImages({
           notice,
           load,
           rebuild,
-          imageUploadForm,
+          imageUploadForm: file => imageUploadForm(file, { compact: false }),
           confirmAction,
         });
       }),
     );
+  window.addEventListener('cloudink-content-changed', () => { loadedAt = 0; });
   function status(message) {
     $('image-library-status').textContent = message;
   }
@@ -79,7 +83,7 @@ export function configureImages({
     }
     $('image-library-summary').textContent =
       `${images.length} 张已加载 · ${size(images.reduce((total, image) => total + (image.totalSize || image.size), 0))}`;
-    for (const image of visible) {
+    for (const image of visible.slice(0, visibleLimit)) {
       const card = document.createElement('article');
       card.className = 'image-card';
       const helpId = 'image-help-' + grid.childElementCount;
@@ -88,7 +92,7 @@ export function configureImages({
       preview.className = 'image-thumbnail';
       preview.setAttribute('aria-label', `预览 ${image.name}`);
       const thumbnail = document.createElement('img');
-      thumbnail.src = `/api/image?key=${encodeURIComponent(image.thumbnailKey || image.key)}&version=${encodeURIComponent(image.etag)}`;
+      thumbnail.src = `/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}`;
       thumbnail.alt = image.name;
       thumbnail.loading = 'lazy';
       thumbnail.decoding = 'async';
@@ -104,7 +108,7 @@ export function configureImages({
       preview.append(thumbnail);
       preview.addEventListener('click', () => {
         $('image-preview-title').textContent = image.name;
-        $('image-preview-full').src = '/api/image?key=' + encodeURIComponent(image.key);
+        $('image-preview-full').src = '/images/' + encodeURI(image.key);
         window.CloudInkMotion.openDialog($('image-preview-dialog'));
       });
       const body = document.createElement('div');
@@ -233,7 +237,7 @@ export function configureImages({
       : images.length
         ? '没有符合筛选条件的图片。'
         : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
-    $('image-library-more').hidden = !cursor || loading || !!loadError;
+    $('image-library-more').hidden = (completeCatalog ? visible.length <= visibleLimit : !cursor) || loading || !!loadError;
     $('image-library-back').hidden = !canInsert();
     $('image-library-warning').hidden = !referenceError;
     $('image-library-warning').textContent = referenceError
@@ -241,6 +245,8 @@ export function configureImages({
       : '';
   }
   async function load(reset = true) {
+    if (!reset && completeCatalog) { visibleLimit += 24; render(); return; }
+    if (reset) visibleLimit = 24;
     const version = ++requestVersion;
     loading = true;
     loadError = '';
@@ -260,7 +266,7 @@ export function configureImages({
     }
     try {
       const data = await api(
-        '/api/images' + (!reset && cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''),
+        '/api/images' + (!reset && cursor ? `?cursor=${encodeURIComponent(cursor)}` : '?catalog=1'),
       );
       if (version !== requestVersion) return;
       const page = data.images.map((image) => ({
@@ -271,8 +277,10 @@ export function configureImages({
       for (const image of page) combined.set(image.key, image);
       images = [...combined.values()];
       cursor = data.cursor;
+      completeCatalog = data.catalog === true;
+      loadedAt = Date.now();
       referenceError = data.referenceError || (reset ? '' : referenceError);
-      status(cursor ? '还有更多图片，可继续加载。筛选只作用于已加载图片。' : '图片库已加载。');
+      status((cursor || (completeCatalog && images.length > visibleLimit)) ? '还有更多图片，可继续加载。筛选只作用于已加载图片。' : '图片库已加载。');
       $('image-library-status').dataset.tone = 'success';
     } catch (error) {
       if (version === requestVersion) {
@@ -292,7 +300,8 @@ export function configureImages({
     await flush();
     if (!current()) return;
     open();
-    await load();
+    if (loadedAt && Date.now() - loadedAt < 30_000 && !loadError && !loading) render();
+    else await load();
   }
   $('image-library-refresh').addEventListener('click', () =>
     action('image-library-refresh', '正在刷新…', () => load()),

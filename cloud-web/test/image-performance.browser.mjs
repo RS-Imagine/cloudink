@@ -10,12 +10,16 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
     png.length > 5_000_000 && png.length < 10 * 1024 * 1024,
     'representative 5–10 MB source',
   );
+  // This scenario verifies the optional original-preserving path. Compact
+  // uploads have a separate size/dimension assertion in the optimizer smoke.
+  await page.locator('#image-keep-original').check();
   await page
     .locator('#image-library-files')
     .setInputFiles({ name: 'Landscape.png', mimeType: 'image/png', buffer: png });
   const card = page.locator('.image-card').filter({ hasText: 'Landscape.png' });
   await expect(card).toBeVisible({ timeout: 45000 });
   await expect(card.locator('.muted')).toContainText('网页');
+  await page.locator('#image-keep-original').uncheck();
   const key = await card.getAttribute('data-key'),
     bucket = await mf.getR2Bucket('STORAGE');
   const family = [key, ...[640, 1280, 1920].map((w) => key + '.w' + w + '.webp')];
@@ -53,7 +57,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         const pointer = await bucket.get('state/published.json');
         if (!pointer) return false;
         const state = await pointer.json();
-        return !!(await bucket.head('public/' + state.id + '/index.html'));
+        return !!state.pages?.['index.html'] || !!(await bucket.head('public/' + state.id + '/index.html'));
       },
       { timeout: 60000 },
     )
@@ -65,13 +69,14 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
     published = await (await context.request.get(origin + path)).text();
   assert.match(published, /srcset="[^"]*\.w640\.webp 640w/);
   assert.match(published, /data-full-src=/);
+  const audit = process.env.CLOUDINK_PERF_AUDIT === '1';
   const metrics = [];
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1440, height: 1000 },
   ]) {
-    for (let repeat = 0; repeat < 3; repeat++)
-      for (const mode of ['before', 'after']) {
+    for (let repeat = 0; repeat < (audit ? 3 : 1); repeat++)
+      for (const mode of audit ? ['before', 'after'] : ['after']) {
         const reader = await browser.newContext({
           viewport,
           deviceScaleFactor: 1,
@@ -82,13 +87,13 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         try {
           await client.send('Network.enable');
           await client.send('Network.setCacheDisabled', { cacheDisabled: true });
-          await client.send('Network.emulateNetworkConditions', {
+          if (audit) await client.send('Network.emulateNetworkConditions', {
             offline: false,
             latency: 80,
             downloadThroughput: 400000,
             uploadThroughput: 400000,
           });
-          await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+          if (audit) await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
           await tab.route('https://cdn.jsdelivr.net/**', (route) =>
             route.fulfill({ contentType: 'text/css', body: '' }),
           );
@@ -172,7 +177,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
   const median = (values) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)];
   const comparison = [390, 1440].map((width) => {
     const data = {};
-    for (const mode of ['before', 'after']) {
+    for (const mode of audit ? ['before', 'after'] : ['after']) {
       const samples = metrics.filter((item) => item.viewport === width && item.mode === mode);
       data[mode] = {
         imageBytes: median(samples.map((x) => x.imageBytes)),
@@ -181,7 +186,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         cls: Math.max(...samples.map((x) => x.cls)),
       };
     }
-    assert.ok(
+    if (audit) assert.ok(
       data.after.imageReadyMs < data.before.imageReadyMs * 0.8,
       'image-ready improvement at fixed throughput',
     );
@@ -191,7 +196,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
     sourceBytes,
     source: 'fixed-seed 2048×1536 textured synthetic landscape PNG; not a real user photo',
     method:
-      'same published article and image content; baseline uses the original without srcset; cold Chromium, 80ms latency, 400000 B/s, CPU 4×, DPR 1, 3 interleaved samples per viewport; lab results, not field CWV',
+      (audit ? 'full audit: ' : 'functional smoke: ') + 'same published article and image content; baseline uses the original without srcset; cold Chromium, 80ms latency, 400000 B/s, CPU 4×, DPR 1, 3 interleaved samples per viewport; lab results, not field CWV' + (audit ? '' : '; PR smoke has no network/CPU throttling or timing gate'),
     comparison,
     samples: metrics,
   };

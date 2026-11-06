@@ -159,4 +159,11 @@ if (process.argv[2] === 'seed') {
   await copyFile(resolve(mathRoot, 'LICENSE'), resolve(vendor, 'katex-LICENSE.txt'));
   await copyFile(resolve(highlightRoot, 'LICENSE'), resolve(vendor, 'highlight-LICENSE.txt'));
   await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'assets/theme.js')));
+  await writeFile(resolve(output, '_headers'), [
+    '/client.js', '  X-Content-Type-Options: nosniff',
+    '/theme.js', '  X-Content-Type-Options: nosniff',
+    '/styles.css', '  X-Content-Type-Options: nosniff',
+    '/favicon.svg', '  X-Content-Type-Options: nosniff', "  Content-Security-Policy: sandbox; default-src 'none'",
+    '/reader-assets/*', '  X-Content-Type-Options: nosniff',
+  ].join('\n') + '\n');
 } else throw new Error('Expected seed or bundle.');

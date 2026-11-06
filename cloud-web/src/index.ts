@@ -1,3 +1,5 @@
+import { maintainStorage } from '../../cloud-admin/src/maintenance';
+import { cacheKey, cacheRead, cacheWrite, clientResponse, invalidatePointer } from './cache';
 import { readerHtml, readerEtag, discovery } from './reader';
 import admin from '../../cloud-admin/src/index';
 import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
@@ -71,7 +73,7 @@ function publicPath(path: string): string | null {
   return null;
 }
 export default {
-  async fetch(request: Request, env: WebBindings): Promise<Response> {
+  async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url),
         path = url.pathname;
@@ -85,8 +87,13 @@ export default {
         );
         return request.method === 'HEAD' ? new Response(null, response) : response;
       }
-      if (path.startsWith('/api/') || editorAssets.has(path)) return admin.fetch(request, env);
-      if (path.startsWith('/images/')) return publicImage(request, env.STORAGE);
+      if (path.startsWith('/api/') || editorAssets.has(path)) {
+        const response = await admin.fetch(request, env);
+        if (request.method === 'POST' && /\/api\/publish\/[a-f0-9-]{36}\/commit$/.test(path) && response.ok)
+          await invalidatePointer(request);
+        return response;
+      }
+      if (path.startsWith('/images/')) return publicImage(request, env.STORAGE, ctx);
       if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE);
       if (!['GET', 'HEAD'].includes(request.method))
         return protect(
@@ -100,19 +107,30 @@ export default {
       )
         return staticAsset(request, env, path);
       const key = publicPath(path);
-      const pointer = await env.STORAGE.get('state/published.json');
+      const pointerKey = cacheKey(request, 'pointer');
+      const cachedPointer = await cacheRead(pointerKey);
+      const pointer = cachedPointer || await env.STORAGE.get('state/published.json');
       const published = pointer
         ? await pointer.json<{
             id: string;
             clarityId?: string;
             postRedirects?: Record<string, string>;
+            pages?: Record<string, string>;
           }>()
         : null;
+      if (!cachedPointer && published) cacheWrite(ctx, pointerKey, Response.json(published), 30);
       const id = published?.id || null;
+      const pageKey = cacheKey(request, 'page', id || 'initial');
+      const cached = await cacheRead(pageKey);
+      if (cached) return protect(clientResponse(cached, request, true), /^[A-Za-z0-9]{1,64}$/.test(published?.clarityId || ''));
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
       if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml')
-        return await discovery(request, env.STORAGE, id);
+        {
+          const response = await discovery(new Request(request, { method: 'GET', headers: {} }), env.STORAGE, id, published?.pages);
+          cacheWrite(ctx, pageKey, response, 300);
+          return clientResponse(response, request);
+        }
       if (path === '/analytics.js') {
         const script = analytics
           ? `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};const s=document.createElement('script');s.async=true;s.src="https://www.clarity.ms/tag/"+${JSON.stringify(clarityId)};document.head.append(s);`
@@ -132,17 +150,17 @@ export default {
           url.pathname = '/posts/' + target + '/';
           return protect(Response.redirect(url.toString(), 301), analytics);
         }
-        const body =
-          request.method === 'HEAD' ? null : await env.STORAGE.get(`public/${id}/${key}`);
+        const storageKey = published?.pages ? (published.pages[key] ? 'public/content/' + published.pages[key] : null) : `public/${id}/${key}`;
+        const body = request.method === 'HEAD' || !storageKey ? null : await env.STORAGE.get(storageKey);
         const object =
-          request.method === 'HEAD' ? await env.STORAGE.head(`public/${id}/${key}`) : body;
+          request.method === 'HEAD' && storageKey ? await env.STORAGE.head(storageKey) : body;
         if (object) {
           const etag = key.endsWith('.html')
             ? await readerEtag(object.httpEtag, url)
             : object.httpEtag;
           const headers = new Headers({ 'Content-Type': publicType(key), ETag: etag });
           if (
-            request.headers
+            request.method === 'HEAD' && request.headers
               .get('If-None-Match')
               ?.split(',')
               .some((tag) => tag.trim().replace(/^W\//, '') === etag || tag.trim() === '*')
@@ -150,18 +168,22 @@ export default {
             if (body) await body.body.cancel();
             return protect(new Response(null, { status: 304, headers }), analytics);
           }
-          return protect(
+          const response = protect(
             await readerHtml(
               new Response(body?.body || null, { status: key === '404.html' ? 404 : 200, headers }),
               url,
+              analytics,
             ),
             analytics,
           );
+          if (request.method === 'GET') cacheWrite(ctx, pageKey, response, 300);
+          return clientResponse(response, request);
         }
         // Initial login seeds private content but doesn't publish any pages.
         // Once a public index exists, absent routes must stay absent.
-        if (await env.STORAGE.head(`public/${id}/index.html`)) {
-          const missing = await env.STORAGE.get(`public/${id}/404.html`);
+        if (published?.pages?.['index.html'] || (!published?.pages && await env.STORAGE.head(`public/${id}/index.html`))) {
+          const missingKey = published?.pages ? (published.pages['404.html'] ? 'public/content/' + published.pages['404.html'] : null) : `public/${id}/404.html`;
+          const missing = missingKey ? await env.STORAGE.get(missingKey) : null;
           return protect(
             await readerHtml(
               new Response(request.method === 'HEAD' ? null : missing?.body || 'Not found', {
@@ -196,5 +218,10 @@ export default {
         new Response('服务暂时不可用，请检查 Cloudflare 配置后重试。', { status: 503 }),
       );
     }
+  },
+  async scheduled(_event: ScheduledController, env: WebBindings, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(maintainStorage(env).catch(error => {
+      console.error(JSON.stringify({ event: 'storage_maintenance_failed', type: error instanceof Error ? error.name : 'unknown' }));
+    }));
   },
 } satisfies ExportedHandler<WebBindings>;

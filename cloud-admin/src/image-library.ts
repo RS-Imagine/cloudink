@@ -73,6 +73,14 @@ export async function ensureManagedImages(
   for (const text of typeof source === 'string' ? [source] : source)
     for (const key of localImageKeys(text, origin)) needed.add(key);
   if (!needed.size) return;
+  // Small reference sets use cheaper Class B HEADs instead of a Class A
+  // bucket scan. Large sets keep the bounded LIST path.
+  if (needed.size <= 12) {
+    const found = await Promise.all([...needed].map(key => storage.head(key)));
+    if (found.some(object => !object))
+      throw new HttpError(400, '内容引用了已经删除或尚未上传的图片，请移除该链接或重新上传后保存。');
+    return;
+  }
   let cursor: string | undefined;
   do {
     const page = await storage.list({ prefix: 'uploads/', cursor, limit: 1000 });
@@ -200,11 +208,29 @@ async function references(
       const slug = object.key.match(/^shorts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '短记目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = { kind: 'draft', title: slug, slug };
-      if (bytes + object.size > MAX_TEXT_BYTES)
-        throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
-      const body = await storage.get(object.key);
-      if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
-      source(await body.text(), ref);
+      const indexed = object.customMetadata?.image_refs;
+      if (indexed !== undefined) {
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(indexed);
+        } catch {
+          throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
+        }
+        if (
+          !Array.isArray(parsed) ||
+          !parsed.every((key) => typeof key === 'string' && validImageKey(key))
+        )
+          throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
+        add(parsed, ref);
+      } else {
+        if (++unindexed > MAX_UNINDEXED)
+          throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
+        if (bytes + object.size > MAX_TEXT_BYTES)
+          throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
+        const body = await storage.get(object.key);
+        if (!body) throw new HttpError(409, '原稿正在变化，请刷新图片库后重试。');
+        source(await body.text(), ref);
+      }
     }
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
@@ -268,12 +294,21 @@ export async function imageLibraryRoute(
       (a, b) =>
         b.uploaded.getTime() - a.uploaded.getTime() || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
     );
-    const images = remaining.slice(0, 24),
+    const completeCatalog = new URL(request.url).searchParams.get('catalog') === '1';
+    const images = completeCatalog ? remaining : remaining.slice(0, 24),
       last = images.at(-1);
     const nextCursor =
       remaining.length > images.length && last
         ? JSON.stringify([last.uploaded.getTime(), last.key])
         : null;
+    const families = new Map<string, R2Object[]>();
+    for (const item of catalog) {
+      const parent = parentImageKey(item.key);
+      if (parent === item.key) continue;
+      const family = families.get(parent) || [];
+      family.push(item);
+      families.set(parent, family);
+    }
     let refs = new Map<string, ImageReference[]>(),
       referenceError = '';
     try {
@@ -296,15 +331,11 @@ export async function imageLibraryRoute(
           /^image\/(?:jpeg|png|webp)$/.test(object.httpMetadata?.contentType || '') &&
           object.customMetadata?.optimization !== 'skipped' &&
           (object.customMetadata?.optimization === 'processing' ||
-            !catalog.some(
-              (item) => parentImageKey(item.key) === object.key && item.key !== object.key,
-            )),
+            !families.has(object.key)),
         optimization: object.customMetadata?.optimization || '',
         ...imagePresentation(
           object,
-          catalog.filter(
-            (item) => parentImageKey(item.key) === object.key && item.key !== object.key,
-          ),
+          families.get(object.key) || [],
         ),
         uploaded: object.uploaded.toISOString(),
         etag: object.etag,
@@ -313,6 +344,7 @@ export async function imageLibraryRoute(
       referencesChecked: !referenceError,
       referenceError,
       cursor: nextCursor,
+      catalog: completeCatalog,
     });
   }
   if (request.method === 'DELETE') {

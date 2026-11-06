@@ -1,3 +1,4 @@
+import { PUBLIC_RESPONSE_VERSION } from './assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import { ensureSiteIcon } from './site-icons';
@@ -134,6 +135,8 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
     release_id: release.id,
     previous_id: base.id,
     template_version: CURRENT_TEMPLATE_VERSION,
+    response_version: PUBLIC_RESPONSE_VERSION,
+    force_rebuild: data.rebuild === true,
     status: 'queued',
     started_at: new Date().toISOString(),
     ...(rename ? { rename } : {}),
@@ -147,7 +150,7 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
   try {
     await env.STORAGE.put(`releases/${release.id}.json`, JSON.stringify(release));
     await claimBrowserPublication(env, pending);
-    return json({ ...pending, browser_release: release }, 202);
+    return json({ ...pending, incremental: true, browser_release: release }, 202);
   } catch {
     await cancelBrowserPublish(env, release.id);
     throw new HttpError(503, '发布暂时未能准备好；草稿和线上版本已保留，请重试。');

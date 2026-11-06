@@ -125,3 +125,9 @@ cloudink/
 CloudInk 的原创代码与项目资源采用 [MIT License](LICENSE) 发布，版权署名为 RS-Imagine 与 CloudInk 贡献者。使用、修改和再分发时请保留版权与许可声明；第三方依赖与资源仍适用各自的许可证。
 
 使用 CloudInk 发布的文章、图片等个人网站内容，其权利由内容作者决定，不因使用本程序而自动适用 MIT。
+
+### 默认节省额度
+
+公开内容使用边缘缓存，日常发布只上传变化页面，新大图默认压缩主图；图片库分页不重复扫描存储桶。每日自动回收过期发布产物，保留当前与最近两个版本，保护原稿、图片、设置和账户。详见[免费额度与自动维护](docs/DEPLOYMENT.md#免费额度与自动维护)。这些措施减少消耗，但不构成 Cloudflare 账号的自动停费上限。
+
+实现位置：`cloud-web/src/cache.ts` 负责公开缓存，`cloud-admin/src/browser-publishing.ts` 负责页面指纹与增量发布，`cloud-admin/src/maintenance.ts` 负责有界回收；仍使用一个 Worker 与一个私有 R2 桶。
