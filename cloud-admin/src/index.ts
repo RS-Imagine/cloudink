@@ -1,3 +1,4 @@
+import { backupJobRoute } from './backup-jobs';
 import { maintainStorage, type MaintenanceStatus } from './maintenance';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
@@ -98,6 +99,8 @@ async function apiRoute(
     return optimizeImage(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
   if (images) return images;
+  const task = await backupJobRoute(request, env, path, session);
+  if (task) return task;
   const backup = await backupRoute(request, env, path);
   if (backup) return backup;
   const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|plan|commit|cancel)$/);
@@ -409,7 +412,7 @@ function protect(response: Response, asset = false): Response {
   return new Response(response.body, { status: response.status, headers });
 }
 export default {
-  async fetch(request: Request, env: CloudInkEnv): Promise<Response> {
+  async fetch(request: Request, env: CloudInkEnv, ctx?: ExecutionContext): Promise<Response> {
     try {
       const path = new URL(request.url).pathname;
       if (path === '/api/config' && request.method === 'GET')
@@ -441,11 +444,17 @@ export default {
       if (path.startsWith('/api/')) {
         const session = await requireSession(request, env);
         const route = () => apiRoute(request, env, path, session);
-        return protect(
-          await (changesContentReferences(path, request.method)
-            ? withContentMutation(env.STORAGE, route)
-            : route()),
-        );
+        const response = changesContentReferences(path, request.method)
+          ? withContentMutation(env.STORAGE, route)
+          : route();
+        if (path.startsWith('/api/backup/jobs'))
+          ctx?.waitUntil(
+            response.then(
+              () => {},
+              () => {},
+            ),
+          );
+        return protect(await response);
       }
       throw new HttpError(404, '页面不存在。');
     } catch (e) {

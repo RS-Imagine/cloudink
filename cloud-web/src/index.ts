@@ -88,7 +88,7 @@ export default {
         return request.method === 'HEAD' ? new Response(null, response) : response;
       }
       if (path.startsWith('/api/') || editorAssets.has(path)) {
-        const response = await admin.fetch(request, env);
+        const response = await admin.fetch(request, env, ctx);
         if (
           request.method === 'POST' &&
           /\/api\/publish\/[a-f0-9-]{36}\/commit$/.test(path) &&

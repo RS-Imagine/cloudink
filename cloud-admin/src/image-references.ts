@@ -33,6 +33,7 @@ export function managedImageKeys(source: string): string[] {
   return [...keys];
 }
 export async function localImageKeys(source: string, origin: string): Promise<string[]> {
+  if (!managedImageKeys(source).length) return [];
   const body = source
     .replace(/^\uFEFF/, '')
     .replace(/^\+\+\+\r?\n[\s\S]*?\r?\n\+\+\+(?:\r?\n|$)/, '');
