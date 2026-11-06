@@ -109,7 +109,7 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.locator('#swup').focus();
   await page.keyboard.press('/');
   await expect(page.locator('#search-input')).toBeFocused();
-  await expect(page.locator('#search-results a')).toHaveCount(3);
+  await expect(page.locator('#search-results a')).toHaveCount(0);
   await page.locator('#search-input').fill('不存在的搜索词');
   await expect(page.locator('#search-status')).toContainText('还没有找到');
   await expect(page.locator('#search-results a')).toHaveCount(0);

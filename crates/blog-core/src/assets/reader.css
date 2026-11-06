@@ -526,11 +526,13 @@ dialog.search-modal::backdrop {
 dialog.search-modal {
   display: none;
   position: fixed;
-  inset: 0;
-  width: min(600px, calc(100vw - 32px));
+  inset: auto 0 auto 0;
+  top: 104px;
+  width: min(680px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   height: fit-content;
-  max-height: calc(100dvh - 48px);
-  margin: min(10vh, 80px) auto auto;
+  max-height: calc(100dvh - 120px);
+  margin: 0 auto;
   padding: 0;
   border: 1px solid var(--ci-divider);
   border-radius: 24px;
@@ -543,17 +545,19 @@ dialog.search-modal {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   transition: none !important;
+  z-index: 1000;
 }
 dialog.search-modal[open] {
   display: flex;
 }
 :root[data-ci-motion] dialog.search-modal[open] {
-  animation: search-appear var(--ci-motion-standard) var(--ci-ease) both;
+  animation: search-roll-down var(--ci-motion-standard) var(--ci-ease) both;
+  transform-origin: top center;
 }
-@keyframes search-appear {
+@keyframes search-roll-down {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-8px) scaleY(0.96);
   }
   to {
     opacity: 1;
@@ -628,30 +632,54 @@ dialog.search-modal .search-input {
   flex: none;
 }
 .search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   min-height: 0;
   max-height: min(48dvh, 460px);
   overflow: auto;
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
+.search-results li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 .search-results li + li {
   border-top: 1px solid var(--ci-divider);
 }
 .search-results .search-result-item {
-  padding: 16px 10px;
+  display: block;
+  padding: 14px 12px;
   border: 0;
-  border-radius: var(--ci-radius-sm);
+  border-radius: var(--ci-radius-md);
+  text-decoration: none !important;
+  color: inherit;
+  transition: background-color var(--ci-motion-fast) var(--ci-ease);
+}
+.search-results .search-result-item:hover,
+.search-results .search-result-item.selected,
+.search-results .search-result-item:focus-visible {
+  background: var(--ci-container);
+  text-decoration: none !important;
+  outline: none;
+}
+.search-results .search-result-item * {
+  text-decoration: none !important;
 }
 .search-result-title {
   color: var(--ci-text);
   font-size: 15px;
   font-weight: 600;
   margin-bottom: 6px;
+  text-decoration: none !important;
 }
 .search-result-excerpt {
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--ci-muted);
+  text-decoration: none !important;
 }
 .search-results mark {
   padding: 1px 4px;
@@ -659,6 +687,7 @@ dialog.search-modal .search-input {
   color: var(--ci-on-primary-container);
   background: var(--ci-primary-container);
   font-weight: 600;
+  text-decoration: none !important;
 }
 .search-hint {
   display: flex;
@@ -705,15 +734,21 @@ dialog.search-modal .search-input {
     transition: transform var(--ci-motion-standard) var(--ci-ease);
   }
   .mobile-toc-btn {
+    position: fixed;
     display: flex;
+    align-items: center;
+    justify-content: center;
     width: 48px;
     height: 48px;
     bottom: max(20px, env(safe-area-inset-bottom));
     right: 20px;
+    border: none;
     border-radius: 50%;
     background: var(--ci-primary);
     color: var(--ci-on-primary);
     box-shadow: var(--ci-shadow-floating);
+    z-index: 50;
+    cursor: pointer;
   }
   .toc-close {
     position: absolute;
@@ -765,12 +800,15 @@ dialog.search-modal .search-input {
     flex-basis: 100%;
   }
   dialog.search-modal {
-    margin-top: 16px;
-    max-height: calc(100dvh - 32px);
+    top: 88px;
+    width: calc(100vw - 32px);
+    max-height: calc(100dvh - 104px);
+    margin: 0 auto;
+    border-radius: 20px;
   }
   dialog.search-modal .search-content {
-    max-height: calc(100dvh - 32px);
-    padding: 20px;
+    max-height: calc(100dvh - 104px);
+    padding: 20px 16px;
   }
   .reader-dialog {
     padding-inline: 14px;

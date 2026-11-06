@@ -131,7 +131,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await page.locator('#site-search-btn').click();
   await settled(page);
-  await expect(page.locator('#search-modal')).toHaveAttribute('data-sheet-snap', 'expanded');
+  await expect(page.locator('#search-modal')).toBeVisible();
   // Reverse an in-flight close without running its old completion.
   await page.evaluate(() => CloudInkMotion.closeDialog(document.getElementById('search-modal')));
   await page.waitForTimeout(40);

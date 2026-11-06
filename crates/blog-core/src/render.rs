@@ -643,7 +643,7 @@ fn page(
     <div class="search-content">
       <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
       <label class="search-input-wrapper" for="search-input"><span>标题、摘要或正文</span><input type="search" id="search-input" class="search-input" placeholder="寻找一段文字…" autocomplete="off" enterkeyhint="search" aria-controls="search-results"></label>
-      <p id="search-status" class="search-status" role="status" aria-live="polite">输入关键词，或浏览最近的文章。</p>
+      <p id="search-status" class="search-status" role="status" aria-live="polite">输入关键词搜索文章…</p>
       <ul id="search-results" class="search-results"></ul>
       <p class="search-hint"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></p>
     </div>

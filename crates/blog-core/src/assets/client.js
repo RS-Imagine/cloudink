@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (searchBtn && searchModal) {
         const nativeSearch = typeof searchModal.showModal === 'function';
-        if (nativeSearch) searchModal.dataset.sheet = 'full';
         let searchOverflow = null;
         let searchError = false;
         let searchReturnFocus = true;
@@ -139,12 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
           }
           const query = searchInput.value.trim().toLowerCase();
-          const results = (query ? searchIndex.filter(post =>
+          if (!query) {
+            searchStatus.textContent = '输入关键词搜索文章…';
+            return;
+          }
+          const results = searchIndex.filter(post =>
             post.title.toLowerCase().includes(query) || post.description.toLowerCase().includes(query) || post.body.toLowerCase().includes(query)
-          ) : searchIndex).slice(0, query ? 10 : 5);
+          ).slice(0, 10);
           searchStatus.textContent = results.length
-            ? (query ? (results.length === 10 ? '显示前 10 篇匹配文章' : '找到 ' + results.length + ' 篇匹配文章') : '最近发布的文章')
-            : (query ? '还没有找到匹配的文字，试试其他关键词。' : '这里还没有发布的文章。');
+            ? (results.length === 10 ? '显示前 10 篇匹配文章' : '找到 ' + results.length + ' 篇匹配文章')
+            : '还没有找到匹配的文字，试试其他关键词。';
           const fragment = document.createDocumentFragment();
           for (const post of results) {
             const item = document.createElement('li');
