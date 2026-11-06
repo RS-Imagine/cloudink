@@ -48,9 +48,12 @@
   opacity: 1;
 }
 .image-unavailable::after {
-  content: '预览暂不可用';
+  content: attr(data-placeholder);
   color: var(--ci-muted);
   font: 12px/20px var(--ci-font-ui);
+}
+.image-unavailable:not([data-placeholder])::after {
+  content: '预览暂不可用';
 }
 .image-thumbnail:focus-visible {
   outline-offset: -4px;

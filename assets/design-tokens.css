@@ -88,6 +88,14 @@
   --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);
   --ci-type-body: 1rem;
   --ci-type-caption: 0.8125rem;
+  --ci-font-size-xs: 12px;
+  --ci-font-size-sm: 13px;
+  --ci-font-size-base: 14px;
+  --ci-font-size-md: 16px;
+  --ci-font-size-lg: 18px;
+  --ci-font-size-xl: 20px;
+  --ci-font-size-2xl: 24px;
+  --ci-font-size-3xl: 30px;
   --ci-leading-tight: 1.25;
   --ci-leading-normal: 1.5;
   --ci-leading-relaxed: 1.75;

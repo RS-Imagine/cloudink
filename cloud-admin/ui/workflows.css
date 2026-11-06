@@ -930,6 +930,7 @@ button[aria-busy='true']::before {
 
 .markdown-import-dialog {
   width: min(42rem, calc(100% - 2rem));
+  /* 85vh acts as safe fallback for older browsers lacking dynamic viewport dvh */
   max-height: 85vh;
   max-height: 85dvh;
   padding: 24px;
