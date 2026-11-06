@@ -18,6 +18,11 @@ a {
 :root[data-ci-motion] button:active {
   transform: none;
 }
+[data-motion-press],
+button[data-motion-press],
+.post-card {
+  will-change: transform;
+}
 .site-nav a,
 .site-nav .search-btn,
 .share-button,

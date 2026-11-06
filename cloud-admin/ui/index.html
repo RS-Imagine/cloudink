@@ -661,6 +661,7 @@
           <div class="editor-save-status">
             <span class="status-dot" aria-hidden="true"></span
             ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
+            <button type="button" id="open-draft-history" class="quiet" title="查看本地版本快照与历史恢复" aria-label="本地草稿版本历史" style="font-size: 12px; margin-left: 8px; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line);">历史快照</button>
           </div>
           <div id="editor-search-slot"></div>
           <div class="toolbar-actions">
@@ -1302,6 +1303,18 @@
       <p id="markdown-import-status" role="status" aria-live="polite"></p>
       <ol id="markdown-import-results" aria-label="逐文件导入结果"></ol>
       <div class="form-actions"><button id="markdown-import-close" type="button">完成</button></div>
+    </dialog>
+    <dialog
+      id="draft-history-dialog"
+      class="workflow-dialog draft-history-dialog"
+      aria-labelledby="draft-history-title"
+    >
+      <div class="dialog-heading">
+        <h2 id="draft-history-title">本地历史快照</h2>
+      </div>
+      <p class="muted" style="font-size: 13px; margin: 4px 0 16px;">写作时本地每 30 秒自动记录一个微快照（最多保留 20 个）。可在网络冲突或误操作时一键恢复。</p>
+      <div id="draft-history-list" class="draft-history-list" style="max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+      <div class="form-actions"><button id="draft-history-close" type="button" class="primary">关闭</button></div>
     </dialog>
     <script type="module" src="/app.js"></script>
   </body>
