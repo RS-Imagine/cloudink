@@ -193,7 +193,11 @@ export async function planBrowserPublish(
   const pages: Record<string, string> = {};
   const changed: string[] = [];
   for (const path of files) {
-    if (prior?.sources[path] === sources[path] && /^[a-f0-9]{64}$/.test(prior.pages[path] || ''))
+    if (
+      path !== '_release.json' &&
+      prior?.sources[path] === sources[path] &&
+      /^[a-f0-9]{64}$/.test(prior.pages[path] || '')
+    )
       pages[path] = prior.pages[path];
     else {
       pages[path] = await contentDigest(
@@ -203,7 +207,7 @@ export async function planBrowserPublish(
           ':' +
           path +
           ':' +
-          (state.force_rebuild ? id : '') +
+          (state.force_rebuild || path === '_release.json' ? id : '') +
           ':' +
           sources[path],
       );
@@ -240,6 +244,17 @@ async function pendingVersion(
     throw new HttpError(409, '这次发布已结束或失效，请重新发布。');
   return { object, state };
 }
+function validateMarker(body: string, state: Publishing): void {
+  let marker;
+  try {
+    marker = JSON.parse(body);
+  } catch {
+    throw new HttpError(400, '发布标记无效。');
+  }
+  if (marker?.id !== state.release_id) throw new HttpError(400, '发布标记与当前版本不一致。');
+  if (state.template_version && marker.template_version !== state.template_version)
+    throw new HttpError(409, '后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。');
+}
 export async function stageBrowserPage(
   request: Request,
   env: CloudInkEnv,
@@ -249,25 +264,16 @@ export async function stageBrowserPage(
   const path = new URL(request.url).searchParams.get('path') || '';
   if (!state.files?.includes(path)) throw new HttpError(400, '这不是当前发布中的页面。');
   let body = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(
-    await limitedBody(request, 8_000_000),
+    await limitedBody(request, path === '_release.json' ? 4096 : 8_000_000),
   );
   if (state.plan && (await contentDigest(body)) !== state.plan.sources[path])
     throw new HttpError(409, '网页内容与本次发布指纹不一致，请重新生成。');
+  if (path === '_release.json') validateMarker(body, state);
   if (state.plan) {
     const existing = await env.STORAGE.head('public/content/' + state.plan.pages[path]);
     if (existing) return json({ ok: true, reused: true });
   }
-  if (path === '_release.json') {
-    let marker;
-    try {
-      marker = JSON.parse(body);
-    } catch {
-      throw new HttpError(400, '发布标记无效。');
-    }
-    if (marker?.id !== id) throw new HttpError(400, '发布标记与当前版本不一致。');
-    if (state.template_version && marker.template_version !== state.template_version)
-      throw new HttpError(409, '后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。');
-  }
+
   if (path.endsWith('.html'))
     body = await responsiveImages(
       await sanitizePublicHtml(body),
@@ -327,11 +333,21 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
   try {
     let size = 0;
     for (const path of state.files || []) {
-      const file = await env.STORAGE.head(
-        state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`,
-      );
-      if (!file) throw new HttpError(409, '页面尚未上传完整，请重新发布。');
-      size += file.size;
+      const key = state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`;
+      if (path === '_release.json') {
+        const marker = await env.STORAGE.get(key);
+        if (!marker) throw new HttpError(409, '发布标记尚未上传，请重新发布。');
+        if (marker.size > 4096) {
+          await marker.body.cancel();
+          throw new HttpError(413, '发布标记过大。');
+        }
+        validateMarker(await marker.text(), state);
+        size += marker.size;
+      } else {
+        const file = await env.STORAGE.head(key);
+        if (!file) throw new HttpError(409, '页面尚未上传完整，请重新发布。');
+        size += file.size;
+      }
     }
     const release = await readJson<Release>(env.STORAGE, `releases/${id}.json`);
     if (!release) throw new HttpError(503, '发布版本缺失。');

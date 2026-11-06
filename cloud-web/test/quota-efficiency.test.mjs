@@ -250,3 +250,37 @@ test('legacy short-note references remain protected before indexing', async (t) 
     catalog.images[0].references.some((ref) => ref.kind === 'draft' && ref.slug === 'legacy-0'),
   );
 });
+
+test('publication markers cannot reuse a prior release or bypass commit validation', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const settings = await (await f.request('/api/settings')).json();
+  await f.request('/api/settings', 'PUT', settings);
+  const first = await f.prepare({ settings: true });
+  const original = await rendered(f, first);
+  await upload(f, first, original);
+  assert.equal((await f.commit(first)).status, 200);
+  const next = await f.prepare({ settings: true });
+  const oldMarker = original.values['_release.json'];
+  const stale = await rendered(f, next, { '_release.json': oldMarker });
+  assert.ok(stale.files.includes('_release.json'));
+  assert.equal(
+    (
+      await f.request(
+        '/api/publish/' + next.release_id + '/file?path=_release.json',
+        'PUT',
+        oldMarker,
+      )
+    ).status,
+    400,
+  );
+  await f.request('/api/publish/' + next.release_id + '/cancel', 'POST', {});
+  const correct = await f.prepare({ settings: true });
+  const plan = await rendered(f, correct);
+  await upload(f, correct, plan);
+  const pending = await (await bucket.get('state/pending.json')).json();
+  await bucket.put('public/content/' + pending.plan.pages['_release.json'], oldMarker);
+  assert.equal((await f.commit(correct)).status, 400);
+  assert.equal((await (await bucket.get('state/published.json')).json()).id, first.release_id);
+});

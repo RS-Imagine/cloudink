@@ -6,6 +6,7 @@ export async function publishInBrowser(
     showPublishing({ ...result, status: 'building' });
     const rendered = await engineTask('site', { release: result.browser_release });
     const marker = JSON.parse(rendered['_release.json'] || 'null');
+    if (marker?.id !== result.release_id) throw new Error('网页版本与当前发布不一致，请重新生成。');
     if (result.template_version && marker?.template_version !== result.template_version)
       throw new Error('后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。');
     let files = [...result.files];
