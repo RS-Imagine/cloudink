@@ -31,14 +31,6 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         run: npm ci
-      - name: Normalize reviewed files for this cleanup
-        run: |
-          npx prettier --write cloud-admin/src/backup.ts cloud-admin/src/index.ts cloud-admin/src/models.ts cloud-admin/ui/index.html cloud-admin/ui/style.css cloud-admin/ui/workflows.css README.md docs/DEVELOPMENT.md package.json scripts/ui-audit.mjs cloud-admin/build-ui.mjs cloud-web/test/ui-stability.browser.mjs
-          node --input-type=module <<'JS'
-          import { readFile } from 'node:fs/promises';
-          for (const path of ["cloud-admin/src/backup.ts","cloud-admin/src/index.ts","cloud-admin/src/models.ts","cloud-admin/ui/index.html","cloud-admin/ui/style.css","cloud-admin/ui/workflows.css","README.md","docs/DEVELOPMENT.md","package.json","scripts/ui-audit.mjs","cloud-admin/build-ui.mjs","cloud-web/test/ui-stability.browser.mjs"])
-            console.log('FORMATTED_SOURCE ' + JSON.stringify({path, content: (await readFile(path)).toString('base64')}));
-          JS
       - name: Check source formatting
         run: npm run format:check
       - name: Build the browser deployment

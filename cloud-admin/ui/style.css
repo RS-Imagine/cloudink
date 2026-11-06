@@ -30,7 +30,10 @@ button {
   background: var(--paper);
   color: var(--ink);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 button:hover {
   background: var(--pale);
@@ -75,7 +78,9 @@ textarea {
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--ink);
-  transition: border-color 0.15s, outline-color 0.15s;
+  transition:
+    border-color 0.15s,
+    outline-color 0.15s;
 }
 input:focus,
 textarea:focus {
