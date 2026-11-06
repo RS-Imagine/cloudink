@@ -6,7 +6,8 @@ import { fixture, draft } from './fixture.mjs';
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 async function planned(f, state, receipts = true) {
   const paths = (state.render_files || state.files).filter(
-    (path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path),
+    (path) =>
+      !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(path),
   );
   const values = Object.fromEntries(
     paths.map((path) => [
