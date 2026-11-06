@@ -328,6 +328,7 @@ async function apiRoute(
         date: draft.front_matter.date,
         published: true,
         has_draft: false,
+        snippet: draft.body_markdown.slice(0, 300),
       });
     let cursor: string | undefined;
     do {
@@ -348,6 +349,7 @@ async function apiRoute(
           published: published.has(slug),
           has_draft: true,
           etag: object.etag,
+          snippet: meta.snippet || published.get(slug)?.body_markdown.slice(0, 300) || '',
         });
       }
       cursor = page.truncated ? page.cursor : undefined;
@@ -376,6 +378,7 @@ async function apiRoute(
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: {
           date: draft.front_matter.date,
+          snippet: draft.body_markdown.slice(0, 300).replace(/\r?\n/g, ' '),
           ...(await imageReferenceMetadata(
             source,
             env.STORAGE,

@@ -92,24 +92,77 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       actions.append(edit, pub, del);
       header.append(meta, actions);
 
+      const bodyWrapper = document.createElement('div');
+      bodyWrapper.className = 'short-card-content';
+      bodyWrapper.setAttribute('role', 'button');
+      bodyWrapper.setAttribute('tabindex', '0');
+      bodyWrapper.setAttribute('title', '点击编辑此短记');
+      bodyWrapper.addEventListener('click', () => openEditor(item));
+      bodyWrapper.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') openEditor(item);
+      });
+
       const preview = document.createElement('p');
       preview.className = 'short-card-preview';
       const cached = contentCache.get(item.slug);
       if (cached) {
-        preview.textContent = cached;
+        const clean = cached.replace(/^#+\s+/gm, '').trim();
+        preview.textContent = clean;
+        bodyWrapper.append(preview);
+
+        const footer = document.createElement('div');
+        footer.className = 'short-card-footer';
+        const count = cached.replace(/\s/g, '').length;
+        const countSpan = document.createElement('span');
+        countSpan.className = 'short-count-pill';
+        countSpan.textContent = `${count} 字`;
+        footer.append(countSpan);
+        if (/!\[.*?\]\(.*?\)/.test(cached)) {
+          const imgBadge = document.createElement('span');
+          imgBadge.className = 'short-feature-pill';
+          imgBadge.textContent = '含图片';
+          footer.append(imgBadge);
+        }
+        if (/```/.test(cached)) {
+          const codeBadge = document.createElement('span');
+          codeBadge.className = 'short-feature-pill';
+          codeBadge.textContent = '含代码';
+          footer.append(codeBadge);
+        }
+        bodyWrapper.append(footer);
       } else {
-        preview.textContent = '点击编辑查看内容…';
-        preview.classList.add('is-empty');
+        preview.textContent = '正在载入内容…';
+        preview.classList.add('is-loading');
+        bodyWrapper.append(preview);
       }
 
-      card.append(header, preview);
+      card.append(header, bodyWrapper);
       list.append(card);
     }
   }
   async function load() {
     const data = await api('/api/shorts');
     shorts = data.shorts || [];
+    for (const item of shorts) {
+      if (item.snippet) {
+        contentCache.set(item.slug, item.snippet);
+      }
+    }
     render();
+    const missing = shorts.filter((item) => !contentCache.has(item.slug));
+    if (missing.length > 0) {
+      for (const item of missing.slice(0, 10)) {
+        api(`/api/shorts/${encodeURIComponent(item.slug)}`)
+          .then((res) => {
+            const body = res?.draft?.body_markdown || '';
+            if (body) {
+              contentCache.set(item.slug, body);
+              render();
+            }
+          })
+          .catch(() => {});
+      }
+    }
   }
   function openEditor(item = null) {
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;

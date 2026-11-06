@@ -431,29 +431,41 @@ summary {
   flex-wrap: wrap;
 }
 .editor-format-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 2px;
+  background: var(--paper-subtle, rgba(0, 0, 0, 0.025));
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px 4px;
 }
 .editor-format-actions .tool-btn {
-  font-size: 13px;
-  padding: 6px 8px;
-  min-width: 28px;
-  height: 28px;
+  padding: 4px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: var(--ink);
-  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
 }
 .editor-format-actions .tool-btn:hover {
-  background: var(--pale);
+  background: var(--paper-strong, #fff);
   color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
-.editor-format-actions .tool-btn code {
-  font-size: 11px;
+.editor-format-actions .tool-btn:active {
+  transform: scale(0.92);
+}
+.editor-format-actions .tool-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 3px;
 }
 .tab {
   font-size: 12px;
@@ -1357,22 +1369,45 @@ dialog {
   align-items: center;
   gap: 10px;
 }
+.short-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .short-card-preview {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 4.8em;
+  max-height: 5em;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
-.short-card-preview.is-empty {
+.short-card-preview.is-loading {
   color: var(--muted);
-  font-style: italic;
+  opacity: 0.6;
+}
+.short-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.short-count-pill,
+.short-feature-pill {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--paper-subtle, rgba(0, 0, 0, 0.04));
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+.short-feature-pill {
+  color: var(--accent);
 }
 .short-admin-card .image-actions {
   margin-top: 0;

@@ -88,6 +88,15 @@ const paths = [
 const assets = {};
 for (const [path, file, type] of paths) {
   let bytes = await readFile(new URL(file, root));
+  if (path === '/') {
+    const html = bytes.toString('utf8');
+    const v = Date.now().toString(36);
+    bytes = Buffer.from(
+      html
+        .replace('href="/style.css"', `href="/style.css?v=${v}"`)
+        .replace('src="/app.js"', `src="/app.js?v=${v}"`),
+    );
+  }
   if (path === '/style.css') {
     const sources = [
       '../assets/design-tokens.css',
