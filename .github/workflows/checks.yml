@@ -18,6 +18,7 @@ permissions:
 
 jobs:
   verify:
+    if: github.event_name != 'workflow_dispatch' || !inputs.visual_audit
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,9 +33,9 @@ jobs:
           import {execFileSync} from 'node:child_process';
           const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
           const pr = event.pull_request;
-          const files = pr ? execFileSync('git', ['diff', '--name-only', pr.base.sha, pr.head.sha], {encoding:'utf8'}).trim().split('\n') : null;
+          const files = pr ? execFileSync('git', ['diff', '--name-only', 'HEAD^1', 'HEAD'], {encoding:'utf8'}).trim().split('\n') : null;
           const code = !files || files.some(path => !/^(?:docs\/.*|README(?:\.[^/]*)?|LICENSE|.*\.md)$/.test(path));
-          const browser = code && (!files || files.some(path => /^(?:cloud-admin\/ui\/|cloud-admin\/src\/(?:browser-publishing|publishing|image|media|models|site-icons|home-illustration)|cloud-web\/src\/|cloud-web\/test\/.*browser|assets\/|crates\/|scripts\/|.*package(?:-lock)?\.json$|wrangler\.jsonc$|\.github\/)/.test(path)));
+          const browser = code && (!files || files.some(path => /^(?:cloud-admin\/(?:ui\/|build-ui\.mjs$)|cloud-admin\/src\/(?:browser-publishing|publishing|image|media|models|site-icons|home-illustration)|cloud-web\/src\/|cloud-web\/test\/(?:.*browser|fixture\.mjs$)|assets\/|crates\/|scripts\/|.*package(?:-lock)?\.json$|wrangler\.jsonc$|\.github\/)/.test(path)));
           const rust = code && (!files || files.some(path => /^(?:crates\/|Cargo\.|.*\/Cargo\.|rust-toolchain|\.github\/)/.test(path)));
           for (const [key, value] of Object.entries({code, browser, rust})) appendFileSync(process.env.GITHUB_OUTPUT, key + '=' + value + '\n');
           console.log(JSON.stringify({code, browser, rust, files}));

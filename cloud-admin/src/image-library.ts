@@ -226,8 +226,6 @@ async function references(
           throw new HttpError(503, '图片引用索引无效，请重新保存原稿。');
         add(parsed, ref);
       } else {
-        if (++unindexed > MAX_UNINDEXED)
-          throw new HttpError(413, '旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。');
         if (bytes + object.size > MAX_TEXT_BYTES)
           throw new HttpError(413, '原稿超过图片管理检查上限，图片不会被删除。');
         const body = await storage.get(object.key);

@@ -229,3 +229,24 @@ test('bounded retention removes only expired generated objects and protects shar
     assert.ok(await bucket.head(key), key);
   assert.equal((await f.request('/api/maintenance')).status, 200);
 });
+
+test('legacy short-note references remain protected before indexing', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  await bucket.put('uploads/legacy-note.png', new Uint8Array([137, 80, 78, 71]), {
+    httpMetadata: { contentType: 'image/png' },
+  });
+  for (let index = 0; index < 31; index++)
+    await bucket.put(
+      'shorts/legacy-' + index + '.md',
+      index ? 'Old short note' : '![](/images/uploads/legacy-note.png)',
+    );
+  const response = await f.request('/api/images?catalog=1');
+  assert.equal(response.status, 200);
+  const catalog = await response.json();
+  assert.equal(catalog.referencesChecked, true);
+  assert.ok(
+    catalog.images[0].references.some((ref) => ref.kind === 'draft' && ref.slug === 'legacy-0'),
+  );
+});

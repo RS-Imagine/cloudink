@@ -137,3 +137,7 @@ CloudInk 默认减少重复操作，不需要额外配置：
 R2 Standard 当前免费额度为每月 10 GB-month、100 万次 A 类操作、1000 万次 B 类操作，**不是超额自动停费上限**。容量按月平均占用计算；同账号其他桶也会占用额度。Cache API 命中仍算一次 Worker 请求，不能规避 Workers Free 每日请求额度。流量很大、反复上传或完整重建仍可能超额；请在 Cloudflare 查看 R2 使用量、Workers 套餐与账单通知。不要为降低访问费而启用没有该免费额度的 Infrequent Access 存储类别。
 
 价格与限制以 [R2 官方价格](https://developers.cloudflare.com/r2/pricing/) 和 [Workers 官方价格](https://developers.cloudflare.com/workers/platform/pricing/) 为准。项目不能从博客后台准确读取整个 Cloudflare 账号的账单，也不会添加反而产生额外写入的逐请求计费计数器。
+
+### 回退存储优化版本
+
+本次新增的页面映射需要支持它的读取代码，不能在发布新格式后直接部署完全不认识映射的旧 Worker。需要完整退回旧版本时，先在当前代码的 `cloud-admin/src/publishing.ts` 将发布响应的 `incremental: true` 临时改为 `incremental: false`，部署后刷新后台并点击“更新网站排版”。这会使用保留的完整发布协议重新生成传统的版本目录；确认 `state/published.json` 中不再含 `pages` 映射后，再 revert 本次优化。先下载网站备份，不清空桶或原稿。只关闭缓存或自动维护时，可以保留映射读取与发布代码，无需转换已有内容。
