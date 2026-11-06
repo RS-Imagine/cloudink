@@ -249,12 +249,17 @@ test('backup restores deleted articles and shorts as drafts and retries without 
     assert.equal((await bucket.head(key)).customMetadata.deleted, undefined);
   assert.equal(await (await bucket.get('auth/account.json')).text(), account);
   assert.equal(await (await bucket.get('state/published.json')).text(), pointer);
+  const versions = await Promise.all(
+    ['drafts/article.md', 'shorts/note.md', 'draft-site.json'].map((key) => bucket.head(key)),
+  );
   const retry = await f.request('/api/backup/restore', 'POST', {
     backup,
     settings_etag: result.etag,
   });
   assert.equal(retry.status, 200, await retry.clone().text());
   assert.equal((await retry.json()).restored, 0);
+  for (const before of versions)
+    assert.equal((await bucket.head(before.key)).version, before.version);
 });
 
 test('restore does not overwrite originals recreated after deletion', async (t) => {

@@ -1,6 +1,6 @@
 import { backupSource, legacyHistoryKey } from './backup-contract';
 import { ensureHomeIllustration } from './home-illustration';
-import { imageDimensions, parentImageKey } from './image-variants';
+import { imageDimensions, parentImageKey, contentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { currentRelease } from './publishing';
@@ -202,6 +202,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   for (const [slug, source] of drafts) writes.set(`drafts/${slug}.md`, source);
   for (const [slug, source] of shortDrafts) writes.set(`shorts/${slug}.md`, source);
   const tombstones = new Map<string, string>();
+  const unchanged = new Set<string>();
   for (const [key, source] of writes) {
     if (key.startsWith('drafts/')) await assertWritableAddress(env.STORAGE, key.slice(7, -3));
     const existing = await env.STORAGE.get(key);
@@ -209,12 +210,15 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (existing?.customMetadata?.deleted && !existing.customMetadata.renamedTo) {
       tombstones.set(key, existing.etag);
       await existing.body.cancel();
-    } else if (existing && (await existing.text()) !== source) {
-      throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
+    } else if (existing) {
+      if ((await existing.text()) !== source)
+        throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
+      unchanged.add(key);
     }
   }
   let restored = 0;
   for (const [key, source] of writes) {
+    if (unchanged.has(key)) continue;
     const isShort = key.startsWith('shorts/');
     const draft = isShort ? parseShortSource(source) : parseSource(source);
     const tombstoneEtag = tombstones.get(key);
@@ -222,8 +226,11 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       onlyIf: tombstoneEtag ? { etagMatches: tombstoneEtag } : { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       customMetadata: isShort
-        ? { date: (draft as ShortDraft).front_matter.date, ...imageReferenceMetadata(source) }
-        : await draftSummary(draft as Draft),
+        ? {
+            date: (draft as ShortDraft).front_matter.date,
+            ...(await imageReferenceMetadata(source, env.STORAGE)),
+          }
+        : await draftSummary(draft as Draft, env.STORAGE),
     });
     if (saved) restored++;
     else {
@@ -232,9 +239,13 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
         throw new HttpError(409, '另一窗口修改了原稿。已恢复的内容保留，请检查后重试。');
     }
   }
-  const settings = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
-    onlyIf: oldSettings ? { etagMatches: oldSettings.etag } : { etagDoesNotMatch: '*' },
-  });
+  const settingsText = JSON.stringify(site);
+  const settings =
+    oldSettings && (await oldSettings.text()) === settingsText
+      ? oldSettings
+      : await env.STORAGE.put('draft-site.json', settingsText, {
+          onlyIf: oldSettings ? { etagMatches: oldSettings.etag } : { etagDoesNotMatch: '*' },
+        });
   if (!settings) throw new HttpError(409, '原稿已恢复，但网站设置发生了修改，请检查后重试。');
   return json({
     restored,
@@ -262,6 +273,12 @@ export async function backupRoute(
     )
       throw new HttpError(400, '备份图标与其内容地址不一致。');
     const content = 'bytes' in type ? type.bytes : bytes;
+    if (
+      key.startsWith('uploads/sha256/') &&
+      parentImageKey(key) === key &&
+      (!('ext' in type) || (await contentImageKey(content, type.ext)) !== key)
+    )
+      throw new HttpError(400, '备份图片内容与摘要地址不一致。');
     const existing = await env.STORAGE.get(key);
     if (existing) {
       if (

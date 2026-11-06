@@ -244,3 +244,28 @@ fn template_version_tracks_renderer_not_private_content() {
     assert_eq!(after["template_version"], native["template_version"]);
     fs::remove_dir_all(p).unwrap();
 }
+
+#[test]
+fn selective_release_pages_match_full_render_and_omit_unaffected_pages() {
+    let source =
+        "+++\ntitle = \"Selected\"\nslug = \"selected\"\ndate = \"2026-11-06\"\n+++\n\nA **post**.";
+    let mut release = serde_json::json!({
+        "schema_version": 1, "id": "render-selection", "created_at": "2026-11-06",
+        "site": {"title": "Blog", "subtitle": "", "author": "Author", "description": ""},
+        "markdown_posts": {"selected": source}
+    });
+    let full = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    release["render_paths"] = serde_json::json!(["posts/selected/index.html", "_release.json"]);
+    let selected = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    assert_eq!(selected.len(), 2);
+    for (path, html) in &selected {
+        assert_eq!(Some(html), full.get(path));
+    }
+    release["render_paths"] = serde_json::json!(["_release.json"]);
+    release["markdown_posts"]["selected"] =
+        serde_json::json!("intentionally not parsed for marker-only render");
+    let marker = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    assert_eq!(marker.len(), 1);
+    release["render_paths"] = serde_json::json!(["../private"]);
+    assert!(blog_core::bundle::render_release(&release.to_string()).is_err());
+}

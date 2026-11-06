@@ -1,3 +1,4 @@
+import { withContentMutation } from './storage-mutations';
 import { HttpError, json, limitedBody } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
 import { imageInfo } from './image-info';
@@ -75,6 +76,12 @@ async function prepareVariants(
   return prepared;
 }
 
+export async function contentImageKey(bytes: Uint8Array, ext: string): Promise<string> {
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+    .map((n) => n.toString(16).padStart(2, '0'))
+    .join('');
+  return 'uploads/sha256/' + hash + '.' + ext;
+}
 export async function uploadImage(request: Request, storage: R2Bucket): Promise<Response> {
   const body = await limitedBody(request, MAX_IMAGE + 6_000_000 + 64 * 1024);
   const form = await new Response(body, {
@@ -86,51 +93,65 @@ export async function uploadImage(request: Request, storage: R2Bucket): Promise<
   const bytes = new Uint8Array(await file.arrayBuffer()),
     type = imageType(bytes),
     info = imageInfo(bytes);
-  const basename =
-    file.name
-      .replace(/\.[^.]*$/, '')
-      .replace(/[^A-Za-z0-9_-]/g, '-')
-      .slice(0, 50) || 'image';
-  const key =
-    'uploads/' +
-    new Date().toISOString().slice(0, 7).replace('-', '/') +
-    '/' +
-    crypto.randomUUID() +
-    '-' +
-    basename +
-    '.' +
-    type.ext;
+  const key = await contentImageKey(bytes, type.ext);
   const prepared = await prepareVariants(form, info, file.size, key);
-  const written: string[] = [],
-    variants: R2Object[] = [];
-  try {
-    // Save derivatives first. On failure the family is removed; no half-built library entry.
-    for (const part of prepared) {
-      written.push(part.key);
-      const object = await storage.put(part.key, part.bytes, {
-        customMetadata: part.metadata,
+  async function existing(bucket = storage): Promise<Response | null> {
+    const object = await bucket.head(key);
+    if (!object) return null;
+    const variants = (
+      await Promise.all(IMAGE_WIDTHS.map((width) => bucket.head(key + '.w' + width + '.webp')))
+    ).filter((part): part is R2Object => !!part);
+    return json({
+      key,
+      url: '/images/' + key,
+      name: object.customMetadata?.name || file.name,
+      deduplicated: true,
+      ...imagePresentation(object, variants),
+    });
+  }
+  // Retries of a successful upload do not acquire a lease or issue any PUT.
+  const found = await existing();
+  if (found) return found;
+  return withContentMutation(storage, async (locked) => {
+    const repeated = await existing(locked);
+    if (repeated) return repeated;
+    const written: string[] = [],
+      variants: R2Object[] = [];
+    try {
+      for (const part of prepared) {
+        let object = await locked.head(part.key);
+        if (!object) {
+          object = await locked.put(part.key, part.bytes, {
+            onlyIf: { etagDoesNotMatch: '*' },
+            customMetadata: part.metadata,
+            httpMetadata: {
+              contentType: 'image/webp',
+              cacheControl: 'public, max-age=31536000, immutable',
+            },
+          });
+          if (!object) throw new HttpError(409, '图片正在变化，请重试。');
+          written.push(part.key);
+        }
+        variants.push(object);
+      }
+      const object = await locked.put(key, bytes, {
+        onlyIf: { etagDoesNotMatch: '*' },
+        customMetadata: { name: file.name.slice(0, 160), ...imageDimensions(bytes) },
         httpMetadata: {
-          contentType: 'image/webp',
+          contentType: type.type,
           cacheControl: 'public, max-age=31536000, immutable',
         },
       });
-      if (!object) throw new Error('Image write failed');
-      variants.push(object);
+      if (!object) throw new HttpError(409, '图片正在变化，请重试。');
+      return json(
+        { key, url: '/images/' + key, name: file.name, ...imagePresentation(object, variants) },
+        201,
+      );
+    } catch (error) {
+      if (written.length) await locked.delete(written);
+      throw error;
     }
-    written.push(key);
-    const object = await storage.put(key, bytes, {
-      customMetadata: { name: file.name.slice(0, 160), ...imageDimensions(bytes) },
-      httpMetadata: { contentType: type.type, cacheControl: 'public, max-age=31536000, immutable' },
-    });
-    if (!object) throw new Error('Image write failed');
-    return json(
-      { key, url: '/images/' + key, name: file.name, ...imagePresentation(object, variants) },
-      201,
-    );
-  } catch (error) {
-    await storage.delete(written);
-    throw error;
-  }
+  });
 }
 
 /** Enrich once at publication time. Reader requests perform no extra image metadata reads. */

@@ -133,7 +133,7 @@ export async function finishRename(
     draft.front_matter.draft = true;
     const saved = await storage.put(`drafts/${to}.md`, serializeDraft(draft), {
       onlyIf: targetEtag ? { etagMatches: targetEtag } : { etagDoesNotMatch: '*' },
-      customMetadata: { ...(await draftSummary(draft)), renameRelease: state.release_id },
+      customMetadata: { ...(await draftSummary(draft, storage)), renameRelease: state.release_id },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
     });
     if (!saved) {
@@ -200,7 +200,7 @@ export async function renameDraft(
   const saved = await env.STORAGE.put(`drafts/${to}.md`, body, {
     onlyIf: target ? { etagMatches: target.etag } : { etagDoesNotMatch: '*' },
     customMetadata: {
-      ...(await draftSummary(draft)),
+      ...(await draftSummary(draft, env.STORAGE)),
       renameFrom: slug,
       renameSourceEtag: source.etag,
     },

@@ -3,26 +3,41 @@ import { HttpError } from './models';
 // R2 deletion is unconditional. Coordinate changes to reference-bearing content
 // with media deletion across Worker instances, using R2 conditional writes.
 const KEY = 'state/content-mutation.json';
-const LEASE_MS = 10 * 60_000;
+export const CONTENT_LEASE_MS = 3 * 60_000;
+const WORK_MS = 60_000;
+const MAX_CALLS = 900;
 interface Lease {
   expires: number;
   owner: string;
 }
 export async function withContentMutation<T>(
   storage: R2Bucket,
-  work: () => Promise<T>,
+  work: (storage: R2Bucket) => Promise<T>,
 ): Promise<T> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const object = await storage.get(KEY);
     const prior = object ? await object.json<Lease>() : null;
     if (!prior || prior.expires < Date.now()) {
-      const lease: Lease = { expires: Date.now() + LEASE_MS, owner: crypto.randomUUID() };
+      const lease: Lease = { expires: Date.now() + CONTENT_LEASE_MS, owner: crypto.randomUUID() };
       const locked = await storage.put(KEY, JSON.stringify(lease), {
         onlyIf: object ? { etagMatches: object.etag } : { etagDoesNotMatch: '*' },
       });
       if (locked) {
         try {
-          return await work();
+          const deadline = Date.now() + WORK_MS;
+          let calls = 0;
+          const guarded = new Proxy(storage, {
+            get(target, property) {
+              const value = Reflect.get(target, property, target);
+              if (typeof value !== 'function') return value;
+              return (...args: unknown[]) => {
+                if (Date.now() >= deadline || ++calls > MAX_CALLS)
+                  throw new HttpError(503, '本批操作已暂停，请重试；已保存内容保留。');
+                return Reflect.apply(value, target, args);
+              };
+            },
+          });
+          return await work(guarded);
         } finally {
           // Never release a successor's lease after a timed-out invocation.
           await storage.put(KEY, JSON.stringify({ expires: 0, owner: '' }), {

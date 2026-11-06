@@ -104,7 +104,21 @@ try {
   await expect(reusable.locator('ul')).toContainText('草稿');
   await page
     .locator('#image-library-files')
-    .setInputFiles({ name: 'unused.png', mimeType: 'image/png', buffer: png });
+    .setInputFiles({ name: 'same-photo.png', mimeType: 'image/png', buffer: png });
+  await expect(page.locator('#image-library-upload')).not.toHaveAttribute('aria-busy', 'true');
+  await expect(page.locator('.image-card')).toHaveCount(1);
+  const differentPng = Buffer.from(
+    await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 1;
+      canvas.getContext('2d').fillRect(0, 0, 1, 1);
+      return canvas.toDataURL('image/png').split(',')[1];
+    }),
+    'base64',
+  );
+  await page
+    .locator('#image-library-files')
+    .setInputFiles({ name: 'unused.png', mimeType: 'image/png', buffer: differentPng });
   await expect(page.locator('.image-card')).toHaveCount(2);
   await page.locator('#image-library-unused').check();
   await expect(page.locator('.image-card')).toHaveCount(1);

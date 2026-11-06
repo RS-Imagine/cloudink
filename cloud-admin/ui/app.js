@@ -20,7 +20,11 @@ import {
 const motion = window.CloudInkMotion;
 motion.mount();
 const shell = mountStudioShell();
-let postFilter = 'all';
+let postFilter = 'all',
+  postCursor = null,
+  postCounts = null,
+  listRevision = 0,
+  searchTimer;
 
 const $ = (id) => document.getElementById(id);
 const keepOriginal = $('image-keep-original');
@@ -222,6 +226,10 @@ function localSaved(draft, result) {
     };
   posts = posts.filter((p) => p.slug !== slug);
   posts.push(post);
+  if (!old && postCounts) {
+    postCounts.total++;
+    postCounts.draft++;
+  }
   cacheArticle(slug, {
     draft: result.draft,
     source: result.source,
@@ -472,13 +480,14 @@ function badge(post) {
 function renderLists() {
   const query = $('search').value.trim().toLowerCase();
   const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
-  $('post-count').textContent = posts.length;
-  document.querySelector('[data-post-count]').textContent = posts.length;
+  $('post-count').textContent = postCounts?.total ?? posts.length;
+  $('load-more-posts').hidden = $('load-more-switcher').hidden = !postCursor;
+  document.querySelector('[data-post-count]').textContent = postCounts?.total ?? posts.length;
   for (const button of document.querySelectorAll('[data-post-filter]'))
     button.setAttribute('aria-pressed', String(button.dataset.postFilter === postFilter));
   let shown = 0;
   $('summary').textContent =
-    `${posts.filter((p) => p.published).length} 篇已发布 · ${posts.filter((p) => !p.published).length} 篇草稿`;
+    `${postCounts?.published ?? posts.filter((p) => p.published).length} 篇已发布 · ${postCounts?.draft ?? posts.filter((p) => !p.published).length} 篇草稿`;
   $('post-list').replaceChildren();
   $('article-grid').replaceChildren();
   for (const post of sorted) {
@@ -542,7 +551,7 @@ function renderLists() {
       reset.addEventListener('click', () => {
         $('search').value = '';
         postFilter = 'all';
-        renderLists();
+        void refresh().catch((error) => notice(error.message));
         $('search').focus();
       });
       empty.append(reset);
@@ -558,9 +567,25 @@ function renderLists() {
     $('post-list').append(empty);
   }
 }
-async function refresh() {
-  const data = await api('/api/posts');
-  posts = data.posts;
+async function refresh({ append = false } = {}) {
+  const revision = ++listRevision;
+  const params = new URLSearchParams({
+    limit: '50',
+    q: $('search').value.trim(),
+    filter: postFilter,
+  });
+  if (append && postCursor) params.set('cursor', postCursor);
+  let data;
+  try {
+    data = await api('/api/posts?' + params);
+  } catch (error) {
+    if (append && error.status === 409) return refresh();
+    throw error;
+  }
+  if (revision !== listRevision) return;
+  posts = append ? [...posts, ...data.posts] : data.posts;
+  postCursor = data.cursor;
+  postCounts = data.counts;
   $('publish-welcome').textContent = data.publicInitialized ? '更新网站排版' : '发布博客首页';
   const status = $('template-status');
   if (status) {
@@ -782,7 +807,14 @@ async function newPost() {
 }
 for (const id of ['new-post', 'home-new'])
   $(id).addEventListener('click', () => newPost().catch((error) => notice(error.message)));
-$('search').addEventListener('input', renderLists);
+$('search').addEventListener('input', () => {
+  renderLists();
+  clearTimeout(searchTimer);
+  if (postCursor || (postCounts && posts.length < postCounts.total))
+    searchTimer = setTimeout(() => void refresh().catch((error) => notice(error.message)), 250);
+});
+for (const id of ['load-more-posts', 'load-more-switcher'])
+  $(id).addEventListener('click', () => action(id, '正在读取…', () => refresh({ append: true })));
 async function returnToList(name = 'home') {
   if (editorLocked) return;
   const version = ++navigationVersion;
@@ -808,7 +840,10 @@ $('post-filters').addEventListener('click', (event) => {
   const button = event.target.closest('[data-post-filter]');
   if (!button) return;
   postFilter = button.dataset.postFilter;
-  renderLists();
+  if (postCursor) void refresh().catch((error) => notice(error.message));
+  else if (postCounts && posts.length < postCounts.total)
+    void refresh().catch((error) => notice(error.message));
+  else renderLists();
 });
 
 async function manualSave() {
@@ -1181,15 +1216,37 @@ $('settings').addEventListener('click', async () => {
     view('settings');
     void api('/api/maintenance')
       .then((status) => {
-        $('storage-maintenance-status').textContent = status?.finished_at
-          ? '最近清理：' +
-            new Date(status.finished_at).toLocaleString() +
-            '，移除 ' +
-            status.deleted_objects +
-            ' 个过期发布文件，释放 ' +
-            (status.deleted_bytes / 1024 / 1024).toFixed(1) +
-            ' MB。'
-          : '每日自动清理尚未运行；当前和最近两个发布版本会保留。';
+        const reason =
+          {
+            uninitialized: '尚未初始化',
+            publication_settling: '刚刚发布，等待缓存稳定',
+            publication_busy: '发布进行中',
+            mutation_busy: '其他保存操作进行中',
+            bounded_work_or_storage_conflict: '本批检查达到上限或存储状态变化',
+            storage_error: '存储操作失败',
+          }[status?.reason] || '';
+        const label =
+          { running: '进行中', success: '成功', skipped: '已跳过', failed: '失败' }[
+            status?.status
+          ] || '成功';
+        $('storage-maintenance-status').textContent = status?.last_attempt_at
+          ? '最近尝试：' +
+            new Date(status.last_attempt_at).toLocaleString() +
+            '，' +
+            label +
+            (reason ? '（' + reason + '）' : '') +
+            '。已扫描 ' +
+            (status.scanned_objects || 0) +
+            ' 个对象，移除 ' +
+            (status.deleted_objects || 0) +
+            ' 个过期文件。' +
+            (status.last_success_at
+              ? '最近成功：' + new Date(status.last_success_at).toLocaleString() + '。'
+              : '') +
+            (Object.keys(status.cursors || {}).length ? '还有后续批次，将在下次继续。' : '')
+          : status?.finished_at
+            ? '最近清理：' + new Date(status.finished_at).toLocaleString()
+            : '每日自动维护尚未运行。';
       })
       .catch(() => {
         $('storage-maintenance-status').textContent = '暂时无法读取清理记录；不影响保存与发布。';

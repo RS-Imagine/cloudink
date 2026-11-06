@@ -1,3 +1,4 @@
+import { sanitizePublicHtml } from './page-rendering';
 import { responsiveImages } from './image-variants';
 import { assertRenameUnchanged, finishRename, postRedirects } from './post-addresses';
 import type { CloudInkEnv } from './env';
@@ -34,6 +35,7 @@ export interface BrowserPointer {
   publishing?: string;
   templateVersion?: string;
   responseVersion?: string;
+  generationVersion?: string;
   clarityId?: string;
   postRedirects?: Record<string, string>;
 }
@@ -76,6 +78,10 @@ export async function initializeBrowserContent(env: CloudInkEnv, site: SiteConfi
     markdown_posts: {},
   };
   if (site?.about) release.about_markdown = aboutSource(site.about);
+  await env.STORAGE.put(
+    `releases/${release.id}.posts.json`,
+    JSON.stringify({ schema_version: 1, id: release.id, site, posts: {} }),
+  );
   await env.STORAGE.put(`releases/${release.id}.json`, JSON.stringify(release));
   await env.STORAGE.put(
     'state/published.json',
@@ -113,37 +119,6 @@ export function publicType(path: string): string {
     )[ext || ''] || 'application/octet-stream'
   );
 }
-export async function sanitizePublicHtml(html: string): Promise<string> {
-  return new HTMLRewriter()
-    .on('script,base,iframe,object,embed,form,meta[http-equiv]', {
-      element(element) {
-        element.remove();
-      },
-    })
-    .on('*', {
-      element(element) {
-        for (const [name] of [...element.attributes])
-          if (name.toLowerCase().startsWith('on')) element.removeAttribute(name);
-      },
-    })
-    .on('head', {
-      element(element) {
-        element.append('<script src="/theme.js"></script>', { html: true });
-      },
-    })
-    .on('body', {
-      element(element) {
-        element.append('<script src="/client.js"></script>', { html: true });
-      },
-    })
-    .on('body', {
-      element(element) {
-        element.append('<script src="/analytics.js" defer></script>', { html: true });
-      },
-    })
-    .transform(new Response(html))
-    .text();
-}
 export async function contentDigest(text: string): Promise<string> {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))]
     .map((n) => n.toString(16).padStart(2, '0'))
@@ -152,6 +127,76 @@ export async function contentDigest(text: string): Promise<string> {
 export interface PageManifest {
   sources: Record<string, string>;
   pages: Record<string, string>;
+  sizes?: Record<string, number>;
+}
+const generatedFiles = (state: Publishing) =>
+  (state.files || []).filter((path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path));
+function compatible(pointer: BrowserPointer | null, state: Publishing): boolean {
+  return (
+    pointer?.id === state.previous_id &&
+    pointer.templateVersion === state.template_version &&
+    (state.generation_version
+      ? pointer.generationVersion === state.generation_version
+      : pointer.responseVersion === state.response_version) &&
+    !state.force_rebuild
+  );
+}
+export async function selectRenderFiles(
+  env: CloudInkEnv,
+  state: Publishing,
+  base: Release,
+  release: Release,
+): Promise<void> {
+  const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+  if (
+    !compatible(pointer, state) ||
+    JSON.stringify(base.site) !== JSON.stringify(release.site) ||
+    base.about_markdown !== release.about_markdown
+  )
+    return;
+  const prior = await readJson<PageManifest>(env.STORAGE, 'releases/' + base.id + '.manifest.json');
+  if (!prior?.sizes) return;
+  const changed = new Set<string>(['_release.json']);
+  const changedPosts = new Set(
+    [...Object.keys(base.markdown_posts), ...Object.keys(release.markdown_posts)].filter(
+      (slug) => base.markdown_posts[slug] !== release.markdown_posts[slug],
+    ),
+  );
+  if (changedPosts.size) {
+    for (const path of ['index.html', 'archive/index.html', 'search_index.json']) changed.add(path);
+    for (const slug of changedPosts) changed.add('posts/' + slug + '/index.html');
+  }
+  if (JSON.stringify(base.markdown_shorts || {}) !== JSON.stringify(release.markdown_shorts || {}))
+    changed.add('shorts/index.html');
+  for (const path of generatedFiles(state))
+    if (
+      !/^[a-f0-9]{64}$/.test(prior.pages[path] || '') ||
+      !Number.isInteger(prior.sizes[path]) ||
+      prior.sizes[path] < 0
+    )
+      changed.add(path);
+  state.render_files = generatedFiles(state).filter((path) => changed.has(path));
+}
+async function receipt(
+  env: CloudInkEnv,
+  state: Publishing,
+  path: string,
+  size: number,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(env.SETUP_TOKEN),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signed = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(JSON.stringify([state.release_id, path, state.plan!.pages[path], size])),
+  );
+  return [...new Uint8Array(signed)].map((n) => n.toString(16).padStart(2, '0')).join('');
 }
 export async function planBrowserPublish(
   request: Request,
@@ -160,48 +205,54 @@ export async function planBrowserPublish(
 ): Promise<Response> {
   const { object, state } = await pendingVersion(env, id);
   const input = await jsonInput(request, 150_000);
-  const sources = input.sources as Record<string, string>;
-  const files = (state.files || []).filter(
-    (path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path),
-  );
+  const supplied = input.sources as Record<string, string>;
+  const files = generatedFiles(state);
   if (
-    !sources ||
-    typeof sources !== 'object' ||
-    Array.isArray(sources) ||
-    Object.keys(sources).length !== files.length ||
-    files.some(
+    !supplied ||
+    typeof supplied !== 'object' ||
+    Array.isArray(supplied) ||
+    Object.keys(supplied).some(
       (path) =>
-        !Object.hasOwn(sources, path) ||
-        typeof sources[path] !== 'string' ||
-        !/^[a-f0-9]{64}$/.test(sources[path]),
+        !files.includes(path) ||
+        typeof supplied[path] !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(supplied[path]),
     )
   )
     throw new HttpError(400, '发布页面指纹不完整或无效。');
+  const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+  const prior = compatible(pointer, state)
+    ? await readJson<PageManifest>(env.STORAGE, 'releases/' + state.previous_id + '.manifest.json')
+    : null;
+  const sources: Record<string, string> = {};
+  for (const path of files) {
+    const provided = Object.hasOwn(supplied, path) ? supplied[path] : undefined;
+    if (
+      !provided &&
+      (!state.render_files || state.render_files.includes(path) || !prior?.sources[path])
+    )
+      throw new HttpError(400, '发布页面指纹不完整或无效。');
+    sources[path] = provided || prior!.sources[path];
+  }
   if (state.plan) {
     if (files.some((path) => state.plan!.sources[path] !== sources[path]))
       throw new HttpError(409, '这次发布的页面已确定，请重新发布。');
-    return json({ files: await missingPages(env.STORAGE, state.plan.pages) });
+    return json({ files: await missingPages(env.STORAGE, state.plan.pages, state.plan.sizes) });
   }
-  const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
-  const prior =
-    pointer?.id === state.previous_id &&
-    pointer.templateVersion === state.template_version &&
-    pointer.responseVersion === state.response_version &&
-    !state.force_rebuild
-      ? await readJson<PageManifest>(env.STORAGE, `releases/${state.previous_id}.manifest.json`)
-      : null;
   const pages: Record<string, string> = {};
   const changed: string[] = [];
+  const sizes: Record<string, number> = {};
   for (const path of files) {
     if (
       path !== '_release.json' &&
       prior?.sources[path] === sources[path] &&
       /^[a-f0-9]{64}$/.test(prior.pages[path] || '')
-    )
+    ) {
       pages[path] = prior.pages[path];
-    else {
+      const size = prior.sizes?.[path];
+      if (Number.isInteger(size) && size! >= 0) sizes[path] = size!;
+    } else {
       pages[path] = await contentDigest(
-        state.response_version +
+        (state.generation_version || state.response_version) +
           ':' +
           state.template_version +
           ':' +
@@ -214,7 +265,7 @@ export async function planBrowserPublish(
       changed.push(path);
     }
   }
-  const plan = { sources, pages };
+  const plan = { sources, pages, sizes };
   const saved = await env.STORAGE.put(
     'state/pending.json',
     JSON.stringify({ ...state, files, plan }),
@@ -223,10 +274,15 @@ export async function planBrowserPublish(
   if (!saved) throw new HttpError(409, '发布状态已经变化，请重试。');
   return json({ files: changed });
 }
-async function missingPages(storage: R2Bucket, pages: Record<string, string>): Promise<string[]> {
+async function missingPages(
+  storage: R2Bucket,
+  pages: Record<string, string>,
+  sizes?: Record<string, number>,
+): Promise<string[]> {
   const missing: string[] = [];
   for (const [path, hash] of Object.entries(pages))
-    if (!(await storage.head('public/content/' + hash))) missing.push(path);
+    if (sizes?.[path] === undefined && !(await storage.head('public/content/' + hash)))
+      missing.push(path);
   return missing;
 }
 async function pendingVersion(
@@ -271,7 +327,12 @@ export async function stageBrowserPage(
   if (path === '_release.json') validateMarker(body, state);
   if (state.plan) {
     const existing = await env.STORAGE.head('public/content/' + state.plan.pages[path]);
-    if (existing) return json({ ok: true, reused: true });
+    if (existing)
+      return json({
+        ok: true,
+        reused: true,
+        receipt: [existing.size, await receipt(env, state, path, existing.size)],
+      });
   }
 
   if (path.endsWith('.html'))
@@ -281,7 +342,7 @@ export async function stageBrowserPage(
       new URL(request.url).origin,
     );
   // An already staged page stays immutable, including after commit begins.
-  await env.STORAGE.put(
+  const stored = await env.STORAGE.put(
     state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`,
     body,
     {
@@ -289,7 +350,18 @@ export async function stageBrowserPage(
       httpMetadata: { contentType: publicType(path) },
     },
   );
-  return json({ ok: true });
+  const size =
+    stored?.size ??
+    (
+      await env.STORAGE.head(
+        state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`,
+      )
+    )?.size;
+  if (size === undefined) throw new HttpError(409, '页面未能保存，请重试。');
+  return json({
+    ok: true,
+    ...(state.plan ? { receipt: [size, await receipt(env, state, path, size)] } : {}),
+  });
 }
 export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promise<Response> {
   const object = await env.STORAGE.get('state/pending.json');
@@ -321,7 +393,18 @@ export async function cancelBrowserPublish(env: CloudInkEnv, id: string): Promis
   });
   return json(failed);
 }
-export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promise<Response> {
+export async function commitBrowserPublish(
+  env: CloudInkEnv,
+  id: string,
+  request?: Request,
+): Promise<Response> {
+  const input = request ? await jsonInput(request, 250_000) : {};
+  const receipts = input.receipts as Record<string, unknown> | undefined;
+  if (
+    receipts !== undefined &&
+    (!receipts || typeof receipts !== 'object' || Array.isArray(receipts))
+  )
+    throw new HttpError(400, '页面保存凭据格式不正确。');
   const { object, state } = await pendingVersion(env, id);
   const locked = await env.STORAGE.put(
     'state/pending.json',
@@ -332,6 +415,8 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
   let committed = false;
   try {
     let size = 0;
+    const verification = { reused: 0, receipts: 0, heads: 0 };
+    const sizes: Record<string, number> = {};
     for (const path of state.files || []) {
       const key = state.plan ? 'public/content/' + state.plan.pages[path] : `public/${id}/${path}`;
       if (path === '_release.json') {
@@ -342,12 +427,36 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
           throw new HttpError(413, '发布标记过大。');
         }
         validateMarker(await marker.text(), state);
-        size += marker.size;
+        sizes[path] = marker.size;
+      } else if (state.plan?.sizes?.[path] !== undefined) {
+        sizes[path] = state.plan.sizes[path];
+        verification.reused++;
+      } else if (receipts && Object.hasOwn(receipts, path)) {
+        const value = receipts[path];
+        if (
+          !Array.isArray(value) ||
+          value.length !== 2 ||
+          !Number.isInteger(value[0]) ||
+          value[0] < 0 ||
+          value[0] > 8_000_000 ||
+          typeof value[1] !== 'string' ||
+          !/^[a-f0-9]{64}$/.test(value[1]) ||
+          !state.plan ||
+          !crypto.subtle.timingSafeEqual(
+            new TextEncoder().encode(value[1]),
+            new TextEncoder().encode(await receipt(env, state, path, value[0])),
+          )
+        )
+          throw new HttpError(409, '页面保存凭据无效，请重新发布。');
+        sizes[path] = value[0];
+        verification.receipts++;
       } else {
+        verification.heads++;
         const file = await env.STORAGE.head(key);
         if (!file) throw new HttpError(409, '页面尚未上传完整，请重新发布。');
-        size += file.size;
+        sizes[path] = file.size;
       }
+      size += sizes[path];
     }
     const release = await readJson<Release>(env.STORAGE, `releases/${id}.json`);
     if (!release) throw new HttpError(503, '发布版本缺失。');
@@ -360,9 +469,13 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
       throw new HttpError(409, '这次发布已取消或线上版本已经变化，请重新发布。');
     await assertRenameUnchanged(env.STORAGE, state);
     if (state.plan)
-      await env.STORAGE.put(`releases/${id}.manifest.json`, JSON.stringify(state.plan), {
-        onlyIf: { etagDoesNotMatch: '*' },
-      });
+      await env.STORAGE.put(
+        `releases/${id}.manifest.json`,
+        JSON.stringify({ ...state.plan, sizes }),
+        {
+          onlyIf: { etagDoesNotMatch: '*' },
+        },
+      );
     const saved = await env.STORAGE.put(
       'state/published.json',
       JSON.stringify({
@@ -374,6 +487,7 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
         postRedirects: postRedirects(release),
         templateVersion: state.template_version,
         responseVersion: state.response_version,
+        generationVersion: state.generation_version,
       }),
       { onlyIf: { etagMatches: pointer.etag } },
     );
@@ -384,7 +498,7 @@ export async function commitBrowserPublish(env: CloudInkEnv, id: string): Promis
     await env.STORAGE.put('state/pending.json', JSON.stringify(done), {
       onlyIf: { etagMatches: locked.etag },
     });
-    return json(done);
+    return json({ ...done, verification });
   } catch (error) {
     if (!committed)
       await env.STORAGE.put(

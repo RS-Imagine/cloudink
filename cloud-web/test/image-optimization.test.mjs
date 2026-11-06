@@ -82,6 +82,12 @@ test('image upload validates variants before writing, groups library entries and
   assert.equal(response.status, 201, await response.clone().text());
   const image = await response.json(),
     variantKey = image.key + '.w640.webp';
+  const version = (await bucket.head(image.key)).version;
+  const retry = await upload(f);
+  assert.equal(retry.status, 200);
+  assert.equal((await retry.json()).key, image.key);
+  assert.equal((await bucket.head(image.key)).version, version);
+  assert.equal((await bucket.list({ prefix: 'uploads/' })).objects.length, 2);
   assert.equal(image.width, 2048);
   assert.equal(image.height, 1536);
   assert.match(image.srcset, /640w/);
