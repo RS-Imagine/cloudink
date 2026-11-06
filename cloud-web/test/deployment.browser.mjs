@@ -173,7 +173,8 @@ try {
   for (let attempt = 0; attempt < 3; attempt++) {
     await live.keyboard.press('Enter');
     await expect(live.locator('.reader-dialog')).toHaveCount(1);
-    await live.locator('.reader-dialog-close').click();
+    await expect(live.locator('.reader-dialog-close')).toBeFocused();
+    await live.keyboard.press('Enter');
     await expect(live.locator('.reader-dialog')).toHaveCount(0);
     await expect(image).toBeFocused();
     await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');

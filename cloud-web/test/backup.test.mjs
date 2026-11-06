@@ -158,3 +158,144 @@ test('backup restore rejects arbitrary private paths, conflicting originals, cha
     403,
   );
 });
+
+const shortDraft = (slug, body_markdown) => ({
+  front_matter: { slug, date: '2026-11-06 10:30', draft: true },
+  body_markdown,
+});
+const shortSource = (slug, body, isDraft = true) =>
+  `+++\ndate = "2026-11-06 10:30"\nslug = "${slug}"\ndraft = ${isDraft}\n+++\n\n${body}`;
+
+test('restore prefers article and short drafts regardless of manifest order', async (t) => {
+  for (const reverse of [false, true]) {
+    const f = await fixture(t);
+    await f.login();
+    const bucket = await f.mf.getR2Bucket('STORAGE');
+    await f.request('/api/posts/note', 'PUT', {
+      draft: draft('note', 'New article draft'),
+      etag: null,
+    });
+    const article = await (await f.request('/api/posts/note')).json();
+    const original = article.source;
+    await f.request('/api/posts/note', 'DELETE', { etag: article.etag });
+    const backup = await (await f.request('/api/backup')).json();
+    const entries = [
+      [
+        'published/note.md',
+        original
+          .replace('New article draft', 'Old published article')
+          .replace('draft = true', 'draft = false'),
+      ],
+      ['drafts/note.md', original],
+      ['published-shorts/note.md', shortSource('note', 'Old published short', false)],
+      ['shorts/note.md', shortSource('note', 'New short draft')],
+    ];
+    backup.files = Object.fromEntries(reverse ? entries.reverse() : entries);
+    const beforePointer = await (await bucket.get('state/published.json')).text();
+    const response = await f.request('/api/backup/restore', 'POST', {
+      backup,
+      settings_etag: null,
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.equal(
+      (await (await f.request('/api/posts/note')).json()).draft.body_markdown,
+      'New article draft',
+    );
+    const short = await (await f.request('/api/shorts/note')).json();
+    assert.equal(short.draft.body_markdown, 'New short draft');
+    assert.equal(short.draft.front_matter.draft, true);
+    assert.equal(await (await bucket.get('state/published.json')).text(), beforePointer);
+  }
+});
+
+test('backup restores deleted articles and shorts as drafts and retries without rewriting them', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  await f.request('/api/posts/article', 'PUT', {
+    draft: draft('article', 'Backed up article'),
+    etag: null,
+  });
+  await f.request('/api/shorts/note', 'PUT', {
+    ...shortDraft('note', 'Backed up short'),
+    etag: null,
+  });
+  const article = await (await f.request('/api/posts/article')).json();
+  const short = await (await f.request('/api/shorts/note')).json();
+  const backup = await (await f.request('/api/backup')).json();
+  assert.equal(
+    (await f.request('/api/posts/article', 'DELETE', { etag: article.etag })).status,
+    200,
+  );
+  assert.equal((await f.request('/api/shorts/note', 'DELETE', { etag: short.etag })).status, 200);
+  for (const key of ['drafts/article.md', 'shorts/note.md'])
+    assert.equal((await bucket.head(key)).customMetadata.deleted, 'true');
+  const account = await (await bucket.get('auth/account.json')).text();
+  const pointer = await (await bucket.get('state/published.json')).text();
+  const response = await f.request('/api/backup/restore', 'POST', { backup, settings_etag: null });
+  assert.equal(response.status, 200, await response.clone().text());
+  const result = await response.json();
+  assert.equal(result.restored, 2);
+  assert.equal(
+    (await (await f.request('/api/posts/article')).json()).draft.body_markdown,
+    'Backed up article',
+  );
+  assert.equal(
+    (await (await f.request('/api/shorts/note')).json()).draft.body_markdown,
+    'Backed up short',
+  );
+  for (const key of ['drafts/article.md', 'shorts/note.md'])
+    assert.equal((await bucket.head(key)).customMetadata.deleted, undefined);
+  assert.equal(await (await bucket.get('auth/account.json')).text(), account);
+  assert.equal(await (await bucket.get('state/published.json')).text(), pointer);
+  const retry = await f.request('/api/backup/restore', 'POST', {
+    backup,
+    settings_etag: result.etag,
+  });
+  assert.equal(retry.status, 200, await retry.clone().text());
+  assert.equal((await retry.json()).restored, 0);
+});
+
+test('restore does not overwrite originals recreated after deletion', async (t) => {
+  for (const short of [false, true]) {
+    const f = await fixture(t);
+    await f.login();
+    const path = short ? '/api/shorts/item' : '/api/posts/item';
+    const data = (body) =>
+      short
+        ? { ...shortDraft('item', body), etag: null }
+        : { draft: draft('item', body), etag: null };
+    assert.equal((await f.request(path, 'PUT', data('Backup original'))).status, 200);
+    const backup = await (await f.request('/api/backup')).json();
+    const saved = await (await f.request(path)).json();
+    assert.equal((await f.request(path, 'DELETE', { etag: saved.etag })).status, 200);
+    assert.equal((await f.request(path, 'PUT', data('New original'))).status, 200);
+    const response = await f.request('/api/backup/restore', 'POST', {
+      backup,
+      settings_etag: null,
+    });
+    assert.equal(response.status, 409);
+    assert.equal((await (await f.request(path)).json()).draft.body_markdown, 'New original');
+  }
+});
+
+test('restore keeps a renamed source retired', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  await f.request('/api/posts/old', 'PUT', { draft: draft('old', 'Moved article'), etag: null });
+  const backup = await (await f.request('/api/backup')).json();
+  const saved = await (await f.request('/api/posts/old')).json();
+  const renamed = await f.request('/api/posts/old/rename', 'POST', {
+    slug: 'new',
+    etag: saved.etag,
+  });
+  assert.equal(renamed.status, 200, await renamed.clone().text());
+  const response = await f.request('/api/backup/restore', 'POST', { backup, settings_etag: null });
+  assert.equal(response.status, 409);
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  assert.equal((await bucket.head('drafts/old.md')).customMetadata.renamedTo, 'new');
+  assert.equal(
+    (await (await f.request('/api/posts/new')).json()).draft.body_markdown,
+    'Moved article',
+  );
+});

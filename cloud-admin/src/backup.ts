@@ -140,7 +140,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   const shortDrafts = new Map<string, string>();
   // Validate the whole manifest before writing. Drafts take precedence over
   // published copies; restored articles never become public automatically.
-  for (const [key, source] of files.sort(([a], [b]) => b.localeCompare(a))) {
+  for (const [key, source] of files) {
     if (legacyHistoryKey(key)) continue;
     const slug = sourceSlug(key);
     if (!slug || typeof source !== 'string') throw new HttpError(400, '备份包含不支持的文件路径。');
@@ -149,14 +149,15 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       if (draft.front_matter.slug !== slug)
         throw new HttpError(400, '备份短记地址与文件路径不一致。');
       draft.front_matter.draft = true;
-      shortDrafts.set(slug, serializeShortDraft(draft));
+      if (key.startsWith('shorts/') || !shortDrafts.has(slug))
+        shortDrafts.set(slug, serializeShortDraft(draft));
       continue;
     }
     const draft = parseSource(source);
     if (draft.front_matter.slug !== slug)
       throw new HttpError(400, '备份文章地址与文件路径不一致。');
     draft.front_matter.draft = true;
-    drafts.set(slug, serializeDraft(draft));
+    if (key.startsWith('drafts/') || !drafts.has(slug)) drafts.set(slug, serializeDraft(draft));
   }
   let total = 0;
   const families = new Set<string>();
@@ -201,18 +202,25 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
   const writes = new Map<string, string>();
   for (const [slug, source] of drafts) writes.set(`drafts/${slug}.md`, source);
   for (const [slug, source] of shortDrafts) writes.set(`shorts/${slug}.md`, source);
+  const tombstones = new Map<string, string>();
   for (const [key, source] of writes) {
-    await assertWritableAddress(env.STORAGE, key.slice(7, -3));
+    if (key.startsWith('drafts/')) await assertWritableAddress(env.STORAGE, key.slice(7, -3));
     const existing = await env.STORAGE.get(key);
-    if (existing && (await existing.text()) !== source)
+    // Deleted originals can be restored, but retired rename sources stay retired.
+    if (existing?.customMetadata?.deleted && !existing.customMetadata.renamedTo) {
+      tombstones.set(key, existing.etag);
+      await existing.body.cancel();
+    } else if (existing && (await existing.text()) !== source) {
       throw new HttpError(409, `已有不同内容：${key}。请先导出或处理现有原稿，恢复不会覆盖它。`);
+    }
   }
   let restored = 0;
   for (const [key, source] of writes) {
     const isShort = key.startsWith('shorts/');
     const draft = isShort ? parseShortSource(source) : parseSource(source);
+    const tombstoneEtag = tombstones.get(key);
     const saved = await env.STORAGE.put(key, source, {
-      onlyIf: { etagDoesNotMatch: '*' },
+      onlyIf: tombstoneEtag ? { etagMatches: tombstoneEtag } : { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       customMetadata: isShort
         ? { date: (draft as ShortDraft).front_matter.date }
@@ -221,7 +229,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
     if (saved) restored++;
     else {
       const current = await env.STORAGE.get(key);
-      if (!current || (await current.text()) !== source)
+      if (!current || current.customMetadata?.deleted || (await current.text()) !== source)
         throw new HttpError(409, '另一窗口修改了原稿。已恢复的内容保留，请检查后重试。');
     }
   }
