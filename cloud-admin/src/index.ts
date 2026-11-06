@@ -15,6 +15,7 @@ import { ASSETS, PAGE_GENERATION_VERSION } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
 import { draftSummary } from './post-metadata';
+import { unchangedSource, sourceDigest } from './save-digest';
 import { assertWritableAddress, renameDraft } from './post-addresses';
 import { currentRelease, publish, publishStatus } from './publishing';
 import {
@@ -78,9 +79,11 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
   if ((!existing || existing.customMetadata?.deleted) && input.etag)
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
+  if (existing && !existing.customMetadata?.deleted && await unchangedSource(existing, source))
+    return json({ draft, source, etag: existing.etag, saved_at: existing.uploaded.toISOString(), created: false, unchanged: true });
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-    customMetadata: await draftSummary(draft, env.STORAGE, existing?.customMetadata),
+    customMetadata: { ...await draftSummary(draft, env.STORAGE, existing?.customMetadata), source_digest: await sourceDigest(source) },
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
@@ -374,9 +377,12 @@ async function apiRoute(
         throw new HttpError(409, '这条短记在另一个窗口中发生了修改，请重新打开。');
       if ((!existing || existing.customMetadata?.deleted) && input.etag)
         throw new HttpError(409, '短记已删除，请重新打开。');
+      if (existing && !existing.customMetadata?.deleted && await unchangedSource(existing, source))
+        return json({ ok: true, etag: existing.etag, unchanged: true });
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: {
+          source_digest: await sourceDigest(source),
           date: draft.front_matter.date,
           snippet: draft.body_markdown.slice(0, 300).replace(/\r?\n/g, ' '),
           ...(await imageReferenceMetadata(
@@ -462,13 +468,16 @@ async function apiRoute(
   if (path === '/api/settings' && request.method === 'PUT') {
     const data = await jsonInput(request, 500_000),
       site = validateSite(data.site),
-      old = await env.STORAGE.head('draft-site.json');
+      old = await env.STORAGE.get('draft-site.json');
     await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
     await ensureHomeIllustration(env.STORAGE, site);
     await ensureSiteIcon(env.STORAGE, site);
     if (old && data.etag !== old.etag)
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
-    const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
+    const text = JSON.stringify(site);
+    if (old && JSON.stringify(validateSite(await old.json())) === text)
+      return json({ site, etag: old.etag, unchanged: true });
+    const saved = await env.STORAGE.put('draft-site.json', text, {
       onlyIf: old ? { etagMatches: old.etag } : { etagDoesNotMatch: '*' },
     });
     if (!saved) throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
