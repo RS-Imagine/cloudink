@@ -11,11 +11,21 @@ export async function publishInBrowser(
     let files = [...result.files];
     if (result.incremental) {
       const sources = {};
-      for (const path of files.filter(path => !['styles.css', 'client.js', 'favicon.svg'].includes(path))) {
+      for (const path of files.filter(
+        (path) => !['styles.css', 'client.js', 'favicon.svg'].includes(path),
+      )) {
         if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
-        sources[path] = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rendered[path])))].map(n => n.toString(16).padStart(2, '0')).join('');
+        sources[path] = [
+          ...new Uint8Array(
+            await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rendered[path])),
+          ),
+        ]
+          .map((n) => n.toString(16).padStart(2, '0'))
+          .join('');
       }
-      files = (await api(`/api/publish/${result.release_id}/plan`, { method: 'POST', body: { sources } })).files;
+      files = (
+        await api(`/api/publish/${result.release_id}/plan`, { method: 'POST', body: { sources } })
+      ).files;
     }
     const uploads = await Promise.allSettled(
       Array.from({ length: Math.min(3, files.length) }, async () => {

@@ -91,11 +91,13 @@ export async function verifyImageOptimizer(browser, origin) {
       const compactWidth = main.width;
       main.close();
       return {
-        decoded, animatedCount: (await optimize(animated, true)).length,
+        decoded,
+        animatedCount: (await optimize(animated, true)).length,
         compactWidth,
-        compactTotal: compact.main.size + compact.variants.reduce((sum, item) => sum + item.blob.size, 0),
+        compactTotal:
+          compact.main.size + compact.variants.reduce((sum, item) => sum + item.blob.size, 0),
         originalSize: file.size,
-        compactVariants: compact.variants.map(item => item.width),
+        compactVariants: compact.variants.map((item) => item.width),
       };
     });
     assert.deepEqual(
@@ -106,7 +108,7 @@ export async function verifyImageOptimizer(browser, origin) {
     assert.equal(result.animatedCount, 0);
     assert.equal(result.compactWidth, 1400);
     assert.ok(result.compactTotal < result.originalSize);
-    assert.ok(result.compactVariants.every(width => width < result.compactWidth));
+    assert.ok(result.compactVariants.every((width) => width < result.compactWidth));
   } finally {
     await context.close();
   }

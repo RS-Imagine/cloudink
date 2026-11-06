@@ -28,7 +28,11 @@ export function imageType(bytes: Uint8Array): { type: string; ext: string } {
 }
 
 /** The only public image route: uploaded media, never arbitrary bucket objects. */
-export async function publicImage(request: Request, storage: R2Bucket, ctx?: ExecutionContext): Promise<Response> {
+export async function publicImage(
+  request: Request,
+  storage: R2Bucket,
+  ctx?: ExecutionContext,
+): Promise<Response> {
   if (!['GET', 'HEAD'].includes(request.method))
     return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
   let key: string;

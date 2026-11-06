@@ -1,7 +1,16 @@
 import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
 export async function readerEtag(etag: string, url: URL): Promise<string> {
-  const input = new TextEncoder().encode('reader-v4:' + PUBLIC_RESPONSE_VERSION + ':' + CURRENT_TEMPLATE_VERSION + ':' + url.origin + url.pathname + etag);
+  const input = new TextEncoder().encode(
+    'reader-v4:' +
+      PUBLIC_RESPONSE_VERSION +
+      ':' +
+      CURRENT_TEMPLATE_VERSION +
+      ':' +
+      url.origin +
+      url.pathname +
+      etag,
+  );
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
   return '"' + [...hash].map((byte) => byte.toString(16).padStart(2, '0')).join('') + '"';
 }
@@ -24,7 +33,11 @@ const decode = (value: string) =>
     ];
   });
 
-export async function readerHtml(response: Response, url: URL, analytics = false): Promise<Response> {
+export async function readerHtml(
+  response: Response,
+  url: URL,
+  analytics = false,
+): Promise<Response> {
   if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
   const path = url.pathname.replace(/\/index\.html$/, '/');
   const canonical = new URL(path, url.origin);
@@ -42,7 +55,9 @@ export async function readerHtml(response: Response, url: URL, analytics = false
   // The first image remains eager; later images do not compete with initial text.
   const html = await new HTMLRewriter()
     .on('script[src="/analytics.js"]', {
-      element(el) { if (!analytics) el.remove(); },
+      element(el) {
+        if (!analytics) el.remove();
+      },
     })
     .on('.article-body .katex', {
       element() {
@@ -215,12 +230,19 @@ const feedText = (value: string) =>
 
 // Only public, release-scoped metadata is read. Storage errors must not replace
 // a previously populated subscription with a successful but empty response.
-async function buildFeed(url: URL, bucket: R2Bucket, id: string | null, pages?: Record<string, string>): Promise<string> {
+async function buildFeed(
+  url: URL,
+  bucket: R2Bucket,
+  id: string | null,
+  pages?: Record<string, string>,
+): Promise<string> {
   let siteTitle = 'Blog';
   let siteDescription = '';
   let items: unknown = [];
   if (id) {
-    const siteObj = await bucket.get(pages?.['site.json'] ? 'public/content/' + pages['site.json'] : `public/${id}/site.json`);
+    const siteObj = await bucket.get(
+      pages?.['site.json'] ? 'public/content/' + pages['site.json'] : `public/${id}/site.json`,
+    );
     if (siteObj) {
       const site = await siteObj.json<{ title?: string; description?: string }>();
       if (site && typeof site.title === 'string' && site.title)
@@ -228,7 +250,11 @@ async function buildFeed(url: URL, bucket: R2Bucket, id: string | null, pages?: 
       if (site && typeof site.description === 'string')
         siteDescription = site.description.slice(0, 2000);
     }
-    const indexObj = await bucket.get(pages?.['search_index.json'] ? 'public/content/' + pages['search_index.json'] : `public/${id}/search_index.json`);
+    const indexObj = await bucket.get(
+      pages?.['search_index.json']
+        ? 'public/content/' + pages['search_index.json']
+        : `public/${id}/search_index.json`,
+    );
     if (indexObj) items = await indexObj.json();
   }
   if (!Array.isArray(items)) throw new Error('Published feed index is invalid');
@@ -282,7 +308,8 @@ export async function discovery(
     const paths = ['/'];
     if (pages) {
       for (const path of Object.keys(pages)) {
-        if (['about/index.html', 'archive/index.html', 'shorts/index.html'].includes(path)) paths.push('/' + path.replace('index.html', ''));
+        if (['about/index.html', 'archive/index.html', 'shorts/index.html'].includes(path))
+          paths.push('/' + path.replace('index.html', ''));
         const post = path.match(/^posts\/([A-Za-z0-9_-]{1,100})\/index\.html$/);
         if (post) paths.push('/posts/' + post[1] + '/');
       }

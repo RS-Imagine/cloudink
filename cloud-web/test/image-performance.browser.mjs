@@ -57,7 +57,10 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         const pointer = await bucket.get('state/published.json');
         if (!pointer) return false;
         const state = await pointer.json();
-        return !!state.pages?.['index.html'] || !!(await bucket.head('public/' + state.id + '/index.html'));
+        return (
+          !!state.pages?.['index.html'] ||
+          !!(await bucket.head('public/' + state.id + '/index.html'))
+        );
       },
       { timeout: 60000 },
     )
@@ -87,12 +90,13 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         try {
           await client.send('Network.enable');
           await client.send('Network.setCacheDisabled', { cacheDisabled: true });
-          if (audit) await client.send('Network.emulateNetworkConditions', {
-            offline: false,
-            latency: 80,
-            downloadThroughput: 400000,
-            uploadThroughput: 400000,
-          });
+          if (audit)
+            await client.send('Network.emulateNetworkConditions', {
+              offline: false,
+              latency: 80,
+              downloadThroughput: 400000,
+              uploadThroughput: 400000,
+            });
           if (audit) await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
           await tab.route('https://cdn.jsdelivr.net/**', (route) =>
             route.fulfill({ contentType: 'text/css', body: '' }),
@@ -186,17 +190,20 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         cls: Math.max(...samples.map((x) => x.cls)),
       };
     }
-    if (audit) assert.ok(
-      data.after.imageReadyMs < data.before.imageReadyMs * 0.8,
-      'image-ready improvement at fixed throughput',
-    );
+    if (audit)
+      assert.ok(
+        data.after.imageReadyMs < data.before.imageReadyMs * 0.8,
+        'image-ready improvement at fixed throughput',
+      );
     return { width, ...data };
   });
   const report = {
     sourceBytes,
     source: 'fixed-seed 2048×1536 textured synthetic landscape PNG; not a real user photo',
     method:
-      (audit ? 'full audit: ' : 'functional smoke: ') + 'same published article and image content; baseline uses the original without srcset; cold Chromium, 80ms latency, 400000 B/s, CPU 4×, DPR 1, 3 interleaved samples per viewport; lab results, not field CWV' + (audit ? '' : '; PR smoke has no network/CPU throttling or timing gate'),
+      (audit ? 'full audit: ' : 'functional smoke: ') +
+      'same published article and image content; baseline uses the original without srcset; cold Chromium, 80ms latency, 400000 B/s, CPU 4×, DPR 1, 3 interleaved samples per viewport; lab results, not field CWV' +
+      (audit ? '' : '; PR smoke has no network/CPU throttling or timing gate'),
     comparison,
     samples: metrics,
   };

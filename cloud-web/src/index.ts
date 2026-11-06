@@ -89,7 +89,11 @@ export default {
       }
       if (path.startsWith('/api/') || editorAssets.has(path)) {
         const response = await admin.fetch(request, env);
-        if (request.method === 'POST' && /\/api\/publish\/[a-f0-9-]{36}\/commit$/.test(path) && response.ok)
+        if (
+          request.method === 'POST' &&
+          /\/api\/publish\/[a-f0-9-]{36}\/commit$/.test(path) &&
+          response.ok
+        )
           await invalidatePointer(request);
         return response;
       }
@@ -109,7 +113,7 @@ export default {
       const key = publicPath(path);
       const pointerKey = cacheKey(request, 'pointer');
       const cachedPointer = await cacheRead(pointerKey);
-      const pointer = cachedPointer || await env.STORAGE.get('state/published.json');
+      const pointer = cachedPointer || (await env.STORAGE.get('state/published.json'));
       const published = pointer
         ? await pointer.json<{
             id: string;
@@ -122,15 +126,23 @@ export default {
       const id = published?.id || null;
       const pageKey = cacheKey(request, 'page', id || 'initial');
       const cached = await cacheRead(pageKey);
-      if (cached) return protect(clientResponse(cached, request, true), /^[A-Za-z0-9]{1,64}$/.test(published?.clarityId || ''));
+      if (cached)
+        return protect(
+          clientResponse(cached, request, true),
+          /^[A-Za-z0-9]{1,64}$/.test(published?.clarityId || ''),
+        );
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
-      if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml')
-        {
-          const response = await discovery(new Request(request, { method: 'GET', headers: {} }), env.STORAGE, id, published?.pages);
-          cacheWrite(ctx, pageKey, response, 300);
-          return clientResponse(response, request);
-        }
+      if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
+        const response = await discovery(
+          new Request(request, { method: 'GET', headers: {} }),
+          env.STORAGE,
+          id,
+          published?.pages,
+        );
+        cacheWrite(ctx, pageKey, response, 300);
+        return clientResponse(response, request);
+      }
       if (path === '/analytics.js') {
         const script = analytics
           ? `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};const s=document.createElement('script');s.async=true;s.src="https://www.clarity.ms/tag/"+${JSON.stringify(clarityId)};document.head.append(s);`
@@ -150,8 +162,13 @@ export default {
           url.pathname = '/posts/' + target + '/';
           return protect(Response.redirect(url.toString(), 301), analytics);
         }
-        const storageKey = published?.pages ? (published.pages[key] ? 'public/content/' + published.pages[key] : null) : `public/${id}/${key}`;
-        const body = request.method === 'HEAD' || !storageKey ? null : await env.STORAGE.get(storageKey);
+        const storageKey = published?.pages
+          ? published.pages[key]
+            ? 'public/content/' + published.pages[key]
+            : null
+          : `public/${id}/${key}`;
+        const body =
+          request.method === 'HEAD' || !storageKey ? null : await env.STORAGE.get(storageKey);
         const object =
           request.method === 'HEAD' && storageKey ? await env.STORAGE.head(storageKey) : body;
         if (object) {
@@ -160,7 +177,8 @@ export default {
             : object.httpEtag;
           const headers = new Headers({ 'Content-Type': publicType(key), ETag: etag });
           if (
-            request.method === 'HEAD' && request.headers
+            request.method === 'HEAD' &&
+            request.headers
               .get('If-None-Match')
               ?.split(',')
               .some((tag) => tag.trim().replace(/^W\//, '') === etag || tag.trim() === '*')
@@ -181,8 +199,15 @@ export default {
         }
         // Initial login seeds private content but doesn't publish any pages.
         // Once a public index exists, absent routes must stay absent.
-        if (published?.pages?.['index.html'] || (!published?.pages && await env.STORAGE.head(`public/${id}/index.html`))) {
-          const missingKey = published?.pages ? (published.pages['404.html'] ? 'public/content/' + published.pages['404.html'] : null) : `public/${id}/404.html`;
+        if (
+          published?.pages?.['index.html'] ||
+          (!published?.pages && (await env.STORAGE.head(`public/${id}/index.html`)))
+        ) {
+          const missingKey = published?.pages
+            ? published.pages['404.html']
+              ? 'public/content/' + published.pages['404.html']
+              : null
+            : `public/${id}/404.html`;
           const missing = missingKey ? await env.STORAGE.get(missingKey) : null;
           return protect(
             await readerHtml(
@@ -219,9 +244,20 @@ export default {
       );
     }
   },
-  async scheduled(_event: ScheduledController, env: WebBindings, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(maintainStorage(env).catch(error => {
-      console.error(JSON.stringify({ event: 'storage_maintenance_failed', type: error instanceof Error ? error.name : 'unknown' }));
-    }));
+  async scheduled(
+    _event: ScheduledController,
+    env: WebBindings,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    ctx.waitUntil(
+      maintainStorage(env).catch((error) => {
+        console.error(
+          JSON.stringify({
+            event: 'storage_maintenance_failed',
+            type: error instanceof Error ? error.name : 'unknown',
+          }),
+        );
+      }),
+    );
   },
 } satisfies ExportedHandler<WebBindings>;

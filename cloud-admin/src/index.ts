@@ -2,7 +2,12 @@ import { maintainStorage, type MaintenanceStatus } from './maintenance';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
-import { stageBrowserPage, commitBrowserPublish, cancelBrowserPublish, planBrowserPublish } from './browser-publishing';
+import {
+  stageBrowserPage,
+  commitBrowserPublish,
+  cancelBrowserPublish,
+  planBrowserPublish,
+} from './browser-publishing';
 import { ASSETS } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
@@ -122,7 +127,9 @@ async function apiRoute(
       pages?: Record<string, string>;
     }>(env.STORAGE, 'state/published.json');
     const redirects = pointer?.postRedirects || {};
-    const publicInitialized = !!pointer?.pages?.['index.html'] || (!pointer?.pages && !!(await env.STORAGE.head(`public/${release.id}/index.html`)));
+    const publicInitialized =
+      !!pointer?.pages?.['index.html'] ||
+      (!pointer?.pages && !!(await env.STORAGE.head(`public/${release.id}/index.html`)));
     const templateStatus = !publicInitialized
       ? 'unpublished'
       : pointer?.id === release.id && pointer.templateVersion === CURRENT_TEMPLATE_VERSION

@@ -21,7 +21,12 @@ export async function imageUploadForm(file, { compact = false } = {}) {
   });
   const main = result.main;
   const variants = Array.isArray(result) ? result : result.variants;
-  form.append('file', main ? new File([main], file.name.replace(/\.[^.]*$/, '') + '.webp', { type: 'image/webp' }) : file);
+  form.append(
+    'file',
+    main
+      ? new File([main], file.name.replace(/\.[^.]*$/, '') + '.webp', { type: 'image/webp' })
+      : file,
+  );
   for (const { width, blob } of variants) form.append('w' + width, blob, width + '.webp');
   return form;
 }

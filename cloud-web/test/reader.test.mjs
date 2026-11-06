@@ -150,8 +150,16 @@ test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => 
   assert.equal(await head.text(), '');
   const bucket = await f.mf.getR2Bucket('STORAGE');
   await bucket.put('public/' + release.release_id + '/search_index.json', '{invalid');
-  assert.equal(await (await f.request('/feed.xml')).text(), feed, 'a valid cached feed remains available');
-  assert.equal((await f.mf.dispatchFetch('https://uncached-reader.example/feed.xml')).status, 503, 'an uncached storage error must not become an empty successful feed');
+  assert.equal(
+    await (await f.request('/feed.xml')).text(),
+    feed,
+    'a valid cached feed remains available',
+  );
+  assert.equal(
+    (await f.mf.dispatchFetch('https://uncached-reader.example/feed.xml')).status,
+    503,
+    'an uncached storage error must not become an empty successful feed',
+  );
 });
 
 test('new reader masthead preserves the full site name in response metadata', async (t) => {

@@ -46,12 +46,14 @@ export function configureImages({
           notice,
           load,
           rebuild,
-          imageUploadForm: file => imageUploadForm(file, { compact: false }),
+          imageUploadForm: (file) => imageUploadForm(file, { compact: false }),
           confirmAction,
         });
       }),
     );
-  window.addEventListener('cloudink-content-changed', () => { loadedAt = 0; });
+  window.addEventListener('cloudink-content-changed', () => {
+    loadedAt = 0;
+  });
   function status(message) {
     $('image-library-status').textContent = message;
   }
@@ -237,7 +239,8 @@ export function configureImages({
       : images.length
         ? '没有符合筛选条件的图片。'
         : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
-    $('image-library-more').hidden = (completeCatalog ? visible.length <= visibleLimit : !cursor) || loading || !!loadError;
+    $('image-library-more').hidden =
+      (completeCatalog ? visible.length <= visibleLimit : !cursor) || loading || !!loadError;
     $('image-library-back').hidden = !canInsert();
     $('image-library-warning').hidden = !referenceError;
     $('image-library-warning').textContent = referenceError
@@ -245,7 +248,11 @@ export function configureImages({
       : '';
   }
   async function load(reset = true) {
-    if (!reset && completeCatalog) { visibleLimit += 24; render(); return; }
+    if (!reset && completeCatalog) {
+      visibleLimit += 24;
+      render();
+      return;
+    }
     if (reset) visibleLimit = 24;
     const version = ++requestVersion;
     loading = true;
@@ -280,7 +287,11 @@ export function configureImages({
       completeCatalog = data.catalog === true;
       loadedAt = Date.now();
       referenceError = data.referenceError || (reset ? '' : referenceError);
-      status((cursor || (completeCatalog && images.length > visibleLimit)) ? '还有更多图片，可继续加载。筛选只作用于已加载图片。' : '图片库已加载。');
+      status(
+        cursor || (completeCatalog && images.length > visibleLimit)
+          ? '还有更多图片，可继续加载。筛选只作用于已加载图片。'
+          : '图片库已加载。',
+      );
       $('image-library-status').dataset.tone = 'success';
     } catch (error) {
       if (version === requestVersion) {
