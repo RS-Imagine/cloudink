@@ -212,7 +212,9 @@ button[aria-busy='true']::before {
   border-radius: 12px;
   background: transparent;
   color: var(--ci-muted);
-  transition: background-color var(--ci-motion-fast) var(--ci-ease), color var(--ci-motion-fast) var(--ci-ease);
+  transition:
+    background-color var(--ci-motion-fast) var(--ci-ease),
+    color var(--ci-motion-fast) var(--ci-ease);
 }
 .editor-view-switch button:hover {
   color: var(--ci-text);

@@ -154,15 +154,13 @@ export function shortDatetime(value: unknown): string {
   const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/.exec(s);
   if (!match) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
   const [, y, m, d, hh, mm] = match.map(Number);
-  if (m < 1 || m > 12 || hh > 23 || mm > 59) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  if (m < 1 || m > 12 || hh > 23 || mm > 59)
+    throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
   const maxDay = m === 2 ? 29 : [4, 6, 9, 11].includes(m) ? 30 : 31;
-  if (d < 1 || d > maxDay) throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
+  if (d < 1 || d > maxDay)
+    throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
   const check = new Date(Date.UTC(y, m - 1, d, hh, mm));
-  if (
-    check.getUTCFullYear() !== y ||
-    check.getUTCMonth() !== m - 1 ||
-    check.getUTCDate() !== d
-  )
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d)
     throw new HttpError(400, '发布时间需要是有效的 YYYY-MM-DD HH:MM（24 小时制）。');
   return s;
 }

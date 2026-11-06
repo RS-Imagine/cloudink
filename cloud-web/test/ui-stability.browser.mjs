@@ -24,13 +24,8 @@ export async function verifyUiStability(browser, origin, output, engine) {
     thumbnailGate,
     uploadGate,
     saveGate,
-    moduleGate,
     failGallery = false;
   let manifest, source;
-  await context.route('**/image-library.js', async (route) => {
-    if (moduleGate) await moduleGate.promise;
-    return route.continue().catch(() => {});
-  });
   await context.route(
     (url) => url.pathname === '/api/images',
     async (route) => {
@@ -107,15 +102,6 @@ export async function verifyUiStability(browser, origin, output, engine) {
       referenceError: '',
       cursor: null,
     };
-    moduleGate = gate();
-    const opening = await bounds('images');
-    await page.locator('#images').click();
-    await stable('images', opening);
-    await page.locator('#dashboard-nav').click();
-    moduleGate.release();
-    moduleGate = null;
-    await expect(page.locator('#images')).not.toHaveAttribute('aria-busy', 'true');
-    await expect(page.locator('#home-view')).toBeVisible();
     galleryGate = gate();
     thumbnailGate = gate();
     const nav = await bounds('images');

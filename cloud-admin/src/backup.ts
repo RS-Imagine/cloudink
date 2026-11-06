@@ -58,7 +58,10 @@ function legacyHistoryKey(key: string): boolean {
   return /^history\/[A-Za-z0-9_-]{1,100}\/[a-f0-9-]+\.md$/.test(key);
 }
 function sourceSlug(key: string): string | null {
-  return key.match(/^(?:published|drafts|published-shorts|shorts)\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1] || null;
+  return (
+    key.match(/^(?:published|drafts|published-shorts|shorts)\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1] ||
+    null
+  );
 }
 function isShortKey(key: string): boolean {
   return /^(?:published-shorts|shorts)\//.test(key);

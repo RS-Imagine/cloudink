@@ -16,7 +16,6 @@ await build({
     '/home-illustration.js',
     '/post-address.js',
     '/publication.js',
-    '/image-library.js',
   ],
 });
 await build({
@@ -68,17 +67,7 @@ await build({
   target: 'es2022',
   minify: true,
 });
-await build({
-  entryPoints: [new URL('ui/images.js', root).pathname],
-  outfile: new URL('ui/images.generated.js', root).pathname,
-  bundle: true,
-  format: 'esm',
-  target: 'es2022',
-  minify: true,
-  external: ['/image-maintenance.js'],
-});
 const paths = [
-  ['/image-library.js', 'ui/images.generated.js', 'text/javascript; charset=utf-8'],
   ['/publication.js', 'ui/publication.generated.js', 'text/javascript; charset=utf-8'],
   ['/post-address.js', 'ui/post-address.generated.js', 'text/javascript; charset=utf-8'],
   ['/home-illustration.js', 'ui/home-illustration.generated.js', 'text/javascript; charset=utf-8'],

@@ -127,7 +127,7 @@ fn home_illustrations_are_optional_and_only_use_managed_sources() {
 }
 
 #[test]
-fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
+fn home_thumbnail_uses_managed_images_and_a_non_tabbable_duplicate_link() {
     let mut article = post("illustrated", "An illustrated note", false);
     article.body_markdown =
         "![external](https://example.com/photo.jpg)\n![local](/images/uploads/photo.webp)".into();
@@ -139,7 +139,15 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
         "sizes=\"(max-width: 759px) calc(100vw - 48px), ",
         "(max-width: 1199px) 36vw, 400px\""
     )));
-    assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 1);
+    assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 2);
+    assert!(html.contains(concat!(
+        "<h2><a href=\"/posts/illustrated/\">",
+        "An illustrated note</a></h2>"
+    )));
+    assert!(html.contains(concat!(
+        "<a href=\"/posts/illustrated/\" class=\"home-card-art-link\" ",
+        "aria-hidden=\"true\" tabindex=\"-1\">"
+    )));
     for body in [
         "![bad](/images/uploads/../private.jpg)",
         "![bad](javascript:alert)",
@@ -149,10 +157,10 @@ fn home_thumbnail_uses_only_managed_markdown_images_and_keeps_one_post_link() {
         "Plain text",
     ] {
         article.body_markdown = body.into();
-        assert!(
-            !render::render_index(&SiteConfig::default(), &[article.clone()], "test")
-                .contains("class=\"home-thumbnail\"")
-        );
+        let plain = render::render_index(&SiteConfig::default(), &[article.clone()], "test");
+        assert!(!plain.contains("class=\"home-thumbnail\""));
+        assert!(!plain.contains("class=\"home-card-art-link\""));
+        assert_eq!(plain.matches("href=\"/posts/illustrated/\"").count(), 1);
     }
 }
 

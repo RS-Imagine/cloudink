@@ -263,8 +263,7 @@ async function apiRoute(
     if (request.method === 'PUT') {
       const input = await jsonInput(request, 1_000_000);
       const draft = validateShortDraft(input);
-      if (draft.front_matter.slug !== slug)
-        throw new HttpError(400, '短记地址与请求地址不一致。');
+      if (draft.front_matter.slug !== slug) throw new HttpError(400, '短记地址与请求地址不一致。');
       draft.front_matter.draft = true;
       const existing = await env.STORAGE.head(`shorts/${slug}.md`);
       if (existing && !existing.customMetadata?.deleted && input.etag !== existing.etag)
