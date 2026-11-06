@@ -542,7 +542,7 @@ fn page(
 
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(
-        r#"<!doctype html>
+        r##"<!doctype html>
 <html lang="en" data-palette="{palette}">
 <head>
   <meta charset="utf-8">
@@ -562,7 +562,7 @@ fn page(
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" media="none" id="hljs-dark">
   {extra_head}
   <script>{theme_bootstrap}</script>
-"#,
+"##,
         palette = palette,
         theme_bootstrap = include_str!("../../../assets/theme.js"),
         description = escape_html(description),

@@ -46,6 +46,7 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
                         | "styles.css"
                         | "client.js"
                         | "favicon.svg"
+                        | "manifest.webmanifest"
                         | "search_index.json"
                         | "site.json"
                         | "_release.json"
