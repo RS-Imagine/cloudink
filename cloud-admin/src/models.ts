@@ -1,5 +1,9 @@
 import { parse, stringify } from 'smol-toml';
 
+export function ownValue<T>(values: Record<string, T> | undefined, key: string): T | undefined {
+  return values && Object.hasOwn(values, key) ? values[key] : undefined;
+}
+
 export class HttpError extends Error {
   constructor(
     public status: number,

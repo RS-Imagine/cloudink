@@ -22,6 +22,7 @@ import {
   parseShortSource,
   parseSource,
   readJson,
+  ownValue,
   serializeDraft,
   serializeShortDraft,
   validSlug,
@@ -188,13 +189,13 @@ async function apiRoute(
         return json({ draft: parseSource(source), source, etag: object.etag });
       }
       const release = await currentRelease(env),
-        source = release.markdown_posts[slug];
+        source = ownValue(release.markdown_posts, slug);
       if (source) return json({ draft: parseSource(source), source, etag: null });
       throw new HttpError(404, '文章不存在。');
     }
     if (request.method === 'DELETE') {
       const release = await currentRelease(env);
-      if (release.markdown_posts[slug]) throw new HttpError(409, '请先取消发布，再删除草稿。');
+      if (ownValue(release.markdown_posts, slug)) throw new HttpError(409, '请先取消发布，再删除草稿。');
       const input = await jsonInput(request, 4096),
         object = await env.STORAGE.head(`drafts/${slug}.md`);
       if (object && input.etag !== object.etag)
@@ -301,13 +302,13 @@ async function apiRoute(
         return json({ draft: parseShortSource(source), source, etag: object.etag });
       }
       const release = await currentRelease(env);
-      const source = (release.markdown_shorts || {})[slug];
+      const source = ownValue(release.markdown_shorts, slug);
       if (source) return json({ draft: parseShortSource(source), source, etag: null });
       throw new HttpError(404, '短记不存在。');
     }
     if (request.method === 'DELETE') {
       const release = await currentRelease(env);
-      if ((release.markdown_shorts || {})[slug])
+      if (ownValue(release.markdown_shorts, slug))
         throw new HttpError(409, '请先取消发布，再删除草稿。');
       const input = await jsonInput(request, 4096),
         object = await env.STORAGE.head(`shorts/${slug}.md`);
