@@ -13,7 +13,6 @@ fn article() -> Post {
             updated: Some("2026-10-02".into()),
             description: "A <description>".into(),
             draft: false,
-            tags: Vec::new(),
         },
         body_markdown: String::new(),
         body_html: "<h2>Reading</h2><p>Words</p>".into(),

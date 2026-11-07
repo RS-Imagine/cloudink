@@ -201,15 +201,9 @@ pub fn render_index_with_shorts(
 ) -> String {
     let mut cards = String::new();
     let mut count = 0;
-    let mut unique_tags = std::collections::BTreeSet::new();
     for post in posts.iter().filter(|post| !post.draft()) {
         let featured = count == 0;
         count += 1;
-        for tag in &post.front_matter.tags {
-            if !tag.trim().is_empty() {
-                unique_tags.insert(tag.clone());
-            }
-        }
         let updated = post
             .updated()
             .filter(|date| *date != post.date())
@@ -230,27 +224,12 @@ pub fn render_index_with_shorts(
                 art = art
             )
         };
-        let tags_html = if !post.front_matter.tags.is_empty() {
-            let mut s = String::from(r#"<div class="home-card-tags">"#);
-            for tag in &post.front_matter.tags {
-                s.push_str(&format!(
-                    r#"<span class="flclash-tag-pill">{}</span>"#,
-                    escape_html(tag)
-                ));
-            }
-            s.push_str("</div>");
-            s
-        } else {
-            String::new()
-        };
-        let reading_time = ((post.body_plain_text.chars().count() / 300) + 1).max(5);
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
     <h2><a href="/posts/{slug}/">{title}</a></h2>
     <p>{description}</p>
-    {tags_html}
-    <div class="home-card-meta meta"><time datetime="{date}">{date}</time><span class="reading-time">⏱️ {reading_time} 分钟阅读</span>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
+    <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
   </div>{art_link}
 </article>"#,
             featured_class = if featured { " home-feature" } else { "" },
@@ -258,8 +237,6 @@ pub fn render_index_with_shorts(
             title = escape_html(post.title()),
             description = escape_html(post.description()),
             date = escape_html(post.date()),
-            tags_html = tags_html,
-            reading_time = reading_time,
             updated = updated,
             art_link = art_link,
         ));
@@ -289,7 +266,6 @@ pub fn render_index_with_shorts(
     // Build real published shorts list for right sidebar
     let active_shorts: Vec<_> = shorts.iter().filter(|s| !s.draft()).collect();
     let shorts_count = active_shorts.len();
-    let tags_count = unique_tags.len();
 
     let mut shorts_list_html = String::new();
     if active_shorts.is_empty() {
@@ -313,20 +289,6 @@ pub fn render_index_with_shorts(
                 slug = escape_html(short.slug()),
                 snippet = escape_html(&snippet),
                 date = escape_html(short.date()),
-            ));
-        }
-    }
-
-    let tag_link_target = if count > 0 { "/archive/" } else { "/#posts" };
-    // Build real tag cloud from published articles
-    let mut tag_cloud_html = String::new();
-    if unique_tags.is_empty() {
-        tag_cloud_html.push_str(r#"<p style="color:var(--ci-muted);font-size:12px;margin:0;">暂无常用标签</p>"#);
-    } else {
-        for tag in &unique_tags {
-            tag_cloud_html.push_str(&format!(
-                r#"<a href="{tag_link_target}" class="flclash-tag-pill">{}</a>"#,
-                escape_html(tag)
             ));
         }
     }
@@ -366,10 +328,6 @@ pub fn render_index_with_shorts(
       <span class="flclash-stat-num">{shorts_count}</span>
       <span class="flclash-stat-label">短记</span>
     </div>
-    <div class="flclash-stat-item">
-      <span class="flclash-stat-num">{tags_count}</span>
-      <span class="flclash-stat-label">标签</span>
-    </div>
   </div>
 </aside>
 <div class="flclash-main-content">
@@ -391,7 +349,7 @@ pub fn render_index_with_shorts(
     {archive_link}
   </section>
 </div>
-<aside class="flclash-sidebar-right" id="tags" aria-label="微动态与常用标签">
+<aside class="flclash-sidebar-right" aria-label="微动态短记">
   <div class="flclash-card flclash-shorts-card">
     <div class="flclash-card-header">
       <h3 class="flclash-card-title">📝 即时短记</h3>
@@ -400,12 +358,6 @@ pub fn render_index_with_shorts(
     <ul class="flclash-shorts-list">
       {shorts_list_html}
     </ul>
-  </div>
-  <div class="flclash-card flclash-tags-card">
-    <h3 class="flclash-card-title">🏷️ 常用标签</h3>
-    <div class="flclash-tag-cloud">
-      {tag_cloud_html}
-    </div>
   </div>
 </aside>
 </div>"#,
@@ -424,10 +376,8 @@ pub fn render_index_with_shorts(
             archive_heading_link = archive_heading_link,
             count = count,
             shorts_count = shorts_count,
-            tags_count = tags_count,
             avatar_content = avatar_content,
             shorts_list_html = shorts_list_html,
-            tag_cloud_html = tag_cloud_html,
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
             } else {

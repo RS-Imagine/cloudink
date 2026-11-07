@@ -27,7 +27,6 @@ fn draft(slug: &str, unpublished: bool) -> PostDraft {
             aliases: Vec::new(),
             description: "测试".into(),
             draft: unpublished,
-            tags: Vec::new(),
         },
         body_markdown: "# 小节\n\n公式 $x^2$\n\n```rust\nlet x = 1;\n```".into(),
     }

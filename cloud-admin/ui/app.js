@@ -1797,18 +1797,6 @@ document.addEventListener('click', (event) => {
     if (filter === 'all' || filter === 'published' || filter === 'draft') {
       postFilter = filter;
       void refresh().catch((error) => notice(error.message));
-    } else if (filter === 'pending') {
-      notice('暂无待发布排期文章。', 'info');
-    } else if (filter === 'trash') {
-      notice('回收站为空。', 'info');
-    }
-  }
-  const tagItem = event.target.closest('.flclash-sidebar-tag-item');
-  if (tagItem) {
-    const tagName = tagItem.querySelector('.tag-name')?.textContent?.replace('#', '') || '';
-    if (tagName) {
-      $('search').value = tagName;
-      void refresh().catch(() => {});
     }
   }
 });

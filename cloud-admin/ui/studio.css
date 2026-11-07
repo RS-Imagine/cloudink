@@ -1229,31 +1229,6 @@ body:has(dialog[open]) {
   font-size: 11px;
   color: var(--ci-muted, #7a7066);
 }
-.flclash-sidebar-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 4px;
-}
-.flclash-sidebar-tag-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: var(--ci-radius-pill, 9999px);
-  background: var(--ci-surface, #ffffff);
-  border: 1px solid rgba(92, 58, 33, 0.12);
-  color: var(--ci-muted, #7a7066);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.flclash-sidebar-tag-item:hover {
-  border-color: #5c3a21;
-  color: #5c3a21;
-  background: #f5e9df;
-}
 .flclash-sidebar-bottom-widget {
   background: var(--ci-surface, #ffffff);
   border: 1px solid rgba(92, 58, 33, 0.1);
@@ -1366,7 +1341,7 @@ body:has(dialog[open]) {
   .flclash-sidebar-new-btn {
     width: 100% !important;
   }
-  .flclash-sidebar-nav-group:not(.flclash-sidebar-tags-group) {
+  .flclash-sidebar-nav-group {
     display: flex !important;
     flex-direction: row !important;
     overflow-x: auto !important;
@@ -1375,7 +1350,7 @@ body:has(dialog[open]) {
     padding: 2px 0 6px !important;
     scrollbar-width: none !important;
   }
-  .flclash-sidebar-nav-group:not(.flclash-sidebar-tags-group)::-webkit-scrollbar {
+  .flclash-sidebar-nav-group::-webkit-scrollbar {
     display: none;
   }
   .flclash-nav-group-title {
@@ -1406,7 +1381,6 @@ body:has(dialog[open]) {
   .flclash-sidebar-nav-item.is-active .dot-draft {
     color: #f5e9df !important;
   }
-  .flclash-sidebar-tags-group,
   .flclash-sidebar-bottom-widget {
     display: none !important;
   }

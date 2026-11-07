@@ -1029,7 +1029,7 @@
 .flclash-stats-card {
   padding: 18px 12px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   text-align: center;
   border-radius: 20px;
 }
@@ -1092,28 +1092,6 @@
   border-color: var(--ci-primary);
   background: var(--ci-container);
 }
-.home-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.flclash-tag-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: var(--ci-radius-pill, 9999px);
-  background: var(--ci-container);
-  color: var(--ci-primary);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-.home-card-meta .reading-time {
-  font-size: 11px;
-  color: var(--ci-muted);
-}
-
 .flclash-shorts-card {
   padding: 22px 20px;
 }
@@ -1178,15 +1156,6 @@
   font-size: 11px;
   color: var(--ci-muted);
 }
-.flclash-tags-card {
-  padding: 20px;
-  border-radius: 20px;
-}
-.flclash-tag-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
 .flclash-empty-short {
   list-style: none;
   padding: 8px 0;
@@ -1246,8 +1215,7 @@
   .flclash-card,
   .flclash-profile-card,
   .flclash-stats-card,
-  .flclash-shorts-card,
-  .flclash-tags-card {
+  .flclash-shorts-card {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
