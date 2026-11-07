@@ -24,6 +24,7 @@ pub struct SiteConfig {
     /// Optional author palette; absent or unsupported values use the Ink default.
     #[serde(
         rename = "themePalette",
+        alias = "theme_palette",
         default,
         skip_serializing_if = "Option::is_none"
     )]

@@ -13,7 +13,7 @@ if (process.argv[2] === 'seed') {
   await mkdir(resolve(content, 'posts'), { recursive: true });
   await writeFile(
     resolve(content, 'site.toml'),
-    'title = "CloudInk · 云砚"\nsubtitle = "独立开发者 / 产品思考者"\nauthor = "QiuLin"\ndescription = "喜欢把复杂的技术讲清楚，也记录日常的灵感与实践。专注于 Web 与可观测性，习惯把想法写下来。"\ntheme_palette = "brown"\n',
+    'title = "CloudInk · 云砚"\nsubtitle = "独立开发者 / 产品思考者"\nauthor = "QiuLin"\ndescription = "喜欢把复杂的技术讲清楚，也记录日常的灵感与实践。专注于 Web 与可观测性，习惯把想法写下来。"\nthemePalette = "brown"\n',
   );
   await writeFile(
     resolve(content, 'about.md'),
