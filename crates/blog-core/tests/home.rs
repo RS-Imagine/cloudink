@@ -13,6 +13,7 @@ fn post(slug: &str, title: &str, draft: bool) -> Post {
             updated: None,
             description: "A description & a thought".into(),
             draft,
+            tags: Vec::new(),
         },
         body_markdown: String::new(),
         body_html: "<p>Article</p>".into(),

@@ -80,6 +80,8 @@ pub struct FrontMatter {
     pub description: String,
     #[serde(default)]
     pub draft: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 /// A fully parsed and rendered blog post.

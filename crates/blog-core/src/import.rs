@@ -187,6 +187,7 @@ pub fn import_markdown(raw: &str, filename: &str, today: &str, slug: &str) -> Re
             aliases: Vec::new(),
             description,
             draft: true,
+            tags: Vec::new(),
         },
         body_markdown: body.to_string(),
     })

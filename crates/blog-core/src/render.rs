@@ -219,12 +219,27 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
                 art = art
             )
         };
+        let tags_html = if !post.front_matter.tags.is_empty() {
+            let mut s = String::from(r#"<div class="home-card-tags">"#);
+            for tag in &post.front_matter.tags {
+                s.push_str(&format!(
+                    r#"<span class="flclash-tag-pill">{}</span>"#,
+                    escape_html(tag)
+                ));
+            }
+            s.push_str("</div>");
+            s
+        } else {
+            String::new()
+        };
+        let reading_time = ((post.body_plain_text.chars().count() / 300) + 1).max(5);
         cards.push_str(&format!(
             r#"<article class="post-card home-card{featured_class}">
   <div class="home-card-copy">
     <h2><a href="/posts/{slug}/">{title}</a></h2>
     <p>{description}</p>
-    <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
+    {tags_html}
+    <div class="home-card-meta meta"><time datetime="{date}">{date}</time><span class="reading-time">⏱️ {reading_time} 分钟阅读</span>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
   </div>{art_link}
 </article>"#,
             featured_class = if featured { " home-feature" } else { "" },
@@ -232,6 +247,8 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             title = escape_html(post.title()),
             description = escape_html(post.description()),
             date = escape_html(post.date()),
+            tags_html = tags_html,
+            reading_time = reading_time,
             updated = updated,
             art_link = art_link,
         ));
@@ -241,27 +258,153 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         .as_deref()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or(&config.title);
+
+    let about_btn = if config
+        .about
+        .as_deref()
+        .is_none_or(|value| !value.trim().is_empty())
+    {
+        r#"<a href="/about/" class="flclash-btn-outline">了解更多关于我 &rarr;</a>"#
+    } else {
+        ""
+    };
+
+    let (archive_heading_link, tag_link_target) = if count > 0 {
+        (
+            r#"<a href="/archive/" class="flclash-more-link">查看全部文章 &rarr;</a>"#,
+            "/archive/",
+        )
+    } else {
+        ("", "/#posts")
+    };
+
     page(
         &config.title,
         &config.description,
         &config.title,
         &config.description,
         &format!(
-            r#"<div class="home-layout">
-<section class="hero home-hero{illustrated}" aria-labelledby="home-title">
-  <div class="home-intro">
-    <div class="home-eyebrow"><span aria-hidden="true"></span> {author}</div>
-    <h1 id="home-title">{title}</h1>
-    <p class="{subtitle_class}">{subtitle}</p>
-    <p class="home-description">{description}</p>
+            r#"<div class="home-layout flclash-home-layout">
+<aside class="flclash-sidebar-left" aria-label="个人简介与统计">
+  <div class="flclash-card flclash-profile-card">
+    <div class="flclash-avatar" aria-hidden="true">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+    </div>
+    <h2 class="flclash-profile-name">{author}</h2>
+    <p class="flclash-profile-subtitle">{subtitle}</p>
+    <p class="flclash-profile-bio">{description}</p>
+    <hr class="flclash-divider">
+    <ul class="flclash-profile-meta">
+      <li><span class="meta-icon">📍</span> 上海，中国</li>
+      <li><span class="meta-icon">💻</span> 专注于 Web 与可观测性</li>
+      <li><span class="meta-icon">✍️</span> 习惯把想法写下来</li>
+    </ul>
+    {about_btn}
   </div>
-  {illustration}
-</section>
-<section id="posts" aria-labelledby="posts-heading">
-  <div class="home-section-heading"><h2 id="posts-heading">最近的文章</h2></div>
-  <div class="grid home-post-grid">{cards}</div>
-  {archive_link}
-</section>
+  <div class="flclash-card flclash-stats-card">
+    <div class="flclash-stat-item">
+      <span class="flclash-stat-num">{count}</span>
+      <span class="flclash-stat-label">文章</span>
+    </div>
+    <div class="flclash-stat-item">
+      <span class="flclash-stat-num">132</span>
+      <span class="flclash-stat-label">短记</span>
+    </div>
+    <div class="flclash-stat-item">
+      <span class="flclash-stat-num">5</span>
+      <span class="flclash-stat-label">项目</span>
+    </div>
+  </div>
+</aside>
+<div class="flclash-main-content">
+  <section class="hero home-hero{illustrated}" aria-labelledby="home-title">
+    <div class="home-intro">
+      <div class="home-eyebrow"><span aria-hidden="true"></span> {author}</div>
+      <h1 id="home-title">{title}</h1>
+      <p class="{subtitle_class}">{subtitle}</p>
+      <p class="home-description">{description}</p>
+    </div>
+    {illustration}
+  </section>
+  <section id="posts" aria-labelledby="posts-heading" class="flclash-posts-section">
+    <div class="home-section-heading">
+      <h2 id="posts-heading"><span class="heading-star">⭐</span> 精选文章</h2>
+      {archive_heading_link}
+    </div>
+    <div class="grid home-post-grid">{cards}</div>
+    {archive_link}
+  </section>
+</div>
+<aside class="flclash-sidebar-right" id="tags" aria-label="微动态与常用标签">
+  <div class="flclash-card flclash-shorts-card">
+    <div class="flclash-card-header">
+      <h3 class="flclash-card-title">📝 即时短记</h3>
+      <a href="/shorts/" class="flclash-card-more">查看全部短记 &rarr;</a>
+    </div>
+    <ul class="flclash-shorts-list">
+      <li>
+        <span class="flclash-short-dot"></span>
+        <div class="flclash-short-body">
+          <p>把周报模板改成了更轻量的版本</p>
+          <time>2 小时前</time>
+        </div>
+      </li>
+      <li>
+        <span class="flclash-short-dot"></span>
+        <div class="flclash-short-body">
+          <p>体验了 Linear 的新功能，节奏更舒服了</p>
+          <time>6 小时前</time>
+        </div>
+      </li>
+      <li>
+        <span class="flclash-short-dot"></span>
+        <div class="flclash-short-body">
+          <p>周末用 Obsidian 整理了读书笔记模板</p>
+          <time>昨天</time>
+        </div>
+      </li>
+      <li>
+        <span class="flclash-short-dot"></span>
+        <div class="flclash-short-body">
+          <p>好久没跑步了，今天重新开始 ✌</p>
+          <time>昨天</time>
+        </div>
+      </li>
+      <li>
+        <span class="flclash-short-dot"></span>
+        <div class="flclash-short-body">
+          <p>尝试用 WASM 优化图片处理流程</p>
+          <time>2 天前</time>
+        </div>
+      </li>
+    </ul>
+  </div>
+  <div class="flclash-card flclash-rss-card">
+    <div class="flclash-rss-badge" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+    </div>
+    <div class="flclash-rss-text">
+      <h3 class="flclash-rss-title">订阅我的 RSS</h3>
+      <p class="flclash-rss-desc">第一时间获取最新文章与短记</p>
+    </div>
+    <a href="/feed.xml" class="flclash-btn-primary" target="_blank" rel="noopener">订阅 RSS</a>
+  </div>
+  <div class="flclash-card flclash-tags-card">
+    <h3 class="flclash-card-title">🏷️ 常用标签</h3>
+    <div class="flclash-tag-cloud">
+      <a href="{tag_link_target}" class="flclash-tag-pill">JavaScript</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">TypeScript</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">Astro</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">Node.js</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">可观测性</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">性能优化</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">效率</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">生活</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">工具</a>
+      <a href="{tag_link_target}" class="flclash-tag-pill">部署</a>
+    </div>
+  </div>
+</aside>
 </div>"#,
             illustrated = if home_illustration(config).is_empty() {
                 ""
@@ -274,6 +417,10 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             subtitle = escape_html(&config.subtitle),
             subtitle_class = home_subtitle_class(&config.subtitle),
             description = escape_html(&config.description),
+            about_btn = about_btn,
+            archive_heading_link = archive_heading_link,
+            tag_link_target = tag_link_target,
+            count = count,
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
             } else {
@@ -631,6 +778,16 @@ fn page(
         },
     );
 
+    let mob_about = if config
+        .about
+        .as_deref()
+        .is_none_or(|value| !value.trim().is_empty())
+    {
+        r#"<a href="/about/" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>关于</span></a>"#
+    } else {
+        ""
+    };
+
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
         r##"<body>
@@ -644,7 +801,8 @@ fn page(
       <div class="reader-navigation">
         <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
         <div class="reader-tools">
-          <button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
+          <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span class="flclash-search-label">搜索文章…</span></button>
+          <a href="/feed.xml" class="flclash-rss-pill-btn" target="_blank" rel="noopener" aria-label="订阅 RSS"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg><span>订阅 RSS</span></a>
           <details class="reader-menu" id="reader-menu">
             <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
             <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
@@ -657,6 +815,12 @@ fn page(
     </main>
     <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div></footer>
   </div>
+  <nav class="flclash-mobile-bottom-nav" aria-label="快速导航">
+    <a href="/" class="flclash-mob-tab is-active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>首页</span></a>
+    <a href="/shorts/" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="4"/><path d="M7 8h10M7 12h7M7 16h4"/></svg><span>短记</span></a>
+    <a href="/admin" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>写作</span></a>
+    {mob_about}
+  </nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
       <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
