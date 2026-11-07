@@ -518,14 +518,31 @@ function renderLists() {
   const hasPosts = (postCounts?.total ?? posts.length) > 0;
   const query = $('search').value.trim().toLowerCase();
   const sorted = [...posts].sort((a, b) => b.date.localeCompare(a.date));
-  $('post-count').textContent = postCounts?.total ?? posts.length;
+  const totalCount = postCounts?.total ?? posts.length;
+  const publishedCount = postCounts?.published ?? posts.filter((p) => p.published).length;
+  const draftCount = postCounts?.draft ?? posts.filter((p) => !p.published).length;
+
+  $('post-count').textContent = totalCount;
   $('load-more-posts').hidden = $('load-more-switcher').hidden = !postCursor;
-  document.querySelector('[data-post-count]').textContent = postCounts?.total ?? posts.length;
+  document.querySelector('[data-post-count]').textContent = totalCount;
   for (const button of document.querySelectorAll('[data-post-filter]'))
     button.setAttribute('aria-pressed', String(button.dataset.postFilter === postFilter));
+
+  const sidebarAll = $('sidebar-count-all');
+  if (sidebarAll) sidebarAll.textContent = totalCount;
+  const sidebarPub = $('sidebar-count-published');
+  if (sidebarPub) sidebarPub.textContent = publishedCount;
+  const sidebarDraft = $('sidebar-count-draft');
+  if (sidebarDraft) sidebarDraft.textContent = draftCount;
+  const sidebarBadge = $('sidebar-draft-badge');
+  if (sidebarBadge) sidebarBadge.textContent = draftCount;
+
+  for (const item of document.querySelectorAll('[data-sidebar-filter]')) {
+    item.classList.toggle('is-active', item.dataset.sidebarFilter === postFilter);
+  }
+
   let shown = 0;
-  $('summary').textContent =
-    `${postCounts?.published ?? posts.filter((p) => p.published).length} 篇已发布 · ${postCounts?.draft ?? posts.filter((p) => !p.published).length} 篇草稿`;
+  $('summary').textContent = `${publishedCount} 篇已发布 · ${draftCount} 篇草稿`;
   $('post-list').replaceChildren();
   $('article-grid').replaceChildren();
   for (const post of sorted) {
@@ -639,6 +656,10 @@ async function refresh({ append = false } = {}) {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
+  if ($('flclash-user-label')) $('flclash-user-label').textContent = data.site.author || '云砚';
+  const avatarLetter = (data.site.author || '云砚').charAt(0);
+  const avatarEl = document.querySelector('.flclash-user-avatar');
+  if (avatarEl) avatarEl.textContent = avatarLetter;
   $('home-heading').textContent = data.site.author
     ? '你好，' + data.site.author + '。'
     : '从一个想法开始。';
@@ -648,6 +669,7 @@ async function refresh({ append = false } = {}) {
   }
   renderLists();
   showPublishing(data.publishing);
+  void updateSidebarShorts();
 }
 function currentDraft() {
   return {
@@ -1744,3 +1766,64 @@ if (typeof window !== 'undefined' && window.visualViewport) {
   window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
   syncVisualViewport();
 }
+
+async function updateSidebarShorts() {
+  try {
+    const data = await api('/api/shorts?limit=1');
+    if (data && data.shorts) {
+      const shortsCountEl = $('sidebar-shorts-count');
+      if (shortsCountEl) shortsCountEl.textContent = data.shorts.length;
+      const previewEl = $('sidebar-short-preview');
+      if (previewEl && data.shorts.length > 0) {
+        previewEl.textContent = data.shorts[0].snippet || '从这里随时记录此刻想法与简短日志…';
+      }
+    }
+  } catch {}
+}
+
+$('flclash-sidebar-new-btn')?.addEventListener('click', () => {
+  $('new-post')?.click();
+});
+
+document.addEventListener('click', (event) => {
+  const sidebarFilterBtn = event.target.closest('[data-sidebar-filter]');
+  if (sidebarFilterBtn) {
+    const filter = sidebarFilterBtn.dataset.sidebarFilter;
+    if (filter === 'all' || filter === 'published' || filter === 'draft') {
+      postFilter = filter;
+      void refresh().catch((error) => notice(error.message));
+    } else if (filter === 'pending') {
+      notice('暂无待发布排期文章。', 'info');
+    } else if (filter === 'trash') {
+      notice('回收站为空。', 'info');
+    }
+  }
+  const tagItem = event.target.closest('.flclash-sidebar-tag-item');
+  if (tagItem) {
+    const tagName = tagItem.querySelector('.tag-name')?.textContent?.replace('#', '') || '';
+    if (tagName) {
+      $('search').value = tagName;
+      void refresh().catch(() => {});
+    }
+  }
+});
+
+$('flclash-quick-short-btn')?.addEventListener('click', () => {
+  view('shorts');
+  $('short-new')?.click();
+});
+$('flclash-goto-shorts-link')?.addEventListener('click', () => {
+  view('shorts');
+});
+
+$('header-preview-btn')?.addEventListener('click', () => {
+  if (doc?.slug) {
+    window.open(`/${encodeURIComponent(doc.slug)}`, '_blank');
+  } else {
+    window.open('/', '_blank');
+  }
+});
+$('header-save-btn')?.addEventListener('click', manualSave);
+$('header-publish-btn')?.addEventListener('click', () => {
+  $('publish-post')?.click();
+});

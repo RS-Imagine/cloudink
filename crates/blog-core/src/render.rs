@@ -192,13 +192,24 @@ fn display_title(title: &str) -> String {
         .join("<wbr>")
 }
 
-/// Renders the blog index page listing all published posts.
-pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
+/// Renders the blog index page listing all published posts and shorts.
+pub fn render_index_with_shorts(
+    config: &SiteConfig,
+    posts: &[Post],
+    shorts: &[Short],
+    css_hash: &str,
+) -> String {
     let mut cards = String::new();
     let mut count = 0;
+    let mut unique_tags = std::collections::BTreeSet::new();
     for post in posts.iter().filter(|post| !post.draft()) {
         let featured = count == 0;
         count += 1;
+        for tag in &post.front_matter.tags {
+            if !tag.trim().is_empty() {
+                unique_tags.insert(tag.clone());
+            }
+        }
         let updated = post
             .updated()
             .filter(|date| *date != post.date())
@@ -269,13 +280,64 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         ""
     };
 
-    let (archive_heading_link, tag_link_target) = if count > 0 {
-        (
-            r#"<a href="/archive/" class="flclash-more-link">查看全部文章 &rarr;</a>"#,
-            "/archive/",
+    let archive_heading_link = if count > 0 {
+        r#"<a href="/archive/" class="flclash-more-link">查看全部文章 &rarr;</a>"#
+    } else {
+        ""
+    };
+
+    // Build real published shorts list for right sidebar
+    let active_shorts: Vec<_> = shorts.iter().filter(|s| !s.draft()).collect();
+    let shorts_count = active_shorts.len();
+    let tags_count = unique_tags.len();
+
+    let mut shorts_list_html = String::new();
+    if active_shorts.is_empty() {
+        shorts_list_html.push_str(r#"<li class="flclash-empty-short"><p style="color:var(--ci-muted);font-size:13px;margin:0;">暂无短记发布</p></li>"#);
+    } else {
+        for short in active_shorts.iter().take(5) {
+            let raw = short.body_plain_text.trim();
+            let snippet = if raw.chars().count() > 60 {
+                format!("{}…", raw.chars().take(60).collect::<String>())
+            } else {
+                raw.to_string()
+            };
+            shorts_list_html.push_str(&format!(
+                r#"<li>
+  <span class="flclash-short-dot"></span>
+  <div class="flclash-short-body">
+    <p><a href="/shorts/#{slug}">{snippet}</a></p>
+    <time datetime="{date}">{date}</time>
+  </div>
+</li>"#,
+                slug = escape_html(short.slug()),
+                snippet = escape_html(&snippet),
+                date = escape_html(short.date()),
+            ));
+        }
+    }
+
+    let tag_link_target = if count > 0 { "/archive/" } else { "/#posts" };
+    // Build real tag cloud from published articles
+    let mut tag_cloud_html = String::new();
+    if unique_tags.is_empty() {
+        tag_cloud_html.push_str(r#"<p style="color:var(--ci-muted);font-size:12px;margin:0;">暂无常用标签</p>"#);
+    } else {
+        for tag in &unique_tags {
+            tag_cloud_html.push_str(&format!(
+                r#"<a href="{tag_link_target}" class="flclash-tag-pill">{}</a>"#,
+                escape_html(tag)
+            ));
+        }
+    }
+
+    let avatar_content = if let Some(ref icon) = config.site_icon {
+        format!(
+            r#"<img src="{icon}" width="42" height="42" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">"#,
+            icon = escape_html(icon)
         )
     } else {
-        ("", "/#posts")
+        r#"<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>"#.to_string()
     };
 
     page(
@@ -288,17 +350,11 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
 <aside class="flclash-sidebar-left" aria-label="个人简介与统计">
   <div class="flclash-card flclash-profile-card">
     <div class="flclash-avatar" aria-hidden="true">
-      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+      {avatar_content}
     </div>
     <h2 class="flclash-profile-name">{author}</h2>
     <p class="flclash-profile-subtitle">{subtitle}</p>
     <p class="flclash-profile-bio">{description}</p>
-    <hr class="flclash-divider">
-    <ul class="flclash-profile-meta">
-      <li><span class="meta-icon">📍</span> 上海，中国</li>
-      <li><span class="meta-icon">💻</span> 专注于 Web 与可观测性</li>
-      <li><span class="meta-icon">✍️</span> 习惯把想法写下来</li>
-    </ul>
     {about_btn}
   </div>
   <div class="flclash-card flclash-stats-card">
@@ -307,12 +363,12 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
       <span class="flclash-stat-label">文章</span>
     </div>
     <div class="flclash-stat-item">
-      <span class="flclash-stat-num">132</span>
+      <span class="flclash-stat-num">{shorts_count}</span>
       <span class="flclash-stat-label">短记</span>
     </div>
     <div class="flclash-stat-item">
-      <span class="flclash-stat-num">5</span>
-      <span class="flclash-stat-label">项目</span>
+      <span class="flclash-stat-num">{tags_count}</span>
+      <span class="flclash-stat-label">标签</span>
     </div>
   </div>
 </aside>
@@ -342,66 +398,13 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
       <a href="/shorts/" class="flclash-card-more">查看全部短记 &rarr;</a>
     </div>
     <ul class="flclash-shorts-list">
-      <li>
-        <span class="flclash-short-dot"></span>
-        <div class="flclash-short-body">
-          <p>把周报模板改成了更轻量的版本</p>
-          <time>2 小时前</time>
-        </div>
-      </li>
-      <li>
-        <span class="flclash-short-dot"></span>
-        <div class="flclash-short-body">
-          <p>体验了 Linear 的新功能，节奏更舒服了</p>
-          <time>6 小时前</time>
-        </div>
-      </li>
-      <li>
-        <span class="flclash-short-dot"></span>
-        <div class="flclash-short-body">
-          <p>周末用 Obsidian 整理了读书笔记模板</p>
-          <time>昨天</time>
-        </div>
-      </li>
-      <li>
-        <span class="flclash-short-dot"></span>
-        <div class="flclash-short-body">
-          <p>好久没跑步了，今天重新开始 ✌</p>
-          <time>昨天</time>
-        </div>
-      </li>
-      <li>
-        <span class="flclash-short-dot"></span>
-        <div class="flclash-short-body">
-          <p>尝试用 WASM 优化图片处理流程</p>
-          <time>2 天前</time>
-        </div>
-      </li>
+      {shorts_list_html}
     </ul>
-  </div>
-  <div class="flclash-card flclash-rss-card">
-    <div class="flclash-rss-badge" aria-hidden="true">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-    </div>
-    <div class="flclash-rss-text">
-      <h3 class="flclash-rss-title">订阅我的 RSS</h3>
-      <p class="flclash-rss-desc">第一时间获取最新文章与短记</p>
-    </div>
-    <a href="/feed.xml" class="flclash-btn-primary" target="_blank" rel="noopener">订阅 RSS</a>
   </div>
   <div class="flclash-card flclash-tags-card">
     <h3 class="flclash-card-title">🏷️ 常用标签</h3>
     <div class="flclash-tag-cloud">
-      <a href="{tag_link_target}" class="flclash-tag-pill">JavaScript</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">TypeScript</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">Astro</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">Node.js</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">可观测性</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">性能优化</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">效率</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">生活</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">工具</a>
-      <a href="{tag_link_target}" class="flclash-tag-pill">部署</a>
+      {tag_cloud_html}
     </div>
   </div>
 </aside>
@@ -419,8 +422,12 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
             description = escape_html(&config.description),
             about_btn = about_btn,
             archive_heading_link = archive_heading_link,
-            tag_link_target = tag_link_target,
             count = count,
+            shorts_count = shorts_count,
+            tags_count = tags_count,
+            avatar_content = avatar_content,
+            shorts_list_html = shorts_list_html,
+            tag_cloud_html = tag_cloud_html,
             cards = if cards.is_empty() {
                 "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
             } else {
@@ -437,6 +444,11 @@ pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> Stri
         config,
         "home",
     )
+}
+
+/// Renders the blog index page listing all published posts.
+pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
+    render_index_with_shorts(config, posts, &[], css_hash)
 }
 
 /// Renders the archive page: every published post grouped by month, newest first.
@@ -792,7 +804,6 @@ fn page(
         <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
         <div class="reader-tools">
           <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-          <a href="/feed.xml" class="flclash-rss-pill-btn" target="_blank" rel="noopener" aria-label="订阅 RSS"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg><span>订阅 RSS</span></a>
           <details class="reader-menu" id="reader-menu">
             <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
             <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>

@@ -229,7 +229,10 @@ tags = ["性能优化", "JavaScript"]
   await copyFile(resolve(mathRoot, 'LICENSE'), resolve(vendor, 'katex-LICENSE.txt'));
   await copyFile(resolve(highlightRoot, 'LICENSE'), resolve(vendor, 'highlight-LICENSE.txt'));
   await writeFile(resolve(output, 'theme.js'), await readFile(resolve(root, 'assets/theme.js')));
-  await copyFile(resolve(root, 'assets/manifest.webmanifest'), resolve(output, 'manifest.webmanifest'));
+  await copyFile(
+    resolve(root, 'assets/manifest.webmanifest'),
+    resolve(output, 'manifest.webmanifest'),
+  );
   await copyFile(resolve(root, 'assets/sw.js'), resolve(output, 'sw.js'));
   await writeFile(
     resolve(output, '_headers'),

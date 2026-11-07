@@ -99,10 +99,23 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
     if wants("sw.js") {
         files.insert("sw.js".into(), render::sw_js().into());
     }
+    let mut shorts = Vec::new();
+    for (slug, source) in &release.markdown_shorts {
+        let short = content::parse_short(source)?;
+        ensure!(
+            short.slug() == slug,
+            "Short slug does not match its source key"
+        );
+        if !short.draft() {
+            shorts.push(short);
+        }
+    }
+    shorts.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+
     if wants("index.html") {
         files.insert(
             "index.html".into(),
-            render::render_index(&release.site, &posts, &css_hash),
+            render::render_index_with_shorts(&release.site, &posts, &shorts, &css_hash),
         );
     }
     if wants("archive/index.html") {
@@ -133,21 +146,6 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             );
         }
     }
-    let mut shorts = Vec::new();
-    for (slug, source) in &release.markdown_shorts {
-        if !wants("shorts/index.html") {
-            break;
-        }
-        let short = content::parse_short(source)?;
-        ensure!(
-            short.slug() == slug,
-            "Short slug does not match its source key"
-        );
-        if !short.draft() {
-            shorts.push(short);
-        }
-    }
-    shorts.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
     if wants("shorts/index.html") {
         files.insert(
             "shorts/index.html".into(),
