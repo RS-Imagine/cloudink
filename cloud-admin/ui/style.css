@@ -430,23 +430,32 @@ summary {
   gap: 12px;
   flex-wrap: wrap;
 }
+.editor-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--paper-subtle, rgba(0, 0, 0, 0.025));
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  padding: 3px;
+}
 .editor-format-actions {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   background: var(--paper-subtle, rgba(0, 0, 0, 0.025));
   border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 3px 4px;
+  border-radius: 9999px;
+  padding: 3px 6px;
 }
 .editor-format-actions .tool-btn {
   padding: 4px;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 9999px;
   border: none;
   background: transparent;
   color: var(--muted);
@@ -456,7 +465,7 @@ summary {
 .editor-format-actions .tool-btn:hover {
   background: var(--paper-strong, #fff);
   color: var(--accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(92, 58, 33, 0.08);
 }
 .editor-format-actions .tool-btn:active {
   transform: scale(0.92);
@@ -465,18 +474,23 @@ summary {
   width: 1px;
   height: 16px;
   background: var(--line);
-  margin: 0 3px;
+  margin: 0 4px;
 }
 .tab {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   border: 0;
+  border-radius: 9999px;
   background: transparent;
   color: var(--muted);
-  padding: 8px 12px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
 }
 .tab.active {
-  background: var(--pale);
+  background: var(--paper, #fff);
   color: var(--accent);
+  box-shadow: 0 2px 8px rgba(92, 58, 33, 0.08);
 }
 .pane-heading .quiet {
   font-size: 12px;
@@ -489,7 +503,8 @@ summary {
     );
   height: max(500px, calc(100dvh - 390px));
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 20px;
+  box-shadow: var(--shadow);
   overflow: hidden;
   position: relative;
 }
@@ -1319,10 +1334,11 @@ dialog {
 }
 .short-editor {
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 22px;
   margin: 20px 0;
   background: var(--paper);
+  box-shadow: var(--shadow);
 }
 .short-editor label {
   display: block;
@@ -1332,6 +1348,7 @@ dialog {
 .short-editor textarea {
   width: 100%;
   margin-top: 6px;
+  border-radius: 12px;
 }
 .short-editor textarea {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
@@ -1342,23 +1359,27 @@ dialog {
 .short-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   margin: 20px 0;
 }
 .short-admin-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 18px;
+  padding: 18px 20px;
   background: var(--paper);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: var(--shadow);
   transition:
     border-color 0.15s,
-    box-shadow 0.15s;
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 .short-admin-card:hover {
   border-color: var(--accent);
+  box-shadow: var(--ci-shadow-floating, 0 12px 36px rgba(92, 58, 33, 0.1));
+  transform: translateY(-1px);
 }
 .short-card-header {
   display: flex;
