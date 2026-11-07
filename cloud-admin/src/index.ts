@@ -1,3 +1,4 @@
+import { listActiveDrafts } from './draft-catalog';
 import { buildPostIndex, readPostIndex } from './post-index';
 import type { BrowserPointer } from './browser-publishing';
 import { backupJobRoute } from './backup-jobs';
@@ -15,6 +16,7 @@ import { ASSETS, PAGE_GENERATION_VERSION } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
 import { draftSummary } from './post-metadata';
+import { unchangedSource, sourceDigest } from './save-digest';
 import { assertWritableAddress, renameDraft } from './post-addresses';
 import { currentRelease, publish, publishStatus } from './publishing';
 import {
@@ -33,7 +35,6 @@ import {
   validateShortDraft,
   validateSite,
   type Draft,
-  type ShortDraft,
   type SiteConfig,
 } from './models';
 
@@ -43,22 +44,7 @@ import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
 import { imageLibraryRoute, ensureManagedImages, imageReferenceMetadata } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
-async function listDrafts(bucket: R2Bucket): Promise<R2Object[]> {
-  const objects: R2Object[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await bucket.list({
-      prefix: 'drafts/',
-      limit: 1000,
-      include: ['customMetadata'],
-      cursor,
-    });
-    objects.push(...page.objects);
-    if (objects.length > 2000) throw new HttpError(413, '原稿超过 2000 篇，暂时无法完整读取列表。');
-    cursor = page.truncated ? page.cursor : undefined;
-  } while (cursor);
-  return objects;
-}
+const listDrafts = (bucket: R2Bucket) => listActiveDrafts(bucket, 'drafts/');
 async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
   await assertWritableAddress(env.STORAGE, slug);
   const input = await jsonInput(request);
@@ -78,9 +64,21 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
   if ((!existing || existing.customMetadata?.deleted) && input.etag)
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
+  if (existing && !existing.customMetadata?.deleted && (await unchangedSource(existing, source)))
+    return json({
+      draft,
+      source,
+      etag: existing.etag,
+      saved_at: existing.uploaded.toISOString(),
+      created: false,
+      unchanged: true,
+    });
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-    customMetadata: await draftSummary(draft, env.STORAGE, existing?.customMetadata),
+    customMetadata: {
+      ...(await draftSummary(draft, env.STORAGE, existing?.customMetadata)),
+      source_digest: await sourceDigest(source),
+    },
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
   });
   if (!saved) throw new HttpError(409, '这篇文章刚刚发生了修改，请重新打开。');
@@ -312,52 +310,75 @@ async function apiRoute(
   }
   // ---- Shorts ("短记") ------------------------------------------------------
   if (path === '/api/shorts' && request.method === 'GET') {
-    const release = await currentRelease(env);
-    const published = new Map<string, ShortDraft>();
-    for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
-      try {
-        published.set(slug, parseShortSource(source));
-      } catch {
-        // Skip malformed entries; they will surface on publish validation.
+    const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+    if (!pointer) throw new HttpError(503, '网站内容尚未初始化。');
+    const stored = await readPostIndex(env.STORAGE, pointer.id);
+    const index = stored?.shorts
+      ? stored
+      : await buildPostIndex(await currentRelease(env, pointer));
+    const published = new Map(Object.entries(index.shorts || {}));
+    const shorts = new Map<
+      string,
+      {
+        slug: string;
+        date: string;
+        published: boolean;
+        has_draft: boolean;
+        etag?: string;
+        snippet: string;
       }
-    }
-    const shorts = new Map<string, unknown>();
+    >();
     for (const [slug, draft] of published)
       shorts.set(slug, {
         slug,
-        date: draft.front_matter.date,
+        date: draft.date,
         published: true,
         has_draft: false,
-        snippet: draft.body_markdown.slice(0, 300),
+        snippet: draft.snippet,
       });
-    let cursor: string | undefined;
-    do {
-      const page = await env.STORAGE.list({
-        prefix: 'shorts/',
-        cursor,
-        limit: 1000,
-        include: ['customMetadata'],
+    const drafts = await listActiveDrafts(env.STORAGE, 'shorts/');
+    for (const object of drafts) {
+      const slug = object.key.slice(7, -3);
+      if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
+      const meta = object.customMetadata || {};
+      shorts.set(slug, {
+        slug,
+        date: meta.date || published.get(slug)?.date || '',
+        published: published.has(slug),
+        has_draft: true,
+        etag: object.etag,
+        snippet: meta.snippet ?? published.get(slug)?.snippet ?? '',
       });
-      for (const object of page.objects) {
-        if (object.customMetadata?.deleted) continue;
-        const slug = object.key.slice(7, -3);
-        if (!/^[A-Za-z0-9_-]{1,100}$/.test(slug)) continue;
-        const meta = object.customMetadata || {};
-        shorts.set(slug, {
-          slug,
-          date: meta.date || published.get(slug)?.front_matter.date || '',
-          published: published.has(slug),
-          has_draft: true,
-          etag: object.etag,
-          snippet: meta.snippet || published.get(slug)?.body_markdown.slice(0, 300) || '',
-        });
-      }
-      cursor = page.truncated ? page.cursor : undefined;
-    } while (cursor);
-    const list = [...shorts.values()].sort((a: any, b: any) =>
-      String(b.date).localeCompare(String(a.date)),
+    }
+    const list = [...shorts.values()].sort(
+      (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug),
     );
-    return json({ shorts: list });
+    const url = new URL(request.url),
+      rawLimit = url.searchParams.get('limit');
+    const limit = rawLimit === null ? list.length || 1 : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || (rawLimit !== null && limit > 100))
+      throw new HttpError(400, '短记分页参数不正确。');
+    const snapshot = await digest(JSON.stringify([pointer.id, drafts.map((d) => [d.key, d.etag])]));
+    let offset = 0;
+    if (url.searchParams.has('cursor')) {
+      let cursor;
+      try {
+        cursor = JSON.parse(url.searchParams.get('cursor')!);
+      } catch {
+        throw new HttpError(400, '分页位置不正确。');
+      }
+      if (!cursor || cursor.snapshot !== snapshot)
+        throw new HttpError(409, '短记列表已变化，请重新读取。');
+      if (!Number.isInteger(cursor.offset) || cursor.offset < 0 || cursor.offset > list.length)
+        throw new HttpError(400, '分页位置不正确。');
+      offset = cursor.offset;
+    }
+    return json({
+      shorts: list.slice(offset, offset + limit),
+      total: list.length,
+      cursor:
+        offset + limit < list.length ? JSON.stringify({ snapshot, offset: offset + limit }) : null,
+    });
   }
   const shortMatch = path.match(/^\/api\/shorts\/([A-Za-z0-9_-]+)$/);
   if (shortMatch) {
@@ -374,9 +395,16 @@ async function apiRoute(
         throw new HttpError(409, '这条短记在另一个窗口中发生了修改，请重新打开。');
       if ((!existing || existing.customMetadata?.deleted) && input.etag)
         throw new HttpError(409, '短记已删除，请重新打开。');
+      if (
+        existing &&
+        !existing.customMetadata?.deleted &&
+        (await unchangedSource(existing, source))
+      )
+        return json({ ok: true, etag: existing.etag, unchanged: true });
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
         customMetadata: {
+          source_digest: await sourceDigest(source),
           date: draft.front_matter.date,
           snippet: draft.body_markdown.slice(0, 300).replace(/\r?\n/g, ' '),
           ...(await imageReferenceMetadata(
@@ -461,32 +489,26 @@ async function apiRoute(
   }
   if (path === '/api/settings' && request.method === 'PUT') {
     const data = await jsonInput(request, 500_000),
-      site = validateSite(data.site),
-      old = await env.STORAGE.head('draft-site.json');
+      site = validateSite(data.site);
     await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
     await ensureHomeIllustration(env.STORAGE, site);
     await ensureSiteIcon(env.STORAGE, site);
-    if (old && data.etag !== old.etag)
+    const old = await env.STORAGE.get('draft-site.json');
+    if (old && data.etag !== old.etag) {
+      await old.body.cancel();
       throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
-    const saved = await env.STORAGE.put('draft-site.json', JSON.stringify(site), {
+    }
+    const text = JSON.stringify(site);
+    if (old && JSON.stringify(validateSite(await old.json())) === text)
+      return json({ site, etag: old.etag, unchanged: true });
+    const saved = await env.STORAGE.put('draft-site.json', text, {
       onlyIf: old ? { etagMatches: old.etag } : { etagDoesNotMatch: '*' },
     });
     if (!saved) throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
     return json({ site, etag: saved.etag });
   }
-  if (path === '/api/export' && request.method === 'GET') {
-    const release = await currentRelease(env),
-      drafts = await listDrafts(env.STORAGE),
-      files: Record<string, string> = {};
-    for (const [slug, source] of Object.entries(release.markdown_posts))
-      files[`published/${slug}.md`] = source;
-    for (const obj of drafts) {
-      const source = await env.STORAGE.get(obj.key);
-      if (source && !obj.customMetadata?.deleted) files[obj.key] = await source.text();
-    }
-    files['site.json'] = JSON.stringify(release.site); // UI writes this as site.json.
-    return json({ files, release_id: release.id });
-  }
+  if (path === '/api/export' && request.method === 'GET')
+    throw new HttpError(410, '此导出接口已停用，请刷新后台并使用分批备份。');
   throw new HttpError(404, '接口不存在。');
 }
 function protect(response: Response, asset = false): Response {

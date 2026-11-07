@@ -13,7 +13,11 @@
     { "name": "LOGIN_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
   ],
   "triggers": { "crons": ["17 3 * * *"] },
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "traces": { "enabled": false },
+  },
   "assets": {
     "directory": "build-work/web-public",
     "binding": "ASSETS",

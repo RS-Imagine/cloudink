@@ -138,6 +138,36 @@ test('warm public caches serve body, HEAD and validators without reopening delet
     403,
   );
   assert.equal((await f.request('/images/state/published.json')).status, 404);
+  const iconResponse = await f.request(
+    '/api/site-icon',
+    'POST',
+    new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></svg>',
+    ),
+  );
+  assert.equal(iconResponse.status, 201);
+  const icon = await iconResponse.json(),
+    original = await bucket.head(icon.key);
+  const repeated = await f.request(
+    '/api/site-icon',
+    'POST',
+    new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M0 0h16v16H0z"/></svg>',
+    ),
+  );
+  assert.equal(repeated.status, 201);
+  assert.equal((await bucket.head(icon.key)).version, original.version);
+  await (await f.request(icon.url)).arrayBuffer();
+  await f.request(icon.url);
+  await bucket.delete(icon.key);
+  const cachedIcon = await f.request(icon.url);
+  assert.equal(cachedIcon.status, 200);
+  assert.equal(cachedIcon.headers.get('Cache-Status'), 'CloudInk; hit');
+  assert.equal((await f.request(icon.url, 'HEAD')).status, 200);
+  assert.equal(
+    (await f.request(icon.url, 'GET', undefined, { 'If-None-Match': original.httpEtag })).status,
+    304,
+  );
   const privateResponse = await f.request('/api/posts');
   assert.equal(privateResponse.headers.get('Cache-Control'), 'no-store');
 });
@@ -217,7 +247,21 @@ test('bounded retention removes only expired generated objects and protects shar
   assert.equal((await maintainStorage({ STORAGE: storage })).reason, 'publication_busy');
   assert.ok(await bucket.head('public/content/' + orphan));
   await bucket.delete('state/pending.json');
+  const expiredSession = 'auth/sessions/' + 'e'.repeat(64);
+  const liveSession = 'auth/sessions/' + 'f'.repeat(64);
+  const legacySession = 'auth/sessions/' + 'd'.repeat(64);
+  await bucket.put(expiredSession, JSON.stringify({ expires: Date.now() - 10000 }), {
+    customMetadata: { expires: String(Date.now() - 10000) },
+  });
+  await bucket.put(liveSession, JSON.stringify({ expires: Date.now() + 86400000 }), {
+    customMetadata: { expires: String(Date.now() + 86400000) },
+  });
+  await bucket.put(legacySession, JSON.stringify({ expires: Date.now() - 10000 }));
   const result = await maintainStorage({ STORAGE: storage });
+  assert.equal(result.expired_sessions, 2);
+  assert.equal(await bucket.head(expiredSession), null);
+  assert.equal(await bucket.head(legacySession), null);
+  assert.ok(await bucket.head(liveSession));
   assert.equal(result.deleted_objects, 3);
   assert.equal(result.status, 'success');
   assert.ok(result.last_attempt_at);

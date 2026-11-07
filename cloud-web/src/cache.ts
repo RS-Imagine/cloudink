@@ -7,9 +7,7 @@ export function cacheKey(request: Request, group: string, version = ''): Request
   const url = new URL(request.url);
   url.pathname =
     '/__cloudink_cache/' +
-    CURRENT_TEMPLATE_VERSION +
-    '/' +
-    PUBLIC_RESPONSE_VERSION +
+    (group === 'image' ? 'media-v1' : CURRENT_TEMPLATE_VERSION + '/' + PUBLIC_RESPONSE_VERSION) +
     '/' +
     group +
     '/' +

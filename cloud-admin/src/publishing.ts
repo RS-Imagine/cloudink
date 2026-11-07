@@ -84,7 +84,12 @@ export async function publish(request: Request, env: CloudInkEnv): Promise<Respo
   if (previous && busy(await previous.json<Publishing>()))
     throw new HttpError(409, '上一次发布还在进行中，请等待完成。');
   const base = await currentRelease(env);
-  const release: Release = structuredClone(base);
+  const release: Release = {
+    ...base,
+    site: { ...base.site },
+    markdown_posts: { ...base.markdown_posts },
+    ...(base.markdown_shorts ? { markdown_shorts: { ...base.markdown_shorts } } : {}),
+  };
   release.id = crypto.randomUUID();
   release.created_at = new Date().toISOString();
   let rename: Publishing['rename'];

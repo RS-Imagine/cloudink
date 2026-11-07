@@ -1,3 +1,4 @@
+import { readPostIndex } from './post-index';
 import {
   imageReferenceMetadata,
   referenceShardKey,
@@ -75,6 +76,7 @@ async function references(
   }
   let bytes = 0,
     count = 0,
+    scanned = 0,
     unindexed = 0;
   function add(imageKeys: string[], reference: ImageReference): void {
     for (const key of imageKeys) {
@@ -96,6 +98,16 @@ async function references(
     add(managedImageKeys(text), reference);
   }
   async function release(id: string, kind: 'published' | 'pending'): Promise<void> {
+    const index = await readPostIndex(storage, id);
+    if (index?.images?.version === IMAGE_REFERENCE_VERSION) {
+      for (const entry of index.images.entries)
+        add(entry.keys, {
+          kind: entry.settings ? 'settings' : kind,
+          title: entry.title,
+          ...(entry.slug ? { slug: entry.slug } : {}),
+        });
+      return;
+    }
     const object = await storage.get(`releases/${id}.json`);
     if (!object || object.size > 16_000_000)
       throw new HttpError(503, '发布版本无法完整读取，暂时不能安全检查图片引用。');
@@ -140,9 +152,10 @@ async function references(
       include: ['customMetadata'],
     });
     for (const object of page.objects) {
+      if (++scanned > 10000) throw new HttpError(413, '原稿目录超过安全扫描上限；图片仍受保护。');
+      if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
-      if (object.customMetadata?.deleted) continue;
       const slug = object.key.match(/^drafts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '原稿目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = {
@@ -198,9 +211,10 @@ async function references(
       include: ['customMetadata'],
     });
     for (const object of page.objects) {
+      if (++scanned > 10000) throw new HttpError(413, '原稿目录超过安全扫描上限；图片仍受保护。');
+      if (object.customMetadata?.deleted) continue;
       if (++count > MAX_SOURCES)
         throw new HttpError(413, '原稿超过 2000 篇，无法完整检查引用；图片不会被删除。');
-      if (object.customMetadata?.deleted) continue;
       const slug = object.key.match(/^shorts\/([A-Za-z0-9_-]{1,100})\.md$/)?.[1];
       if (!slug) throw new HttpError(503, '短记目录包含无法识别的对象，无法安全检查图片引用。');
       const ref: ImageReference = { kind: 'draft', title: slug, slug };

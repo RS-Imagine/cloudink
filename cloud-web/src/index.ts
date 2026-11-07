@@ -1,3 +1,4 @@
+import { storageStats } from '../../cloud-admin/src/request-stats';
 import { maintainStorage } from '../../cloud-admin/src/maintenance';
 import { cacheKey, cacheRead, cacheWrite, clientResponse, invalidatePointer } from './cache';
 import { readerHtml, readerEtag, discovery } from './reader';
@@ -79,7 +80,7 @@ function publicPath(path: string): string | null {
   if (post) return `posts/${post[1]}/index.html`;
   return null;
 }
-export default {
+const web = {
   async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url),
@@ -105,7 +106,7 @@ export default {
         return response;
       }
       if (path.startsWith('/images/')) return publicImage(request, env.STORAGE, ctx);
-      if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE);
+      if (path.startsWith('/site-icon/')) return publicSiteIcon(request, env.STORAGE, ctx);
       if (!['GET', 'HEAD'].includes(request.method))
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
@@ -131,7 +132,11 @@ export default {
         : null;
       if (!cachedPointer && published) cacheWrite(ctx, pointerKey, Response.json(published), 30);
       const id = published?.id || null;
-      const pageKey = cacheKey(request, 'page', id || 'initial');
+      const pageVersion =
+        key && published?.pages?.[key]
+          ? published.pages[key] + ':' + (published.clarityId || '')
+          : id || 'initial';
+      const pageKey = cacheKey(request, 'page', pageVersion);
       const cached = await cacheRead(pageKey);
       if (cached)
         return protect(
@@ -267,4 +272,23 @@ export default {
       }),
     );
   },
+} satisfies ExportedHandler<WebBindings>;
+
+export default {
+  async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
+    const stats = storageStats(env.STORAGE),
+      started = Date.now(),
+      id = crypto.randomUUID();
+    const response = await web.fetch(request, { ...env, STORAGE: stats.bucket }, ctx);
+    const route = new URL(request.url).pathname
+      .split('/')
+      .slice(0, 3)
+      .join('/')
+      .replace(/\/[A-Za-z0-9_-]{20,}/g, '/:id');
+    stats.report(id, route, request.method, response.status, started);
+    const headers = new Headers(response.headers);
+    headers.set('X-Request-ID', id);
+    return new Response(response.body, { status: response.status, headers });
+  },
+  scheduled: web.scheduled,
 } satisfies ExportedHandler<WebBindings>;

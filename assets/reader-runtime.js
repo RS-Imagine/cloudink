@@ -374,12 +374,12 @@
       !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
     ) {
       swup.hooks.replace('content:replace', (visit, args, original) => {
-        return new Promise((resolve) => {
-          document.startViewTransition(async () => {
-            await original(visit, args);
-            resolve();
-          });
-        });
+        const transition = document.startViewTransition(() => original(visit, args));
+        // Browser cancellation only skips the visual effect. Keep real DOM errors
+        // on updateCallbackDone so Swup can still handle a failed replacement.
+        transition.ready.catch(() => {});
+        transition.finished.catch(() => {});
+        return transition.updateCallbackDone;
       });
     }
     swup.hooks.on('page:view', (visit) => {
