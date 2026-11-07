@@ -900,11 +900,13 @@
    ========================================================================== */
 
 .flclash-search-btn {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 16px;
+  display: grid !important;
+  place-items: center !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
   border-radius: var(--ci-radius-pill, 9999px) !important;
   border: 1px solid var(--ci-divider) !important;
   background: var(--ci-surface) !important;
@@ -915,11 +917,12 @@
 .flclash-search-btn:hover {
   border-color: var(--ci-primary) !important;
   color: var(--ci-primary) !important;
-  box-shadow: 0 2px 8px rgba(92, 58, 33, 0.08);
+  background: var(--ci-container) !important;
+  box-shadow: 0 2px 8px rgba(92, 58, 33, 0.1);
+  transform: translateY(-1px);
 }
-.flclash-search-label {
-  font-size: 13px;
-  font-weight: 500;
+.flclash-search-btn svg {
+  grid-area: 1 / 1;
 }
 .flclash-rss-pill-btn {
   display: inline-flex;
@@ -1295,49 +1298,10 @@
     flex-direction: column;
     gap: 20px;
   }
-  .flclash-search-btn .flclash-search-label,
   .flclash-rss-pill-btn span {
     display: none;
   }
-  .flclash-search-btn,
   .flclash-rss-pill-btn {
     padding: 0 10px;
-  }
-  .flclash-mobile-bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 16px;
-    inset-inline: 20px;
-    height: 60px;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(232, 226, 218, 0.8);
-    border-radius: var(--ci-radius-pill, 9999px);
-    box-shadow: 0 8px 32px rgba(92, 58, 33, 0.12);
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 12px;
-  }
-  .flclash-mob-tab {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    color: var(--ci-muted);
-    text-decoration: none;
-    font-size: 11px;
-    font-weight: 600;
-    transition: all 0.2s ease;
-  }
-  .flclash-mob-tab.is-active,
-  .flclash-mob-tab:hover {
-    color: var(--ci-primary);
-  }
-}
-@media (min-width: 768px) {
-  .flclash-mobile-bottom-nav {
-    display: none;
   }
 }

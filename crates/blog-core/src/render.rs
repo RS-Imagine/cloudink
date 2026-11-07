@@ -778,16 +778,6 @@ fn page(
         },
     );
 
-    let mob_about = if config
-        .about
-        .as_deref()
-        .is_none_or(|value| !value.trim().is_empty())
-    {
-        r#"<a href="/about/" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>关于</span></a>"#
-    } else {
-        ""
-    };
-
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
         r##"<body>
@@ -801,7 +791,7 @@ fn page(
       <div class="reader-navigation">
         <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
         <div class="reader-tools">
-          <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span class="flclash-search-label">搜索文章…</span></button>
+          <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
           <a href="/feed.xml" class="flclash-rss-pill-btn" target="_blank" rel="noopener" aria-label="订阅 RSS"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg><span>订阅 RSS</span></a>
           <details class="reader-menu" id="reader-menu">
             <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
@@ -815,12 +805,6 @@ fn page(
     </main>
     <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div></footer>
   </div>
-  <nav class="flclash-mobile-bottom-nav" aria-label="快速导航">
-    <a href="/" class="flclash-mob-tab is-active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>首页</span></a>
-    <a href="/shorts/" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="4"/><path d="M7 8h10M7 12h7M7 16h4"/></svg><span>短记</span></a>
-    <a href="/admin" class="flclash-mob-tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>写作</span></a>
-    {mob_about}
-  </nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
       <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
