@@ -5,8 +5,8 @@
   const admin = root.hasAttribute('data-cloudink-admin');
   const system = matchMedia('(prefers-color-scheme: dark)');
   const validMode = (value) => (value === 'light' || value === 'dark' ? value : 'auto');
-  const palettes = Object.freeze(['ink', 'neutral', 'brown', 'blue', 'violet', 'rose']);
-  const validPalette = (value) => (palettes.includes(value) ? value : 'ink');
+  const palettes = Object.freeze(['brown', 'ink', 'neutral', 'blue', 'violet', 'rose']);
+  const validPalette = (value) => (palettes.includes(value) ? value : 'brown');
   const read = (key) => {
     try {
       return localStorage.getItem(key);
@@ -54,8 +54,8 @@
     }
     applyEffects();
   }
-  if (admin) root.dataset.palette = validPalette(read('cloudink-admin-palette'));
-  else root.dataset.palette = validPalette(root.dataset.palette);
+  if (admin) root.dataset.palette = validPalette(read('cloudink-admin-palette') || 'brown');
+  else root.dataset.palette = validPalette(root.dataset.palette || 'brown');
   function apply() {
     if (!admin) {
       document.querySelectorAll('.reader-preferences,#theme-toggle-btn').forEach((control) => {

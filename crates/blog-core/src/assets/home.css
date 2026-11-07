@@ -298,6 +298,14 @@
 }
 .home-card-meta time {
   font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--ci-radius-pill, 9999px);
+  background: var(--ci-container);
+  color: var(--ci-primary);
+  font-weight: 500;
+  font-size: 12px;
 }
 .home-card h2 {
   margin: 0;

@@ -10,11 +10,81 @@ if (process.argv[2] === 'seed') {
   await rm(content, { recursive: true, force: true });
   await rm(output, { recursive: true, force: true });
   await mkdir(content, { recursive: true });
+  await mkdir(resolve(content, 'posts'), { recursive: true });
   await writeFile(
     resolve(content, 'site.toml'),
-    'title = "CloudInk"\nsubtitle = "Notes and ideas"\nauthor = "Your Name"\ndescription = "A personal blog powered by CloudInk."\n',
+    'title = "CloudInk · 云砚"\nsubtitle = "独立开发者 / 产品思考者"\nauthor = "QiuLin"\ndescription = "喜欢把复杂的技术讲清楚，也记录日常的灵感与实践。专注于 Web 与可观测性，习惯把想法写下来。"\ntheme_palette = "brown"\n',
   );
-  await writeFile(resolve(content, 'about.md'), '+++\ntitle = "About"\n+++\n\nWelcome to my blog.');
+  await writeFile(
+    resolve(content, 'about.md'),
+    '+++\ntitle = "关于"\n+++\n\n独立开发者 / 产品思考者。专注于 Web 与可观测性，习惯把想法写下来。',
+  );
+  await writeFile(
+    resolve(content, 'posts/rebuild-blog.md'),
+    `+++
+title = "用 Astro 重构我的个人博客"
+date = "2024-05-20"
+slug = "rebuild-blog"
+description = "从架构选择、内容建模到性能优化，记录一次完整的静态站点重构过程。"
+tags = ["Astro", "静态站点", "性能优化"]
++++
+
+在决定重启个人博客时，我给自己定了三个要求：快、稳、省。静态生成恰好同时满足这三个目标。
+
+静态网站没有运行时依赖，部署简单，访问速度快，安全面也更小。对于不希望把精力花在运维上的个人开发者来说，这是一个非常务实的选择。
+
+## 为什么选择静态生成
+
+在过去的几年里，我尝试过很多种博客系统：WordPress、Ghost、Notion + Next.js，以及各种静态博客生成器。
+
+每一种方案都有它的优势，但在长期维护的过程中，我发现自己花在维护服务器、升级插件、处理数据库备份上的时间，远远超过了真正写字的时间。
+
+静态生成的最大优势在于：**产物是纯粹的 HTML、CSS 和 JavaScript**。
+`,
+  );
+  await writeFile(
+    resolve(content, 'posts/observability-practice.md'),
+    `+++
+title = "从日志到指标：我的可观测性实践"
+date = "2024-04-28"
+slug = "observability-practice"
+description = "构建可观测性体系的思路与工具选型，如何让系统问题被更早发现。"
+tags = ["可观测性", "OpenTelemetry"]
++++
+
+很多团队在系统出现问题时，第一反应往往是去翻日志。但当系统规模逐渐扩大，单靠日志检索就像大海捞针。
+
+构建可观测性体系的核心思路：从指标（Metrics）发现异常，通过链路追踪（Tracing）定位瓶颈，最后用结构化日志（Logs）确认细节。
+`,
+  );
+  await writeFile(
+    resolve(content, 'posts/commute-efficiency.md'),
+    `+++
+title = "一周通勤中的效率实验"
+date = "2024-04-15"
+slug = "commute-efficiency"
+description = "在通勤时间里尝试的小技巧与工具，提升专注力与输入输出的质量。"
+tags = ["效率", "通勤", "生活"]
++++
+
+每天往返两小时的通勤时间，如果只是刷碎片化信息流，很容易感到疲惫。
+
+上周我做了一个小实验：用手机端轻量写作工具记录微碎片想法（短记），在车厢里阅读长文。这种输入与输出的微循环，让通勤变成了全天最专注的时段。
+`,
+  );
+  await writeFile(
+    resolve(content, 'posts/performance-optimization.md'),
+    `+++
+title = "优化博客性能：从图片到加载体验"
+date = "2024-04-02"
+slug = "performance-optimization"
+description = "分享我在 CloudInk 中优化性能的实践，包括图片压缩、按需加载、缓存策略与监控。"
+tags = ["性能优化", "JavaScript"]
++++
+
+页面加载速度直接影响读者的第一印象。为了让博客达到极致的加载速度，我从资源打包、首屏渲染、图片格式等维度进行了系统性优化。
+`,
+  );
 } else if (process.argv[2] === 'bundle') {
   const { template_version: version } = JSON.parse(
     await readFile(resolve(output, 'site.json'), 'utf8'),

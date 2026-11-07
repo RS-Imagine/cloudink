@@ -126,10 +126,10 @@ function loadIllustrationPicker() {
 }
 const iconPicker = configureSiteIcon({ api, notice });
 function applySiteAppearance(config) {
-  window.CloudInkTheme?.setPalette(config?.themePalette || 'ink');
+  window.CloudInkTheme?.setPalette(config?.themePalette || 'brown');
   iconPicker.apply(config);
   if (site) {
-    site.themePalette = document.documentElement.dataset.palette || 'ink';
+    site.themePalette = document.documentElement.dataset.palette || 'brown';
     site.siteIcon = config?.siteIcon || '';
     site.homeIllustration = config?.homeIllustration || '';
   }
@@ -1583,7 +1583,7 @@ $('settings').addEventListener('click', async () => {
     settingsEtag = data.etag;
     iconPicker.load(data.site);
     homePicker.load(data.site);
-    $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
+    $('site-form').elements.themePalette.value = data.site.themePalette || 'brown';
     applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
@@ -1724,7 +1724,7 @@ configureBackup({
       'input:not([type=radio]),textarea,select[name]',
     ))
       input.value = '';
-    $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
+    $('site-form').elements.themePalette.value = result.site.themePalette || 'brown';
     iconPicker.load(result.site);
     illustrationPicker?.load(result.site);
     applySiteAppearance(result.site);

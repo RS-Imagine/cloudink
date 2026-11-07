@@ -559,7 +559,7 @@ fn page(
   <link rel="stylesheet" href="/reader-assets/editorial-font.css">
   <link rel="icon" type="{icon_type}" href="{icon_url}">
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#24594f">
+  <meta name="theme-color" content="#6d4327">
   <link rel="alternate" type="application/rss+xml" title="{site_title}" href="/feed.xml">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">

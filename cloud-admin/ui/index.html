@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="zh-CN" data-cloudink-admin data-admin-design="editorial">
+<html lang="zh-CN" data-cloudink-admin data-admin-design="editorial" data-palette="brown">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>写作后台 · CloudInk 云砚</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#24594f" />
+    <meta name="theme-color" content="#5c3a21" />
     <script src="/admin-theme.js"></script>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/reader-assets/editorial-font.css" />
@@ -1162,13 +1162,28 @@
                   <fieldset class="palette-picker" aria-describedby="palette-help">
                     <legend>主题色</legend>
                     <div class="palette-options">
+                      <label class="palette-choice" title="暖棕 Brown">
+                        <input
+                          type="radio"
+                          name="themePalette"
+                          value="brown"
+                          aria-label="暖棕 Brown"
+                          checked
+                        />
+                        <span
+                          class="palette-swatch"
+                          style="--swatch: var(--ci-palette-brown)"
+                          aria-hidden="true"
+                          >✓</span
+                        >
+                        <span class="palette-name" aria-hidden="true">暖棕 Brown</span>
+                      </label>
                       <label class="palette-choice" title="墨绿">
                         <input
                           type="radio"
                           name="themePalette"
                           value="ink"
                           aria-label="墨绿"
-                          checked
                         />
                         <span
                           class="palette-swatch"
@@ -1177,31 +1192,6 @@
                           >✓</span
                         >
                         <span class="palette-name" aria-hidden="true">墨绿</span>
-                      </label>
-                      <label class="palette-choice" title="灰蓝">
-                        <input type="radio" name="themePalette" value="neutral" aria-label="灰蓝" />
-                        <span
-                          class="palette-swatch"
-                          style="--swatch: var(--ci-palette-neutral)"
-                          aria-hidden="true"
-                          >✓</span
-                        >
-                        <span class="palette-name" aria-hidden="true">灰蓝</span>
-                      </label>
-                      <label class="palette-choice" title="棕褐 Brown">
-                        <input
-                          type="radio"
-                          name="themePalette"
-                          value="brown"
-                          aria-label="棕褐 Brown"
-                        />
-                        <span
-                          class="palette-swatch"
-                          style="--swatch: var(--ci-palette-brown)"
-                          aria-hidden="true"
-                          >✓</span
-                        >
-                        <span class="palette-name" aria-hidden="true">棕褐 Brown</span>
                       </label>
                       <label class="palette-choice" title="靛蓝">
                         <input type="radio" name="themePalette" value="blue" aria-label="靛蓝" />
