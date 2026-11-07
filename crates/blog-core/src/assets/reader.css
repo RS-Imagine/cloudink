@@ -40,11 +40,17 @@
   display: inline-flex;
   align-items: center;
   min-height: 48px;
-  padding: 8px 12px;
-  border-radius: 12px;
+  padding: 8px 18px;
+  border-radius: var(--ci-radius-pill, 9999px);
   background: var(--ci-container);
   color: var(--ci-primary);
   font: 600 14px/20px var(--ci-font-ui);
+  transition: all var(--ci-motion-fast) var(--ci-ease);
+}
+.article-shell .article-back:hover,
+.article-end .back-link:hover {
+  background: var(--ci-primary);
+  color: var(--ci-on-primary);
 }
 .article-shell article h1 {
   max-width: 680px;
@@ -457,13 +463,21 @@
   gap: 8px;
 }
 .article-end .share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 48px;
-  padding: 8px 16px;
+  padding: 8px 20px;
   border: 1px solid var(--ci-divider);
-  border-radius: 12px;
+  border-radius: var(--ci-radius-pill, 9999px);
   background: var(--ci-surface);
   color: var(--ci-text);
   font: 600 14px/20px var(--ci-font-ui);
+  transition: all var(--ci-motion-fast) var(--ci-ease);
+}
+.article-end .share-button:hover {
+  background: var(--ci-container);
+  border-color: var(--ci-primary);
 }
 .article-end #share-btn {
   border-color: transparent;

@@ -25,15 +25,17 @@ a {
 }
 button {
   border: 1px solid var(--line);
-  border-radius: 9px;
-  padding: 10px 16px;
+  border-radius: 12px;
+  padding: 10px 18px;
   background: var(--paper);
   color: var(--ink);
   cursor: pointer;
   transition:
     background 0.15s,
     border-color 0.15s,
-    color 0.15s;
+    color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
 }
 button:hover {
   background: var(--pale);
@@ -47,9 +49,15 @@ button.primary {
   color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
+  border-radius: 9999px;
+  padding: 10px 22px;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(92, 58, 33, 0.12);
 }
 button.primary:hover {
   background: var(--accent-strong);
+  box-shadow: 0 4px 14px rgba(92, 58, 33, 0.18);
+  transform: translateY(-1px);
 }
 .quiet {
   background: transparent;
@@ -75,12 +83,13 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--paper);
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 10px 14px;
   color: var(--ink);
   transition:
     border-color 0.15s,
-    outline-color 0.15s;
+    outline-color 0.15s,
+    box-shadow 0.15s;
 }
 input:focus,
 textarea:focus {

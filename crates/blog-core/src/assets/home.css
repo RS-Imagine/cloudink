@@ -65,11 +65,12 @@
 .reader-header .site-nav a {
   display: inline-flex;
   align-items: center;
-  min-height: 48px;
-  padding: 8px 16px;
-  border-radius: 12px;
+  min-height: 44px;
+  padding: 8px 18px;
+  border-radius: var(--ci-radius-pill, 9999px);
   color: var(--ci-muted);
   font: 600 14px/20px var(--ci-font-ui);
+  transition: all var(--ci-motion-fast) var(--ci-ease);
 }
 .reader-header .site-nav a[aria-current],
 .reader-header .site-nav a:hover {
@@ -79,28 +80,30 @@
 .reader-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin-inline-start: auto;
   flex: none;
 }
 .reader-tools .reader-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  min-width: 48px;
-  height: 48px;
-  min-height: 48px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: var(--ci-radius-pill, 9999px);
   background: transparent;
   color: var(--ci-text);
   list-style: none;
   cursor: pointer;
+  transition: all var(--ci-motion-fast) var(--ci-ease);
 }
 .reader-tools .reader-icon:hover {
   background: var(--ci-container);
+  color: var(--ci-primary);
 }
 .reader-icon svg {
   grid-area: 1 / 1;
@@ -335,17 +338,20 @@
 .home-card-meta .post-arrow {
   pointer-events: none;
   position: absolute;
-  inset-inline-end: 16px;
+  inset-inline-end: 20px;
   bottom: 24px;
   display: grid;
   place-items: center;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--ci-surface);
+  background: var(--ci-container);
   color: var(--ci-primary);
-  font-size: 24px;
-  transition: transform var(--ci-motion-emphasized) var(--ci-ease);
+  font-size: 20px;
+  transition:
+    transform var(--ci-motion-emphasized) var(--ci-ease),
+    background-color var(--ci-motion-fast) var(--ci-ease),
+    color var(--ci-motion-fast) var(--ci-ease);
 }
 .home-card:focus-within {
   outline: 3px solid var(--ci-primary);
@@ -437,8 +443,8 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .home-post-grid > .home-card:hover {
-    background: var(--ci-container);
-    border-color: var(--ci-outline);
+    background: var(--ci-surface);
+    border-color: color-mix(in srgb, var(--ci-primary) 30%, var(--ci-divider));
     box-shadow: var(--ci-shadow-floating);
     transform: translateY(-2px);
   }
@@ -446,6 +452,8 @@
     color: var(--ci-primary);
   }
   .home-card:hover .post-arrow {
+    background: var(--ci-primary);
+    color: var(--ci-on-primary);
     transform: translateX(4px);
   }
 }
