@@ -126,10 +126,15 @@ function loadIllustrationPicker() {
 }
 const iconPicker = configureSiteIcon({ api, notice });
 function applySiteAppearance(config) {
-  window.CloudInkTheme?.setPalette(config?.themePalette || 'brown');
+  const palette = config?.themePalette || 'brown';
+  window.CloudInkTheme?.setPalette(palette);
+  document.documentElement.dataset.palette = palette;
+  try {
+    localStorage.setItem('cloudink-admin-palette', palette);
+  } catch {}
   iconPicker.apply(config);
   if (site) {
-    site.themePalette = document.documentElement.dataset.palette || 'brown';
+    site.themePalette = palette;
     site.siteIcon = config?.siteIcon || '';
     site.homeIllustration = config?.homeIllustration || '';
   }

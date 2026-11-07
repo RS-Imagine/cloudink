@@ -225,14 +225,14 @@
     <div id="app-view" class="app" hidden>
       <header class="workspace-header studio-masthead">
         <div class="flclash-header-brand-block">
-          <a class="brand" href="#" aria-label="返回工作台">
-            <span class="brand-mark"><img src="/favicon.svg" width="28" height="28" alt="" /></span>
-            <span class="brand-copy">CloudInk<small id="site-brand-title">云砚</small></span>
+          <a class="brand flclash-brand" href="#" aria-label="返回工作台">
+            <span class="brand-mark"><img src="/favicon.svg" width="30" height="30" alt="" /></span>
+            <div class="flclash-brand-text">
+              <span class="flclash-admin-title">CloudInk 写作后台</span>
+              <span class="flclash-admin-subtitle">专注写作，随时发布。</span>
+            </div>
           </a>
-          <div class="flclash-header-titles">
-            <h1 class="flclash-admin-title">CloudInk 写作后台</h1>
-            <p class="flclash-admin-subtitle">专注写作，随时发布。</p>
-          </div>
+          <span id="site-brand-title" hidden></span>
         </div>
         <nav class="studio-nav" aria-label="写作空间导航">
           <button
@@ -395,7 +395,7 @@
           </button>
           <a
             id="site-link"
-            class="shell-icon studio-site-link"
+            class="shell-icon studio-site-link flclash-header-btn-hidden"
             target="_blank"
             rel="noopener"
             aria-label="查看博客"
@@ -447,7 +447,11 @@
               />
             </svg>
           </button>
-          <button id="new-post" class="primary shell-new" aria-label="新建文章">
+          <button
+            id="new-post"
+            class="primary shell-new flclash-header-btn-hidden"
+            aria-label="新建文章"
+          >
             <svg
               width="20"
               height="20"
@@ -540,7 +544,7 @@
                 <span class="nav-count">0</span>
               </button>
             </div>
-            <div class="flclash-sidebar-nav-group">
+            <div class="flclash-sidebar-nav-group flclash-sidebar-tags-group">
               <div class="flclash-nav-group-title">标签 <span class="tag-add-btn">+</span></div>
               <div class="flclash-sidebar-tags">
                 <button type="button" class="flclash-sidebar-tag-item">
