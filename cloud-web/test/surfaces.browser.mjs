@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 // Shared expressive surfaces, tested only against the local UI audit fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -145,7 +146,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   await page.reload();
   await expect(root).toHaveAttribute('data-effects-mode', 'auto');
   await expect(root).toHaveAttribute('data-effects', enabled);
-  await page.locator('.post-card h2 a').first().click();
+  await page.goto(origin + '/posts/slow-days/');
   await expect(page.locator('article h1')).toBeVisible();
   await expect(root).toHaveAttribute('data-effects', enabled);
   const contrasts = [],
@@ -161,7 +162,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
         assert.equal(
           await filter(page.locator('.reader-menu-links')),
           'none',
-          'Full-height navigation stays opaque to avoid full-screen blur',
+          'Reader navigation stays opaque to keep background blur bounded',
         );
         contrasts.push(...(await contrast(page, '.reader-menu-links')));
       }
@@ -249,25 +250,29 @@ export async function verifySurfaces(browser, origin, output, engine) {
     await page.evaluate((theme) => CloudInkTheme.setMode(theme), theme);
     for (const mode of ['auto', 'off']) {
       await page.evaluate((mode) => CloudInkTheme.setEffects(mode), mode);
-      if (mode === 'off') assert.equal(await filter(page.locator('.studio-nav')), 'none');
-      else if (supported) {
-        assert.notEqual(await filter(page.locator('.studio-nav')), 'none');
-        for (const pair of await contrast(page, '.studio-nav'))
-          assert.ok(pair.ratio >= 4.5, JSON.stringify(pair));
-      }
+      await page.locator('#studio-menu-toggle').click();
+      assert.equal(
+        await filter(page.locator('#studio-sheet')),
+        'none',
+        'The navigation menu is opaque',
+      );
+      for (const pair of await contrast(page, '#studio-sheet'))
+        assert.ok(pair.ratio >= 4.5, JSON.stringify(pair));
       areas.push(await checkArea(page));
       await page.screenshot({
         path: resolve(output, 'surface-admin-' + mode + '-' + theme + '-' + engine + '.png'),
         fullPage: false,
       });
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#studio-menu-toggle')).toBeFocused();
     }
   }
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await page.locator('select[data-effects-mode]').selectOption('off');
   await page.reload();
   await expect(root).toHaveAttribute('data-effects', 'solid');
   await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'home');
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#settings-view')).toBeVisible();
   const timing = {};
   if (engine === 'chromium') {
@@ -304,7 +309,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   await expect(root).toHaveAttribute('data-effects', 'solid');
   await expect(page.locator('select[data-effects-mode]')).toHaveCount(0);
   await expect(root).toHaveAttribute('data-effects', 'solid');
-  await page.locator('.post-card h2 a').first().click();
+  await page.goto(origin + '/posts/slow-days/');
   await expect(page.locator('article h1')).toBeVisible();
   await context.close();
   const staticContext = await browser.newContext({

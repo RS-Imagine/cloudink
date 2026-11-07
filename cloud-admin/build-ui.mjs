@@ -16,6 +16,7 @@ await build({
     '/home-illustration.js',
     '/post-address.js',
     '/publication.js',
+    '/backup.js',
   ],
 });
 await build({
@@ -67,7 +68,16 @@ await build({
   target: 'es2022',
   minify: true,
 });
+await build({
+  entryPoints: [new URL('ui/backup.js', root).pathname],
+  outfile: new URL('ui/backup.generated.js', root).pathname,
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  minify: true,
+});
 const paths = [
+  ['/backup.js', 'ui/backup.generated.js', 'text/javascript; charset=utf-8'],
   ['/publication.js', 'ui/publication.generated.js', 'text/javascript; charset=utf-8'],
   ['/post-address.js', 'ui/post-address.generated.js', 'text/javascript; charset=utf-8'],
   ['/home-illustration.js', 'ui/home-illustration.generated.js', 'text/javascript; charset=utf-8'],
@@ -112,6 +122,7 @@ for (const [path, file, type] of paths) {
       'ui/images.css',
       '../assets/mobile.css',
       '../assets/expressive.css',
+      'ui/prism.css',
     ];
     const stylesheets = await Promise.all(
       sources.map(async (file) => {

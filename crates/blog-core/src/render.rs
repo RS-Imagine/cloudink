@@ -293,10 +293,11 @@ pub fn render_index_with_shorts(
         }
     }
 
-    let avatar_content = if let Some(ref icon) = config.site_icon {
+    let avatar_content = if config.site_icon.is_some() {
+        let (icon_url, _) = site_icon(config);
         format!(
             r#"<img src="{icon}" width="42" height="42" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">"#,
-            icon = escape_html(icon)
+            icon = escape_html(&icon_url)
         )
     } else {
         r#"<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>"#.to_string()
@@ -526,7 +527,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
     <div class="share-container article-end">
       <a class="back-link" href="/">&larr; 返回文章</a>
       <div class="article-share-actions">
-        <button id="share-btn" class="share-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 16V3m-4 4 4-4 4 4M5 12v8h14v-8"/></svg>分享文章</button>
+        <button id="share-btn" class="share-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/></svg>分享文章</button>
       </div>
       <span id="share-status" role="status"></span>
     </div>
@@ -755,7 +756,7 @@ fn page(
         <div class="reader-tools">
           <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
           <details class="reader-menu" id="reader-menu">
-            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
+            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
             <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
           </details>
         </div>

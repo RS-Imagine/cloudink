@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 // Imported by the isolated three-engine UI audit; never contacts a deployed Worker.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -28,7 +29,7 @@ export async function verifyThemes(browser, origin, output, engine) {
     '.reader-preferences,select[data-theme-mode],select[data-effects-mode],#theme-toggle-btn';
   await page.goto(origin + '/');
   const publishedPalette = await root.getAttribute('data-palette');
-  const darkBackground = publishedPalette === 'brown' ? 'rgb(19, 18, 9)' : 'rgb(24, 24, 24)';
+  const darkBackground = publishedPalette === 'ink' ? 'rgb(24, 24, 24)' : 'rgb(22, 18, 14)';
   await expect(page.locator(controls)).toHaveCount(0);
   await expect(root).toHaveAttribute('data-theme', 'light');
   await expect(root).toHaveAttribute('data-theme-mode', 'auto');
@@ -148,7 +149,7 @@ async function verifyPalettePicker(browser, origin, output, engine) {
   await page.locator('#login-form input[name=password]').fill(password);
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   const root = page.locator('html');
   const radios = page.locator('input[name=themePalette]');
   const palettes = ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose'];
@@ -160,7 +161,7 @@ async function verifyPalettePicker(browser, origin, output, engine) {
   await expect(page.getByRole('radio', { name: '灰蓝', exact: true })).toBeChecked();
   await page.keyboard.press('ArrowLeft');
   await expect(ink).toBeChecked();
-  await expect(page.locator('input[value=ink] + .palette-swatch')).toHaveCSS(
+  await expect(page.locator('.palette-choice:has(input[value=ink])')).toHaveCSS(
     'outline-style',
     'solid',
   );
@@ -224,16 +225,16 @@ async function verifyPalettePicker(browser, origin, output, engine) {
         path: resolve(output, 'palette-preview-brown-' + engine + '.png'),
         fullPage: true,
       });
-      await page.locator('#settings').click();
-      await expect(page.getByRole('radio', { name: '棕褐 Brown', exact: true })).toBeChecked();
+      await navigateStudio(page, 'settings');
+      await expect(page.getByRole('radio', { name: '暖棕 Brown', exact: true })).toBeChecked();
     }
   }
   assert.equal(accents.size, palettes.length, 'Every swatch selects a distinct palette');
   if (engine === 'chromium') {
     await page.emulateMedia({ forcedColors: 'active' });
     await expect(page.locator('.palette-name').first()).toBeVisible();
-    await page.getByRole('radio', { name: '棕褐 Brown', exact: true }).check();
-    await expect(page.getByRole('radio', { name: '棕褐 Brown', exact: true })).toBeChecked();
+    await page.getByRole('radio', { name: '暖棕 Brown', exact: true }).check();
+    await expect(page.getByRole('radio', { name: '暖棕 Brown', exact: true })).toBeChecked();
     await page.emulateMedia({ forcedColors: 'none' });
   }
   await ink.check();

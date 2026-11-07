@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 // Release reflow checks use generic content in the local UI audit fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -51,13 +52,12 @@ export async function verifyRelease(browser, origin, output, engine) {
   await page.locator('#login-submit').click();
   await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'home');
   await noOverflow(page, engine + ' dashboard text spacing');
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#site-form')).toBeVisible();
   await noOverflow(page, engine + ' settings text spacing');
   // Every primary destination remains operable after a text-spacing override.
   for (const id of ['dashboard-nav', 'articles-nav', 'images', 'settings']) {
-    await expect(page.locator('#' + id)).toBeVisible();
-    await page.locator('#' + id).click();
+    await navigateStudio(page, id);
     await expect(page.locator('#' + id)).toHaveAttribute('aria-current', 'page');
     await noOverflow(page, engine + ' ' + id + ' text spacing');
   }

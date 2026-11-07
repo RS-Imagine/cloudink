@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 // App-shell checks use only the UI audit's local temporary fixture.
 import assert from 'node:assert/strict';
@@ -39,7 +40,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   );
   assert.ok(sessionCookie?.secure && sessionCookie.httpOnly, engine + ' keeps a secure session');
   await expect(page.locator('.studio-nav [aria-current]')).toHaveAttribute('id', 'dashboard-nav');
-  const intro = await page.locator('.home-intro').boundingBox();
+  const intro = await page.locator('.studio-welcome').boundingBox();
   const search = await page.locator('#article-browser').boundingBox();
   assert.ok(search.y >= intro.y + intro.height, 'Dashboard search follows its introduction');
   const initialCount = await page.locator('.article-card').count();
@@ -55,28 +56,36 @@ export async function verifyStudio(browser, origin, output, engine) {
   await page.locator('.studio-empty button').click();
   await expect(page.locator('.article-card')).toHaveCount(initialCount);
   await expect(page.locator('#search')).toBeFocused();
-  await page.locator('#articles-nav').click();
+  await navigateStudio(page, 'articles-nav');
   await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'posts');
   await expect(page.locator('#posts-title')).toBeVisible();
-  await expect(page.locator('.home-intro')).toBeHidden();
+  await expect(page.locator('.studio-welcome')).toBeHidden();
   await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   for (const width of [1440, 900, 390, 360, 320]) {
     await page.setViewportSize({ width, height: width >= 1100 ? 1000 : 844 });
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
     );
+    if (width < 760) {
+      await expect(page.locator('.studio-masthead > .studio-nav')).toBeHidden();
+      await page.locator('#studio-menu-toggle').click();
+      await expect(page.locator('#studio-sheet .studio-nav')).toBeVisible();
+      await expect(page.locator('#studio-menu-toggle')).toHaveAttribute('aria-expanded', 'true');
+    }
     for (const id of ['dashboard-nav', 'articles-nav', 'images', 'settings', 'new-post']) {
       await expect(page.locator('#' + id)).toBeVisible();
       const rect = await page.locator('#' + id).boundingBox();
       assert.ok(rect.width >= 44 && rect.height >= 44, id + ' must keep a touch target');
     }
-    if (width < 760) await expect(page.locator('.studio-nav')).toHaveCSS('position', 'fixed');
-    else {
+    if (width < 760) {
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#studio-menu-toggle')).toBeFocused();
+      await expect(page.locator('.studio-masthead > .studio-nav')).toBeHidden();
+    } else {
       const header = await page.locator('.studio-masthead').boundingBox();
       const navigation = await page.locator('.studio-nav').boundingBox();
-      assert.ok(header.width >= Math.min(width, 1280) - 96 && header.height <= 112);
       assert.ok(
         navigation.y >= header.y && navigation.y + navigation.height <= header.y + header.height,
       );
@@ -96,14 +105,14 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('#studio-sheet')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#studio-sheet')).toBeHidden();
-  await page.locator('#images').click();
+  await navigateStudio(page, 'images');
   await expect(page.locator('#images-view')).toBeVisible();
   await expect(page.locator('#post-switcher')).not.toHaveAttribute('open', '');
   await expect(page.locator('#images')).toHaveAttribute('aria-current', 'page');
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#site-form')).toBeVisible();
   await expect(page.locator('#settings')).toHaveAttribute('aria-current', 'page');
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   for (const [width, dark] of [
     [1440, false],
     [390, false],
@@ -132,7 +141,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('#editor-search-slot > #article-browser')).toBeVisible();
   await page.locator('#title').fill('Studio draft ' + engine);
   await page.locator('#body').fill('Keep this text while navigating.');
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   await expect(page.locator('#home-view')).toBeVisible();
   await openPostSwitcher(page);
   await page
@@ -144,6 +153,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   await acceptConfirmation(page);
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('#post-count')).toHaveText(String(initialCount));
+  await expect(page.locator('#sidebar-count-all')).toHaveText(String(initialCount));
   await page.locator('#studio-tools summary').click();
   await page.locator('#logout').click();
   await expect(page.locator('#login-view')).toBeVisible();

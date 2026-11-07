@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -105,7 +106,7 @@ export async function verifyUiStability(browser, origin, output, engine) {
     galleryGate = gate();
     thumbnailGate = gate();
     const nav = await bounds('images');
-    await page.locator('#images').click();
+    await navigateStudio(page, 'images');
     await stable('images', nav);
     await expect(page.locator('.image-skeleton')).toHaveCount(6);
     await expect(page.locator('#image-library-empty')).toBeHidden();
@@ -178,8 +179,8 @@ export async function verifyUiStability(browser, origin, output, engine) {
     await expect(page.locator('#image-library-grid')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('.image-actions .danger').first()).toBeEnabled();
 
-    await page.locator('#dashboard-nav').click();
-    await page.locator('#home-new').click();
+    await navigateStudio(page, 'dashboard-nav');
+    await page.locator('#new-post').click();
     await page.locator('#title').fill('UI stability ' + engine);
     await page.locator('#body').fill('Keep this draft and its cursor.');
     await page.locator('#save-post').click();

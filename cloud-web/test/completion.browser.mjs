@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 // Final UI state checks use only the local audit account and generated content.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -6,6 +7,7 @@ import { owner, password } from './fixture.mjs';
 
 export async function verifyCompletion(browser, origin, output, engine) {
   const errors = [];
+  const postListRoute = (url) => url.pathname === '/api/posts';
   async function context(options = {}) {
     const result = await browser.newContext({
       viewport: { width: 360, height: 844 },
@@ -55,7 +57,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
     if (path === '/api/login' && request.method() === 'POST') loginCalls++;
     if (path === '/api/config' || path === '/api/session') repeatedBootReads++;
   });
-  await page.route('**/api/posts', (route) =>
+  await page.route(postListRoute, (route) =>
     ++loginReads === 1
       ? route.fulfill({ status: 503, json: { error: 'Temporary signed-in data failure' } })
       : route.continue(),
@@ -72,7 +74,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
   assert.equal(loginCalls, 1);
   assert.equal(loginReads, 2);
   assert.equal(repeatedBootReads, 0);
-  await page.unroute('**/api/posts');
+  await page.unroute(postListRoute);
 
   // An authenticated refresh stays in the startup view until the first data read succeeds.
   const resumed = await session.newPage();
@@ -81,7 +83,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
     releasePosts = done;
   });
   let postAttempts = 0;
-  await resumed.route('**/api/posts', async (route) => {
+  await resumed.route(postListRoute, async (route) => {
     if (++postAttempts === 1) {
       await postsGate;
       await route.fulfill({ status: 503, json: { error: 'Temporary startup data failure' } });
@@ -151,7 +153,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
   await page.locator('#show-split').focus();
   await page.setViewportSize({ width: 360, height: 844 });
   await expect(page.locator('#show-writing')).toBeFocused();
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   await expect(page.locator('#home-view')).toBeFocused();
   await page.locator('#studio-tools summary').click();
   await page.locator('#logout').click();
@@ -218,7 +220,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
     assert.equal(response.status(), 200);
     await route.fulfill({ response });
   });
-  await wizard.route('**/api/posts', (route) =>
+  await wizard.route(postListRoute, (route) =>
     ++setupReads === 1
       ? route.fulfill({ status: 503, json: { error: 'Temporary setup data failure' } })
       : route.continue(),

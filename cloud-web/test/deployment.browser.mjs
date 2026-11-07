@@ -1,3 +1,5 @@
+import { verifyUiAuditRegressions } from './ui-audit-regressions.browser.mjs';
+import { navigateStudio } from './studio-navigation.mjs';
 import { svgBytes, icoBytes } from './icon-fixtures.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 import {
@@ -40,7 +42,7 @@ try {
   await page.locator('#home-view').waitFor({ state: 'visible' });
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await expect(page.locator('#site-link')).toHaveAttribute('href', 'http://localhost:8791');
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#deployment-form')).toHaveCount(0);
   await page.locator('#site-form input[name=title]').fill('Browser deployed blog');
   await page.locator('#site-form input[name=author]').fill('Reader');
@@ -65,7 +67,7 @@ try {
     '/favicon.svg',
   );
   await beforeThemePublish.close();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#site-form input[name=themePalette][value=brown]')).toBeChecked();
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
@@ -110,7 +112,7 @@ try {
       .frameLocator('#preview-frame')
       .locator('html')
       .evaluate((node) => getComputedStyle(node).getPropertyValue('--ci-primary').trim()),
-    '#805232',
+    '#6d4327',
   );
   await expect
     .poll(() =>
@@ -129,7 +131,7 @@ try {
   const staticPage = await noScript.newPage();
   await staticPage.goto('http://localhost:8791/');
   await expect(staticPage.locator('html')).toHaveAttribute('data-palette', 'brown');
-  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(19, 18, 9)');
+  await expect(staticPage.locator('body')).toHaveCSS('background-color', 'rgb(22, 18, 14)');
   await expect(staticPage.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
   await staticPage.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(staticPage.locator('article h1')).toHaveText('Browser published mathematics');
@@ -218,7 +220,7 @@ try {
   await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await live.setViewportSize({ width: 1280, height: 900 });
   await live.emulateMedia({ colorScheme: 'light' });
-  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(248, 246, 241)');
+  await expect(live.locator('body')).toHaveCSS('background-color', 'rgb(250, 246, 240)');
   await live.screenshot({ path: resolve('cloud-web/dist/article.desktop.png'), fullPage: true });
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.post-card')).toHaveCount(1);
@@ -296,7 +298,7 @@ try {
   await expect(live.locator('article')).toContainText(
     'New version that must remain a draft after failure.',
   );
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#account-form')).toBeVisible();
   await expect(page.locator('#backup-card')).toBeVisible();
   await page.screenshot({ path: resolve('cloud-web/dist/settings.browser.png'), fullPage: true });
@@ -399,7 +401,7 @@ try {
     if (!saved.ok) throw new Error(await saved.text());
   }, slug);
   const draftBeforeLayout = await bucket.head(`drafts/${slug}.md`);
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   await expect(page.locator('#publish-welcome')).toBeVisible();
   await expect(page.locator('#publish-welcome')).toHaveText('更新网站排版');
   await page.locator('#publish-welcome').click();
@@ -415,10 +417,11 @@ try {
     (await (await bucket.get('draft-site.json')).json()).title,
     'Unpublished website title',
   );
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await page.locator('#site-form input[name=title]').fill(publishedBeforeLayout.site.title);
   await page.locator('#save-site').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
+  await verifyUiAuditRegressions(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

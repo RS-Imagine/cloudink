@@ -3,8 +3,6 @@ import '../../assets/motion.js';
 import '../../assets/mobile.js';
 import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
-import { zipSync, strToU8 } from 'fflate';
-import { configureBackup } from './backup.js';
 import { configureImages } from './images.js';
 import { configureShorts } from './shorts.js';
 import { configureSiteIcon } from './site-icon.js';
@@ -60,7 +58,8 @@ let navigationVersion = 0,
   publishRequest = false,
   lastPublished = '',
   polling = false,
-  publishingId = '';
+  publishingId = '',
+  publicInitialized = false;
 let uploading = null;
 const activeActions = new Set();
 let noticeTimer;
@@ -126,12 +125,8 @@ function loadIllustrationPicker() {
 }
 const iconPicker = configureSiteIcon({ api, notice });
 function applySiteAppearance(config) {
-  const palette = config?.themePalette || 'brown';
+  const palette = config?.themePalette || 'ink';
   window.CloudInkTheme?.setPalette(palette);
-  document.documentElement.dataset.palette = palette;
-  try {
-    localStorage.setItem('cloudink-admin-palette', palette);
-  } catch {}
   iconPicker.apply(config);
   if (site) {
     site.themePalette = palette;
@@ -184,9 +179,9 @@ async function action(id, label, work, success = '') {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
     button.style.inlineSize = originalInlineSize;
-    labelNode.textContent =
-      publishingBusy && ['publish-post', 'publish-settings'].includes(id) ? '正在发布…' : original;
-    button.disabled = publishingBusy && ['publish-post', 'publish-settings'].includes(id);
+    labelNode.textContent = original;
+    button.disabled = false;
+    publishingControls();
   }
 }
 function navigationStatus(message = '') {
@@ -336,7 +331,21 @@ function showLogin({ focus = false } = {}) {
   articleRequests.clear();
   disposePreview();
 }
+function setZen(active) {
+  $('app-view').classList.toggle('zen-mode', active);
+  const button = $('toggle-zen');
+  button.setAttribute('aria-pressed', String(active));
+  button.title = active ? '退出专注写作' : '进入专注写作';
+  button.setAttribute('aria-label', button.title);
+  button
+    .querySelector('path')
+    .setAttribute(
+      'd',
+      active ? 'M3 8h5V3m8 0v5h5M3 16h5v5m8 0v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5',
+    );
+}
 function view(name, { focus = true } = {}) {
+  if (name !== 'editor') setZen(false);
   const changingView = $('app-view').dataset.view !== name;
   const sectionName = name === 'posts' ? 'home' : name;
   const fromNavigation = document.activeElement?.closest(
@@ -539,11 +548,10 @@ function renderLists() {
   if (sidebarPub) sidebarPub.textContent = publishedCount;
   const sidebarDraft = $('sidebar-count-draft');
   if (sidebarDraft) sidebarDraft.textContent = draftCount;
-  const sidebarBadge = $('sidebar-draft-badge');
-  if (sidebarBadge) sidebarBadge.textContent = draftCount;
-
   for (const item of document.querySelectorAll('[data-sidebar-filter]')) {
-    item.classList.toggle('is-active', item.dataset.sidebarFilter === postFilter);
+    const selected = item.dataset.sidebarFilter === postFilter;
+    item.classList.toggle('is-active', selected);
+    item.setAttribute('aria-pressed', String(selected));
   }
 
   let shown = 0;
@@ -628,6 +636,7 @@ function renderLists() {
   }
 }
 async function refresh({ append = false } = {}) {
+  clearTimeout(searchTimer);
   const revision = ++listRevision;
   const params = new URLSearchParams({
     limit: '50',
@@ -646,7 +655,7 @@ async function refresh({ append = false } = {}) {
   posts = append ? [...posts, ...data.posts] : data.posts;
   postCursor = data.cursor;
   postCounts = data.counts;
-  $('publish-welcome').textContent = data.publicInitialized ? '更新网站排版' : '发布博客首页';
+  publicInitialized = data.publicInitialized;
   const status = $('template-status');
   if (status) {
     const message =
@@ -955,8 +964,7 @@ async function newPost() {
     if (version === navigationVersion) navigationStatus();
   }
 }
-for (const id of ['new-post', 'home-new'])
-  $(id).addEventListener('click', () => newPost().catch((error) => notice(error.message)));
+$('new-post').addEventListener('click', () => newPost().catch((error) => notice(error.message)));
 $('search').addEventListener('input', () => {
   renderLists();
   clearTimeout(searchTimer);
@@ -1058,21 +1066,23 @@ for (const id of ['download-post', 'change-post-address'])
       )
       .catch((error) => notice(error.message, 'error'));
   });
+function publishingControls() {
+  for (const [id, label] of Object.entries({
+    'publish-post': '发布这篇',
+    'publish-settings': '发布网站信息',
+    'publish-welcome': publicInitialized ? '更新网站排版' : '发布博客首页',
+  })) {
+    if (!activeActions.has(id)) {
+      $(id).disabled = publishingBusy || publishRequest;
+      $(id).textContent = publishingBusy || publishRequest ? '正在发布…' : label;
+    }
+  }
+}
 function showPublishing(state) {
   publishingId = state?.release_id || '';
   publishingBusy = !!state && ['queued', 'building', 'built'].includes(state.status);
   $('cancel-publish').hidden = !publishingBusy || publishRequest;
-  for (const id of ['publish-post', 'publish-settings']) {
-    if (!activeActions.has(id)) {
-      $(id).disabled = publishingBusy || publishRequest;
-      $(id).textContent = publishingBusy
-        ? '正在发布…'
-        : id === 'publish-post'
-          ? '发布这篇'
-          : '发布网站信息';
-    }
-  }
-  $('publish-welcome').disabled = publishingBusy || publishRequest;
+  publishingControls();
   if ($('change-post-address'))
     $('change-post-address').disabled = publishingBusy || publishRequest;
   const banner = $('publish-banner');
@@ -1096,6 +1106,7 @@ function showPublishing(state) {
 async function startPublish(data) {
   if (publishRequest) throw new Error('正在提交发布，请稍等。');
   publishRequest = true;
+  publishingControls();
   try {
     const { publishInBrowser } = await import('/publication.js').catch(() => {
       throw new Error('发布工具加载失败，请检查网络并刷新后台后重试。');
@@ -1173,7 +1184,7 @@ $('delete-post').addEventListener('click', async () => {
         dirty = 0;
         savedVersion = 0;
         view('home');
-        renderLists();
+        await refresh();
       } finally {
         lockEditor(false);
       }
@@ -1269,13 +1280,19 @@ const imageTools = configureImages({
 // Wire the sidebar button and the editor's image picker to the library.
 for (const id of ['images', 'choose-library-image'])
   $(id).addEventListener('click', () => action(id, '正在打开…', () => imageTools.show()));
-configureShorts({
+const shortTools = configureShorts({
   api,
   notice,
   action,
-  open: () => {
-    ++navigationVersion;
+  onList: (data) => updateSidebarShorts(data),
+  open: async () => {
+    if (editorLocked) return false;
+    const version = ++navigationVersion;
+    await flush();
+    if (version !== navigationVersion) return false;
+    invalidatePreview();
     view('shorts');
+    return true;
   },
   startPublish,
 });
@@ -1394,7 +1411,7 @@ function setupEditorEnhancements() {
         newCursor = selected ? end + 11 : start + 1;
         break;
       case 'zen':
-        $('app-view')?.classList.toggle('zen-mode');
+        setZen(!$('app-view').classList.contains('zen-mode'));
         return;
     }
 
@@ -1500,7 +1517,7 @@ function setupEditorEnhancements() {
     }
 
     if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) {
-      $('app-view')?.classList.remove('zen-mode');
+      setZen(false);
     }
   });
 
@@ -1581,22 +1598,6 @@ configureMarkdownImport({
   notice,
   closeMenu: () => shell.close(),
 });
-$('export-posts').addEventListener('click', async () => {
-  try {
-    await flush();
-    const backup = await api('/api/export'),
-      files = {};
-    for (const [path, source] of Object.entries(backup.files)) files[path] = strToU8(source);
-    download(
-      zipSync(files),
-      `cloudink-backup-${new Date().toISOString().slice(0, 10)}.zip`,
-      'application/zip',
-    );
-    notice('原稿已导出；完整图片与设置备份请使用网站设置中的“下载网站备份”。');
-  } catch (error) {
-    notice(error.message);
-  }
-});
 $('settings').addEventListener('click', async () => {
   if (editorLocked) return;
   const version = ++navigationVersion;
@@ -1605,12 +1606,12 @@ $('settings').addEventListener('click', async () => {
     await flush();
     const data = await api('/api/settings');
     if (version !== navigationVersion) return;
-    const homePicker = await loadIllustrationPicker();
+    const [homePicker] = await Promise.all([loadIllustrationPicker(), loadBackup()]);
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
     iconPicker.load(data.site);
     homePicker.load(data.site);
-    $('site-form').elements.themePalette.value = data.site.themePalette || 'brown';
+    $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
     applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
@@ -1737,28 +1738,40 @@ $('account-form').addEventListener('submit', (event) => {
     '账号已更新，其他设备需要重新登录。',
   );
 });
-configureBackup({
-  api,
-  flush,
-  action,
-  notice,
-  download,
-  refresh,
-  getSettingsEtag: () => settingsEtag,
-  restored: (result) => {
-    settingsEtag = result.etag;
-    for (const input of $('site-form').querySelectorAll(
-      'input:not([type=radio]),textarea,select[name]',
-    ))
-      input.value = '';
-    $('site-form').elements.themePalette.value = result.site.themePalette || 'brown';
-    iconPicker.load(result.site);
-    illustrationPicker?.load(result.site);
-    applySiteAppearance(result.site);
-    for (const [key, value] of Object.entries(result.site))
-      if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
-  },
-});
+let backupReady;
+function loadBackup() {
+  backupReady ||= import('/backup.js')
+    .then(({ configureBackup }) => {
+      configureBackup({
+        confirmAction,
+        api,
+        flush,
+        action,
+        notice,
+        download,
+        refresh,
+        getSettingsEtag: () => settingsEtag,
+        restored: (result) => {
+          settingsEtag = result.etag;
+          for (const input of $('site-form').querySelectorAll(
+            'input:not([type=radio]),textarea,select[name]',
+          ))
+            input.value = '';
+          $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
+          iconPicker.load(result.site);
+          illustrationPicker?.load(result.site);
+          applySiteAppearance(result.site);
+          for (const [key, value] of Object.entries(result.site))
+            if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
+        },
+      });
+    })
+    .catch(() => {
+      backupReady = null;
+      throw new Error('备份工具暂时无法加载，请检查网络后重试。');
+    });
+  return backupReady;
+}
 
 if (typeof window !== 'undefined' && window.visualViewport) {
   const syncVisualViewport = () => {
@@ -1772,16 +1785,15 @@ if (typeof window !== 'undefined' && window.visualViewport) {
   syncVisualViewport();
 }
 
-async function updateSidebarShorts() {
+async function updateSidebarShorts(value) {
   try {
-    const data = await api('/api/shorts?limit=1');
+    const data = value || (await api('/api/shorts?limit=1'));
     if (data && data.shorts) {
       const shortsCountEl = $('sidebar-shorts-count');
-      if (shortsCountEl) shortsCountEl.textContent = data.shorts.length;
+      if (shortsCountEl) shortsCountEl.textContent = data.total;
       const previewEl = $('sidebar-short-preview');
-      if (previewEl && data.shorts.length > 0) {
-        previewEl.textContent = data.shorts[0].snippet || '从这里随时记录此刻想法与简短日志…';
-      }
+      if (previewEl)
+        previewEl.textContent = data.shorts[0]?.snippet || '从这里随时记录此刻想法与简短日志…';
     }
   } catch {}
 }
@@ -1795,28 +1807,16 @@ document.addEventListener('click', (event) => {
   if (sidebarFilterBtn) {
     const filter = sidebarFilterBtn.dataset.sidebarFilter;
     if (filter === 'all' || filter === 'published' || filter === 'draft') {
-      postFilter = filter;
-      void refresh().catch((error) => notice(error.message));
+      document.querySelector(`[data-post-filter="${filter}"]`)?.click();
     }
   }
 });
 
-$('flclash-quick-short-btn')?.addEventListener('click', () => {
-  view('shorts');
-  $('short-new')?.click();
-});
+$('flclash-quick-short-btn')?.addEventListener('click', () =>
+  action('flclash-quick-short-btn', '正在打开…', async () => {
+    if (await shortTools.show()) $('short-new').click();
+  }),
+);
 $('flclash-goto-shorts-link')?.addEventListener('click', () => {
-  view('shorts');
-});
-
-$('header-preview-btn')?.addEventListener('click', () => {
-  if (doc?.slug) {
-    window.open(`/${encodeURIComponent(doc.slug)}`, '_blank');
-  } else {
-    window.open('/', '_blank');
-  }
-});
-$('header-save-btn')?.addEventListener('click', manualSave);
-$('header-publish-btn')?.addEventListener('click', () => {
-  $('publish-post')?.click();
+  $('shorts').click();
 });

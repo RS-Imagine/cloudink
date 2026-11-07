@@ -152,7 +152,6 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
   min-height: 68px;
 }
 @media (max-width: 759px) {
-  html[data-ci-keyboard] .studio-nav,
   html[data-ci-keyboard] .mobile-toc-btn {
     visibility: hidden;
     pointer-events: none;

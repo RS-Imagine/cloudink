@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
@@ -16,7 +17,7 @@ export async function verifyImageMaintenance(context, page, mf, origin) {
       customMetadata: { name: key.split('/').pop() },
     });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator('#images').click();
+  await navigateStudio(page, 'images');
   await page.locator('#image-maintenance > summary').click();
   let release;
   await page.route('**/api/images/optimize', async (route) => {
@@ -41,7 +42,7 @@ export async function verifyImageMaintenance(context, page, mf, origin) {
   await page.unroute('**/api/images/optimize');
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#images').click();
+  await navigateStudio(page, 'images');
   await page.locator('#image-maintenance > summary').click();
   let fail = true;
   await page.route('**/api/images/optimize', (route) => {

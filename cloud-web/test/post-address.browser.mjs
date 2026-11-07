@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 import { owner, password, draft } from './fixture.mjs';
@@ -140,12 +141,12 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
     .poll(() => reader.locator('.article-body img').evaluate((node) => node.naturalWidth))
     .toBeGreaterThan(0);
   await reader.close();
-  const backup = await api('/api/backup');
-  assert.ok(backup.files['published/' + live + '.md'].includes('aliases'));
   const downloadEvent = page.waitForEvent('download');
   await page.locator('#download-post').click();
   const download = await downloadEvent;
   assert.equal(download.suggestedFilename(), live + '.md');
+  const source = await readFile(await download.path(), 'utf8');
+  assert.ok(source.includes('aliases') && source.includes(second));
   await page.locator('#unpublish-post').click();
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-accept').click();

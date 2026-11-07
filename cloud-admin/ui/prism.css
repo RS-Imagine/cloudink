@@ -1,0 +1,485 @@
+/* Prism / FlClash composition, implemented with CloudInk's native controls. */
+:root[data-cloudink-admin] {
+  --ci-studio-rail: #35261d;
+  --ci-studio-on-rail: #faf1e7;
+  --ci-studio-rail-muted: #c7b5a5;
+  --ci-studio-active: #6c4a34;
+}
+.flclash-header-brand-block,
+.flclash-brand,
+.flclash-header-actions,
+.flclash-user-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.flclash-brand-text {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.flclash-admin-title {
+  color: var(--ci-text);
+  font: 700 17px/24px var(--ci-font-ui);
+}
+.flclash-admin-subtitle,
+.flclash-user-label {
+  color: var(--ci-muted);
+  font: 12px/18px var(--ci-font-ui);
+}
+.flclash-header-actions {
+  flex-wrap: wrap;
+}
+.studio-nav small {
+  color: inherit;
+}
+.studio-menu-toggle {
+  display: none;
+}
+.shell-icon > svg {
+  flex: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.studio-sheet .studio-nav {
+  flex-direction: column;
+  width: 100%;
+  gap: 4px;
+}
+.shell-new svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.flclash-user-summary {
+  width: auto;
+  min-height: 48px;
+  padding: 6px 10px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 16px;
+}
+.flclash-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ci-primary-container);
+  color: var(--ci-on-primary-container);
+  font: 600 12px/1 var(--ci-font-ui);
+}
+.flclash-home-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 224px;
+  gap: 24px;
+  align-items: start;
+}
+.studio-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  gap: 24px;
+  min-width: 0;
+  padding: 28px 32px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 24px;
+  background: var(--ci-container);
+}
+.studio-welcome > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.studio-welcome h1 {
+  margin: 12px 0;
+  color: var(--ci-text);
+  font: 600 clamp(26px, 2.4vw, 36px)/1.25 var(--ci-font-reading);
+}
+.studio-welcome p {
+  margin: 0;
+  color: var(--ci-muted);
+  font: 14px/24px var(--ci-font-ui);
+}
+.studio-welcome img {
+  width: 120px;
+  height: 128px;
+  flex: none;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+}
+[data-theme='dark'] .studio-welcome img {
+  mix-blend-mode: normal;
+}
+.app[data-view='posts'] .studio-welcome {
+  display: none;
+}
+.studio-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  gap: 12px;
+}
+.studio-stat {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  min-height: 128px;
+  padding: 20px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 20px;
+  background: var(--ci-surface);
+  color: var(--ci-text);
+  text-align: start;
+}
+.studio-stat > span,
+.studio-stat > small {
+  color: var(--ci-muted);
+  font: 12px/18px var(--ci-font-ui);
+}
+.studio-stat strong {
+  font: 600 28px/32px var(--ci-font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.studio-stat:hover,
+.studio-stat.is-active {
+  border-color: var(--ci-primary);
+  background: var(--ci-container);
+}
+.flclash-sidebar {
+  display: grid;
+  grid-column: 2;
+  grid-row: 3;
+  gap: 16px;
+}
+.flclash-sidebar-new-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 14px;
+  border-color: var(--ci-primary);
+  background: var(--ci-primary);
+  color: var(--ci-on-primary);
+  font-weight: 600;
+}
+.flclash-sidebar-new-btn:hover {
+  background: var(--ci-primary-strong);
+}
+.flclash-sidebar-bottom-widget {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 20px;
+  background: var(--ci-surface);
+}
+.sidebar-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ci-text);
+  font-weight: 600;
+}
+.sidebar-pen-icon {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--ci-primary-container);
+  color: var(--ci-on-primary-container);
+}
+.sidebar-short-snippet {
+  margin: 0;
+  color: var(--ci-muted);
+  font: 13px/22px var(--ci-font-ui);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+.sidebar-more-shorts {
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  color: var(--ci-primary);
+  background: transparent;
+  text-align: start;
+  font-size: 12px;
+}
+.flclash-admin-main-column {
+  grid-column: 1;
+  grid-row: 3;
+  min-width: 0;
+}
+.flclash-home-view .article-card {
+  grid-template-columns: minmax(0, 1fr) auto 24px;
+  gap: 8px 16px;
+  padding: 22px;
+  border-radius: 20px;
+}
+.flclash-home-view .article-card .badge {
+  grid-column: 2;
+}
+.flclash-home-view .article-card small {
+  grid-column: 1;
+  grid-row: 3;
+}
+.flclash-home-view .article-card-arrow {
+  grid-column: 3;
+  grid-row: 1 / 4;
+}
+@media (min-width: 1100px) {
+  .app {
+    display: grid;
+    width: calc(100% - 48px);
+    grid-template-columns: 208px minmax(0, 1fr);
+    max-width: 1520px;
+    min-height: calc(100dvh - 48px);
+    margin: 24px auto;
+    border: 1px solid var(--ci-divider);
+    border-radius: 28px;
+    background: var(--ci-bg);
+    box-shadow: var(--ci-shadow-floating);
+  }
+  .studio-masthead {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-self: start;
+    justify-content: flex-start;
+    position: sticky;
+    top: 24px;
+    height: calc(100dvh - 48px);
+    gap: 32px;
+    margin: 0;
+    padding: 28px 14px;
+    border: 0;
+    border-radius: 28px 0 0 28px;
+    background: var(--ci-studio-rail);
+    box-shadow: none;
+  }
+  .studio-masthead .brand {
+    gap: 8px;
+  }
+  .studio-masthead .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .studio-masthead .flclash-admin-title {
+    color: var(--ci-studio-on-rail);
+    font-size: 15px;
+  }
+  .studio-masthead .flclash-admin-subtitle {
+    color: var(--ci-studio-rail-muted);
+    font-size: 11px;
+  }
+  .studio-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .studio-nav button {
+    justify-content: flex-start;
+    width: 100%;
+    padding: 12px;
+    color: var(--ci-studio-rail-muted);
+    border-radius: 12px;
+  }
+  .studio-nav svg {
+    display: block;
+  }
+  .studio-nav small {
+    margin-inline-start: auto;
+  }
+  .studio-nav [aria-current],
+  .studio-nav button:hover {
+    background: var(--ci-studio-active);
+    color: var(--ci-studio-on-rail);
+  }
+  .workspace-actions {
+    margin-top: auto;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+  .workspace-actions > .studio-site-link,
+  .workspace-actions > .theme-toggle {
+    color: var(--ci-studio-on-rail);
+  }
+  .workspace-actions > .studio-site-link:hover,
+  .workspace-actions > .theme-toggle:hover {
+    background: var(--ci-studio-active);
+  }
+  .flclash-user-summary {
+    background: var(--ci-surface);
+  }
+  .studio-tools-panel {
+    top: auto;
+    bottom: 0;
+    inset-inline-start: calc(100% + 24px);
+    inset-inline-end: auto;
+  }
+  .workspace {
+    max-width: none;
+    padding: 28px 32px 64px;
+  }
+  .editor-toolbar,
+  .settings-nav {
+    top: 16px;
+  }
+  .settings-card {
+    scroll-margin-top: 96px;
+  }
+}
+@media (max-width: 1099px) {
+  .studio-masthead {
+    position: relative;
+    top: 0;
+  }
+  .flclash-home-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .flclash-sidebar,
+  .flclash-admin-main-column {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .flclash-sidebar {
+    display: none;
+  }
+  .flclash-admin-main-column {
+    width: 100%;
+  }
+  .editor-toolbar,
+  .settings-nav {
+    position: static;
+  }
+}
+@media (max-width: 759px) {
+  .studio-site-link {
+    display: none;
+  }
+  .studio-masthead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    position: sticky;
+    top: 8px;
+    min-height: 64px;
+    padding: 8px 10px;
+  }
+  .studio-menu-toggle {
+    display: inline-flex;
+  }
+  .studio-title-context {
+    display: none;
+  }
+  .studio-masthead .brand {
+    gap: 8px;
+  }
+  .studio-masthead .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .flclash-admin-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+  }
+  .flclash-admin-subtitle,
+  .flclash-user-label {
+    display: none;
+  }
+  .flclash-header-actions {
+    width: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .flclash-header-actions > button,
+  .flclash-user-summary {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .flclash-user-summary {
+    gap: 4px;
+    padding: 6px;
+  }
+  .flclash-user-summary > svg {
+    display: none;
+  }
+  .template-maintenance {
+    margin-bottom: 16px;
+    gap: 8px;
+  }
+  .template-maintenance p {
+    flex-basis: 140px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+  .template-maintenance button {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .editor-format-actions {
+    flex: 1 1 100%;
+    order: 3;
+  }
+  .studio-welcome {
+    gap: 12px;
+    padding: 24px;
+    border-radius: 20px;
+  }
+  .studio-welcome img {
+    display: none;
+  }
+  .studio-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .studio-stat {
+    min-height: 104px;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: 16px;
+  }
+  .studio-stat > small {
+    display: none;
+  }
+  .flclash-home-view .article-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 20px 16px;
+  }
+  .flclash-home-view .article-card small {
+    grid-row: 1;
+  }
+  .flclash-home-view .article-card h3 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .flclash-home-view .article-card p {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .flclash-home-view .article-card .badge {
+    grid-row: 1;
+  }
+  .flclash-home-view .article-card-arrow {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .studio-masthead .brand-mark {
+    display: none;
+  }
+}

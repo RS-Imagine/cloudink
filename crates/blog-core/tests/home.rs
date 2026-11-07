@@ -55,6 +55,20 @@ fn empty_home_and_disabled_about_are_complete_without_fake_content() {
 }
 
 #[test]
+fn profile_avatar_uses_the_public_icon_route() {
+    let site = SiteConfig {
+        site_icon: Some(format!("uploads/icons/{}.svg", "a".repeat(64))),
+        ..SiteConfig::default()
+    };
+    let html = render::render_index(&site, &[], "test");
+    assert!(html.contains(&format!(
+        "src=\"/site-icon/{}.svg\" width=\"42\"",
+        "a".repeat(64)
+    )));
+    assert!(!html.contains("src=\"uploads/"));
+}
+
+#[test]
 fn home_escapes_author_text_and_uses_configured_title_without_html_injection() {
     let mut site = SiteConfig::default();
     site.title = "Notes & ideas".into();
