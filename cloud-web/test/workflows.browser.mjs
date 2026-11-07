@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 // Exercise the shipped workflows against the audit's ephemeral Miniflare fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -115,13 +116,16 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await expect(page.locator('#home-view')).toBeVisible();
   await expect(page.locator('#post-count')).toHaveText('4');
   let failImages = true;
-  await page.route('**/api/images', async (route) => {
-    if (route.request().method() === 'GET' && failImages) {
-      failImages = false;
-      await route.fulfill({ status: 503, json: { error: 'Temporary library failure' } });
-    } else await route.continue();
-  });
-  await page.locator('#images').click();
+  await page.route(
+    (url) => url.pathname === '/api/images',
+    async (route) => {
+      if (route.request().method() === 'GET' && failImages) {
+        failImages = false;
+        await route.fulfill({ status: 503, json: { error: 'Temporary library failure' } });
+      } else await route.continue();
+    },
+  );
+  await navigateStudio(page, 'images');
   await expect(page.locator('#image-library-retry')).toBeVisible();
   await expect(page.locator('#images svg')).toHaveCount(1);
   await expect(page.locator('#image-library-status')).toHaveAttribute('data-tone', 'error');
@@ -157,7 +161,7 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       fullPage: true,
     });
   }
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#site-form')).toBeVisible();
   let failSettings = true,
     accountRequests = 0,
@@ -198,7 +202,7 @@ export async function verifyWorkflows(browser, origin, output, engine) {
   await page.locator('#save-account').click();
   await expect(page.locator('#account-feedback')).toHaveAttribute('data-tone', 'error');
   assert.equal(accountRequests, 0, 'A mismatched password never submits account changes');
-  await page.route('**/api/backup', (route) =>
+  await page.route('**/api/backup/jobs', (route) =>
     route.fulfill({ status: 503, json: { error: 'Temporary backup failure' } }),
   );
   await page.locator('#download-backup').click();

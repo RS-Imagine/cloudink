@@ -1,5 +1,4 @@
 import { backupEntry, backupSource, legacyHistoryKey } from '../src/backup-contract.ts';
-import { confirmAction } from './workflows.js';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
 
 const MAX_ARCHIVE = 100 * 1024 * 1024;
@@ -22,6 +21,7 @@ export function configureBackup({
   refresh,
   getSettingsEtag,
   restored,
+  confirmAction,
 }) {
   let controller = null,
     cancelled = false;

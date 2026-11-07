@@ -10,6 +10,7 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
+  '/backup.js',
   '/publication.js',
   '/home-illustration.js',
   '/post-address.js',
@@ -243,7 +244,6 @@ const web = {
       if (key === 'about/index.html') return staticAsset(request, env, '/about/');
       if (key === 'shorts/index.html') return staticAsset(request, env, '/shorts/');
       if (key === 'search_index.json') return staticAsset(request, env, '/search_index.json');
-      if (key?.startsWith('posts/')) return staticAsset(request, env, path);
       return staticAsset(request, env, '/404.html', 404, analytics);
     } catch (error) {
       console.error(

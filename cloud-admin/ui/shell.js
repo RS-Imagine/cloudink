@@ -2,6 +2,8 @@
 export function mountStudioShell() {
   const disclosures = ['studio-tools', 'post-switcher'].map((id) => document.getElementById(id));
   const dialog = document.getElementById('studio-sheet');
+  const navigation = document.querySelector('.studio-nav');
+  const menuToggle = document.getElementById('studio-menu-toggle');
   const narrow = matchMedia('(max-width:759px)');
   let presented = null;
   function restore(focus = true) {
@@ -10,7 +12,8 @@ export function mountStudioShell() {
     presented = null;
     current.panelAnchor.replaceWith(current.panel);
     current.searchAnchor?.replaceWith(current.search);
-    current.node.open = false;
+    if (current.node) current.node.open = false;
+    menuToggle.setAttribute('aria-expanded', 'false');
     if (focus && current.trigger.isConnected && !current.trigger.closest('[hidden]'))
       current.trigger.focus({ preventScroll: true });
   }
@@ -45,6 +48,21 @@ export function mountStudioShell() {
       panel.querySelector('button:not(:disabled)') || document.getElementById('studio-sheet-close')
     ).focus({ preventScroll: true });
   }
+  menuToggle.addEventListener('click', () => {
+    if (!narrow.matches) return;
+    close();
+    const panelAnchor = document.createComment('navigation position');
+    navigation.before(panelAnchor);
+    presented = { panel: navigation, panelAnchor, trigger: menuToggle };
+    menuToggle.setAttribute('aria-expanded', 'true');
+    document.getElementById('studio-sheet-title').textContent = '写作空间导航';
+    dialog.dataset.sheet = 'compact';
+    document.getElementById('studio-sheet-content').append(navigation);
+    window.CloudInkMotion.openDialog(dialog);
+    (navigation.querySelector('[aria-current]') || navigation.querySelector('button')).focus({
+      preventScroll: true,
+    });
+  });
   dialog.addEventListener('close', () => {
     if (!dialog.open) restore();
   });
@@ -77,6 +95,7 @@ export function mountStudioShell() {
         node.open = false;
     const target = event.target.closest('[data-studio-shortcut]');
     if (target) document.getElementById(target.dataset.studioShortcut)?.click();
+    if (presented?.panel === navigation && event.target.closest('[data-studio-nav]')) close(true);
     if (event.target.closest('.studio-tools-panel button')) close();
   });
   document.addEventListener('keydown', (event) => {

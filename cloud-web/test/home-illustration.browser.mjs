@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -18,15 +19,16 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
   await context.route(origin + '/home-illustration.js', (route) => route.abort('failed'));
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(page.locator('#notice')).toContainText('请刷新后台后重试');
+  await expect(page.locator('#studio-sheet')).toBeHidden();
   await expect(page.locator('#home-view')).toBeVisible();
   await context.unroute(origin + '/home-illustration.js');
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   const originalPalette = await page.locator('input[name=themePalette]:checked').inputValue();
-  await page.getByRole('radio', { name: '棕褐 Brown', exact: true }).check();
+  await page.getByRole('radio', { name: '暖棕 Brown', exact: true }).check();
   const mode = page.locator('#home-illustration-mode');
   await mode.selectOption('default');
   await expect(page.locator('#home-illustration-value')).toHaveValue('default');
@@ -35,7 +37,7 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
   await expect(page.locator('#site-feedback')).toHaveAttribute('data-tone', 'success');
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(mode).toHaveValue('default');
   await page.locator('#publish-settings').click();
   await expect
@@ -128,7 +130,7 @@ export async function verifyHomeIllustrations(browser, origin, output, engine) {
   await expect(page.locator('#publish-settings')).toBeEnabled({ timeout: 60000 });
   await page.reload();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   await expect(mode).toHaveValue('custom');
   await expect(page.locator('#home-illustration-value')).toHaveValue(key);
   await mode.selectOption('off');

@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import { verifyImageMaintenance } from './image-maintenance.browser.mjs';
 import { verifyImagePerformance } from './image-performance.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
@@ -60,7 +61,7 @@ try {
   await page.locator('#login-form input[name=password]').fill(password);
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#images').click();
+  await navigateStudio(page, 'images');
   await expect(page.locator('#images-view')).toBeVisible();
   await expect(page.locator('#image-library-empty')).toContainText('还没有图片');
   await page
@@ -97,7 +98,7 @@ try {
   );
   await page.locator('#save-post').click();
   await expect(page.locator('#notice')).toContainText('草稿已保存');
-  await page.locator('#images').click();
+  await navigateStudio(page, 'images');
   await expect(reusable.getByText('正在使用', { exact: true })).toBeVisible();
   await expect(reusable.getByRole('button', { name: '删除', exact: true })).toBeDisabled();
   await reusable.locator('summary').click();

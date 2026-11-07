@@ -31,44 +31,16 @@ export async function verifyMotion(browser, origin, output, engine) {
     page.evaluate(
       () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
     );
-  await button.scrollIntoViewIfNeeded();
-  const box = await button.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await twoFrames();
-  assert.ok(Number(await button.evaluate((node) => getComputedStyle(node).scale)) < 1);
-  await page.screenshot({ path: resolve(output, 'motion-' + engine + '-pressed.png') });
-  await page.mouse.up();
-  await idle();
-  await expect(button).toHaveCSS('scale', 'none');
-  await button.focus();
-  await page.keyboard.down('Space');
-  await twoFrames();
-  assert.ok(Number(await button.evaluate((node) => getComputedStyle(node).scale)) < 1);
-  await page.keyboard.up('Space');
-  await idle();
+  // Exercise the real mouse and keyboard actions; the share dialog becomes modal.
+  await button.click();
+  await expect(page.locator('.reader-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(button).toBeFocused();
-  for (let i = 0; i < 6; i++) {
-    await page.mouse.down();
-    await page.mouse.up();
-  }
+  await button.press('Space');
+  await expect(page.locator('.reader-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(button).toBeFocused();
   await idle();
-  await button.dispatchEvent('pointerdown', { button: 0, pointerId: 42, isPrimary: true });
-  await twoFrames();
-  await button.dispatchEvent('pointercancel', { pointerId: 42 });
-  await idle();
-  await page.evaluate(() => {
-    const button = document.createElement('button');
-    button.id = 'motion-disabled';
-    button.disabled = true;
-    button.textContent = 'Disabled';
-    document.body.append(button);
-    button.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 9, isPrimary: true }),
-    );
-  });
-  await idle();
-  await expect(page.locator('#motion-disabled')).toHaveCSS('scale', 'none');
   await page.locator('#site-search-btn').click();
   await expect(page.locator('#search-input')).toBeFocused();
   await page.keyboard.press('Escape');

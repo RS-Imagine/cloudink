@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -20,7 +21,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
   await page.locator('#login-form input[name=password]').fill(password);
   await page.locator('#login-submit').click();
   await expect(page.locator('#home-view')).toBeVisible();
-  await page.locator('#settings').click();
+  await navigateStudio(page, 'settings');
   const uploaded = new Set();
   for (const [kind, bytes, mimeType] of [
     ['svg', svgBytes, 'image/svg+xml'],
@@ -69,7 +70,7 @@ export async function verifySiteIcons(browser, origin, output, engine) {
       'src',
       '/site-icon/' + key.split('/').pop(),
     );
-    await page.locator('#settings').click();
+    await navigateStudio(page, 'settings');
     await expect(page.locator('#site-icon-value')).toHaveValue(key);
     for (const width of [360, 1440]) {
       await page.setViewportSize({ width, height: 900 });

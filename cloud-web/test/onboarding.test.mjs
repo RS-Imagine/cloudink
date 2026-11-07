@@ -6,6 +6,16 @@ const site = { title: 'My notes', author: 'Reader', subtitle: 'Thoughts', descri
 const input = { email: owner, password, site };
 const authorization = { Authorization: `Bearer ${setupToken}` };
 
+test('the initial public template contains no demonstration posts or personal identity', async (t) => {
+  const f = await fixture(t);
+  const response = await f.request('/');
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.doesNotMatch(html, /href="\/posts\//);
+  assert.doesNotMatch(html, /QiuLin|用 Astro 重构/);
+  assert.equal((await f.request('/posts/unpublished-example/')).status, 404);
+});
+
 test('setup requires a private token and valid account/site; concurrent setup creates exactly one account', async (t) => {
   const f = await fixture(t),
     bucket = await f.mf.getR2Bucket('STORAGE');

@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
@@ -144,6 +145,13 @@ try {
   const cachedMs = Date.now() - cachedStart;
   assert.ok(cachedMs < 600, `cached switch should not wait for network: ${cachedMs}ms`);
   await expect(page.locator('#body')).toHaveValue('Latest alpha content');
+  await page.locator('#toggle-zen').click();
+  await expect(page.locator('#toggle-zen')).toHaveAttribute('aria-label', '退出专注写作');
+  await expect(page.locator('.workspace-header')).toBeHidden();
+  await page.locator('#body').press('Escape');
+  await expect(page.locator('#toggle-zen')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.workspace-header')).toBeVisible();
+  await expect(page.locator('#body')).toHaveValue('Latest alpha content');
   // Rapid selection must leave the last selected article visible.
   await openPostSwitcher(page);
   await page.locator('.post-item').filter({ hasText: 'gamma' }).click();
@@ -217,7 +225,7 @@ try {
   await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#notice')).toContainText('云端冲突');
   await expect(page.locator('#title')).toHaveValue('beta');
-  await page.locator('#dashboard-nav').click();
+  await navigateStudio(page, 'dashboard-nav');
   await expect(page.locator('#editor-view')).toBeVisible();
   await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
   await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');

@@ -296,13 +296,12 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.locator('#new-post').click();
   await keypad.locator('#body').fill('Retain writing while the keyboard and zoom change.');
   await keypad.evaluate(() => __resizeTestViewport(430));
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
+  await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
   await expect(keypad.locator('#body')).toBeFocused();
   // Pinching a focused field keeps the keyboard layout, even at a smaller visual height.
   await keypad.evaluate(() => __resizeTestViewport(215, 2));
   await settled(keypad);
   await expect(keypad.locator('#body')).toBeFocused();
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
   await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
   assert.equal(
     await keypad.evaluate(() => document.documentElement.style.getPropertyValue('--ci-vp-height')),
@@ -313,7 +312,6 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.evaluate(() => __resizeTestViewport(422, 2));
   await settled(keypad);
   await expect(keypad.locator('#body')).toBeFocused();
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
   await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
   assert.equal(
     await keypad.evaluate(() => document.documentElement.style.getPropertyValue('--ci-vp-height')),
@@ -322,12 +320,11 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.evaluate(() => __resizeTestViewport(844));
   await settled(keypad);
   await keypad.evaluate(() => __resizeTestViewport(430));
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
-  // A keyboard close after blur during pinch zoom must also restore navigation.
+  await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
+  // A keyboard close after blur during pinch zoom must also restore viewport geometry.
   await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(422, 2));
   await settled(keypad);
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
   await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
   assert.deepEqual(
     await keypad.evaluate(() => [
@@ -340,10 +337,10 @@ export async function verifyMobile(browser, origin, output, engine) {
   await keypad.evaluate(() => __resizeTestViewport(844));
   await keypad.locator('#body').focus();
   await keypad.evaluate(() => __resizeTestViewport(430));
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'hidden');
+  await expect(keypad.locator('html')).toHaveAttribute('data-ci-keyboard', '');
   await keypad.locator('#body').evaluate((node) => node.blur());
   await keypad.evaluate(() => __resizeTestViewport(844));
-  await expect(keypad.locator('.studio-nav')).toHaveCSS('visibility', 'visible');
+  await expect(keypad.locator('html')).not.toHaveAttribute('data-ci-keyboard', '');
   await expect(keypad.locator('#body')).toHaveValue(
     'Retain writing while the keyboard and zoom change.',
   );

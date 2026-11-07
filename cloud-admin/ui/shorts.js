@@ -9,7 +9,7 @@ function nowMinute() {
 function slugFor(date) {
   return 'short-' + date.replace(/\D/g, '').slice(0, 12) + '-' + crypto.randomUUID().slice(0, 8);
 }
-export function configureShorts({ api, notice, action, open, startPublish }) {
+export function configureShorts({ api, notice, action, open, startPublish, onList }) {
   let shorts = [],
     cursor = null,
     loadRevision = 0;
@@ -19,7 +19,8 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
   more.hidden = true;
   $('short-list').after(more);
   more.addEventListener('click', () => action('short-more', '正在加载…', () => load(true)));
-  let editing = null; // { slug, etag } or null for new
+  let editing = null, // { slug, etag } or null for new
+    editorRevision = 0;
   const contentCache = new Map();
   function status(message, tone = '') {
     const el = $('short-status');
@@ -159,6 +160,7 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
       throw error;
     }
     if (revision !== loadRevision) return;
+    if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
     cursor = data.cursor;
     for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
@@ -166,9 +168,15 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
     more.hidden = !cursor;
   }
   function openEditor(item = null) {
+    ++editorRevision;
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;
+    const target = editing;
     $('short-date').value = item ? item.date : nowMinute();
-    $('short-body').value = (item && contentCache.get(item.slug)) || '';
+    // List snippets are truncated. Do not let them overwrite the full source or
+    // replace text the author starts typing while the read is still in flight.
+    $('short-body').value = '';
+    $('short-body').readOnly = $('short-date').readOnly = !!item;
+    $('short-save').disabled = $('short-publish').disabled = !!item;
     $('short-editor').hidden = false;
     updateWordCount();
     if (item) {
@@ -176,19 +184,24 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
         (data) => {
           const body = data.draft.body_markdown || '';
           contentCache.set(item.slug, body);
-          if (editing && editing.slug === item.slug) {
+          if (editing === target) {
             $('short-body').value = body;
             editing.etag = data.etag;
+            $('short-body').readOnly = $('short-date').readOnly = false;
+            $('short-save').disabled = $('short-publish').disabled = false;
             updateWordCount();
           }
           render();
         },
-        (error) => status(error.message, 'error'),
+        (error) => {
+          if (editing === target) status(error.message, 'error');
+        },
       );
     }
     $('short-date').focus();
   }
   function closeEditor() {
+    ++editorRevision;
     $('short-editor').hidden = true;
     editing = null;
   }
@@ -215,39 +228,53 @@ export function configureShorts({ api, notice, action, open, startPublish }) {
   $('short-cancel').addEventListener('click', closeEditor);
   $('short-save').addEventListener('click', () =>
     action('short-save', '正在保存…', async () => {
+      const revision = editorRevision,
+        target = editing;
       const draft = await collect();
       if (!draft) return;
       const slug = draft.front_matter.slug;
       contentCache.set(slug, draft.body_markdown);
       const result = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
-        body: { ...draft, etag: editing?.etag || null },
+        body: { ...draft, etag: target?.etag || null },
       });
-      if (editing) editing.etag = result.etag;
-      else editing = { slug, etag: result.etag };
-      status('草稿已保存。', 'success');
+      if (revision === editorRevision) {
+        editing = { slug, etag: result.etag };
+        status('草稿已保存。', 'success');
+      }
       await load();
     }),
   );
   $('short-publish').addEventListener('click', () =>
     action('short-publish', '正在发布…', async () => {
+      const revision = editorRevision,
+        target = editing;
       const draft = await collect();
       if (!draft) return;
       const slug = draft.front_matter.slug;
       contentCache.set(slug, draft.body_markdown);
       const saved = await api(`/api/shorts/${encodeURIComponent(slug)}`, {
         method: 'PUT',
-        body: { ...draft, etag: editing?.etag || null },
+        body: { ...draft, etag: target?.etag || null },
       });
+      if (revision === editorRevision) editing = { slug, etag: saved.etag };
       await startPublish({ shortSlug: slug, etag: saved.etag });
       notice('短记已发布。', 'success');
-      closeEditor();
+      if (revision === editorRevision) {
+        if (
+          $('short-body').value === draft.body_markdown &&
+          $('short-date').value.trim() === draft.front_matter.date
+        )
+          closeEditor();
+        else status('短记已发布；当前修改尚未保存。');
+      }
       await load();
     }),
   );
   async function show() {
-    open();
-    await load().catch((error) => status(error.message, 'error'));
+    if ((await open()) === false) return false;
+    await load();
+    return true;
   }
   $('shorts').addEventListener('click', () => action('shorts', '正在打开…', show));
   return { show };

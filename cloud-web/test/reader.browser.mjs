@@ -220,6 +220,7 @@ export async function verifyReader(browser, origin, output, engine) {
   await recover.locator('#site-search-btn').click();
   await expect(recover.locator('#search-status')).toContainText('重试');
   await expect(recover.locator('#search-results')).toHaveAttribute('aria-busy', 'false');
+  await recover.locator('#search-input').fill('长信');
   await recover.keyboard.press('Escape');
   await recover.locator('#site-search-btn').click();
   await expect(recover.locator('#search-results a')).toHaveCount(1);

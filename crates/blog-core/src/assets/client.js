@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
       toTop.type = 'button';
       toTop.className = 'to-top';
       toTop.setAttribute('aria-label', t('回到顶部', 'Back to top'));
-      toTop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l-7 7 1.4 1.4L11 8.8V19h2V8.8l4.6 4.6L19 12z"/></svg>';
+      toTop.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 11 6-6 6 6M12 5v14"/></svg>';
       toTop.hidden = true;
       document.body.append(toTop);
       const updateToTop = () => {
@@ -420,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
               disposed = true;
               cancel();
             });
-            if (!reducedMotion.matches && 'animate' in clone) {
+            if (!reducedMotion.matches && typeof clone.animate === 'function') {
               requestAnimationFrame(() => {
                 const finalRect = clone.getBoundingClientRect();
                 if (finalRect.width > 0 && finalRect.height > 0) {
@@ -822,7 +822,7 @@ document.addEventListener('DOMContentLoaded', () => {
           mobileTocBtn.setAttribute('aria-label', 'Article contents');
           mobileTocBtn.setAttribute('aria-controls', 'article-contents');
           mobileTocBtn.setAttribute('aria-expanded', 'false');
-          mobileTocBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>';
+          mobileTocBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/></svg>';
           document.body.appendChild(mobileTocBtn);
           cleanupFunctions.push(() => mobileTocBtn.remove());
 

@@ -1,4 +1,6 @@
 import { verifyUiStability } from '../cloud-web/test/ui-stability.browser.mjs';
+import { navigateStudio } from '../cloud-web/test/studio-navigation.mjs';
+import { verifyUiAuditRegressions } from '../cloud-web/test/ui-audit-regressions.browser.mjs';
 import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.mjs';
 import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
@@ -46,12 +48,14 @@ const screens = ['home', 'article', 'dashboard', 'editor'];
 const report = {
   revision: process.env.GITHUB_SHA || 'local',
   method:
-    'Local HTTPS Miniflare (test certificate), ephemeral R2; self-hosted editorial font slices; external CDN CSS stubbed; single cold-ish lab sample per screen, not field CWV.',
+    'Local HTTPS Miniflare (test certificate), ephemeral R2; self-hosted editorial font slices; external CDN CSS stubbed; service workers blocked for route-mocked checks (real offline cache covered by Chromium deployment flow); single cold-ish lab sample per screen, not field CWV.',
   browsers: {},
   assets: {},
   samples: [],
   surfaces: [],
   existingLayoutIssues: [],
+  functionalChecksPassed: false,
+  resourceBudgetFailures: [],
 };
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
@@ -256,6 +260,9 @@ try {
         mimeType: 'image/jpeg',
         buffer: imageData,
       });
+      await expect(admin.locator('#upload-image')).not.toHaveAttribute('aria-busy', 'true', {
+        timeout: 45000,
+      });
       await expect(admin.locator('#notice')).toContainText('图片已上传');
       await expect(admin.locator('#upload-image svg')).toHaveCount(1);
     }
@@ -387,7 +394,7 @@ try {
           ['images', '#images', '#images-view'],
           ['settings', '#settings', '#settings-view'],
         ]) {
-          await page.locator(button).click();
+          await navigateStudio(page, button.slice(1));
           await expect(page.locator(selector)).toBeVisible();
           await capture(page, 'production', screen, theme, width);
         }
@@ -451,11 +458,13 @@ try {
     // Accept only the local fixture certificate; keep Secure/HttpOnly cookies intact.
     const currentBrowser = browser;
     const localBrowser = {
-      newContext: (options) => currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true }),
+      newContext: (options) =>
+        currentBrowser.newContext({ ...options, ignoreHTTPSErrors: true, serviceWorkers: 'block' }),
     };
     await verifyReaderMetadata(localBrowser, origin);
     await verifyTemplateUpdates(localBrowser, origin, output, engine);
     await verifyUiStability(localBrowser, origin, output, engine);
+    await verifyUiAuditRegressions(localBrowser, origin, output, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     await verifyStudio(localBrowser, origin, output, engine);
@@ -477,6 +486,7 @@ try {
     await browser.close();
     browser = undefined;
   }
+  report.functionalChecksPassed = true;
   for (const path of [
     'build-work/web-public/client.js',
     'build-work/web-public/reader-assets/highlight.js',
@@ -486,6 +496,7 @@ try {
     'cloud-admin/ui/app.generated.js',
     'cloud-admin/ui/images.css',
     'cloud-admin/ui/publication.generated.js',
+    'cloud-admin/ui/backup.generated.js',
     'cloud-admin/ui/home-illustration.generated.js',
     'cloud-admin/ui/style.css',
     'cloud-admin/ui/studio.css',
@@ -550,7 +561,12 @@ try {
     })
   ).code;
   report.assets['reader/home.min.css'] = { gzip: gzipSync(homeCSS).length };
-  assert.ok(report.assets['reader/home.min.css'].gzip <= 4096, 'Home CSS gzip budget');
+  if (report.assets['reader/home.min.css'].gzip > 4096)
+    report.resourceBudgetFailures.push({
+      path: 'reader/home.min.css',
+      bytes: report.assets['reader/home.min.css'].gzip,
+      budget: 4096,
+    });
   const readerCSSMin = (
     await transform(await readFile('crates/blog-core/src/assets/reader.css', 'utf8'), {
       minify: true,
@@ -558,7 +574,12 @@ try {
     })
   ).code;
   report.assets['reader/reading.min.css'] = { gzip: gzipSync(readerCSSMin).length };
-  assert.ok(report.assets['reader/reading.min.css'].gzip <= 4096, 'Reading CSS gzip budget');
+  if (report.assets['reader/reading.min.css'].gzip > 4096)
+    report.resourceBudgetFailures.push({
+      path: 'reader/reading.min.css',
+      bytes: report.assets['reader/reading.min.css'].gzip,
+      budget: 4096,
+    });
   const studioCSS = (
     await transform(await readFile('cloud-admin/ui/studio.css', 'utf8'), {
       minify: true,
@@ -620,6 +641,7 @@ try {
     'build-work/web-public/styles.css': 13 * 1024,
     'cloud-admin/ui/app.generated.js': 29 * 1024,
     'cloud-admin/ui/publication.generated.js': 4 * 1024,
+    'cloud-admin/ui/backup.generated.js': 16 * 1024,
     'cloud-admin/ui/home-illustration.generated.js': 3 * 1024,
     'served/admin/style.css': 15 * 1024,
     'cloud-admin/ui/preview.worker.generated.js': 55 * 1024,
@@ -629,8 +651,11 @@ try {
     'cloud-admin/ui/wasm/blog_wasm_bg.wasm': 750 * 1024,
   };
   report.releaseBudgets = releaseBudgets;
-  for (const [path, budget] of Object.entries(releaseBudgets))
-    assert.ok(report.assets[path].gzip <= budget, path + ' exceeds the release gzip budget');
+  report.resourceBudgetFailures.push(
+    ...Object.entries(releaseBudgets)
+      .filter(([path, budget]) => report.assets[path].gzip > budget)
+      .map(([path, budget]) => ({ path, bytes: report.assets[path].gzip, budget })),
+  );
   assert.deepEqual(errors, [], JSON.stringify(errors));
   report.checks = [
     'three-engine delayed gallery/refresh/upload/editor controls retain button geometry, existing cards, thumbnail boxes and draft contents at 1440/390/360/320px',
@@ -749,6 +774,11 @@ try {
       existingLayoutIssues: report.existingLayoutIssues,
       checks: report.checks,
     }),
+  );
+  assert.deepEqual(
+    report.resourceBudgetFailures,
+    [],
+    'Release gzip budgets exceeded; see report.json',
   );
 } finally {
   await browser?.close();

@@ -1,3 +1,4 @@
+import { navigateStudio } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -17,12 +18,15 @@ export async function verifyTemplateUpdates(browser, origin, output, engine) {
   await context.route('**/publication.js', (route) =>
     failModule ? route.abort() : route.continue(),
   );
-  await context.route('**/api/posts', async (route) => {
-    const response = await route.fetch();
-    const value = await response.json();
-    if (outdated) value.templateStatus = 'outdated';
-    await route.fulfill({ response, json: value });
-  });
+  await context.route(
+    (url) => url.pathname === '/api/posts',
+    async (route) => {
+      const response = await route.fetch();
+      const value = await response.json();
+      if (outdated) value.templateStatus = 'outdated';
+      await route.fulfill({ response, json: value });
+    },
+  );
   await context.route('**/api/publish', async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     prepared++;
@@ -41,6 +45,13 @@ export async function verifyTemplateUpdates(browser, origin, output, engine) {
     await page.locator('#login-submit').click();
     await expect(page.locator('#home-view')).toBeVisible();
     await expect(page.locator('#template-status')).toContainText('有新版排版待应用');
+    await expect(page.locator('#publish-welcome')).toBeVisible();
+    for (const id of ['articles-nav', 'settings']) {
+      await navigateStudio(page, id);
+      await expect(page.locator('#publish-welcome')).toBeVisible();
+      await expect(page.locator('#template-status')).toBeVisible();
+    }
+    await expect(page.locator('#home-view')).toBeHidden();
     await page.screenshot({
       path: resolve(output, 'template-update-' + engine + '-390.png'),
       fullPage: true,
