@@ -105,6 +105,7 @@ export async function verifyAuthoringControls(browser, origin) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     reducedMotion: 'reduce',
+    timezoneId: 'Asia/Shanghai',
   });
   await context.addInitScript(() => localStorage.setItem('cloudink-split-percent', '35'));
   const page = await context.newPage();
@@ -202,6 +203,14 @@ export async function verifyAuthoringControls(browser, origin) {
     }
     await page.locator('#save-post').click();
     await expect(page.locator('#notice')).toContainText('草稿已保存');
+    await page.clock.setFixedTime(new Date('2026-11-07T20:00:00Z'));
+    await page.locator('#import-files').setInputFiles({
+      name: 'local-date.md',
+      mimeType: 'text/markdown',
+      buffer: Buffer.from('# Local import\n\nBody'),
+    });
+    await expect(page.locator('#title')).toHaveValue('Local import');
+    await expect(page.locator('#date')).toHaveValue('2026-11-08');
   } finally {
     await context.close();
   }

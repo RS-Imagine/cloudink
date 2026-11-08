@@ -83,7 +83,12 @@ export function configureMarkdownImport({
     close.textContent = '取消后续导入';
     list.setAttribute('aria-busy', 'true');
     window.CloudInkMotion.openDialog(dialog);
-    const date = new Date().toISOString().slice(0, 10);
+    const today = new Date();
+    const date = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
     let count = 0,
       failed = 0,
       skipped = 0,

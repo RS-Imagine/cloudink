@@ -1,6 +1,11 @@
 import { verifyUiStability } from '../cloud-web/test/ui-stability.browser.mjs';
 import { navigateStudio } from '../cloud-web/test/studio-navigation.mjs';
 import { verifyUiAuditRegressions } from '../cloud-web/test/ui-audit-regressions.browser.mjs';
+import {
+  verifyAuthoringContent,
+  verifyAuthoringControls,
+  verifyGalleryBatch,
+} from '../cloud-web/test/authoring-upgrade.browser.mjs';
 import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.mjs';
 import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
@@ -450,23 +455,10 @@ try {
   await browser.close();
   browser = undefined;
   for (const [engine, launcher] of Object.entries({ chromium, firefox, webkit })) {
-    try {
-      browser = await launcher.launch({
-        headless: true,
-        ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
-      });
-    } catch (error) {
-      if (
-        error.message.includes('missing dependencies') ||
-        error.message.includes('Host system is missing dependencies')
-      ) {
-        console.warn(
-          `[ui-audit] Skipping ${engine} due to missing host libraries in current environment`,
-        );
-        continue;
-      }
-      throw error;
-    }
+    browser = await launcher.launch({
+      headless: true,
+      ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
+    });
     report.browsers[engine] = browser.version();
     // Accept only the local fixture certificate; keep Secure/HttpOnly cookies intact.
     const currentBrowser = browser;
@@ -478,6 +470,9 @@ try {
     await verifyTemplateUpdates(localBrowser, origin, output, engine);
     await verifyUiStability(localBrowser, origin, output, engine);
     await verifyUiAuditRegressions(localBrowser, origin, output, engine);
+    await verifyAuthoringContent(localBrowser, origin, engine);
+    await verifyAuthoringControls(localBrowser, origin);
+    await verifyGalleryBatch(localBrowser, origin, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     await verifyStudio(localBrowser, origin, output, engine);
