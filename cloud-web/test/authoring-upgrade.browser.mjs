@@ -3,12 +3,43 @@ import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mj
 import { owner, password } from './fixture.mjs';
 import { navigateStudio } from './studio-navigation.mjs';
 
+async function cleanup(context, page, origin, paths, imageKeys = []) {
+  try {
+    if (!paths.length && !imageKeys.length) return;
+    const session = await page.request.get(origin + '/api/posts?limit=1');
+    if (session.status() !== 200) return;
+    const { csrf } = await session.json();
+    const headers = { Origin: origin, 'X-CSRF-Token': csrf };
+    for (const path of paths) {
+      const response = await page.request.get(origin + path);
+      if (response.status() === 404) continue;
+      assert.equal(response.status(), 200);
+      const { etag } = await response.json();
+      const removed = await page.request.delete(origin + path, { headers, data: { etag } });
+      assert.equal(removed.status(), 200, await removed.text());
+    }
+    if (imageKeys.length) {
+      const { images } = await (await page.request.get(origin + '/api/images?catalog=1')).json();
+      for (const image of images.filter((item) => imageKeys.includes(item.key))) {
+        const removed = await page.request.delete(origin + '/api/images', {
+          headers,
+          data: { key: image.key, etag: image.etag },
+        });
+        assert.equal(removed.status(), 200, await removed.text());
+      }
+    }
+  } finally {
+    await context.close();
+  }
+}
+
 export async function verifyAuthoringContent(browser, origin, engine) {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     reducedMotion: 'reduce',
   });
   const page = await context.newPage();
+  const paths = [];
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
@@ -28,6 +59,7 @@ export async function verifyAuthoringContent(browser, origin, engine) {
       data: note('Cached original'),
     });
     assert.equal(response.status(), 200);
+    paths.push('/api/shorts/' + slug);
     const { etag } = await response.json();
     await navigateStudio(page, 'shorts');
     const card = page.locator('.short-admin-card').filter({
@@ -47,6 +79,7 @@ export async function verifyAuthoringContent(browser, origin, engine) {
     await expect(page.locator('#body')).toHaveValue(body);
     await expect(page.locator('#date')).toHaveValue('2030-02-03');
     const postSlug = await page.locator('#slug').inputValue();
+    paths.push('/api/posts/' + postSlug);
     await expect
       .poll(async () => (await page.request.get(origin + '/api/posts/' + postSlug)).status())
       .toBe(200);
@@ -67,6 +100,7 @@ export async function verifyAuthoringContent(browser, origin, engine) {
     await context.unroute('**/api/shorts/' + slug);
     await page.locator('#new-post').click();
     const imagePostSlug = await page.locator('#slug').inputValue();
+    paths.push('/api/posts/' + imagePostSlug);
     await page.locator('#title').fill('Using <template>');
     const original = '12345 保留选中的正文';
     await page.locator('#body').fill(original);
@@ -97,7 +131,7 @@ export async function verifyAuthoringContent(browser, origin, engine) {
     );
     assert.deepEqual(errors, []);
   } finally {
-    await context.close();
+    await cleanup(context, page, origin, paths);
   }
 }
 
@@ -109,6 +143,7 @@ export async function verifyAuthoringControls(browser, origin) {
   });
   await context.addInitScript(() => localStorage.setItem('cloudink-split-percent', '35'));
   const page = await context.newPage();
+  const paths = [];
   try {
     await page.goto(origin + '/admin');
     await page.locator('#login-form input[name=email]').fill(owner);
@@ -116,6 +151,7 @@ export async function verifyAuthoringControls(browser, origin) {
     await page.locator('#login-submit').click();
     await expect(page.locator('#home-view')).toBeVisible();
     await page.locator('#new-post').click();
+    paths.push('/api/posts/' + (await page.locator('#slug').inputValue()));
     await page.locator('#title').fill('Authoring controls');
     const body = page.locator('#body');
     await body.fill('alpha\nbeta\ngamma');
@@ -210,15 +246,18 @@ export async function verifyAuthoringControls(browser, origin) {
       buffer: Buffer.from('# Local import\n\nBody'),
     });
     await expect(page.locator('#title')).toHaveValue('Local import');
+    paths.push('/api/posts/' + (await page.locator('#slug').inputValue()));
     await expect(page.locator('#date')).toHaveValue('2026-11-08');
   } finally {
-    await context.close();
+    await cleanup(context, page, origin, paths);
   }
 }
 
 export async function verifyGalleryBatch(browser, origin, engine) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
+  const paths = [],
+    imageKeys = [];
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try {
@@ -254,6 +293,7 @@ export async function verifyGalleryBatch(browser, origin, engine) {
     );
     for (const card of cards) {
       await expect(card).toBeVisible();
+      imageKeys.push(await card.getAttribute('data-key'));
       const outer = await card.boundingBox(),
         check = await card.locator('.image-select-wrap').boundingBox();
       assert.ok(
@@ -299,6 +339,7 @@ export async function verifyGalleryBatch(browser, origin, engine) {
     await expect(page.locator('#image-batch-bar')).toBeHidden();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.locator('#new-post').click();
+    paths.push('/api/posts/' + (await page.locator('#slug').inputValue()));
     await page.locator('#title').fill('Batch images ' + engine);
     await page.locator('#body').fill('12345 原文必须保留');
     await page.locator('#choose-library-image').click();
@@ -329,6 +370,6 @@ export async function verifyGalleryBatch(browser, origin, engine) {
     await expect(cards[0].locator('.image-thumbnail')).toHaveClass(/image-unavailable/);
     assert.deepEqual(errors, []);
   } finally {
-    await context.close();
+    await cleanup(context, page, origin, paths, imageKeys);
   }
 }

@@ -470,9 +470,6 @@ try {
     await verifyTemplateUpdates(localBrowser, origin, output, engine);
     await verifyUiStability(localBrowser, origin, output, engine);
     await verifyUiAuditRegressions(localBrowser, origin, output, engine);
-    await verifyAuthoringContent(localBrowser, origin, engine);
-    await verifyAuthoringControls(localBrowser, origin);
-    await verifyGalleryBatch(localBrowser, origin, engine);
     await verifyLongReading(localBrowser, origin, output, engine);
     await verifyReaderLoading(localBrowser, origin, output, engine);
     await verifyStudio(localBrowser, origin, output, engine);
@@ -491,6 +488,9 @@ try {
     await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
+    await verifyAuthoringContent(localBrowser, origin, engine);
+    await verifyAuthoringControls(localBrowser, origin);
+    await verifyGalleryBatch(localBrowser, origin, engine);
     await browser.close();
     browser = undefined;
   }
