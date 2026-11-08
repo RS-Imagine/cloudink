@@ -53,7 +53,9 @@ jobs:
         run: npm ci
       - name: Check source formatting
         if: steps.scope.outputs.code == 'true'
-        run: npm run format:check
+        run: |
+          npm run format:check
+          npm run format:ui:check
       - name: Build the browser deployment
         if: steps.scope.outputs.code == 'true'
         run: npm run build

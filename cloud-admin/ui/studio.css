@@ -754,22 +754,39 @@ body:has(dialog[open]) {
 @media (max-width: 1099px) and (min-width: 760px) {
   .studio-masthead {
     gap: 16px;
-    margin-inline: 24px;
+    margin-inline: 20px;
     padding-inline: 16px;
+    border-radius: 20px;
   }
-  .studio-masthead .brand-mark,
+  .studio-masthead .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    flex: none;
+  }
+  .studio-admin-subtitle,
   .studio-nav button > span,
   .studio-nav small {
     display: none;
   }
+  .studio-nav {
+    gap: 6px;
+  }
   .studio-nav svg {
     display: block;
   }
+  .studio-nav button {
+    padding: 0;
+    width: 48px;
+  }
   .workspace {
-    padding-inline: 32px;
+    padding-inline: 24px;
   }
   .article-card {
     grid-template-columns: minmax(0, 1fr) 88px 24px;
+    border-radius: 18px;
   }
   .article-card small {
     grid-column: 1;
@@ -795,10 +812,10 @@ body:has(dialog[open]) {
     flex-direction: column;
     align-items: stretch;
     min-height: auto;
-    margin: 10px 12px 16px;
+    margin: 8px clamp(8px, 2.5vw, 12px) 16px;
     padding: 12px 14px;
     gap: 10px;
-    border-radius: 20px;
+    border-radius: 18px;
   }
   .studio-site-link {
     display: none;
@@ -827,7 +844,7 @@ body:has(dialog[open]) {
     display: none;
   }
   .workspace {
-    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+    padding: 0 clamp(12px, 3.5vw, 16px) calc(32px + env(safe-area-inset-bottom));
   }
   .article-browser {
     gap: 8px;
@@ -847,7 +864,8 @@ body:has(dialog[open]) {
   .article-card {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px 16px;
-    padding: 24px 16px;
+    padding: 18px 14px;
+    border-radius: 14px;
   }
   .article-card h3 {
     grid-row: 2;
@@ -947,4 +965,31 @@ body:has(dialog[open]) {
   bottom: 0;
   padding-block: 8px;
   background: var(--ci-elevated);
+}
+
+#body.is-dropzone {
+  outline: 2px dashed var(--ci-primary);
+  outline-offset: -4px;
+}
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.shortcut-item kbd {
+  font: 600 11px monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ci-divider);
+  background: var(--ci-container);
+}
+.shortcut-item span {
+  color: var(--ci-muted);
 }

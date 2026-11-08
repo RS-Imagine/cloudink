@@ -1,4 +1,9 @@
 import { navigateStudio } from './studio-navigation.mjs';
+import {
+  verifyAuthoringContent,
+  verifyAuthoringControls,
+  verifyGalleryBatch,
+} from './authoring-upgrade.browser.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
@@ -278,10 +283,13 @@ try {
     'chromium',
   );
 
+  const pagingKeys = [];
   for (let i = 0; i < 55; i++) {
     const slug = 'page-' + String(i).padStart(3, '0');
+    const key = 'drafts/' + slug + '.md';
+    pagingKeys.push(key);
     await bucket.put(
-      'drafts/' + slug + '.md',
+      key,
       '+++\ntitle = "' + slug + '"\nslug = "' + slug + '"\ndate = "2026-11-06"\n+++\n\nPage body',
       { customMetadata: { title: slug, date: '2026-11-06', description: '' } },
     );
@@ -303,6 +311,10 @@ try {
   await paging.locator('#load-more-posts').click();
   await expect(paging.locator('.article-card')).toHaveCount(total);
   await paging.close();
+  await bucket.delete(pagingKeys);
+  await verifyAuthoringContent(browser, 'http://localhost:8788', 'chromium');
+  await verifyAuthoringControls(browser, 'http://localhost:8788');
+  await verifyGalleryBatch(browser, 'http://localhost:8788', 'chromium');
 } finally {
   await browser?.close();
   await mf.dispose();

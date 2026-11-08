@@ -7,6 +7,7 @@ import { configureImages } from './images.js';
 import { configureShorts } from './shorts.js';
 import { configureSiteIcon } from './site-icon.js';
 import { configureMarkdownImport } from './markdown-import.js';
+import { escapeHTML as esc } from './html.js';
 import {
   engineTask,
   renderPreview,
@@ -14,7 +15,6 @@ import {
   disposePreview,
   configurePreview,
 } from './preview.js';
-import { editorStore } from './store.js';
 
 const motion = window.CloudInkMotion;
 motion.mount();
@@ -72,12 +72,12 @@ function showStartup(error = '') {
   $('startup-view').setAttribute('aria-busy', String(!error));
   $('startup-message').setAttribute('role', error ? 'alert' : 'status');
   $('startup-message').textContent = error || '正在打开你的写作空间…';
-  $('startup-retry').hidden = !error;
-  $('startup-retry').disabled = !error;
-  $('login-view').hidden = true;
-  $('setup-view').hidden = true;
-  $('app-view').hidden = true;
-  $('studio-skip').hidden = true;
+  $('startup-retry').hidden = $('startup-retry').disabled = !error;
+  $('login-view').hidden =
+    $('setup-view').hidden =
+    $('app-view').hidden =
+    $('studio-skip').hidden =
+      true;
 }
 async function startWorkspace({ focus = false } = {}) {
   if (booting) return;
@@ -86,9 +86,10 @@ async function startWorkspace({ focus = false } = {}) {
   configReady = api('/api/config').then((config) => {
     appConfig = config;
     configurePreview(config);
-    $('site-link').href = config.siteUrl;
-    $('service-site-link').href = config.siteUrl;
-    $('service-site-link').textContent = config.siteUrl;
+    $('site-link').href =
+      $('service-site-link').href =
+      $('service-site-link').textContent =
+        config.siteUrl;
     return config;
   });
   try {
@@ -158,27 +159,27 @@ async function action(id, label, work, success = '') {
   const button = $(id),
     labelNode = button.querySelector('[data-action-label]') || button,
     original = labelNode.textContent,
-    originalInlineSize = button.style.inlineSize,
-    initialWidth = button.offsetWidth;
+    area = operationAreas[id],
+    w = button.offsetWidth;
   activeActions.add(id);
-  if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
+  if (w) button.style.inlineSize = `min(${w}px, 100%)`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
   labelNode.textContent = label;
-  feedback(operationAreas[id], label, 'pending');
+  feedback(area, label, 'pending');
   try {
     await work();
     const message =
       success || (id === 'publish-settings' ? '发布请求已处理，请查看上方发布状态。' : undefined);
-    feedback(operationAreas[id], message, 'success');
+    feedback(area, message, 'success');
     if (success) notice(success, 'success');
   } catch (error) {
-    feedback(operationAreas[id], error.message, 'error');
+    feedback(area, error.message, 'error');
     notice(error.message, 'error');
   } finally {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
-    button.style.inlineSize = originalInlineSize;
+    button.style.inlineSize = '';
     labelNode.textContent = original;
     button.disabled = false;
     publishingControls();
@@ -313,15 +314,13 @@ async function requestApi(path, options = {}) {
 function showLogin({ focus = false } = {}) {
   pendingWorkspace = null;
   shell.close();
-  $('studio-skip').hidden = true;
   motion.cancelWithin($('app-view'));
   for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
   clearTimeout(autosaveTimer);
-  $('app-view').hidden = true;
+  $('studio-skip').hidden = $('app-view').hidden = $('startup-view').hidden = true;
   const wizard = appConfig && !appConfig.initialized;
   $('setup-view').hidden = !wizard;
   $('login-view').hidden = wizard;
-  $('startup-view').hidden = true;
   if (focus)
     (wizard ? $('setup-form').elements.token : $('login-form').elements.email).focus({
       preventScroll: true,
@@ -346,24 +345,23 @@ function setZen(active) {
 }
 function view(name, { focus = true } = {}) {
   if (name !== 'editor') setZen(false);
-  const changingView = $('app-view').dataset.view !== name;
-  const sectionName = name === 'posts' ? 'home' : name;
-  const fromNavigation = document.activeElement?.closest(
-    '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
-  );
+  const changingView = $('app-view').dataset.view !== name,
+    sectionName = name === 'posts' ? 'home' : name,
+    fromNav = document.activeElement?.closest(
+      '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
+    ),
+    targetNav = name === 'editor' || name === 'posts' ? 'articles' : name;
   shell.close();
   $('app-view').dataset.view = name;
-  for (const button of document.querySelectorAll('[data-studio-nav]')) {
-    const selected =
-      button.dataset.studioNav === (name === 'editor' || name === 'posts' ? 'articles' : name);
-    if (selected) button.setAttribute('aria-current', 'page');
-    else button.removeAttribute('aria-current');
+  for (const btn of document.querySelectorAll('[data-studio-nav]')) {
+    if (btn.dataset.studioNav === targetNav) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
   }
   for (const id of ['home', 'editor', 'images', 'shorts', 'settings']) {
-    const section = $(id + '-view');
-    if (id !== sectionName) motion.cancelWithin(section);
-    section.hidden = id !== sectionName;
-    section.tabIndex = -1;
+    const s = $(id + '-view');
+    if (id !== sectionName) motion.cancelWithin(s);
+    s.hidden = id !== sectionName;
+    s.tabIndex = -1;
   }
   if (changingView && $('article-search-slot'))
     $(name === 'editor' ? 'editor-search-slot' : 'article-search-slot').prepend(
@@ -381,8 +379,7 @@ function view(name, { focus = true } = {}) {
     images: '图片库',
     shorts: '短记',
   }[name];
-  if (focus && (fromNavigation || changingView))
-    $(sectionName + '-view').focus({ preventScroll: true });
+  if (focus && (fromNav || changingView)) $(sectionName + '-view').focus({ preventScroll: true });
 }
 async function signedIn(session, { focus = false, afterReady = null } = {}) {
   await configReady;
@@ -418,11 +415,12 @@ async function signedIn(session, { focus = false, afterReady = null } = {}) {
 }
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const form = e.currentTarget;
+  const form = e.currentTarget,
+    sub = $('login-submit');
   $('login-error').textContent = '';
-  $('login-submit').disabled = true;
-  $('login-submit').setAttribute('aria-busy', 'true');
-  $('login-submit').textContent = '正在登录…';
+  sub.disabled = true;
+  sub.setAttribute('aria-busy', 'true');
+  sub.textContent = '正在登录…';
   try {
     await signedIn(
       await api('/api/login', {
@@ -435,9 +433,9 @@ $('login-form').addEventListener('submit', async (e) => {
   } catch (error) {
     $('login-error').textContent = error.message;
   } finally {
-    $('login-submit').disabled = false;
-    $('login-submit').removeAttribute('aria-busy');
-    $('login-submit').textContent = '登录';
+    sub.disabled = false;
+    sub.removeAttribute('aria-busy');
+    sub.textContent = '登录';
   }
 });
 $('startup-retry').addEventListener('click', async () => {
@@ -459,12 +457,13 @@ void startWorkspace();
 
 function setupStep(siteStep) {
   $('setup-account-step').hidden = siteStep;
-  $('setup-site-step').hidden = !siteStep;
-  $('setup-site-step').disabled = !siteStep;
+  $('setup-site-step').hidden = $('setup-site-step').disabled = !siteStep;
   $('setup-progress-account').toggleAttribute('aria-current', !siteStep);
   $('setup-progress-site').toggleAttribute('aria-current', siteStep);
-  if (siteStep) $('setup-progress-site').setAttribute('aria-current', 'step');
-  else $('setup-progress-account').setAttribute('aria-current', 'step');
+  $(siteStep ? 'setup-progress-site' : 'setup-progress-account').setAttribute(
+    'aria-current',
+    'step',
+  );
   $('setup-error').textContent = '';
   motion.enter($(siteStep ? 'setup-site-step' : 'setup-account-step'), { kind: 'content' });
   $('setup-form').elements[siteStep ? 'title' : 'token'].focus();
@@ -556,84 +555,59 @@ function renderLists() {
 
   let shown = 0;
   $('summary').textContent = `${publishedCount} 篇已发布 · ${draftCount} 篇草稿`;
-  $('post-list').replaceChildren();
-  $('article-grid').replaceChildren();
+  const postItems = [];
+  const articleCards = [];
   for (const post of sorted) {
     if (query && !`${post.title} ${post.description} ${post.slug}`.toLowerCase().includes(query))
       continue;
-    const button = document.createElement('button');
-    button.className = 'post-item' + (doc?.front_matter.slug === post.slug ? ' active' : '');
-    const title = document.createElement('span');
-    title.textContent = post.title;
-    const small = document.createElement('small');
-    small.textContent = `${post.date} · ${badge(post)}`;
-    button.append(title, small);
-    button.addEventListener('pointerenter', () => prefetchArticle(post.slug));
-    button.addEventListener('focus', () => prefetchArticle(post.slug));
-    button.addEventListener('click', () =>
-      openPost(post.slug).catch((error) => notice(error.message)),
+    const active = doc?.front_matter.slug === post.slug ? ' active' : '';
+    postItems.push(
+      `<button class="post-item${active}" data-slug="${post.slug}"><span>${esc(post.title)}</span><small>${post.date} · ${badge(post)}</small></button>`,
     );
-    $('post-list').append(button);
     if (
       (postFilter === 'published' && !post.published) ||
       (postFilter === 'draft' && post.published)
     )
       continue;
     shown++;
-    const card = document.createElement('button');
-    card.className = 'article-card';
-    const tag = document.createElement('span');
-    tag.className = 'badge' + (post.changed || !post.published ? ' draft' : '');
-    tag.textContent = badge(post);
-    const h = document.createElement('h3');
-    h.textContent = post.title;
-    const p = document.createElement('p');
-    p.textContent = post.description || '没有摘要';
-    const date = document.createElement('small');
-    date.textContent = post.date;
-    const arrow = document.createElement('span');
-    arrow.className = 'article-card-arrow';
-    arrow.setAttribute('aria-hidden', 'true');
-    arrow.textContent = '→';
-    card.append(tag, h, p, date, arrow);
-    card.addEventListener('pointerenter', () => prefetchArticle(post.slug));
-    card.addEventListener('focus', () => prefetchArticle(post.slug));
-    card.addEventListener('click', () =>
-      openPost(post.slug).catch((error) => notice(error.message)),
+    const tagClass = 'badge' + (post.changed || !post.published ? ' draft' : '');
+    articleCards.push(
+      `<button class="article-card" data-slug="${post.slug}"><span class="${tagClass}">${badge(post)}</span><h3>${esc(post.title)}</h3><p>${esc(post.description || '没有摘要')}</p><small>${post.date}</small><span class="article-card-arrow" aria-hidden="true">→</span></button>`,
     );
-    $('article-grid').append(card);
   }
+  $('post-list').innerHTML =
+    postItems.join('') ||
+    `<p class="studio-list-empty">${hasPosts ? '没有匹配的文章，请修改搜索关键词。' : '还没有文章，先开始新文章。'}</p>`;
   if (!shown) {
-    const empty = document.createElement('div');
-    empty.className = 'studio-empty';
-    const title = document.createElement('h3'),
-      text = document.createElement('p');
-    title.textContent = hasPosts ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
-    text.textContent = hasPosts
+    const title = hasPosts ? '还没有找到匹配的文章' : '你的第一篇文字，从这里开始。';
+    const text = hasPosts
       ? '换一个关键词，或查看全部文章。'
       : '点击“新文章”开始写作，也可以从更多操作导入原稿。';
-    empty.append(title, text);
-    if (hasPosts) {
-      const reset = document.createElement('button');
-      reset.textContent = '清除筛选';
-      reset.addEventListener('click', () => {
-        $('search').value = '';
-        postFilter = 'all';
-        void refresh().catch((error) => notice(error.message));
-        $('search').focus();
-      });
-      empty.append(reset);
+    $('article-grid').innerHTML =
+      `<div class="studio-empty"><h3>${title}</h3><p>${text}</p>${hasPosts ? '<button id="studio-reset-filter">清除筛选</button>' : ''}</div>`;
+  } else {
+    $('article-grid').innerHTML = articleCards.join('');
+  }
+}
+for (const id of ['post-list', 'article-grid']) {
+  const el = $(id);
+  const onHover = (e) => {
+    const btn = e.target.closest('[data-slug]');
+    if (btn) prefetchArticle(btn.dataset.slug);
+  };
+  el.addEventListener('pointerover', onHover);
+  el.addEventListener('focus', onHover, true);
+  el.addEventListener('click', (e) => {
+    if (e.target.id === 'studio-reset-filter' || e.target.closest('.studio-empty button')) {
+      $('search').value = '';
+      postFilter = 'all';
+      void refresh().catch((error) => notice(error.message));
+      $('search').focus();
+      return;
     }
-    $('article-grid').append(empty);
-  }
-  if (!$('post-list').childElementCount) {
-    const empty = document.createElement('p');
-    empty.className = 'studio-list-empty';
-    empty.textContent = hasPosts
-      ? '没有匹配的文章，请修改搜索关键词。'
-      : '还没有文章，先开始新文章。';
-    $('post-list').append(empty);
-  }
+    const btn = e.target.closest('[data-slug]');
+    if (btn) openPost(btn.dataset.slug).catch((error) => notice(error.message));
+  });
 }
 async function refresh({ append = false } = {}) {
   clearTimeout(searchTimer);
@@ -670,12 +644,13 @@ async function refresh({ append = false } = {}) {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
-  if ($('flclash-user-label')) $('flclash-user-label').textContent = data.site.author || '云砚';
-  const avatarLetter = (data.site.author || '云砚').charAt(0);
-  const avatarEl = document.querySelector('.flclash-user-avatar');
-  if (avatarEl) avatarEl.textContent = avatarLetter;
+  const author = data.site.author || '云砚';
+  const userLabel = $('studio-user-label');
+  if (userLabel) userLabel.textContent = author;
+  const avatarEl = document.querySelector('.studio-user-avatar');
+  if (avatarEl) avatarEl.textContent = author.charAt(0);
   $('home-heading').textContent = data.site.author
-    ? '你好，' + data.site.author + '。'
+    ? `你好，${data.site.author}。`
     : '从一个想法开始。';
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
@@ -716,23 +691,15 @@ function preview() {
 function fillEditor(draft, etag) {
   clearTimeout(previewTimer);
   invalidatePreview(true);
-  doc = {
-    ...draft,
-    etag,
-    published: posts.some((p) => p.slug === draft.front_matter.slug && p.published),
-  };
-  dirty = 0;
-  savedVersion = 0;
-  conflict = false;
-  $('title').value = draft.front_matter.title;
-  $('description').value = draft.front_matter.description;
-  $('date').value = draft.front_matter.date;
-  $('slug').value = draft.front_matter.slug;
-  $('slug').readOnly =
-    !!etag || posts.some((p) => p.slug === draft.front_matter.slug && p.published);
-  $('body').value = draft.body_markdown;
-  feedback('save-state', etag ? '草稿已保存' : '尚未保存草稿', etag ? 'success' : 'neutral');
   const published = posts.some((p) => p.slug === draft.front_matter.slug && p.published);
+  doc = { ...draft, etag, published };
+  dirty = savedVersion = 0;
+  conflict = false;
+  for (const f of ['title', 'description', 'date', 'slug'])
+    $(f).value = draft.front_matter[f] || '';
+  $('slug').readOnly = !!etag || published;
+  $('body').value = draft.body_markdown || '';
+  feedback('save-state', etag ? '草稿已保存' : '尚未保存草稿', etag ? 'success' : 'neutral');
   $('unpublish-post').hidden = !published;
   $('delete-post').hidden = published;
   view('editor');
@@ -764,12 +731,6 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
-  editorStore.update((s) => ({
-    ...s,
-    dirty,
-    slug: doc?.front_matter?.slug || '',
-    title: $('title')?.value || '',
-  }));
   saveLocalSnapshot(doc.front_matter?.slug, currentDraft());
   feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
@@ -781,62 +742,65 @@ function changed() {
 }
 fields.forEach((id) => $(id).addEventListener('input', changed));
 
+let currentSnaps = [];
 $('open-draft-history')?.addEventListener('click', () => {
   const slug = doc?.front_matter?.slug;
-  if (!slug) {
-    notice('请先打开或新建一篇文章。', 'info');
-    return;
-  }
-  const dialog = $('draft-history-dialog');
-  const listEl = $('draft-history-list');
-  listEl.replaceChildren();
-  const key = `cloudink-snapshots:${slug}`;
-  let snapshots = [];
+  if (!slug) return notice('请先打开或新建一篇文章。', 'info');
+  const dlg = $('draft-history-dialog'),
+    listEl = $('draft-history-list');
   try {
-    snapshots = JSON.parse(localStorage.getItem(key) || '[]');
-  } catch {}
-  if (snapshots.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'muted';
-    empty.style.padding = '12px 0';
-    empty.textContent = '当前文章暂无历史快照。继续编辑将自动生成。';
-    listEl.append(empty);
-  } else {
-    for (const snap of snapshots) {
-      const row = document.createElement('div');
-      row.style.cssText =
-        'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);gap:12px;';
-      const info = document.createElement('div');
-      const timeStr = new Date(snap.time).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-      const chars = (snap.draft?.body_markdown || '').replace(/\s/g, '').length;
-      info.innerHTML = `<strong>${timeStr}</strong> <span class="muted" style="font-size:12px;margin-left:8px;">${chars} 字符</span>`;
-      const restoreBtn = document.createElement('button');
-      restoreBtn.textContent = '恢复此快照';
-      restoreBtn.className = 'quiet';
-      restoreBtn.style.fontSize = '12px';
-      restoreBtn.addEventListener('click', () => {
-        if (confirm('确定恢复到该历史快照吗？当前编辑框内容将被替换。')) {
-          $('body').value = snap.draft?.body_markdown || '';
-          if (snap.draft?.front_matter?.title) $('title').value = snap.draft.front_matter.title;
-          if (snap.draft?.front_matter?.description)
-            $('description').value = snap.draft.front_matter.description;
-          changed();
-          dialog.close();
-          notice('已恢复本地快照内容。', 'success');
-        }
-      });
-      row.append(info, restoreBtn);
-      listEl.append(row);
-    }
+    currentSnaps = JSON.parse(localStorage.getItem(`cloudink-snapshots:${slug}`) || '[]');
+  } catch {
+    currentSnaps = [];
   }
-  dialog.showModal();
+  if (!currentSnaps.length) {
+    listEl.innerHTML = '<p class="muted">当前文章暂无历史快照。继续编辑将自动生成。</p>';
+  } else {
+    listEl.innerHTML = currentSnaps
+      .map((snap, i) => {
+        const time = new Date(snap.time).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+        const chars = (snap.draft?.body_markdown || '').replace(/\s/g, '').length;
+        return `<div class="draft-history-row"><div><strong>${time}</strong> <span class="muted">${chars} 字符</span></div><button class="quiet" data-snap-idx="${i}">恢复此快照</button></div>`;
+      })
+      .join('');
+  }
+  dlg.showModal();
+});
+$('draft-history-list')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-snap-idx]');
+  if (!btn) return;
+  const snap = currentSnaps[parseInt(btn.dataset.snapIdx, 10)];
+  if (snap && confirm('确定恢复到该历史快照吗？当前编辑框内容将被替换。')) {
+    $('body').value = snap.draft?.body_markdown || '';
+    if (snap.draft?.front_matter?.title) $('title').value = snap.draft.front_matter.title;
+    if (snap.draft?.front_matter?.description)
+      $('description').value = snap.draft.front_matter.description;
+    changed();
+    $('draft-history-dialog')?.close();
+    notice('已恢复本地快照内容。', 'success');
+  }
 });
 $('draft-history-close')?.addEventListener('click', () => {
   $('draft-history-dialog')?.close();
+});
+const toggleShortcuts = (s) => {
+  const d = $('shortcuts-dialog');
+  if (d) (s ?? !d.open) ? motion.openDialog(d) : motion.closeDialog(d);
+};
+$('shortcuts-close')?.addEventListener('click', () => toggleShortcuts(false));
+$('open-shortcuts')?.addEventListener('click', () => toggleShortcuts(true));
+window.addEventListener('keydown', (e) => {
+  if (
+    (e.key === '?' && !/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) ||
+    ((e.ctrlKey || e.metaKey) && e.key === '/')
+  ) {
+    e.preventDefault();
+    toggleShortcuts();
+  }
 });
 async function saveCurrent() {
   clearTimeout(autosaveTimer);
@@ -899,10 +863,7 @@ async function flush() {
   }
 }
 async function openPost(slug) {
-  if (editorLocked) {
-    notice('正在处理当前文章，请稍等。');
-    return;
-  }
+  if (editorLocked) return notice('正在处理当前文章，请稍等。');
   const version = ++navigationVersion;
   if (doc?.front_matter.slug === slug && !$('editor-view').hidden) {
     shell.close(true);
@@ -913,8 +874,6 @@ async function openPost(slug) {
   const cached = articleCache.get(slug);
   const request = cached ? Promise.resolve(cached) : fetchArticle(slug);
   try {
-    // Fetch the next document while saving the previous one; await both so a
-    // rejected fetch is always handled and unsaved text is never discarded.
     const [, data] = await Promise.all([flush(), request]);
     if (version !== navigationVersion) return;
     clearTimeout(autosaveTimer);
@@ -930,15 +889,13 @@ async function openPost(slug) {
           )
             return;
           if (dirty === 0 && !savePromise) fillEditor(fresh.draft, fresh.etag);
-          // If editing has begun, retain the input and its old ETag. The next save
-          // reports a conflict instead of silently adopting another window's version.
         })
         .catch(() => {});
   } finally {
     if (version === navigationVersion) navigationStatus();
   }
 }
-async function newPost() {
+async function newPost(initial) {
   if (editorLocked) return;
   const version = ++navigationVersion;
   navigationStatus('正在准备新文章…');
@@ -949,17 +906,18 @@ async function newPost() {
     fillEditor(
       {
         front_matter: {
-          title: '',
+          title: initial?.title || '',
           slug: `post-${today.replaceAll('-', '')}-${crypto.randomUUID().slice(0, 8)}`,
-          date: today,
-          description: '',
+          date: initial?.date || today,
+          description: initial?.description || '',
           draft: true,
         },
-        body_markdown: '',
+        body_markdown: initial?.body || '',
       },
       null,
     );
-    $('title').focus();
+    if (initial?.title || initial?.body) changed();
+    $(initial?.title ? 'body' : 'title').focus();
   } finally {
     if (version === navigationVersion) navigationStatus();
   }
@@ -1017,10 +975,35 @@ async function manualSave() {
   );
 }
 $('save-post').addEventListener('click', manualSave);
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault();
-    void manualSave();
+document.addEventListener('keydown', async (e) => {
+  if (
+    e.isComposing ||
+    editorLocked ||
+    $('editor-view').hidden ||
+    document.querySelector('dialog[open]') ||
+    !(e.ctrlKey || e.metaKey) ||
+    e.altKey
+  )
+    return;
+  const key = e.key.toLowerCase();
+  if (!['s', 'p', 'enter'].includes(key) && !(e.shiftKey && key === 'f')) return;
+  e.preventDefault();
+  if (key === 's') await manualSave();
+  else if (key === 'p') {
+    const show = $('editor-panes').classList.contains('preview-only')
+      ? $('show-split').hidden
+        ? 'writing'
+        : 'split'
+      : 'preview';
+    $('show-' + show).click();
+  } else if (key === 'f') setZen(!$('app-view').classList.contains('zen-mode'));
+  else {
+    const target = doc;
+    if (
+      (await confirmAction('将当前文章发布到网站？', { title: '发布文章？', accept: '发布' })) &&
+      doc === target
+    )
+      $('publish-post').click();
   }
 });
 window.addEventListener('beforeunload', (e) => {
@@ -1095,13 +1078,10 @@ function showPublishing(state) {
     queued: '正在准备发布，请保持此页面打开。',
     building: '正在排版文章并上传页面，请保持此页面打开。',
     built: '正在完成发布…',
+    deployed: '最新发布已上线。',
+    failed: state.error || '发布失败，草稿已保留，可以重试。',
   };
-  banner.textContent =
-    {
-      ...messages,
-      deployed: '最新发布已上线。',
-      failed: state.error || '发布失败，草稿已保留，可以重试。',
-    }[state.status] || '发布进行中';
+  banner.textContent = messages[state.status] || '发布进行中';
 }
 async function startPublish(data) {
   if (publishRequest) throw new Error('正在提交发布，请稍等。');
@@ -1181,8 +1161,7 @@ $('delete-post').addEventListener('click', async () => {
         posts = posts.filter((p) => p.slug !== slug);
         invalidatePreview(true);
         doc = null;
-        dirty = 0;
-        savedVersion = 0;
+        dirty = savedVersion = 0;
         view('home');
         await refresh();
       } finally {
@@ -1236,20 +1215,12 @@ function insertImage(image) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
   const name = image.name.replace(/[\[\]\\\n\r]/g, '');
-  const escape = (value) =>
-    String(value).replace(/[&<>"']/g, (c) => {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  const sized =
-    Number.isInteger(image.width) &&
-    image.width > 0 &&
-    Number.isInteger(image.height) &&
-    image.height > 0;
+  const sized = image.width > 0 && image.height > 0;
   const responsive = image.srcset
-    ? ` srcset="${escape(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${escape(image.fullUrl)}"`
+    ? ` srcset="${esc(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${esc(image.fullUrl)}"`
     : '';
   const text = sized
-    ? `\n\n<img src="${escape(image.displayUrl || image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
+    ? `\n\n<img src="${esc(image.displayUrl || image.url)}" alt="${esc(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
     : `\n\n![${name}](${image.url})\n\n`;
   view('editor');
   textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
@@ -1295,12 +1266,18 @@ const shortTools = configureShorts({
     return true;
   },
   startPublish,
+  convertToPost: (s) =>
+    newPost({ title: `短记 ${s.date}`, date: s.date.slice(0, 10), body: s.body }),
 });
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {
-  if (editorLocked || uploading) return;
+  if (editorLocked || uploading || !doc || !files.length) return;
+  const target = doc;
   uploading = (async () => {
-    for (const file of files) await upload(file);
+    for (const file of files) {
+      if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
+      await upload(file);
+    }
   })();
   try {
     await action('upload-image', '正在上传…', () => uploading, '图片已上传并插入正文。');
@@ -1316,22 +1293,35 @@ $('image-files').addEventListener('change', async (e) => {
     e.target.value = '';
   }
 });
-$('body').addEventListener('paste', (e) => {
-  const images = [...e.clipboardData.items].filter(
-    (x) => x.kind === 'file' && x.type.startsWith('image/'),
-  );
-  if (!images.length) return;
-  e.preventDefault();
-  void uploadFiles(images.map((item) => item.getAsFile()).filter(Boolean));
+const editorBody = $('body');
+editorBody.addEventListener('paste', (e) => {
+  const imgs = [...e.clipboardData.items]
+    .filter((x) => x.kind === 'file' && x.type.startsWith('image/'))
+    .map((x) => x.getAsFile())
+    .filter(Boolean);
+  if (imgs.length) {
+    e.preventDefault();
+    void uploadFiles(imgs);
+  }
 });
-$('body').addEventListener('dragover', (e) => {
-  if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+for (const t of ['dragenter', 'dragover'])
+  editorBody.addEventListener(t, (e) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      if (t === 'dragover') e.dataTransfer.dropEffect = 'copy';
+      editorBody.classList.add('is-dropzone');
+    }
+  });
+editorBody.addEventListener('dragleave', (e) => {
+  if (!editorBody.contains(e.relatedTarget)) editorBody.classList.remove('is-dropzone');
 });
-$('body').addEventListener('drop', (e) => {
-  const images = [...e.dataTransfer.files].filter((x) => x.type.startsWith('image/'));
-  if (!images.length) return;
-  e.preventDefault();
-  void uploadFiles(images);
+editorBody.addEventListener('drop', (e) => {
+  editorBody.classList.remove('is-dropzone');
+  const imgs = [...e.dataTransfer.files].filter((x) => x.type.startsWith('image/'));
+  if (imgs.length) {
+    e.preventDefault();
+    void uploadFiles(imgs);
+  }
 });
 
 function setupEditorEnhancements() {
@@ -1339,251 +1329,192 @@ function setupEditorEnhancements() {
   if (!textarea) return;
 
   function applyFormat(type) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selected = text.slice(start, end);
-    let replacement = '',
-      newCursor = start;
-
-    switch (type) {
-      case 'bold':
-        replacement = selected ? `**${selected}**` : '****';
-        newCursor = selected ? end + 4 : start + 2;
-        break;
-      case 'italic':
-        replacement = selected ? `*${selected}*` : '**';
-        newCursor = selected ? end + 2 : start + 1;
-        break;
-      case 'code':
-        if (selected.includes('\n')) {
-          replacement = `\`\`\`\n${selected || ''}\n\`\`\`\n`;
-          newCursor = selected ? end + 8 : start + 4;
-        } else {
-          replacement = selected ? `\`${selected}\`` : '``';
-          newCursor = selected ? end + 2 : start + 1;
-        }
-        break;
-      case 'quote':
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l) => `> ${l}`)
-              .join('\n')
-          : '> ';
-        newCursor = start + replacement.length;
-        break;
-      case 'ul':
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l) => `- ${l}`)
-              .join('\n')
-          : '- ';
-        newCursor = start + replacement.length;
-        break;
-      case 'ol':
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l, i) => `${i + 1}. ${l}`)
-              .join('\n')
-          : '1. ';
-        newCursor = start + replacement.length;
-        break;
-      case 'heading': {
-        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = text.indexOf('\n', start);
-        const fullLineEnd = lineEnd === -1 ? text.length : lineEnd;
-        const currentLine = text.slice(lineStart, fullLineEnd);
-        let newLine = currentLine;
-        if (currentLine.startsWith('## ')) newLine = '### ' + currentLine.slice(3);
-        else if (currentLine.startsWith('### ')) newLine = '#### ' + currentLine.slice(4);
-        else if (currentLine.startsWith('#### ')) newLine = currentLine.slice(5);
-        else newLine = '## ' + currentLine;
-        textarea.setRangeText(newLine, lineStart, fullLineEnd, 'select');
-        changed();
-        textarea.focus();
-        return;
+    const start = textarea.selectionStart,
+      end = textarea.selectionEnd,
+      text = textarea.value,
+      selected = text.slice(start, end);
+    let rep = '',
+      cur = start;
+    if (type === 'bold') {
+      rep = selected ? `**${selected}**` : '****';
+      cur = selected ? end + 4 : start + 2;
+    } else if (type === 'italic') {
+      rep = selected ? `*${selected}*` : '**';
+      cur = selected ? end + 2 : start + 1;
+    } else if (type === 'code') {
+      if (selected.includes('\n')) {
+        rep = `\`\`\`\n${selected}\n\`\`\`\n`;
+        cur = end + 8;
+      } else {
+        rep = selected ? `\`${selected}\`` : '``';
+        cur = selected ? end + 2 : start + 1;
       }
-      case 'link':
-        replacement = `[${selected || '链接文本'}](https://)`;
-        newCursor = selected ? end + 11 : start + 1;
-        break;
-      case 'zen':
-        setZen(!$('app-view').classList.contains('zen-mode'));
-        return;
-    }
-
-    if (replacement) {
-      textarea.setRangeText(replacement, start, end, 'end');
-      textarea.setSelectionRange(newCursor, newCursor);
+    } else if (['quote', 'ul', 'ol'].includes(type)) {
+      rep = selected
+        .split('\n')
+        .map(
+          (line, index) =>
+            (type === 'quote' ? '> ' : type === 'ul' ? '- ' : `${index + 1}. `) + line,
+        )
+        .join('\n');
+      cur = start + rep.length;
+    } else if (type === 'link') {
+      rep = `[${selected || '链接文本'}](https://)`;
+      cur = selected ? end + 11 : start + 1;
+    } else if (type === 'heading') {
+      const ls = text.lastIndexOf('\n', start - 1) + 1,
+        fe = (text.indexOf('\n', start) + 1 || text.length + 1) - 1,
+        cl = text.slice(ls, fe),
+        nl = cl.startsWith('## ')
+          ? '### ' + cl.slice(3)
+          : cl.startsWith('### ')
+            ? '#### ' + cl.slice(4)
+            : cl.startsWith('#### ')
+              ? cl.slice(5)
+              : '## ' + cl;
+      textarea.setRangeText(nl, ls, fe, 'select');
+      changed();
+      textarea.focus();
+      return;
+    } else if (type === 'zen') return setZen(!$('app-view').classList.contains('zen-mode'));
+    if (rep) {
+      textarea.setRangeText(rep, start, end, 'end');
+      if (type === 'link' && !selected) {
+        textarea.setSelectionRange(start + 1, start + 5);
+      } else {
+        textarea.setSelectionRange(cur, cur);
+      }
       textarea.focus();
       changed();
     }
   }
 
-  document.querySelectorAll('.editor-format-actions [data-format]').forEach((btn) => {
-    btn.addEventListener('click', () => applyFormat(btn.dataset.format));
+  document.querySelector('.editor-format-actions')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-format]');
+    if (btn) applyFormat(btn.dataset.format);
   });
 
   textarea.addEventListener('keydown', (e) => {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
+    if (e.isComposing) return;
+    const start = textarea.selectionStart,
+      end = textarea.selectionEnd,
+      text = textarea.value;
 
     if (e.key === 'Tab') {
       e.preventDefault();
-      if (start === end) {
+      const ls = text.lastIndexOf('\n', start - 1) + 1;
+      if (start === end && !e.shiftKey) {
         textarea.setRangeText('  ', start, end, 'end');
       } else {
-        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = text.indexOf('\n', end);
-        const rangeEnd = lineEnd === -1 ? text.length : lineEnd;
-        const lines = text.slice(lineStart, rangeEnd).split('\n');
-        if (e.shiftKey) {
-          const unindented = lines
-            .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
-            .join('\n');
-          textarea.setRangeText(unindented, lineStart, rangeEnd, 'select');
-        } else {
-          const indented = lines.map((l) => '  ' + l).join('\n');
-          textarea.setRangeText(indented, lineStart, rangeEnd, 'select');
-        }
+        const ep = end > start && text[end - 1] === '\n' ? end - 1 : end,
+          le = text.indexOf('\n', ep),
+          re = le === -1 ? text.length : le,
+          lines = text.slice(ls, re).split('\n');
+        const res = e.shiftKey
+          ? lines
+              .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
+              .join('\n')
+          : lines.map((l) => '  ' + l).join('\n');
+        textarea.setRangeText(res, ls, re, start === end ? 'end' : 'select');
       }
       changed();
       return;
     }
 
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      const currentLine = text.slice(lineStart, start);
-      const ulMatch = currentLine.match(/^(\s*)([-*+]\s+)/);
-      const olMatch = currentLine.match(/^(\s*)(\d+)\.\s+/);
-      if (ulMatch) {
-        if (currentLine.trim() === ulMatch[2].trim()) {
-          e.preventDefault();
-          textarea.setRangeText('', lineStart, start, 'end');
-          changed();
-          return;
-        }
+      const ls = text.lastIndexOf('\n', start - 1) + 1,
+        cl = text.slice(ls, start),
+        m = cl.match(/^(\s*)([-*+]\s+|(\d+)\.\s+)/);
+      if (m) {
         e.preventDefault();
-        textarea.setRangeText('\n' + ulMatch[1] + ulMatch[2], start, end, 'end');
-        changed();
-        return;
-      } else if (olMatch) {
-        if (currentLine.trim() === olMatch[2] + '.') {
-          e.preventDefault();
-          textarea.setRangeText('', lineStart, start, 'end');
-          changed();
-          return;
-        }
-        e.preventDefault();
-        const nextNum = parseInt(olMatch[2], 10) + 1;
-        textarea.setRangeText('\n' + olMatch[1] + nextNum + '. ', start, end, 'end');
+        if (cl.trim() === m[2].trim()) textarea.setRangeText('', ls, start, 'end');
+        else
+          textarea.setRangeText('\n' + m[1] + (m[3] ? +m[3] + 1 + '. ' : m[2]), start, end, 'end');
         changed();
         return;
       }
     }
 
-    const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`', '*': '*', _: '_' };
-    if (start !== end && pairs[e.key]) {
+    if (start !== end && '([{`"\'*_'.includes(e.key)) {
       e.preventDefault();
-      const openChar = e.key;
-      const closeChar = pairs[openChar];
-      const selected = text.slice(start, end);
-      textarea.setRangeText(`${openChar}${selected}${closeChar}`, start, end, 'select');
+      const close = { '(': ')', '[': ']', '{': '}' }[e.key] || e.key;
+      textarea.setRangeText(`${e.key}${text.slice(start, end)}${close}`, start, end, 'select');
       changed();
       return;
     }
 
     if (e.ctrlKey || e.metaKey) {
-      const k = e.key.toLowerCase();
-      if (k === 'b') {
+      const fmt = { b: 'bold', i: 'italic', k: 'link' }[e.key.toLowerCase()];
+      if (fmt) {
         e.preventDefault();
-        applyFormat('bold');
-      } else if (k === 'i') {
-        e.preventDefault();
-        applyFormat('italic');
-      } else if (k === 'k') {
-        e.preventDefault();
-        applyFormat('link');
-      } else if (k === 's') {
-        e.preventDefault();
-        saveCurrent()
-          .then(() => notice('草稿已保存。', 'success'))
-          .catch((err) => notice(err.message, 'error'));
+        applyFormat(fmt);
       }
     }
 
-    if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) {
-      setZen(false);
-    }
+    if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) setZen(false);
   });
 
-  let scrollSyncing = false;
+  // Proportional scrolling also works with wrapped lines, code examples and
+  // Setext headings; do not guess correspondence from Markdown line numbers.
+  let scrollFrame;
   textarea.addEventListener(
     'scroll',
     () => {
-      if (scrollSyncing) return;
-      const scrollable = textarea.scrollHeight - textarea.clientHeight;
-      if (scrollable <= 0) return;
-      const progress = textarea.scrollTop / scrollable;
-      const frameWin = $('preview-frame')?.contentWindow;
-      const frameDoc = $('preview-frame')?.contentDocument;
-      if (!frameWin || !frameDoc) return;
-      const frameScrollable = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
-      if (frameScrollable > 0) {
-        scrollSyncing = true;
-        frameWin.scrollTo({ top: progress * frameScrollable, behavior: 'auto' });
-        requestAnimationFrame(() => {
-          scrollSyncing = false;
-        });
-      }
+      if (scrollFrame) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = null;
+        if (
+          $('editor-view').hidden ||
+          !window.matchMedia('(min-width:1100px)').matches ||
+          $('editor-panes').matches('.writing-only,.preview-only')
+        )
+          return;
+        const maxT = textarea.scrollHeight - textarea.clientHeight,
+          fw = $('preview-frame').contentWindow,
+          fd = $('preview-frame').contentDocument;
+        if (maxT > 0 && fw && fd) {
+          const maxP = fd.documentElement.scrollHeight - fw.innerHeight;
+          if (maxP > 0)
+            fw.scrollTo({ top: (textarea.scrollTop / maxT) * maxP, behavior: 'instant' });
+        }
+      });
     },
     { passive: true },
   );
 
-  const splitter = $('editor-splitter');
-  const panes = $('editor-panes');
+  const splitter = $('editor-splitter'),
+    panes = $('editor-panes');
   if (splitter && panes) {
+    const setSplit = (p) => {
+      panes.style.setProperty('--editor-split-left', `${p}%`);
+      panes.style.setProperty('--editor-split-right', `${100 - p}%`);
+      panes.style.setProperty('--editor-split-percent', `${p}%`);
+    };
     try {
-      const savedPercent = localStorage.getItem('cloudink-split-percent');
-      if (savedPercent) {
-        panes.style.setProperty('--editor-split-left', savedPercent);
-        panes.style.setProperty('--editor-split-right', `${100 - parseFloat(savedPercent)}%`);
-        panes.style.setProperty('--editor-split-percent', savedPercent);
-      }
+      const p = parseFloat(localStorage.getItem('cloudink-split-percent'));
+      if (Number.isFinite(p)) setSplit(Math.min(80, Math.max(20, p)));
     } catch {}
-
-    let dragging = false;
+    let drag = false;
     splitter.addEventListener('pointerdown', (e) => {
-      dragging = true;
+      drag = true;
       splitter.classList.add('is-dragging');
       splitter.setPointerCapture(e.pointerId);
     });
     splitter.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const rect = panes.getBoundingClientRect();
-      const percent = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
-      panes.style.setProperty('--editor-split-left', `${percent}%`);
-      panes.style.setProperty('--editor-split-right', `${100 - percent}%`);
-      panes.style.setProperty('--editor-split-percent', `${percent}%`);
+      if (!drag) return;
+      const r = panes.getBoundingClientRect(),
+        p = Math.min(80, Math.max(20, ((e.clientX - r.left) / r.width) * 100));
+      setSplit(p);
+      try {
+        localStorage.setItem('cloudink-split-percent', p);
+      } catch {}
     });
-    const stopDrag = () => {
-      if (dragging) {
-        dragging = false;
-        splitter.classList.remove('is-dragging');
-        try {
-          localStorage.setItem(
-            'cloudink-split-percent',
-            panes.style.getPropertyValue('--editor-split-percent'),
-          );
-        } catch {}
-      }
+    const stop = () => {
+      drag = false;
+      splitter.classList.remove('is-dragging');
     };
-    splitter.addEventListener('pointerup', stopDrag);
-    splitter.addEventListener('pointercancel', stopDrag);
+    splitter.addEventListener('pointerup', stop);
+    splitter.addEventListener('pointercancel', stop);
   }
 }
 setupEditorEnhancements();
@@ -1598,6 +1529,16 @@ configureMarkdownImport({
   notice,
   closeMenu: () => shell.close(),
 });
+function populateSiteForm(s) {
+  $('site-form').elements.themePalette.value = s.themePalette || 'ink';
+  iconPicker.load(s);
+  illustrationPicker?.load(s);
+  applySiteAppearance(s);
+  for (const [k, v] of Object.entries(s))
+    if ($('site-form').elements[k]) $('site-form').elements[k].value = v;
+  for (const k of ['bigTitle', 'footer', 'clarityId', 'about'])
+    if (!s[k] && $('site-form').elements[k]) $('site-form').elements[k].value = '';
+}
 $('settings').addEventListener('click', async () => {
   if (editorLocked) return;
   const version = ++navigationVersion;
@@ -1609,48 +1550,16 @@ $('settings').addEventListener('click', async () => {
     const [homePicker] = await Promise.all([loadIllustrationPicker(), loadBackup()]);
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
-    iconPicker.load(data.site);
     homePicker.load(data.site);
-    $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
-    applySiteAppearance(data.site);
-    for (const [key, value] of Object.entries(data.site))
-      if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
-    for (const key of ['bigTitle', 'footer', 'clarityId', 'about'])
-      if (!data.site[key]) $('site-form').elements[key].value = '';
+    populateSiteForm(data.site);
     invalidatePreview();
     view('settings');
     void api('/api/maintenance')
-      .then((status) => {
-        const reason =
-          {
-            uninitialized: '尚未初始化',
-            publication_settling: '刚刚发布，等待缓存稳定',
-            publication_busy: '发布进行中',
-            mutation_busy: '其他保存操作进行中',
-            bounded_work_or_storage_conflict: '本批检查达到上限或存储状态变化',
-            storage_error: '存储操作失败',
-          }[status?.reason] || '';
-        const label =
-          { running: '进行中', success: '成功', skipped: '已跳过', failed: '失败' }[
-            status?.status
-          ] || '成功';
-        $('storage-maintenance-status').textContent = status?.last_attempt_at
-          ? '最近尝试：' +
-            new Date(status.last_attempt_at).toLocaleString() +
-            '，' +
-            label +
-            (reason ? '（' + reason + '）' : '') +
-            '。已扫描 ' +
-            (status.scanned_objects || 0) +
-            ' 个对象，移除 ' +
-            (status.deleted_objects || 0) +
-            ' 个过期文件。' +
-            (status.last_success_at
-              ? '最近成功：' + new Date(status.last_success_at).toLocaleString() + '。'
-              : '') +
-            (Object.keys(status.cursors || {}).length ? '还有后续批次，将在下次继续。' : '')
-          : status?.finished_at
-            ? '最近清理：' + new Date(status.finished_at).toLocaleString()
+      .then((s) => {
+        $('storage-maintenance-status').textContent = s?.last_attempt_at
+          ? `最近尝试：${new Date(s.last_attempt_at).toLocaleString()}，${s.status || '成功'}${s.reason ? `（${s.reason}）` : ''}。已扫描 ${s.scanned_objects || 0} 个对象，移除 ${s.deleted_objects || 0} 个过期文件。${s.last_success_at ? `最近成功：${new Date(s.last_success_at).toLocaleString()}。` : ''}`
+          : s?.finished_at
+            ? `最近清理：${new Date(s.finished_at).toLocaleString()}`
             : '每日自动维护尚未运行。';
       })
       .catch(() => {
@@ -1662,37 +1571,23 @@ $('settings').addEventListener('click', async () => {
     if (version === navigationVersion) navigationStatus();
   }
 });
+async function saveSiteSettings() {
+  await illustrationPicker?.ready();
+  await iconPicker.ready();
+  const data = await api('/api/settings', {
+    method: 'PUT',
+    body: { site: Object.fromEntries(new FormData($('site-form'))), etag: settingsEtag },
+  });
+  settingsEtag = data.etag;
+  applySiteAppearance(data.site);
+}
 $('site-form').addEventListener('submit', (event) => {
   event.preventDefault();
-  const form = event.currentTarget;
-  void action(
-    'save-site',
-    '正在保存…',
-    async () => {
-      await illustrationPicker?.ready();
-      await iconPicker.ready();
-      const values = Object.fromEntries(new FormData(form));
-      const data = await api('/api/settings', {
-        method: 'PUT',
-        body: { site: values, etag: settingsEtag },
-      });
-      settingsEtag = data.etag;
-      applySiteAppearance(data.site);
-    },
-    '网站信息已保存，点击发布后上线。',
-  );
+  void action('save-site', '正在保存…', saveSiteSettings, '网站信息已保存，点击发布后上线。');
 });
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {
-    await illustrationPicker?.ready();
-    await iconPicker.ready();
-    const values = Object.fromEntries(new FormData($('site-form')));
-    const saved = await api('/api/settings', {
-      method: 'PUT',
-      body: { site: values, etag: settingsEtag },
-    });
-    settingsEtag = saved.etag;
-    applySiteAppearance(saved.site);
+    await saveSiteSettings();
     await startPublish({ settings: true });
   }),
 );
@@ -1704,8 +1599,7 @@ $('logout').addEventListener('click', async () => {
     await api('/api/logout', { method: 'POST', body: {} });
     shortTools.reset();
     doc = null;
-    dirty = 0;
-    savedVersion = 0;
+    dirty = savedVersion = 0;
     iconPicker.load(null);
     illustrationPicker?.load(null);
     iconPicker.apply(null);
@@ -1758,12 +1652,7 @@ function loadBackup() {
             'input:not([type=radio]),textarea,select[name]',
           ))
             input.value = '';
-          $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
-          iconPicker.load(result.site);
-          illustrationPicker?.load(result.site);
-          applySiteAppearance(result.site);
-          for (const [key, value] of Object.entries(result.site))
-            if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
+          populateSiteForm(result.site);
         },
       });
     })
@@ -1799,25 +1688,18 @@ async function updateSidebarShorts(value) {
   } catch {}
 }
 
-$('flclash-sidebar-new-btn')?.addEventListener('click', () => {
-  $('new-post')?.click();
-});
+$('flclash-sidebar-new-btn')?.addEventListener('click', () => $('new-post')?.click());
 
 document.addEventListener('click', (event) => {
-  const sidebarFilterBtn = event.target.closest('[data-sidebar-filter]');
-  if (sidebarFilterBtn) {
-    const filter = sidebarFilterBtn.dataset.sidebarFilter;
-    if (filter === 'all' || filter === 'published' || filter === 'draft') {
-      document.querySelector(`[data-post-filter="${filter}"]`)?.click();
-    }
-  }
+  const f = event.target.closest('[data-sidebar-filter]')?.dataset.sidebarFilter;
+  if (f === 'all' || f === 'published' || f === 'draft')
+    document.querySelector(`[data-post-filter="${f}"]`)?.click();
 });
 
-$('flclash-quick-short-btn')?.addEventListener('click', () =>
-  action('flclash-quick-short-btn', '正在打开…', async () => {
+const qb = $('flclash-quick-short-btn');
+qb?.addEventListener('click', () =>
+  action(qb.id, '正在打开…', async () => {
     if (await shortTools.show()) $('short-new').click();
   }),
 );
-$('flclash-goto-shorts-link')?.addEventListener('click', () => {
-  $('shorts').click();
-});
+$('flclash-goto-shorts-link')?.addEventListener('click', () => $('shorts').click());

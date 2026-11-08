@@ -9,7 +9,15 @@ function nowMinute() {
 function slugFor(date) {
   return 'short-' + date.replace(/\D/g, '').slice(0, 12) + '-' + crypto.randomUUID().slice(0, 8);
 }
-export function configureShorts({ api, notice, action, open, startPublish, onList }) {
+export function configureShorts({
+  api,
+  notice,
+  action,
+  open,
+  startPublish,
+  onList,
+  convertToPost,
+}) {
   let shorts = [],
     cursor = null,
     loadRevision = 0;
@@ -129,7 +137,17 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
           await load();
         });
       });
-      actions.append(edit, pub, del);
+      const conv = document.createElement('button');
+      conv.textContent = '转为文章';
+      conv.title = '以本条短记为起点新建文章';
+      conv.id = 'short-convert-' + item.slug;
+      conv.addEventListener('click', () =>
+        action(conv.id, '正在转换…', async () => {
+          const { draft } = await api(`/api/shorts/${encodeURIComponent(item.slug)}`);
+          await convertToPost({ date: draft.front_matter.date, body: draft.body_markdown });
+        }),
+      );
+      actions.append(edit, conv, pub, del);
       header.append(meta, actions);
 
       const bodyWrapper = document.createElement('div');
@@ -144,7 +162,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
 
       const preview = document.createElement('p');
       preview.className = 'short-card-preview';
-      const cached = contentCache.get(item.slug);
+      const cached = contentCache.get(item.slug) || item.snippet;
       if (cached) {
         const clean = cached.replace(/^#+\s+/gm, '').trim();
         preview.textContent = clean;
@@ -194,7 +212,6 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
     cursor = data.cursor;
-    for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
     render();
     more.hidden = !cursor;
   }

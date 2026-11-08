@@ -62,7 +62,7 @@ export async function verifyStudio(browser, origin, output, engine) {
   await expect(page.locator('.studio-welcome')).toBeHidden();
   await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
   await navigateStudio(page, 'dashboard-nav');
-  for (const width of [1440, 900, 390, 360, 320]) {
+  for (const width of [1440, 1024, 768, 390, 360, 320]) {
     await page.setViewportSize({ width, height: width >= 1100 ? 1000 : 844 });
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),

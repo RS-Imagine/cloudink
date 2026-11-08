@@ -1,3 +1,4 @@
+import { escapeHTML as esc } from './html.js';
 const $ = (id) => document.getElementById(id);
 
 export function configureMarkdownImport({
@@ -20,6 +21,16 @@ export function configureMarkdownImport({
   let busy = false,
     stopped = false,
     trigger = null;
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-slug]');
+    if (btn && !btn.disabled) {
+      try {
+        await openDraft(btn.dataset.slug);
+      } catch (error) {
+        notice(error.message, 'error');
+      }
+    }
+  });
   async function openDraft(slug) {
     const closed = new Promise((resolve) =>
       dialog.addEventListener('close', resolve, { once: true }),
@@ -84,26 +95,23 @@ export function configureMarkdownImport({
       single = null;
     const summary = () =>
       '已导入 ' + count + ' 篇草稿，失败 ' + failed + ' 个，跳过 ' + skipped + ' 个。';
-    const items = files.map((file) => {
-      const row = document.createElement('li'),
-        name = document.createElement('strong'),
-        message = document.createElement('span');
-      name.textContent = file.name;
-      message.textContent = '等待导入';
-      row.append(name, message);
-      list.append(row);
-      return { row, message };
-    });
+    list.innerHTML = files
+      .map((f) => `<li><strong>${esc(f.name)}</strong><span>等待导入</span></li>`)
+      .join('');
+    const items = [...list.children].map((row) => ({ row, message: row.lastChild }));
     try {
       // Flush the current editor before any import writes; a conflict keeps it intact.
       await flush();
       for (let index = 0; index < files.length; index++) {
         const file = files[index],
           { row, message } = items[index];
-        if (stopped) {
+        const skip = () => {
           skipped++;
           message.textContent = '已跳过：导入已取消';
           row.dataset.state = 'skipped';
+        };
+        if (stopped) {
+          skip();
           continue;
         }
         row.dataset.state = 'pending';
@@ -120,17 +128,13 @@ export function configureMarkdownImport({
             throw new Error('无法读取 UTF-8 文本，请将文件另存为 UTF-8 后重试。');
           }
           if (stopped) {
-            skipped++;
-            message.textContent = '已跳过：导入已取消';
-            row.dataset.state = 'skipped';
+            skip();
             continue;
           }
           const slug = 'post-' + date.replaceAll('-', '') + '-' + crypto.randomUUID();
           const draft = await engineTask('import', { source, filename: file.name, date, slug });
           if (stopped) {
-            skipped++;
-            message.textContent = '已跳过：导入已取消';
-            row.dataset.state = 'skipped';
+            skip();
             continue;
           }
           const result = await api('/api/posts/' + slug, {
@@ -142,18 +146,10 @@ export function configureMarkdownImport({
           count++;
           row.dataset.state = 'success';
           message.textContent = '已保存为新草稿：' + result.draft.front_matter.title;
-          const edit = document.createElement('button');
-          edit.type = 'button';
-          edit.textContent = '打开草稿';
-          edit.disabled = true;
-          edit.addEventListener('click', async () => {
-            try {
-              await openDraft(slug);
-            } catch (error) {
-              notice(error.message, 'error');
-            }
-          });
-          row.append(edit);
+          row.insertAdjacentHTML(
+            'beforeend',
+            `<button type="button" data-slug="${slug}" disabled>打开草稿</button>`,
+          );
         } catch (error) {
           failed++;
           row.dataset.state = 'error';
