@@ -89,8 +89,12 @@ try {
   await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.locator('#new-post').click();
   await page.locator('#title').fill('Browser published mathematics');
+  const codeExamples =
+    '````markdown\n```\n$literal_fence$\n```\n````\n\n~~~~markdown\n```\n$literal_tilde$\n~~~\n~~~~\n\n    $literal_indent$\n\n``a ` $literal_inline$``';
   const body =
-    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$\n\n```rust\nlet x = 1;\n```\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
+    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$ and $ x^2 $\n\n$$y^2$$\n\n$$\nz^2\n$$\n\n```rust\nlet x = 1;\n```\n\n' +
+    codeExamples +
+    '\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
   await page.locator('#body').fill(body);
   const slug = await page.locator('#slug').inputValue();
   await page.locator('#image-files').setInputFiles({
@@ -103,6 +107,22 @@ try {
   });
   await expect(page.locator('#notice')).toContainText('图片已上传');
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
+  async function verifyMathExamples(root) {
+    await expect(root.locator('.katex')).toHaveCount(4);
+    await expect(root.locator('.katex-display')).toHaveCount(2);
+    await expect(root.locator('pre code')).toHaveCount(4);
+    for (const [index, literal] of [
+      [1, '```\n$literal_fence$\n```\n'],
+      [2, '```\n$literal_tilde$\n~~~\n'],
+      [3, '$literal_indent$\n'],
+    ])
+      await expect(root.locator('pre code').nth(index)).toHaveText(literal, {
+        useInnerText: false,
+      });
+    await expect(root.locator('p > code')).toHaveText('a ` $literal_inline$');
+    assert.ok(!(await root.locator('.article-body').innerHTML()).includes('data-math-placeholder'));
+  }
+  await verifyMathExamples(page.frameLocator('#preview-frame'));
   await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
     'data-palette',
     'brown',
@@ -154,8 +174,8 @@ try {
     await page.frameLocator('#preview-frame').locator('.article-body').evaluate(readingStyle),
   );
   await live.setViewportSize({ width: 1440, height: 1000 });
-  await expect(live.locator('.katex')).toHaveCount(1);
-  await expect(live.locator('code.hljs')).toHaveCount(1);
+  await verifyMathExamples(live);
+  await expect(live.locator('code.hljs')).toHaveCount(4);
   assert.equal(await live.evaluate(() => window.BAD_SCRIPT), undefined);
   const image = live.locator('img[alt="photo.png"]');
   await expect
@@ -181,7 +201,7 @@ try {
     await expect(image).toBeFocused();
     await expect(live.locator('body')).not.toHaveCSS('overflow', 'hidden');
   }
-  await expect(live.locator('.copy-code')).toHaveCount(1);
+  await expect(live.locator('.copy-code')).toHaveCount(4);
   await live.evaluate(() => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -192,7 +212,7 @@ try {
       },
     });
   });
-  await live.locator('.copy-code').click();
+  await live.locator('.copy-code').first().click();
   assert.equal(await live.evaluate(() => window.COPIED_TEXT), 'let x = 1;\n');
   await live.locator('#share-btn').click();
   await expect(live.locator('.share-download')).toHaveAttribute('download', 'cloudink-share.png');
