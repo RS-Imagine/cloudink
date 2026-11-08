@@ -975,10 +975,35 @@ async function manualSave() {
   );
 }
 $('save-post').addEventListener('click', manualSave);
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault();
-    void manualSave();
+document.addEventListener('keydown', async (e) => {
+  if (
+    e.isComposing ||
+    editorLocked ||
+    $('editor-view').hidden ||
+    document.querySelector('dialog[open]') ||
+    !(e.ctrlKey || e.metaKey) ||
+    e.altKey
+  )
+    return;
+  const key = e.key.toLowerCase();
+  if (!['s', 'p', 'enter'].includes(key) && !(e.shiftKey && key === 'f')) return;
+  e.preventDefault();
+  if (key === 's') await manualSave();
+  else if (key === 'p') {
+    const show = $('editor-panes').classList.contains('preview-only')
+      ? $('show-split').hidden
+        ? 'writing'
+        : 'split'
+      : 'preview';
+    $('show-' + show).click();
+  } else if (key === 'f') setZen(!$('app-view').classList.contains('zen-mode'));
+  else {
+    const target = doc;
+    if (
+      (await confirmAction('将当前文章发布到网站？', { title: '发布文章？', accept: '发布' })) &&
+      doc === target
+    )
+      $('publish-post').click();
   }
 });
 window.addEventListener('beforeunload', (e) => {
@@ -1385,6 +1410,7 @@ function setupEditorEnhancements() {
   });
 
   textarea.addEventListener('keydown', (e) => {
+    if (e.isComposing) return;
     const start = textarea.selectionStart,
       end = textarea.selectionEnd,
       text = textarea.value;
@@ -1443,45 +1469,29 @@ function setupEditorEnhancements() {
     if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) setZen(false);
   });
 
-  let scrollSyncing = false;
+  // Proportional scrolling also works with wrapped lines, code examples and
+  // Setext headings; do not guess correspondence from Markdown line numbers.
+  let scrollFrame;
   textarea.addEventListener(
     'scroll',
     () => {
-      if (scrollSyncing) return;
-      const maxT = textarea.scrollHeight - textarea.clientHeight;
-      if (maxT <= 0) return;
-      const fw = $('preview-frame')?.contentWindow,
-        fd = $('preview-frame')?.contentDocument;
-      if (!fw || !fd) return;
-      const maxP = fd.documentElement.scrollHeight - fw.innerHeight;
-      if (maxP <= 0) return;
-
-      const lines = textarea.value.split('\n'),
-        domH = [...fd.querySelectorAll('.article-shell :is(h1,h2,h3,h4,h5,h6)')],
-        mdH = lines.map((l, i) => (/^#{1,6}\s+\S+/.test(l) ? i : -1)).filter((i) => i >= 0);
-
-      scrollSyncing = true;
-      if (mdH.length && domH.length && lines.length > 1) {
-        const cnt = Math.min(mdH.length, domH.length);
-        const A = [{ t: 0, p: 0 }];
-        for (let i = 0; i < cnt; i++)
-          A.push({
-            t: (mdH[i] / (lines.length - 1)) * maxT,
-            p: domH[i].getBoundingClientRect().top + fw.scrollY,
-          });
-        A.push({ t: maxT, p: maxP });
-        const cur = textarea.scrollTop,
-          k = A.findLastIndex((pt) => cur >= pt.t),
-          p1 = A[k],
-          p2 = A[k + 1] || p1;
-        fw.scrollTo({
-          top: p1.p + (p2.t > p1.t ? ((cur - p1.t) / (p2.t - p1.t)) * (p2.p - p1.p) : 0),
-        });
-      } else {
-        fw.scrollTo({ top: (textarea.scrollTop / maxT) * maxP });
-      }
-      requestAnimationFrame(() => {
-        scrollSyncing = false;
+      if (scrollFrame) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = null;
+        if (
+          $('editor-view').hidden ||
+          !window.matchMedia('(min-width:1100px)').matches ||
+          $('editor-panes').matches('.writing-only,.preview-only')
+        )
+          return;
+        const maxT = textarea.scrollHeight - textarea.clientHeight,
+          fw = $('preview-frame').contentWindow,
+          fd = $('preview-frame').contentDocument;
+        if (maxT > 0 && fw && fd) {
+          const maxP = fd.documentElement.scrollHeight - fw.innerHeight;
+          if (maxP > 0)
+            fw.scrollTo({ top: (textarea.scrollTop / maxT) * maxP, behavior: 'instant' });
+        }
       });
     },
     { passive: true },
@@ -1496,8 +1506,8 @@ function setupEditorEnhancements() {
       panes.style.setProperty('--editor-split-percent', `${p}%`);
     };
     try {
-      const p = localStorage.getItem('cloudink-split-percent');
-      if (p) setSplit(parseFloat(p));
+      const p = parseFloat(localStorage.getItem('cloudink-split-percent'));
+      if (Number.isFinite(p)) setSplit(Math.min(80, Math.max(20, p)));
     } catch {}
     let drag = false;
     splitter.addEventListener('pointerdown', (e) => {

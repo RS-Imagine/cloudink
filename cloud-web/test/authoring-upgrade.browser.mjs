@@ -100,3 +100,109 @@ export async function verifyAuthoringContent(browser, origin, engine) {
     await context.close();
   }
 }
+
+export async function verifyAuthoringControls(browser, origin) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+    reducedMotion: 'reduce',
+  });
+  await context.addInitScript(() => localStorage.setItem('cloudink-split-percent', '35'));
+  const page = await context.newPage();
+  try {
+    await page.goto(origin + '/admin');
+    await page.locator('#login-form input[name=email]').fill(owner);
+    await page.locator('#login-form input[name=password]').fill(password);
+    await page.locator('#login-submit').click();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await page.locator('#new-post').click();
+    await page.locator('#title').fill('Authoring controls');
+    const body = page.locator('#body');
+    await body.fill('alpha\nbeta\ngamma');
+    await body.evaluate((node) => node.setSelectionRange(0, 11));
+    await body.press('Tab');
+    await expect(body).toHaveValue('  alpha\n  beta\ngamma');
+    await body.press('Shift+Tab');
+    await expect(body).toHaveValue('alpha\nbeta\ngamma');
+    for (const [format, expected] of [
+      ['quote', '> alpha\n> beta'],
+      ['ul', '- alpha\n- beta'],
+      ['ol', '1. alpha\n2. beta'],
+      ['link', '[alpha\nbeta](https://)'],
+    ]) {
+      await body.fill('alpha\nbeta');
+      await body.evaluate((node) => node.setSelectionRange(0, node.value.length));
+      await page.locator(`[data-format="${format}"]`).click();
+      await expect(body).toHaveValue(expected);
+    }
+    await body.fill('2. second');
+    await body.press('End');
+    await body.press('Enter');
+    await expect(body).toHaveValue('2. second\n3. ');
+    await body.press('Enter');
+    await expect(body).toHaveValue('2. second\n');
+    await body.fill('- 中文输入');
+    await body.dispatchEvent('keydown', { key: 'Enter', isComposing: true });
+    await expect(body).toHaveValue('- 中文输入');
+    await body.press('Control+/');
+    await expect(page.locator('#shortcuts-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#shortcuts-dialog')).toBeHidden();
+    await body.press('Control+p');
+    await expect(page.locator('#show-preview')).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Control+p');
+    await expect(page.locator('#show-split')).toHaveAttribute('aria-pressed', 'true');
+    await body.press('Control+Shift+F');
+    await expect(page.locator('#app-view')).toHaveClass(/zen-mode/);
+    await body.press('Escape');
+    await expect(page.locator('#app-view')).not.toHaveClass(/zen-mode/);
+    await body.press('Control+Enter');
+    await expect(page.locator('#confirmation-dialog')).toBeVisible();
+    await expect(page.locator('#confirmation-cancel')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#confirmation-dialog')).toBeHidden();
+    const panes = page.locator('#editor-panes'),
+      splitter = page.locator('#editor-splitter');
+    let bounds = await panes.boundingBox();
+    const initial = await splitter.boundingBox();
+    assert.ok(Math.abs(initial.x + initial.width / 2 - bounds.x - bounds.width * 0.35) < 4);
+    await page.mouse.move(initial.x + initial.width / 2, initial.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width * 0.6, initial.y + 20);
+    await page.mouse.up();
+    const resized = await splitter.boundingBox();
+    bounds = await panes.boundingBox();
+    assert.ok(Math.abs(resized.x + resized.width / 2 - bounds.x - bounds.width * 0.6) < 4);
+    const text =
+      '## Start\n\n```md\n# Literal code heading\n```\n\n' +
+      Array.from(
+        { length: 100 },
+        (_, i) => `Paragraph ${i} ${'Long content '.repeat(12)}\n\n`,
+      ).join('') +
+      '## End marker';
+    await body.fill(text);
+    await expect(page.frameLocator('#preview-frame').locator('.article-body h2').last()).toHaveText(
+      'End marker',
+    );
+    for (const fraction of [0.5, 1, 0]) {
+      await body.evaluate((node, value) => {
+        node.scrollTop = value * (node.scrollHeight - node.clientHeight);
+        node.dispatchEvent(new Event('scroll'));
+      }, fraction);
+      await expect
+        .poll(() =>
+          page.evaluate((value) => {
+            const frame = document.querySelector('#preview-frame'),
+              max =
+                frame.contentDocument.documentElement.scrollHeight -
+                frame.contentWindow.innerHeight;
+            return Math.abs(frame.contentWindow.scrollY / max - value);
+          }, fraction),
+        )
+        .toBeLessThan(0.02);
+    }
+    await page.locator('#save-post').click();
+    await expect(page.locator('#notice')).toContainText('草稿已保存');
+  } finally {
+    await context.close();
+  }
+}
