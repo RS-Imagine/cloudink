@@ -908,7 +908,7 @@ async function newPost(initial) {
         front_matter: {
           title: initial?.title || '',
           slug: `post-${today.replaceAll('-', '')}-${crypto.randomUUID().slice(0, 8)}`,
-          date: today,
+          date: initial?.date || today,
           description: initial?.description || '',
           draft: true,
         },
@@ -916,6 +916,7 @@ async function newPost(initial) {
       },
       null,
     );
+    if (initial?.title || initial?.body) changed();
     $(initial?.title ? 'body' : 'title').focus();
   } finally {
     if (version === navigationVersion) navigationStatus();
@@ -1177,15 +1178,15 @@ window.addEventListener('online', () => {
     void saveCurrent().catch((error) => notice(error.message, 'error'));
 });
 
-async function upload(file, token) {
+async function upload(file) {
   const target = doc;
   const form = await imageUploadForm(file);
   if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  insertImage({ ...result, name: file.name }, token);
+  insertImage({ ...result, name: file.name });
 }
-function insertImage(image, token) {
+function insertImage(image) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
   const name = image.name.replace(/[\[\]\\\n\r]/g, '');
@@ -1197,11 +1198,7 @@ function insertImage(image, token) {
     ? `\n\n<img src="${esc(image.displayUrl || image.url)}" alt="${esc(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
     : `\n\n![${name}](${image.url})\n\n`;
   view('editor');
-  if (token && textarea.value.includes(token)) {
-    textarea.value = textarea.value.replace(token, text.trim());
-  } else {
-    textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
-  }
+  textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
   textarea.focus();
   changed();
 }
@@ -1244,45 +1241,17 @@ const shortTools = configureShorts({
     return true;
   },
   startPublish,
-  convertToPost: async (s) => {
-    if (editorLocked) return;
-    const version = ++navigationVersion;
-    await flush();
-    if (version === navigationVersion) {
-      view('editor');
-      await newPost({
-        title: s.date ? `短记 ${s.date}` : '',
-        body: s.body || '',
-      });
-    }
-  },
+  convertToPost: (s) =>
+    newPost({ title: `短记 ${s.date}`, date: s.date.slice(0, 10), body: s.body }),
 });
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {
   if (editorLocked || uploading || !doc || !files.length) return;
-  const ta = $('body');
-  const jobs = files.map((file, i) => ({
-    file,
-    token: `<!--up_${Date.now()}_${i}-->\n![上传: ${file.name.replace(/[\[\]\\]/g, '')}...](/editorial-botanical.svg)\n`,
-  }));
-  if (ta) {
-    const s = ta.selectionStart ?? ta.value.length;
-    ta.setRangeText(jobs.map((j) => j.token).join('') + '\n', s, ta.selectionEnd ?? s, 'end');
-    changed();
-  }
+  const target = doc;
   uploading = (async () => {
-    for (const j of jobs) {
-      try {
-        await upload(j.file, j.token);
-      } catch (err) {
-        if (ta) {
-          for (const rem of jobs) {
-            if (ta.value.includes(rem.token)) ta.value = ta.value.replace(rem.token, '');
-          }
-          changed();
-        }
-        throw err;
-      }
+    for (const file of files) {
+      if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
+      await upload(file);
     }
   })();
   try {

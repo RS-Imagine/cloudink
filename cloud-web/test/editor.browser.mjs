@@ -1,4 +1,5 @@
 import { navigateStudio } from './studio-navigation.mjs';
+import { verifyAuthoringContent } from './authoring-upgrade.browser.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
@@ -303,6 +304,7 @@ try {
   await paging.locator('#load-more-posts').click();
   await expect(paging.locator('.article-card')).toHaveCount(total);
   await paging.close();
+  await verifyAuthoringContent(browser, 'http://localhost:8788', 'chromium');
 } finally {
   await browser?.close();
   await mf.dispose();

@@ -140,20 +140,13 @@ export function configureShorts({
       const conv = document.createElement('button');
       conv.textContent = '转为文章';
       conv.title = '以本条短记为起点新建文章';
-      conv.addEventListener('click', async () => {
-        let body = contentCache.get(item.slug);
-        if (body === undefined) {
-          try {
-            body =
-              (await api(`/api/shorts/${encodeURIComponent(item.slug)}`)).draft?.body_markdown ||
-              '';
-            contentCache.set(item.slug, body);
-          } catch {
-            body = '';
-          }
-        }
-        convertToPost?.({ date: item.date, body });
-      });
+      conv.id = 'short-convert-' + item.slug;
+      conv.addEventListener('click', () =>
+        action(conv.id, '正在转换…', async () => {
+          const { draft } = await api(`/api/shorts/${encodeURIComponent(item.slug)}`);
+          await convertToPost({ date: draft.front_matter.date, body: draft.body_markdown });
+        }),
+      );
       actions.append(edit, conv, pub, del);
       header.append(meta, actions);
 
