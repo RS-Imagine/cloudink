@@ -1,5 +1,13 @@
 /** Shared by picker, paste/drop and library. A failed optimizer preserves the original. */
-const MAX_CONCURRENT_WORKERS = Math.min(2, Math.floor(navigator?.hardwareConcurrency / 2) || 1);
+const MAX_CONCURRENT_WORKERS = Math.max(
+  1,
+  Math.min(
+    2,
+    typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+      ? Math.floor(navigator.hardwareConcurrency / 2) || 1
+      : 2,
+  ),
+);
 let activeWorkers = 0;
 const workerQueue = [];
 

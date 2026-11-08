@@ -145,29 +145,21 @@ async function pump() {
     const style = page.createElement('style');
     style.textContent =
       css +
-      '\n.site-header,.site-footer,.share-container,.article-back,.reader-toc-slot{display:none!important}.wrapper{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}.reader-article{display:block!important;max-width:720px!important;margin-inline:auto!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
+      '\n .site-header,.site-footer,.share-container,.article-back{display:none!important}.wrapper{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}.reader-article{display:block!important;max-width:720px!important;margin-inline:auto!important}.reader-toc-slot{display:none!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
     page.head.append(style);
-    const hasMath = !!page.querySelector('.katex'),
-      hasCode = !!page.querySelector('pre code');
-    const ensureAssets = (d) => {
-      if (hasMath && !d.querySelector('link[href*="katex"]')) {
-        const l = d.createElement('link');
-        l.rel = 'stylesheet';
-        l.href = '/reader-assets/katex.css';
-        d.head.append(l);
-      }
-      if (hasCode && !d.getElementById('preview-highlight')) {
-        const l = d.createElement('link');
-        l.id = 'preview-highlight';
-        l.rel = 'stylesheet';
-        l.href = '/reader-assets/code.css';
-        d.head.append(l);
-      }
-    };
     page
       .querySelectorAll('#hljs-light,#hljs-dark,link[href*="katex"]')
       .forEach((node) => node.remove());
-    ensureAssets(page);
+    if (page.querySelector('.katex')) {
+      const math = page.createElement('link');
+      math.rel = 'stylesheet';
+      math.href = '/reader-assets/katex.css';
+      page.head.append(math);
+    }
+    const highlight = page.createElement('link');
+    highlight.id = 'preview-highlight';
+    highlight.rel = 'stylesheet';
+    if (page.querySelector('pre code')) page.head.append(highlight);
     applyPreviewTheme(page);
     page.querySelectorAll('img').forEach((image) => {
       const src = image.getAttribute('src') || '';
@@ -200,7 +192,19 @@ async function pump() {
     if (existingShell && newShell && targetDoc?.body) {
       const scrollY = targetDoc.documentElement.scrollTop || targetDoc.body.scrollTop;
       existingShell.replaceWith(newShell);
-      ensureAssets(targetDoc);
+      if (page.querySelector('.katex') && !targetDoc.querySelector('link[href*="katex"]')) {
+        const math = targetDoc.createElement('link');
+        math.rel = 'stylesheet';
+        math.href = '/reader-assets/katex.css';
+        targetDoc.head.append(math);
+      }
+      if (page.querySelector('pre code') && !targetDoc.getElementById('preview-highlight')) {
+        const highlight = targetDoc.createElement('link');
+        highlight.id = 'preview-highlight';
+        highlight.rel = 'stylesheet';
+        highlight.href = '/reader-assets/code.css';
+        targetDoc.head.append(highlight);
+      }
       applyPreviewTheme(targetDoc);
       targetDoc.documentElement.scrollTop = scrollY;
       loading.hidden = true;
