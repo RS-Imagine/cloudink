@@ -1697,11 +1697,12 @@ $('publish-settings').addEventListener('click', () =>
   }),
 );
 $('logout').addEventListener('click', async () => {
-  if (editorLocked) return;
+  if (editorLocked || !(await shortTools.confirmDiscard())) return;
   ++navigationVersion;
   try {
     await flush();
     await api('/api/logout', { method: 'POST', body: {} });
+    shortTools.reset();
     doc = null;
     dirty = 0;
     savedVersion = 0;

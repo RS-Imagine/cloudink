@@ -421,6 +421,41 @@ try {
   await page.locator('#site-form input[name=title]').fill(publishedBeforeLayout.site.title);
   await page.locator('#save-site').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
+  // Both public views must update through normal short publication, without a rebuild.
+  await navigateStudio(page, 'shorts');
+  await page.locator('#short-new').click();
+  for (const body of ['Published home note.', 'Edited home note.']) {
+    await page.locator('#short-body').fill(body);
+    await page.locator('#short-publish').click();
+    await expect(page.locator('#short-editor')).toBeHidden({ timeout: 45000 });
+    await live.goto('http://localhost:8791/');
+    await expect(live.locator('.flclash-shorts-list')).toContainText(body);
+    await expect(
+      live.locator('.flclash-stat-item').filter({ hasText: '短记' }).locator('.flclash-stat-num'),
+    ).toHaveText('1');
+    assert.ok(
+      (await (await live.request.get('http://localhost:8791/shorts/')).text()).includes(body),
+    );
+    if (body === 'Published home note.')
+      await page
+        .locator('.short-admin-card')
+        .filter({ hasText: body })
+        .getByRole('button', { name: '编辑', exact: true })
+        .click();
+  }
+  await page
+    .locator('.short-admin-card')
+    .filter({ hasText: 'Edited home note.' })
+    .getByRole('button', { name: '删除', exact: true })
+    .click();
+  await acceptConfirmation(page);
+  await expect(page.locator('#notice')).toContainText('短记已删除');
+  await live.reload();
+  await expect(live.locator('.flclash-shorts-list')).toContainText('暂无短记发布');
+  await expect(
+    live.locator('.flclash-stat-item').filter({ hasText: '短记' }).locator('.flclash-stat-num'),
+  ).toHaveText('0');
+  await navigateStudio(page, 'settings');
   await verifyUiAuditRegressions(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);

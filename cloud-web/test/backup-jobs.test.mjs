@@ -111,6 +111,52 @@ test('500 drafts export and restore within per-request budgets; checkpoint retri
   assert.equal((await post(target, '/api/backup/jobs/' + task.id + '/finish')).phase, 'complete');
 });
 
+test('export budgets count live originals separately from deleted article and short markers', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const files = {
+    'drafts/live.md': source('live'),
+    'shorts/live-note.md':
+      '+++\ndate = "2026-11-08 12:00"\nslug = "live-note"\ndraft = true\n+++\n\nLive short',
+  };
+  for (const [key, text] of Object.entries(files))
+    await bucket.put(key, text, { httpMetadata: { contentType: 'text/markdown' } });
+  for (const prefix of ['drafts/', 'shorts/']) {
+    for (let offset = 0; offset < 2001; offset += 50)
+      await Promise.all(
+        Array.from({ length: Math.min(50, 2001 - offset) }, (_, index) =>
+          bucket.put(prefix + 'deleted-' + (offset + index) + '.md', 'deleted marker', {
+            customMetadata: { deleted: 'true' },
+          }),
+        ),
+      );
+  }
+  const marker = await bucket.head('drafts/deleted-0.md');
+  const shortMarker = await bucket.head('shorts/deleted-0.md');
+  const task = await post(f, '/api/backup/jobs', { mode: 'export' });
+  assert.equal(task.total, 2);
+  assert.deepEqual([...task.entries].sort(), Object.keys(files).sort());
+  const batch = await post(f, '/api/backup/jobs/' + task.id + '/read', { index: 0 });
+  assert.deepEqual(batch.files, files);
+  assert.equal(batch.next, null);
+  await post(f, '/api/backup/jobs/' + task.id + '/finish');
+  assert.equal((await bucket.head(marker.key)).version, marker.version);
+  assert.equal((await bucket.head(shortMarker.key)).version, shortMarker.version);
+  // Keep the aggregate export limit across article and short namespaces.
+  for (let offset = 0; offset < 1999; offset += 50)
+    await Promise.all(
+      Array.from({ length: Math.min(50, 1999 - offset) }, (_, index) =>
+        bucket.put(
+          'drafts/active-' + (offset + index) + '.md',
+          source('active-' + (offset + index)),
+        ),
+      ),
+    );
+  assert.equal((await f.request('/api/backup/jobs', 'POST', { mode: 'export' })).status, 413);
+  assert.equal(await (await f.request('/api/backup/jobs')).json(), null);
+});
+
 test('batch conflicts, cancellation, expiration and metadata bounds preserve existing data', async (t) => {
   const f = await fixture(t);
   await f.login();

@@ -20,7 +20,38 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
   $('short-list').after(more);
   more.addEventListener('click', () => action('short-more', '正在加载…', () => load(true)));
   let editing = null, // { slug, etag } or null for new
-    editorRevision = 0;
+    editorRevision = 0,
+    savedEditorValue = '';
+  function editorValue(draft = null) {
+    return JSON.stringify(
+      draft
+        ? [draft.front_matter.date, draft.body_markdown]
+        : [$('short-date').value.trim(), $('short-body').value],
+    );
+  }
+  function hasUnsavedChanges() {
+    return !$('short-editor').hidden && editorValue() !== savedEditorValue;
+  }
+  async function confirmDiscard() {
+    if (!hasUnsavedChanges()) return true;
+    const revision = editorRevision;
+    return (
+      (await confirmAction(
+        '当前短记有未保存的修改。可暂不操作返回编辑并保存，或明确放弃这些修改。',
+        {
+          title: '放弃未保存的短记修改？',
+          accept: '放弃修改',
+          danger: true,
+        },
+      )) && revision === editorRevision
+    );
+  }
+  window.addEventListener('beforeunload', (event) => {
+    if (hasUnsavedChanges()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
   const contentCache = new Map();
   function status(message, tone = '') {
     const el = $('short-status');
@@ -167,7 +198,8 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     render();
     more.hidden = !cursor;
   }
-  function openEditor(item = null) {
+  async function openEditor(item = null) {
+    if (!(await confirmDiscard())) return;
     ++editorRevision;
     editing = item ? { slug: item.slug, etag: item.etag || null } : null;
     const target = editing;
@@ -178,6 +210,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     $('short-body').readOnly = $('short-date').readOnly = !!item;
     $('short-save').disabled = $('short-publish').disabled = !!item;
     $('short-editor').hidden = false;
+    savedEditorValue = editorValue();
     updateWordCount();
     if (item) {
       api(`/api/shorts/${encodeURIComponent(item.slug)}`).then(
@@ -185,8 +218,10 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
           const body = data.draft.body_markdown || '';
           contentCache.set(item.slug, body);
           if (editing === target) {
+            $('short-date').value = data.draft.front_matter.date;
             $('short-body').value = body;
             editing.etag = data.etag;
+            savedEditorValue = editorValue();
             $('short-body').readOnly = $('short-date').readOnly = false;
             $('short-save').disabled = $('short-publish').disabled = false;
             updateWordCount();
@@ -204,8 +239,15 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     ++editorRevision;
     $('short-editor').hidden = true;
     editing = null;
+    $('short-body').value = $('short-date').value = '';
+    savedEditorValue = editorValue();
+  }
+  async function editorAction(id, label, work) {
+    await action(id, label, work);
+    if ($('short-body').readOnly) $(id).disabled = true;
   }
   async function collect() {
+    if ($('short-body').readOnly) throw new Error('短记原稿尚未载入，请稍后重试。');
     const date = $('short-date').value.trim();
     const body = $('short-body').value;
     if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(date)) {
@@ -225,9 +267,11 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     return slug;
   }
   $('short-new').addEventListener('click', () => openEditor());
-  $('short-cancel').addEventListener('click', closeEditor);
+  $('short-cancel').addEventListener('click', async () => {
+    if (await confirmDiscard()) closeEditor();
+  });
   $('short-save').addEventListener('click', () =>
-    action('short-save', '正在保存…', async () => {
+    editorAction('short-save', '正在保存…', async () => {
       const revision = editorRevision,
         target = editing;
       const draft = await collect();
@@ -240,13 +284,14 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       });
       if (revision === editorRevision) {
         editing = { slug, etag: result.etag };
+        savedEditorValue = editorValue(draft);
         status('草稿已保存。', 'success');
       }
       await load();
     }),
   );
   $('short-publish').addEventListener('click', () =>
-    action('short-publish', '正在发布…', async () => {
+    editorAction('short-publish', '正在发布…', async () => {
       const revision = editorRevision,
         target = editing;
       const draft = await collect();
@@ -257,7 +302,10 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         method: 'PUT',
         body: { ...draft, etag: target?.etag || null },
       });
-      if (revision === editorRevision) editing = { slug, etag: saved.etag };
+      if (revision === editorRevision) {
+        editing = { slug, etag: saved.etag };
+        savedEditorValue = editorValue(draft);
+      }
       await startPublish({ shortSlug: slug, etag: saved.etag });
       notice('短记已发布。', 'success');
       if (revision === editorRevision) {
@@ -277,5 +325,5 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     return true;
   }
   $('shorts').addEventListener('click', () => action('shorts', '正在打开…', show));
-  return { show };
+  return { show, confirmDiscard, reset: closeEditor };
 }

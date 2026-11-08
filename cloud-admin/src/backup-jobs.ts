@@ -4,6 +4,7 @@ import { digest } from './auth';
 import { backupSource } from './backup-contract';
 import { currentRelease } from './publishing';
 import { draftSummary } from './post-metadata';
+import { listActiveDrafts } from './draft-catalog';
 import { ensureManagedImages, imageReferenceMetadata } from './image-library';
 import { ensureSiteIcon } from './site-icons';
 import { ensureHomeIllustration } from './home-illustration';
@@ -289,9 +290,8 @@ async function start(request: Request, env: CloudInkEnv, session: Session): Prom
         path: 'published-shorts/' + slug + '.md',
         size: encoder.encode(source).byteLength,
       });
-    for (const prefix of ['drafts/', 'shorts/']) {
-      for (const object of await list(env.STORAGE, prefix, MAX_FILES)) {
-        if (object.customMetadata?.deleted) continue;
+    for (const prefix of ['drafts/', 'shorts/'] as const) {
+      for (const object of await listActiveDrafts(env.STORAGE, prefix)) {
         if (!backupSource(object.key) || object.size > MAX_SOURCE)
           throw new HttpError(413, '原稿路径或大小超出网页备份范围。');
         task.entries.push({ path: object.key, size: object.size, etag: object.etag });
