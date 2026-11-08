@@ -242,7 +242,12 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     $('short-body').value = $('short-date').value = '';
     savedEditorValue = editorValue();
   }
+  async function editorAction(id, label, work) {
+    await action(id, label, work);
+    if ($('short-body').readOnly) $(id).disabled = true;
+  }
   async function collect() {
+    if ($('short-body').readOnly) throw new Error('短记原稿尚未载入，请稍后重试。');
     const date = $('short-date').value.trim();
     const body = $('short-body').value;
     if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(date)) {
@@ -266,7 +271,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     if (await confirmDiscard()) closeEditor();
   });
   $('short-save').addEventListener('click', () =>
-    action('short-save', '正在保存…', async () => {
+    editorAction('short-save', '正在保存…', async () => {
       const revision = editorRevision,
         target = editing;
       const draft = await collect();
@@ -286,7 +291,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     }),
   );
   $('short-publish').addEventListener('click', () =>
-    action('short-publish', '正在发布…', async () => {
+    editorAction('short-publish', '正在发布…', async () => {
       const revision = editorRevision,
         target = editing;
       const draft = await collect();

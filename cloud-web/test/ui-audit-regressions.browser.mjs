@@ -11,7 +11,7 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     reducedMotion: 'reduce',
   });
   const page = await context.newPage();
-  let releaseRead, releaseSave;
+  let releaseRead, releaseSave, releaseCrossRead, releaseCrossSave;
   try {
     await page.goto(origin + '/admin');
     await page.locator('#login-form input[name=email]').fill(owner);
@@ -191,6 +191,63 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     await expect(page.locator('#short-body')).toHaveValue('');
     await page.locator('#short-cancel').click();
 
+    const crossSave = new Promise((resolve) => (releaseCrossSave = resolve));
+    const crossRead = new Promise((resolve) => (releaseCrossRead = resolve));
+    await context.route(
+      (url) => url.pathname === '/api/shorts/' + slug + '-0',
+      async (route) => {
+        if (route.request().method() === 'PUT') await crossSave;
+        await route.fallback();
+      },
+    );
+    await context.route(
+      (url) => url.pathname === '/api/shorts/' + slug + '-1',
+      async (route) => {
+        if (route.request().method() === 'GET') await crossRead;
+        await route.fallback();
+      },
+    );
+    await page
+      .locator('.short-admin-card')
+      .filter({ has: page.locator('#short-publish-' + slug + '-0') })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await expect(page.locator('#short-body')).toHaveValue(body);
+    await page.locator('#short-body').fill('另一条短记的在途保存');
+    await page.locator('#short-save').click();
+    await expect(page.locator('#short-save')).toHaveAttribute('aria-busy', 'true');
+    await page.locator('#short-cancel').click();
+    await acceptConfirmation(page);
+    await page
+      .locator('.short-admin-card')
+      .filter({ has: page.locator('#short-publish-' + slug + '-1') })
+      .getByRole('button', { name: '编辑', exact: true })
+      .click();
+    await expect(page.locator('#short-body')).toHaveAttribute('readonly', '');
+    releaseCrossSave();
+    await expect(page.locator('#short-save')).not.toHaveAttribute('aria-busy', 'true');
+    if (await page.locator('#short-save').isEnabled()) {
+      const unexpectedSave = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname === '/api/shorts/' + slug + '-1',
+      );
+      await page.locator('#short-save').click();
+      await unexpectedSave;
+    }
+    assert.equal(
+      (await (await page.request.get(origin + '/api/shorts/' + slug + '-1')).json()).draft
+        .body_markdown,
+      body,
+      'An old action must not allow saving an editor whose original is still loading',
+    );
+    await expect(page.locator('#short-save')).toBeDisabled();
+    await expect(page.locator('#short-publish')).toBeDisabled();
+    releaseCrossRead();
+    await expect(page.locator('#short-body')).toHaveValue(body);
+    await expect(page.locator('#short-save')).toBeEnabled();
+    await page.locator('#short-cancel').click();
+
     await page.locator('#short-new').click();
     await page.locator('#short-body').fill('保存失败时也不能丢弃');
     await context.route(
@@ -232,6 +289,8 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
   } finally {
     releaseRead?.();
     releaseSave?.();
+    releaseCrossRead?.();
+    releaseCrossSave?.();
     await context.close();
   }
 }
