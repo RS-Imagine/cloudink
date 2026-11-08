@@ -245,6 +245,16 @@ test('backup restores deleted articles and shorts as drafts and retries without 
     (await (await f.request('/api/shorts/note')).json()).draft.body_markdown,
     'Backed up short',
   );
+  const shortList = await (await f.request('/api/shorts')).json();
+  assert.equal(shortList.shorts[0].snippet, 'Backed up short');
+  const restoredShort = await bucket.head('shorts/note.md');
+  const savedShort = await f.request('/api/shorts/note', 'PUT', {
+    ...shortDraft('note', 'Backed up short'),
+    etag: restoredShort.etag,
+  });
+  assert.equal(savedShort.status, 200);
+  assert.equal((await savedShort.json()).unchanged, true);
+  assert.equal((await bucket.head(restoredShort.key)).version, restoredShort.version);
   for (const key of ['drafts/article.md', 'shorts/note.md'])
     assert.equal((await bucket.head(key)).customMetadata.deleted, undefined);
   assert.equal(await (await bucket.get('auth/account.json')).text(), account);

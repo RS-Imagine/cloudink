@@ -3,9 +3,9 @@ import type { Session } from './auth';
 import { digest } from './auth';
 import { backupSource } from './backup-contract';
 import { currentRelease } from './publishing';
-import { draftSummary } from './post-metadata';
+import { draftSummary, shortSummary } from './post-metadata';
 import { listActiveDrafts } from './draft-catalog';
-import { ensureManagedImages, imageReferenceMetadata } from './image-library';
+import { ensureManagedImages } from './image-library';
 import { ensureSiteIcon } from './site-icons';
 import { ensureHomeIllustration } from './home-illustration';
 import { validImageKey } from './media';
@@ -461,10 +461,7 @@ async function apply(
     const saved = await env.STORAGE.put(item.key, item.source, {
       onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
       customMetadata: short
-        ? {
-            date: draft.front_matter.date,
-            ...(await imageReferenceMetadata(item.source, env.STORAGE)),
-          }
+        ? await shortSummary(draft as ReturnType<typeof parseShortSource>, item.source, env.STORAGE)
         : await draftSummary(draft as ReturnType<typeof parseSource>, env.STORAGE),
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
     });

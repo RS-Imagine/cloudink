@@ -15,7 +15,7 @@ import {
 import { ASSETS, PAGE_GENERATION_VERSION } from './assets.generated';
 import { Buffer } from 'node:buffer';
 import { authRoute, digest, requireSession, type Session } from './auth';
-import { draftSummary } from './post-metadata';
+import { draftSummary, shortSummary } from './post-metadata';
 import { unchangedSource, sourceDigest } from './save-digest';
 import { assertWritableAddress, renameDraft } from './post-addresses';
 import { currentRelease, publish, publishStatus } from './publishing';
@@ -42,7 +42,7 @@ import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
-import { imageLibraryRoute, ensureManagedImages, imageReferenceMetadata } from './image-library';
+import { imageLibraryRoute, ensureManagedImages } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 const listDrafts = (bucket: R2Bucket) => listActiveDrafts(bucket, 'drafts/');
 async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
@@ -403,16 +403,7 @@ async function apiRoute(
         return json({ ok: true, etag: existing.etag, unchanged: true });
       const object = await env.STORAGE.put(`shorts/${slug}.md`, source, {
         onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
-        customMetadata: {
-          source_digest: await sourceDigest(source),
-          date: draft.front_matter.date,
-          snippet: draft.body_markdown.slice(0, 300).replace(/\r?\n/g, ' '),
-          ...(await imageReferenceMetadata(
-            source,
-            env.STORAGE,
-            existing?.customMetadata?.image_refs_hash,
-          )),
-        },
+        customMetadata: await shortSummary(draft, source, env.STORAGE, existing?.customMetadata),
         httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       });
       if (!object) throw new HttpError(409, '这条短记刚刚发生了修改，请重新打开。');
