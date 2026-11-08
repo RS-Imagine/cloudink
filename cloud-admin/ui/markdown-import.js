@@ -1,5 +1,5 @@
+import { escapeHTML as esc } from './html.js';
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function configureMarkdownImport({
   api,

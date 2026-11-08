@@ -206,3 +206,120 @@ export async function verifyAuthoringControls(browser, origin) {
     await context.close();
   }
 }
+
+export async function verifyGalleryBatch(browser, origin, engine) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await page.goto(origin + '/admin');
+    await page.locator('#login-form input[name=email]').fill(owner);
+    await page.locator('#login-form input[name=password]').fill(password);
+    await page.locator('#login-submit').click();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await navigateStudio(page, 'images');
+    const pictures = await page.evaluate(() =>
+      ['red', 'blue'].map((color) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 2;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, 2, 2);
+        return canvas.toDataURL().split(',')[1];
+      }),
+    );
+    const names = [engine + ' red.png', engine + ' blue.png'];
+    await page.locator('#image-library-files').setInputFiles(
+      pictures.map((base64, i) => ({
+        name: names[i],
+        mimeType: 'image/png',
+        buffer: Buffer.from(base64, 'base64'),
+      })),
+    );
+    await expect(page.locator('#image-library-upload')).not.toHaveAttribute('aria-busy', 'true');
+    const cards = names.map((name) =>
+      page.locator('.image-card').filter({
+        has: page.getByRole('heading', { name, exact: true }),
+      }),
+    );
+    for (const card of cards) {
+      await expect(card).toBeVisible();
+      const outer = await card.boundingBox(),
+        check = await card.locator('.image-select-wrap').boundingBox();
+      assert.ok(
+        check.x >= outer.x && check.y >= outer.y && check.y < outer.y + outer.height,
+        'Each image checkbox must be positioned inside its own card',
+      );
+      await card.locator('.image-select-check').check();
+    }
+    await expect(page.locator('#image-batch-count')).toHaveText('已选择 2 项');
+    await expect(page.locator('#image-batch-insert')).toBeDisabled();
+    await page.setViewportSize({ width: 360, height: 800 });
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+      false,
+    );
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async () => {
+            throw new Error('Clipboard denied');
+          },
+        },
+      }),
+    );
+    await page.locator('#image-batch-copy').click();
+    await expect(page.locator('#notice')).toContainText('Clipboard denied');
+    await expect(page.locator('#image-batch-count')).toHaveText('已选择 2 项');
+    await page.evaluate(() =>
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (text) => {
+            window.batchMarkdown = text;
+          },
+        },
+      }),
+    );
+    await page.locator('#image-batch-copy').click();
+    const markdown = await page.evaluate(() => window.batchMarkdown);
+    for (const name of names) assert.ok(markdown.includes(name));
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#image-batch-bar')).toBeHidden();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.locator('#new-post').click();
+    await page.locator('#title').fill('Batch images ' + engine);
+    await page.locator('#body').fill('12345 原文必须保留');
+    await page.locator('#choose-library-image').click();
+    for (const card of cards) await card.locator('.image-select-check').check();
+    await expect(page.locator('#image-batch-insert')).toBeEnabled();
+    await page.locator('#image-batch-insert').click();
+    await expect(page.locator('#editor-view')).toBeVisible();
+    const source = await page.locator('#body').inputValue();
+    assert.ok(source.startsWith('12345 原文必须保留'));
+    assert.equal((source.match(/<img /g) || []).length, 2);
+    await page.locator('#save-post').click();
+    await expect(page.locator('#notice')).toContainText('草稿已保存');
+    await navigateStudio(page, 'images');
+    const thumbnailPath = new URL(await cards[0].locator('img').getAttribute('src'), origin)
+      .pathname;
+    await context.route(
+      (url) => url.pathname === thumbnailPath,
+      (route) => route.fulfill({ status: 404, body: 'Unavailable' }),
+    );
+    await page.locator('#image-library-refresh').click();
+    await expect(page.locator('#image-library-refresh')).not.toHaveAttribute('aria-busy', 'true');
+    await cards[0].scrollIntoViewIfNeeded();
+    await cards[0].locator('img').evaluate((node) => {
+      const url = new URL(node.src);
+      url.searchParams.set('missing-fixture', '1');
+      node.src = url.href;
+    });
+    await expect(cards[0].locator('.image-thumbnail')).toHaveClass(/image-unavailable/);
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
+  }
+}

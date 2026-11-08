@@ -1,5 +1,5 @@
+import { escapeHTML as esc } from './html.js';
 const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const kinds = {
   published: '已发布',
   draft: '草稿',
@@ -41,6 +41,7 @@ export function configureImages({
     if (!bar) return;
     bar.hidden = selected.size === 0;
     $('image-batch-count').textContent = `已选择 ${selected.size} 项`;
+    $('image-batch-insert').disabled = !canInsert();
   }
   for (const [id, operation] of [
     ['image-library-optimize', 'optimize'],
@@ -121,7 +122,7 @@ export function configureImages({
         cards.push(
           `<article class="image-card${isSelected ? ' is-selected' : ''}" data-key="${image.key}" draggable="true">` +
             `<label class="image-select-wrap"><input type="checkbox" class="image-select-check" aria-label="选择"${isSelected ? ' checked' : ''}></label>` +
-            `<button class="image-thumbnail" aria-label="预览 ${esc(image.name)}" data-act="preview"><img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${esc(image.name)}" loading="lazy" decoding="async"${dim} class="is-ready"></button>` +
+            `<button class="image-thumbnail" aria-label="预览 ${esc(image.name)}" data-act="preview"><img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${esc(image.name)}" loading="lazy" decoding="async"${dim}></button>` +
             `<div class="image-card-body"><h3>${esc(image.name)}</h3><p class="muted">${meta}</p><span class="${badgeCls}">${badgeText}</span>${skipped}${refs}<p id="${helpId}" class="image-protection">${helpText}</p>` +
             `<div class="image-actions"><button data-act="copy">复制链接</button><button data-act="insert"${canInsert() ? '' : ' disabled'}>插入当前文章</button><button data-act="del" class="danger" aria-describedby="${helpId}"${canDel ? '' : ' disabled'}>删除</button></div></div></article>`,
         );
@@ -183,6 +184,7 @@ export function configureImages({
       $('image-library-reindex').hidden = !data.reindexRequired;
       cursor = data.cursor;
       completeCatalog = data.catalog === true;
+      if (completeCatalog) for (const key of selected) if (!combined.has(key)) selected.delete(key);
       loadedAt = Date.now();
       referenceError = data.referenceError || (reset ? '' : referenceError);
       status(
@@ -235,6 +237,16 @@ export function configureImages({
   $('image-library-search').addEventListener('input', render);
   $('image-library-unused').addEventListener('change', render);
   const grid = $('image-library-grid');
+  for (const type of ['load', 'error'])
+    grid.addEventListener(
+      type,
+      (e) => {
+        if (!e.target.matches('.image-thumbnail img')) return;
+        e.target.classList.toggle('is-ready', type === 'load');
+        e.target.parentElement.classList.toggle('image-unavailable', type === 'error');
+      },
+      true,
+    );
   grid.addEventListener('change', (e) => {
     const check = e.target.closest('.image-select-check');
     if (!check) return;
@@ -266,73 +278,90 @@ export function configureImages({
     const card = btn.closest('.image-card');
     const image = card && images.find((i) => i.key === card.dataset.key);
     if (!image) return;
-    const act = btn.dataset.act;
-    if (act === 'preview') {
-      $('image-preview-title').textContent = image.name;
-      $('image-preview-full').src = '/images/' + encodeURI(image.key);
-      window.CloudInkMotion.openDialog($('image-preview-dialog'));
-      return;
-    }
-    if (act === 'copy') {
-      await navigator.clipboard.writeText(new URL(image.url, siteUrl()).href);
-      notice('图片链接已复制。', 'success');
-      return;
-    }
-    if (act === 'insert') {
-      insert(image);
-      return;
-    }
-    if (act === 'del') {
-      if (
-        !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
-          title: '删除这张图片？',
-          accept: '永久删除',
-          danger: true,
-        }))
-      )
+    try {
+      const act = btn.dataset.act;
+      if (act === 'preview') {
+        $('image-preview-title').textContent = image.name;
+        $('image-preview-full').src = '/images/' + encodeURI(image.key);
+        window.CloudInkMotion.openDialog($('image-preview-dialog'));
         return;
-      btn.disabled = true;
-      btn.setAttribute('aria-busy', 'true');
-      await flush();
-      try {
-        await api('/api/images', {
-          method: 'DELETE',
-          body: { key: image.key, etag: image.etag },
-        });
-      } catch (error) {
-        await load().catch(() => {});
-        status(error.message);
-        $('image-library-status').dataset.tone = 'error';
-        notice(error.message, 'error');
-        return;
-      } finally {
-        btn.disabled = false;
-        btn.removeAttribute('aria-busy');
       }
-      images = images.filter((item) => item.key !== image.key);
-      render();
-      $('image-library-refresh').focus({ preventScroll: true });
-      notice('图片已从存储桶删除。', 'success');
+      if (act === 'copy') {
+        await navigator.clipboard.writeText(new URL(image.url, siteUrl()).href);
+        notice('图片链接已复制。', 'success');
+        return;
+      }
+      if (act === 'insert') {
+        insert(image);
+        return;
+      }
+      if (act === 'del') {
+        if (
+          !(await confirmAction(`“${image.name}”将从存储桶永久移除，无法撤销。`, {
+            title: '删除这张图片？',
+            accept: '永久删除',
+            danger: true,
+          }))
+        )
+          return;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        try {
+          await flush();
+          await api('/api/images', {
+            method: 'DELETE',
+            body: { key: image.key, etag: image.etag },
+          });
+        } catch (error) {
+          await load().catch(() => {});
+          throw error;
+        } finally {
+          btn.disabled = false;
+          btn.removeAttribute('aria-busy');
+        }
+        selected.delete(image.key);
+        images = images.filter((item) => item.key !== image.key);
+        render();
+        $('image-library-refresh').focus({ preventScroll: true });
+        notice('图片已从存储桶删除。', 'success');
+      }
+    } catch (error) {
+      status(error.message);
+      $('image-library-status').dataset.tone = 'error';
+      notice(error.message, 'error');
     }
   });
   const getChosen = () => images.filter((img) => selected.has(img.key));
-  $('image-batch-insert')?.addEventListener('click', () => {
-    const chosen = getChosen();
-    chosen.forEach((img) => insert(img));
+  function clearSelection() {
     selected.clear();
     render();
-    notice(`已将 ${chosen.length} 张图片插入正文。`, 'success');
-  });
-  $('image-batch-copy')?.addEventListener('click', async () => {
-    const chosen = getChosen();
-    await navigator.clipboard.writeText(
-      chosen.map((img) => `![${img.name.replace(/[\[\]\\]/g, '')}](${img.url})`).join('\n\n'),
+  }
+  $('image-batch-bar').addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button || button.disabled) return;
+    if (button.id === 'image-batch-clear') return clearSelection();
+    const copy = button.id === 'image-batch-copy';
+    action(
+      button.id,
+      '正在处理…',
+      async () => {
+        const chosen = getChosen();
+        if (copy)
+          await navigator.clipboard.writeText(
+            chosen.map((img) => `![${img.name.replace(/[\[\]\\]/g, '')}](${img.url})`).join('\n\n'),
+          );
+        else {
+          if (!canInsert()) throw new Error('请先打开一篇文章。');
+          chosen.forEach((img) => insert(img));
+          clearSelection();
+        }
+      },
+      copy ? '图片 Markdown 已复制。' : '图片已插入正文。',
     );
-    notice(`已复制 ${chosen.length} 张图片的 Markdown。`, 'success');
   });
-  $('image-batch-clear')?.addEventListener('click', () => {
-    selected.clear();
-    render();
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('images-view').hidden && !document.querySelector('dialog[open]'))
+      clearSelection();
   });
   $('image-library-back').addEventListener('click', () => open(true));
   $('image-preview-close').addEventListener('click', () =>

@@ -1,5 +1,9 @@
 import { navigateStudio } from './studio-navigation.mjs';
-import { verifyAuthoringContent, verifyAuthoringControls } from './authoring-upgrade.browser.mjs';
+import {
+  verifyAuthoringContent,
+  verifyAuthoringControls,
+  verifyGalleryBatch,
+} from './authoring-upgrade.browser.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
 import { openPostSwitcher } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
@@ -306,6 +310,7 @@ try {
   await paging.close();
   await verifyAuthoringContent(browser, 'http://localhost:8788', 'chromium');
   await verifyAuthoringControls(browser, 'http://localhost:8788');
+  await verifyGalleryBatch(browser, 'http://localhost:8788', 'chromium');
 } finally {
   await browser?.close();
   await mf.dispose();

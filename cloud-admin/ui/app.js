@@ -7,6 +7,7 @@ import { configureImages } from './images.js';
 import { configureShorts } from './shorts.js';
 import { configureSiteIcon } from './site-icon.js';
 import { configureMarkdownImport } from './markdown-import.js';
+import { escapeHTML as esc } from './html.js';
 import {
   engineTask,
   renderPreview,
@@ -25,7 +26,6 @@ let postFilter = 'all',
   searchTimer;
 
 const $ = (id) => document.getElementById(id);
-const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const keepOriginal = $('image-keep-original');
 try {
   keepOriginal.checked = localStorage.getItem('cloudink-keep-original') === 'true';
@@ -645,9 +645,9 @@ async function refresh({ append = false } = {}) {
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
   const author = data.site.author || '云砚';
-  const userLabel = $('studio-user-label') || $('flclash-user-label');
+  const userLabel = $('studio-user-label');
   if (userLabel) userLabel.textContent = author;
-  const avatarEl = document.querySelector('.studio-user-avatar, .flclash-user-avatar');
+  const avatarEl = document.querySelector('.studio-user-avatar');
   if (avatarEl) avatarEl.textContent = author.charAt(0);
   $('home-heading').textContent = data.site.author
     ? `你好，${data.site.author}。`
@@ -1349,29 +1349,14 @@ function setupEditorEnhancements() {
         rep = selected ? `\`${selected}\`` : '``';
         cur = selected ? end + 2 : start + 1;
       }
-    } else if (type === 'quote') {
+    } else if (['quote', 'ul', 'ol'].includes(type)) {
       rep = selected
-        ? selected
-            .split('\n')
-            .map((l) => `> ${l}`)
-            .join('\n')
-        : '> ';
-      cur = start + rep.length;
-    } else if (type === 'ul') {
-      rep = selected
-        ? selected
-            .split('\n')
-            .map((l) => `- ${l}`)
-            .join('\n')
-        : '- ';
-      cur = start + rep.length;
-    } else if (type === 'ol') {
-      rep = selected
-        ? selected
-            .split('\n')
-            .map((l, i) => `${i + 1}. ${l}`)
-            .join('\n')
-        : '1. ';
+        .split('\n')
+        .map(
+          (line, index) =>
+            (type === 'quote' ? '> ' : type === 'ul' ? '- ' : `${index + 1}. `) + line,
+        )
+        .join('\n');
       cur = start + rep.length;
     } else if (type === 'link') {
       rep = `[${selected || '链接文本'}](https://)`;
