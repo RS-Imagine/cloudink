@@ -230,17 +230,14 @@ fn render_inline_math(
             // Try to find the closing `$`.
             let mut math = String::new();
             let mut lookahead = index + 1;
+            let mut code_lookahead = code_index;
             let mut found_closing = false;
 
             while lookahead < chars.len() {
                 let (next_offset, next_ch) = chars[lookahead];
-                // An unmatched dollar before a code span must not consume the
-                // span's literal dollar as its closing delimiter.
-                if code
-                    .get(code_index)
-                    .is_some_and(|(r, _)| r.start <= line_offset + next_offset)
-                {
-                    break;
+                let next_position = line_offset + next_offset;
+                while code_lookahead < code.len() && code[code_lookahead].0.end <= next_position {
+                    code_lookahead += 1;
                 }
 
                 if next_ch == '\\' {
@@ -254,7 +251,14 @@ fn render_inline_math(
                     continue;
                 }
 
-                if next_ch == '$' {
+                // A formula opened before backticks may contain them as TeX.
+                // Only a dollar outside code can close it, so an unmatched
+                // dollar in ordinary text cannot consume a code span's dollar.
+                if next_ch == '$'
+                    && !code
+                        .get(code_lookahead)
+                        .is_some_and(|(r, _)| r.contains(&next_position))
+                {
                     found_closing = true;
                     break;
                 }

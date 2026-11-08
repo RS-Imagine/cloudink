@@ -92,7 +92,7 @@ try {
   const codeExamples =
     '````markdown\n```\n$literal_fence$\n```\n````\n\n~~~~markdown\n```\n$literal_tilde$\n~~~\n~~~~\n\n    $literal_indent$\n\n``a ` $literal_inline$``';
   const body =
-    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$ and $ x^2 $\n\n$$y^2$$\n\n$$\nz^2\n$$\n\n```rust\nlet x = 1;\n```\n\n' +
+    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$ and $ x^2 $ and $\\text{`hello`}$\n\n$$y^2$$\n\n$$\nz^2\n$$\n\n```rust\nlet x = 1;\n```\n\n' +
     codeExamples +
     '\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
   await page.locator('#body').fill(body);
@@ -108,7 +108,7 @@ try {
   await expect(page.locator('#notice')).toContainText('图片已上传');
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
   async function verifyMathExamples(root) {
-    await expect(root.locator('.katex')).toHaveCount(4);
+    await expect(root.locator('.katex')).toHaveCount(5);
     await expect(root.locator('.katex-display')).toHaveCount(2);
     await expect(root.locator('pre code')).toHaveCount(4);
     for (const [index, literal] of [

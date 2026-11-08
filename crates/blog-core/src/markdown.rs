@@ -135,4 +135,14 @@ mod tests {
             assert_eq!(markdown_to_html(source), expected);
         }
     }
+
+    #[test]
+    fn backticks_inside_an_open_formula_remain_latex() {
+        let html = markdown_to_html(r"$\text{`hello`}$");
+        assert_eq!(html.matches("class=\"katex\"").count(), 1, "{html}");
+        assert!(!html.contains("<code>"), "{html}");
+        let html = markdown_to_html(r"`$literal$` then $\text{`hello`}$ and $ x $");
+        assert_eq!(html.matches("class=\"katex\"").count(), 2, "{html}");
+        assert!(html.contains("<code>$literal$</code>"), "{html}");
+    }
 }
