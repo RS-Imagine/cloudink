@@ -26,6 +26,7 @@ let postFilter = 'all',
   searchTimer;
 
 const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const keepOriginal = $('image-keep-original');
 try {
   keepOriginal.checked = localStorage.getItem('cloudink-keep-original') === 'true';
@@ -562,7 +563,7 @@ function renderLists() {
       continue;
     const active = doc?.front_matter.slug === post.slug ? ' active' : '';
     postItems.push(
-      `<button class="post-item${active}" data-slug="${post.slug}"><span>${post.title}</span><small>${post.date} · ${badge(post)}</small></button>`,
+      `<button class="post-item${active}" data-slug="${post.slug}"><span>${esc(post.title)}</span><small>${post.date} · ${badge(post)}</small></button>`,
     );
     if (
       (postFilter === 'published' && !post.published) ||
@@ -572,7 +573,7 @@ function renderLists() {
     shown++;
     const tagClass = 'badge' + (post.changed || !post.published ? ' draft' : '');
     articleCards.push(
-      `<button class="article-card" data-slug="${post.slug}"><span class="${tagClass}">${badge(post)}</span><h3>${post.title}</h3><p>${post.description || '没有摘要'}</p><small>${post.date}</small><span class="article-card-arrow" aria-hidden="true">→</span></button>`,
+      `<button class="article-card" data-slug="${post.slug}"><span class="${tagClass}">${badge(post)}</span><h3>${esc(post.title)}</h3><p>${esc(post.description || '没有摘要')}</p><small>${post.date}</small><span class="article-card-arrow" aria-hidden="true">→</span></button>`,
     );
   }
   $('post-list').innerHTML =
@@ -1193,7 +1194,6 @@ function insertImage(image, token) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
   const name = image.name.replace(/[\[\]\\\n\r]/g, '');
-  const esc = (v) => String(v).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
   const sized = image.width > 0 && image.height > 0;
   const responsive = image.srcset
     ? ` srcset="${esc(image.srcset)}" sizes="(max-width: 759px) calc(100vw - 44px), 720px" data-full-src="${esc(image.fullUrl)}"`
@@ -1280,8 +1280,10 @@ async function uploadFiles(files) {
       try {
         await upload(j.file, j.token);
       } catch (err) {
-        if (ta?.value.includes(j.token)) {
-          ta.value = ta.value.replace(j.token, '');
+        if (ta) {
+          for (const rem of jobs) {
+            if (ta.value.includes(rem.token)) ta.value = ta.value.replace(rem.token, '');
+          }
           changed();
         }
         throw err;
@@ -1342,35 +1344,50 @@ function setupEditorEnhancements() {
       end = textarea.selectionEnd,
       text = textarea.value,
       selected = text.slice(start, end);
-    const wrap = (pre, post = pre) => {
-      textarea.setRangeText(
-        selected ? `${pre}${selected}${post}` : `${pre}${post}`,
-        start,
-        end,
-        'end',
-      );
-      const cur = selected ? end + pre.length + post.length : start + pre.length;
-      textarea.setSelectionRange(cur, cur);
-    };
-    const pfx = (p) =>
-      wrap(
-        selected
-          ? selected
-              .split('\n')
-              .map((l, i) => `${typeof p === 'function' ? p(i) : p}${l}`)
-              .join('\n')
-          : typeof p === 'function'
-            ? p(0)
-            : p,
-      );
-    if (type === 'bold') wrap('**');
-    else if (type === 'italic') wrap('*');
-    else if (type === 'code') selected.includes('\n') ? wrap('```\n', '\n```\n') : wrap('`');
-    else if (type === 'link') wrap(`[${selected || '链接文本'}](https://`, ')');
-    else if (type === 'quote') pfx('> ');
-    else if (type === 'ul') pfx('- ');
-    else if (type === 'ol') pfx((i) => `${i + 1}. `);
-    else if (type === 'heading') {
+    let rep = '',
+      cur = start;
+    if (type === 'bold') {
+      rep = selected ? `**${selected}**` : '****';
+      cur = selected ? end + 4 : start + 2;
+    } else if (type === 'italic') {
+      rep = selected ? `*${selected}*` : '**';
+      cur = selected ? end + 2 : start + 1;
+    } else if (type === 'code') {
+      if (selected.includes('\n')) {
+        rep = `\`\`\`\n${selected}\n\`\`\`\n`;
+        cur = end + 8;
+      } else {
+        rep = selected ? `\`${selected}\`` : '``';
+        cur = selected ? end + 2 : start + 1;
+      }
+    } else if (type === 'quote') {
+      rep = selected
+        ? selected
+            .split('\n')
+            .map((l) => `> ${l}`)
+            .join('\n')
+        : '> ';
+      cur = start + rep.length;
+    } else if (type === 'ul') {
+      rep = selected
+        ? selected
+            .split('\n')
+            .map((l) => `- ${l}`)
+            .join('\n')
+        : '- ';
+      cur = start + rep.length;
+    } else if (type === 'ol') {
+      rep = selected
+        ? selected
+            .split('\n')
+            .map((l, i) => `${i + 1}. ${l}`)
+            .join('\n')
+        : '1. ';
+      cur = start + rep.length;
+    } else if (type === 'link') {
+      rep = `[${selected || '链接文本'}](https://)`;
+      cur = selected ? end + 11 : start + 1;
+    } else if (type === 'heading') {
       const ls = text.lastIndexOf('\n', start - 1) + 1,
         fe = (text.indexOf('\n', start) + 1 || text.length + 1) - 1,
         cl = text.slice(ls, fe),
@@ -1382,9 +1399,20 @@ function setupEditorEnhancements() {
               ? cl.slice(5)
               : '## ' + cl;
       textarea.setRangeText(nl, ls, fe, 'select');
+      changed();
+      textarea.focus();
+      return;
     } else if (type === 'zen') return setZen(!$('app-view').classList.contains('zen-mode'));
-    textarea.focus();
-    changed();
+    if (rep) {
+      textarea.setRangeText(rep, start, end, 'end');
+      if (type === 'link' && !selected) {
+        textarea.setSelectionRange(start + 1, start + 5);
+      } else {
+        textarea.setSelectionRange(cur, cur);
+      }
+      textarea.focus();
+      changed();
+    }
   }
 
   document.querySelector('.editor-format-actions')?.addEventListener('click', (e) => {
@@ -1399,7 +1427,20 @@ function setupEditorEnhancements() {
 
     if (e.key === 'Tab') {
       e.preventDefault();
-      textarea.setRangeText('  ', start, end, 'end');
+      if (start === end) {
+        textarea.setRangeText('  ', start, end, 'end');
+      } else {
+        const ls = text.lastIndexOf('\n', start - 1) + 1,
+          le = text.indexOf('\n', end),
+          re = le === -1 ? text.length : le,
+          lines = text.slice(ls, re).split('\n');
+        const res = e.shiftKey
+          ? lines
+              .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
+              .join('\n')
+          : lines.map((l) => '  ' + l).join('\n');
+        textarea.setRangeText(res, ls, re, 'select');
+      }
       changed();
       return;
     }

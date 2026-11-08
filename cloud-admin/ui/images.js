@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const kinds = {
   published: '已发布',
   draft: '草稿',
@@ -111,7 +112,7 @@ export function configureImages({
             ? ` width="${image.width}" height="${image.height}"`
             : '';
         const refs = image.references.length
-          ? `<details><summary>查看 ${image.references.length} 处引用</summary><ul>${image.references.map((r) => `<li>${kinds[r.kind]} · ${r.title}</li>`).join('')}</ul></details>`
+          ? `<details><summary>查看 ${image.references.length} 处引用</summary><ul>${image.references.map((r) => `<li>${kinds[r.kind]} · ${esc(r.title)}</li>`).join('')}</ul></details>`
           : '';
         const skipped =
           image.optimization === 'skipped' ? '<p class="muted">无需转换或无法优化。</p>' : '';
@@ -120,11 +121,11 @@ export function configureImages({
         cards.push(
           `<article class="image-card${isSelected ? ' is-selected' : ''}" data-key="${image.key}" draggable="true">` +
             `<label class="image-select-wrap"><input type="checkbox" class="image-select-check" aria-label="选择"${isSelected ? ' checked' : ''}></label>` +
-            `<button class="image-thumbnail" aria-label="预览" data-act="preview">` +
-            `<img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${image.name}" loading="lazy" decoding="async"${dim} class="is-ready">` +
+            `<button class="image-thumbnail" aria-label="预览 ${esc(image.name)}" data-act="preview">` +
+            `<img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${esc(image.name)}" loading="lazy" decoding="async"${dim} class="is-ready">` +
             `</button>` +
             `<div class="image-card-body">` +
-            `<h3>${image.name}</h3>` +
+            `<h3>${esc(image.name)}</h3>` +
             `<p class="muted">${meta}</p>` +
             `<span class="${badgeCls}">${badgeText}</span>` +
             skipped +
@@ -329,7 +330,7 @@ export function configureImages({
   const getChosen = () => images.filter((img) => selected.has(img.key));
   $('image-batch-insert')?.addEventListener('click', () => {
     const chosen = getChosen();
-    chosen.forEach(insert);
+    chosen.forEach((img) => insert(img));
     selected.clear();
     render();
     notice(`已将 ${chosen.length} 张图片插入正文。`, 'success');

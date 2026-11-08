@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function configureMarkdownImport({
   api,
@@ -90,7 +91,7 @@ export function configureMarkdownImport({
     const summary = () =>
       '已导入 ' + count + ' 篇草稿，失败 ' + failed + ' 个，跳过 ' + skipped + ' 个。';
     list.innerHTML = files
-      .map((f) => `<li><strong>${f.name}</strong><span>等待导入</span></li>`)
+      .map((f) => `<li><strong>${esc(f.name)}</strong><span>等待导入</span></li>`)
       .join('');
     const items = [...list.children].map((row) => ({ row, message: row.lastChild }));
     try {
