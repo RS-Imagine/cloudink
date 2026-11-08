@@ -966,3 +966,30 @@ body:has(dialog[open]) {
   padding-block: 8px;
   background: var(--ci-elevated);
 }
+
+#body.is-dropzone {
+  outline: 2px dashed var(--ci-primary);
+  outline-offset: -4px;
+}
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.shortcut-item kbd {
+  font: 600 11px monospace;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--ci-divider);
+  background: var(--ci-container);
+}
+.shortcut-item span {
+  color: var(--ci-muted);
+}

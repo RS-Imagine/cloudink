@@ -496,7 +496,8 @@
     padding: 18px 14px;
     border-radius: 14px;
   }
-  .studio-home-view .article-card small {
+  .studio-home-view .article-card small,
+  .studio-home-view .article-card .badge {
     grid-row: 1;
   }
   .studio-home-view .article-card h3 {
@@ -506,9 +507,6 @@
   .studio-home-view .article-card p {
     grid-column: 1 / -1;
     grid-row: 3;
-  }
-  .studio-home-view .article-card .badge {
-    grid-row: 1;
   }
   .studio-home-view .article-card-arrow {
     display: none;

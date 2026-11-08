@@ -839,6 +839,35 @@ $('open-draft-history')?.addEventListener('click', () => {
 $('draft-history-close')?.addEventListener('click', () => {
   $('draft-history-dialog')?.close();
 });
+$('shortcuts-close')?.addEventListener('click', () => {
+  const dlg = $('shortcuts-dialog');
+  if (!dlg) return;
+  if (window.CloudInkMotion?.closeDialog) window.CloudInkMotion.closeDialog(dlg);
+  else dlg.close();
+});
+$('open-shortcuts')?.addEventListener('click', () => {
+  const dlg = $('shortcuts-dialog');
+  if (!dlg) return;
+  if (window.CloudInkMotion?.openDialog) window.CloudInkMotion.openDialog(dlg);
+  else dlg.showModal();
+});
+window.addEventListener('keydown', (e) => {
+  if (
+    (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) ||
+    ((e.ctrlKey || e.metaKey) && e.key === '/')
+  ) {
+    const dlg = $('shortcuts-dialog');
+    if (!dlg) return;
+    e.preventDefault();
+    if (dlg.open) {
+      if (window.CloudInkMotion?.closeDialog) window.CloudInkMotion.closeDialog(dlg);
+      else dlg.close();
+    } else {
+      if (window.CloudInkMotion?.openDialog) window.CloudInkMotion.openDialog(dlg);
+      else dlg.showModal();
+    }
+  }
+});
 async function saveCurrent() {
   clearTimeout(autosaveTimer);
   if (!doc || $('editor-view').hidden) return;
@@ -1225,15 +1254,15 @@ window.addEventListener('online', () => {
     void saveCurrent().catch((error) => notice(error.message, 'error'));
 });
 
-async function upload(file) {
+async function upload(file, token) {
   const target = doc;
   const form = await imageUploadForm(file);
   if (doc !== target) throw new Error('文章已切换，请重新选择图片。');
   const result = await api('/api/upload', { method: 'POST', body: form });
   if (doc !== target) throw new Error('图片已上传，请返回原文章继续编辑。');
-  insertImage({ ...result, name: file.name });
+  insertImage({ ...result, name: file.name }, token);
 }
-function insertImage(image) {
+function insertImage(image, token) {
   if (!doc || editorLocked) throw new Error('请先打开一篇文章。');
   const textarea = $('body');
   const name = image.name.replace(/[\[\]\\\n\r]/g, '');
@@ -1253,7 +1282,11 @@ function insertImage(image) {
     ? `\n\n<img src="${escape(image.displayUrl || image.url)}" alt="${escape(name)}" width="${image.width}" height="${image.height}"${responsive}>\n\n`
     : `\n\n![${name}](${image.url})\n\n`;
   view('editor');
-  textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+  if (token && textarea.value.includes(token)) {
+    textarea.value = textarea.value.replace(token, text.trim());
+  } else {
+    textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+  }
   textarea.focus();
   changed();
 }
@@ -1299,9 +1332,33 @@ const shortTools = configureShorts({
 });
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {
-  if (editorLocked || uploading) return;
+  if (editorLocked || uploading || !doc) return;
+  const textarea = $('body');
+  const jobs = files.map((file, idx) => ({
+    file,
+    token: `<!-- uploading:${Date.now()}_${idx} -->\n![正在上传: ${file.name.replace(/[\[\]\\]/g, '')}...](/editorial-botanical.svg)\n`,
+  }));
+
+  if (textarea) {
+    const placeholderText = jobs.map((j) => j.token).join('\n') + '\n';
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? textarea.value.length;
+    textarea.setRangeText(placeholderText, start, end, 'end');
+    changed();
+  }
+
   uploading = (async () => {
-    for (const file of files) await upload(file);
+    for (const job of jobs) {
+      try {
+        await upload(job.file, job.token);
+      } catch (err) {
+        if (textarea && textarea.value.includes(job.token)) {
+          textarea.value = textarea.value.replace(job.token, '');
+          changed();
+        }
+        throw err;
+      }
+    }
   })();
   try {
     await action('upload-image', '正在上传…', () => uploading, '图片已上传并插入正文。');
@@ -1325,10 +1382,25 @@ $('body').addEventListener('paste', (e) => {
   e.preventDefault();
   void uploadFiles(images.map((item) => item.getAsFile()).filter(Boolean));
 });
+$('body').addEventListener('dragenter', (e) => {
+  if (e.dataTransfer.types.includes('Files')) {
+    e.preventDefault();
+    $('body').classList.add('is-dropzone');
+  }
+});
 $('body').addEventListener('dragover', (e) => {
-  if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+  if (e.dataTransfer.types.includes('Files')) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    $('body').classList.add('is-dropzone');
+  }
+});
+$('body').addEventListener('dragleave', (e) => {
+  if (e.relatedTarget && $('body').contains(e.relatedTarget)) return;
+  $('body').classList.remove('is-dropzone');
 });
 $('body').addEventListener('drop', (e) => {
+  $('body').classList.remove('is-dropzone');
   const images = [...e.dataTransfer.files].filter((x) => x.type.startsWith('image/'));
   if (!images.length) return;
   e.preventDefault();
@@ -1529,18 +1601,59 @@ function setupEditorEnhancements() {
       if (scrollSyncing) return;
       const scrollable = textarea.scrollHeight - textarea.clientHeight;
       if (scrollable <= 0) return;
-      const progress = textarea.scrollTop / scrollable;
       const frameWin = $('preview-frame')?.contentWindow;
       const frameDoc = $('preview-frame')?.contentDocument;
       if (!frameWin || !frameDoc) return;
       const frameScrollable = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
-      if (frameScrollable > 0) {
-        scrollSyncing = true;
+      if (frameScrollable <= 0) return;
+
+      const text = textarea.value;
+      const lines = text.split('\n');
+      const mdHeadings = [];
+      lines.forEach((line, idx) => {
+        if (/^#{1,6}\s+\S+/.test(line)) {
+          mdHeadings.push(idx);
+        }
+      });
+      const domHeadings = [
+        ...frameDoc.querySelectorAll(
+          '.article-shell h1, .article-shell h2, .article-shell h3, .article-shell h4, .article-shell h5, .article-shell h6',
+        ),
+      ];
+
+      scrollSyncing = true;
+      if (mdHeadings.length > 0 && domHeadings.length > 0 && lines.length > 1) {
+        const count = Math.min(mdHeadings.length, domHeadings.length);
+        const anchors = [{ t: 0, p: 0 }];
+        for (let i = 0; i < count; i++) {
+          anchors.push({
+            t: (mdHeadings[i] / (lines.length - 1)) * scrollable,
+            p: domHeadings[i].getBoundingClientRect().top + frameWin.scrollY,
+          });
+        }
+        anchors.push({ t: scrollable, p: frameScrollable });
+
+        const currentT = textarea.scrollTop;
+        let segment = 0;
+        for (let i = 0; i < anchors.length - 1; i++) {
+          if (currentT >= anchors[i].t && currentT <= anchors[i + 1].t) {
+            segment = i;
+            break;
+          }
+        }
+        const spanT = anchors[segment + 1].t - anchors[segment].t;
+        const progress = spanT > 0 ? (currentT - anchors[segment].t) / spanT : 0;
+        const targetP =
+          anchors[segment].p + progress * (anchors[segment + 1].p - anchors[segment].p);
+        frameWin.scrollTo({ top: Math.max(0, targetP), behavior: 'auto' });
+      } else {
+        const progress = textarea.scrollTop / scrollable;
         frameWin.scrollTo({ top: progress * frameScrollable, behavior: 'auto' });
-        requestAnimationFrame(() => {
-          scrollSyncing = false;
-        });
       }
+
+      requestAnimationFrame(() => {
+        scrollSyncing = false;
+      });
     },
     { passive: true },
   );

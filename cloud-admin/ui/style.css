@@ -145,12 +145,12 @@ h3 {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: all 0.15s var(--ci-ease);
 }
 .editor-format-actions .tool-btn:hover {
   background: var(--paper-strong, #fff);
   color: var(--accent);
-  box-shadow: 0 2px 6px rgba(92, 58, 33, 0.08);
+  box-shadow: var(--ci-shadow-soft);
 }
 .editor-format-actions .tool-btn:active {
   transform: scale(0.92);
@@ -216,18 +216,6 @@ h3 {
   border-radius: 0 !important;
   border: none !important;
 }
-.markdown-input {
-  resize: none;
-}
-.preview-pane {
-  position: relative;
-  min-width: 0;
-}
-.preview-pane iframe {
-  border: 0;
-  width: 100%;
-  height: 100%;
-}
 .preview-loading {
   position: absolute;
   inset: 0;
@@ -268,11 +256,6 @@ dialog {
 code {
   font-family: Consolas, monospace;
   font-size: 0.95em;
-}
-#save-state {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted);
 }
 
 .setup-card fieldset {
@@ -326,9 +309,7 @@ code {
   border-radius: 12px;
 }
 .short-editor textarea {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-  font-size: 13px;
-  line-height: 1.7;
+  font: 13px/1.7 var(--ci-font-mono);
   resize: vertical;
 }
 .short-list {
@@ -346,14 +327,11 @@ code {
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--shadow);
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
+  transition: all 0.15s var(--ci-ease);
 }
 .short-admin-card:hover {
   border-color: var(--accent);
-  box-shadow: var(--ci-shadow-floating, 0 12px 36px rgba(92, 58, 33, 0.1));
+  box-shadow: var(--ci-shadow-floating);
   transform: translateY(-1px);
 }
 .short-card-header {
