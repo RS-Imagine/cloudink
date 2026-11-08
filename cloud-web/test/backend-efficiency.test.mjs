@@ -407,8 +407,42 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
     customMetadata: { deleted: 'true' },
   }));
   const live = { key: 'drafts/live.md', customMetadata: {} };
-  const storage = { list: async () => ({ objects: [...removed, live], truncated: false }) };
-  assert.deepEqual(await listActiveDrafts(storage, 'drafts/'), [live]);
+  const catalog = (objects) => ({
+    list: async ({ cursor, limit }) => {
+      const offset = Number(cursor || 0),
+        next = offset + limit;
+      return {
+        objects: objects.slice(offset, next),
+        truncated: next < objects.length,
+        cursor: String(next),
+      };
+    },
+  });
+  assert.deepEqual(await listActiveDrafts(catalog([...removed, live]), 'drafts/'), [live]);
+  await assert.rejects(
+    listActiveDrafts(
+      catalog(
+        Array.from({ length: 2001 }, (_, index) => ({
+          ...live,
+          key: 'drafts/live-' + index + '.md',
+        })),
+      ),
+      'drafts/',
+    ),
+    (error) => error.status === 413,
+  );
+  await assert.rejects(
+    listActiveDrafts(
+      catalog(
+        Array.from({ length: 10001 }, (_, index) => ({
+          key: 'shorts/deleted-' + index + '.md',
+          customMetadata: { deleted: 'true' },
+        })),
+      ),
+      'shorts/',
+    ),
+    (error) => error.status === 413,
+  );
 });
 
 test('request diagnostics keep bindings bound, isolate counters and exclude object keys and payloads', async () => {
