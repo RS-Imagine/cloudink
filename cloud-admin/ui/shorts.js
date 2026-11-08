@@ -169,7 +169,7 @@ export function configureShorts({
 
       const preview = document.createElement('p');
       preview.className = 'short-card-preview';
-      const cached = contentCache.get(item.slug);
+      const cached = contentCache.get(item.slug) || item.snippet;
       if (cached) {
         const clean = cached.replace(/^#+\s+/gm, '').trim();
         preview.textContent = clean;
@@ -219,7 +219,6 @@ export function configureShorts({
     if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
     cursor = data.cursor;
-    for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
     render();
     more.hidden = !cursor;
   }

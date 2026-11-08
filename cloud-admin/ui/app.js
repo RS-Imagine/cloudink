@@ -14,7 +14,6 @@ import {
   disposePreview,
   configurePreview,
 } from './preview.js';
-import { editorStore } from './store.js';
 
 const motion = window.CloudInkMotion;
 motion.mount();
@@ -732,7 +731,6 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
-  editorStore.update();
   saveLocalSnapshot(doc.front_matter?.slug, currentDraft());
   feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
@@ -790,11 +788,8 @@ $('draft-history-close')?.addEventListener('click', () => {
   $('draft-history-dialog')?.close();
 });
 const toggleShortcuts = (s) => {
-  const d = $('shortcuts-dialog'),
-    m = window.CloudInkMotion;
-  if (!d) return;
-  if (s ?? !d.open) m?.openDialog ? m.openDialog(d) : d.showModal();
-  else m?.closeDialog ? m.closeDialog(d) : d.close();
+  const d = $('shortcuts-dialog');
+  if (d) (s ?? !d.open) ? motion.openDialog(d) : motion.closeDialog(d);
 };
 $('shortcuts-close')?.addEventListener('click', () => toggleShortcuts(false));
 $('open-shortcuts')?.addEventListener('click', () => toggleShortcuts(true));
@@ -1427,11 +1422,12 @@ function setupEditorEnhancements() {
 
     if (e.key === 'Tab') {
       e.preventDefault();
-      if (start === end) {
+      const ls = text.lastIndexOf('\n', start - 1) + 1;
+      if (start === end && !e.shiftKey) {
         textarea.setRangeText('  ', start, end, 'end');
       } else {
-        const ls = text.lastIndexOf('\n', start - 1) + 1,
-          le = text.indexOf('\n', end),
+        const ep = end > start && text[end - 1] === '\n' ? end - 1 : end,
+          le = text.indexOf('\n', ep),
           re = le === -1 ? text.length : le,
           lines = text.slice(ls, re).split('\n');
         const res = e.shiftKey
@@ -1439,7 +1435,7 @@ function setupEditorEnhancements() {
               .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
               .join('\n')
           : lines.map((l) => '  ' + l).join('\n');
-        textarea.setRangeText(res, ls, re, 'select');
+        textarea.setRangeText(res, ls, re, start === end ? 'end' : 'select');
       }
       changed();
       return;
@@ -1447,10 +1443,13 @@ function setupEditorEnhancements() {
 
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const ls = text.lastIndexOf('\n', start - 1) + 1,
-        m = text.slice(ls, start).match(/^(\s*)([-*+]\s+|\d+\.\s+)/);
+        cl = text.slice(ls, start),
+        m = cl.match(/^(\s*)([-*+]\s+|(\d+)\.\s+)/);
       if (m) {
         e.preventDefault();
-        textarea.setRangeText(`\n${m[1]}${m[2]}`, start, end, 'end');
+        if (cl.trim() === m[2].trim()) textarea.setRangeText('', ls, start, 'end');
+        else
+          textarea.setRangeText('\n' + m[1] + (m[3] ? +m[3] + 1 + '. ' : m[2]), start, end, 'end');
         changed();
         return;
       }
@@ -1525,6 +1524,7 @@ function setupEditorEnhancements() {
     const setSplit = (p) => {
       panes.style.setProperty('--editor-split-left', `${p}%`);
       panes.style.setProperty('--editor-split-right', `${100 - p}%`);
+      panes.style.setProperty('--editor-split-percent', `${p}%`);
     };
     try {
       const p = localStorage.getItem('cloudink-split-percent');

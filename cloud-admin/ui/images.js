@@ -121,21 +121,9 @@ export function configureImages({
         cards.push(
           `<article class="image-card${isSelected ? ' is-selected' : ''}" data-key="${image.key}" draggable="true">` +
             `<label class="image-select-wrap"><input type="checkbox" class="image-select-check" aria-label="选择"${isSelected ? ' checked' : ''}></label>` +
-            `<button class="image-thumbnail" aria-label="预览 ${esc(image.name)}" data-act="preview">` +
-            `<img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${esc(image.name)}" loading="lazy" decoding="async"${dim} class="is-ready">` +
-            `</button>` +
-            `<div class="image-card-body">` +
-            `<h3>${esc(image.name)}</h3>` +
-            `<p class="muted">${meta}</p>` +
-            `<span class="${badgeCls}">${badgeText}</span>` +
-            skipped +
-            refs +
-            `<p id="${helpId}" class="image-protection">${helpText}</p>` +
-            `<div class="image-actions">` +
-            `<button data-act="copy">复制链接</button>` +
-            `<button data-act="insert"${canInsert() ? '' : ' disabled'}>插入当前文章</button>` +
-            `<button data-act="del" class="danger" aria-describedby="${helpId}"${canDel ? '' : ' disabled'}>删除</button>` +
-            `</div></div></article>`,
+            `<button class="image-thumbnail" aria-label="预览 ${esc(image.name)}" data-act="preview"><img src="/images/${encodeURI(image.thumbnailKey || image.key)}?version=${encodeURIComponent(image.etag)}" alt="${esc(image.name)}" loading="lazy" decoding="async"${dim} class="is-ready"></button>` +
+            `<div class="image-card-body"><h3>${esc(image.name)}</h3><p class="muted">${meta}</p><span class="${badgeCls}">${badgeText}</span>${skipped}${refs}<p id="${helpId}" class="image-protection">${helpText}</p>` +
+            `<div class="image-actions"><button data-act="copy">复制链接</button><button data-act="insert"${canInsert() ? '' : ' disabled'}>插入当前文章</button><button data-act="del" class="danger" aria-describedby="${helpId}"${canDel ? '' : ' disabled'}>删除</button></div></div></article>`,
         );
       }
       grid.innerHTML = cards.join('');
