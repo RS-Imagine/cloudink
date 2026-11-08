@@ -174,8 +174,12 @@ export async function selectRenderFiles(
     for (const path of ['index.html', 'archive/index.html', 'search_index.json']) changed.add(path);
     for (const slug of changedPosts) changed.add('posts/' + slug + '/index.html');
   }
-  if (JSON.stringify(base.markdown_shorts || {}) !== JSON.stringify(release.markdown_shorts || {}))
+  if (
+    JSON.stringify(base.markdown_shorts || {}) !== JSON.stringify(release.markdown_shorts || {})
+  ) {
+    changed.add('index.html');
     changed.add('shorts/index.html');
+  }
   for (const path of generatedFiles(state))
     if (
       !/^[a-f0-9]{64}$/.test(prior.pages[path] || '') ||

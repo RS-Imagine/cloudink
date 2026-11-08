@@ -87,6 +87,65 @@ test('selective publication reuses validated sizes across HTTP versions and veri
   );
   assert.equal((await (await bucket.get('state/published.json')).json()).id, second.release_id);
 });
+test('short publication refreshes the home and short feed while preserving unrelated pages and private drafts', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const article = await (
+    await f.request('/api/posts/live', 'PUT', { draft: draft('live'), etag: null })
+  ).json();
+  const initial = await f.prepare({ slug: 'live', etag: article.etag });
+  const first = await planned(f, initial);
+  assert.equal(
+    (
+      await f.request('/api/publish/' + initial.release_id + '/commit', 'POST', {
+        receipts: first.receipts,
+      })
+    ).status,
+    200,
+  );
+  const original = await (await bucket.get('state/published.json')).json();
+  await f.request('/api/posts/private', 'PUT', { draft: draft('private'), etag: null });
+  const note = (slug, body) => ({
+    front_matter: { slug, date: '2026-11-08 12:00', draft: true },
+    body_markdown: body,
+  });
+  await f.request('/api/shorts/private-note', 'PUT', note('private-note', 'Private note'));
+  let etag = null;
+  for (const operation of ['create', 'edit', 'unpublish']) {
+    let input = { unpublishShort: 'live-note' };
+    if (operation !== 'unpublish') {
+      const saved = await (
+        await f.request('/api/shorts/live-note', 'PUT', {
+          ...note('live-note', 'Published note ' + operation),
+          etag,
+        })
+      ).json();
+      etag = saved.etag;
+      input = { shortSlug: 'live-note', etag };
+    }
+    const state = await f.prepare(input);
+    assert.deepEqual(
+      [...state.render_files].sort(),
+      ['index.html', 'shorts/index.html', '_release.json'].sort(),
+      operation + ' must refresh both public views of short notes',
+    );
+    assert.equal(Object.hasOwn(state.browser_release.markdown_posts, 'private'), false);
+    assert.equal(Object.hasOwn(state.browser_release.markdown_shorts, 'private-note'), false);
+    const pages = await planned(f, state);
+    assert.equal(
+      (
+        await f.request('/api/publish/' + state.release_id + '/commit', 'POST', {
+          receipts: pages.receipts,
+        })
+      ).status,
+      200,
+    );
+    const current = await (await bucket.get('state/published.json')).json();
+    for (const path of ['posts/live/index.html', 'archive/index.html', 'search_index.json'])
+      assert.equal(current.pages[path], original.pages[path], operation + ': ' + path);
+  }
+});
 test('article summaries avoid source reads and paginated private lists reject stale cursors', async (t) => {
   const f = await fixture(t);
   await f.login();
