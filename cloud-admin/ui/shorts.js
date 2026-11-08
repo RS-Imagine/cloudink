@@ -9,7 +9,15 @@ function nowMinute() {
 function slugFor(date) {
   return 'short-' + date.replace(/\D/g, '').slice(0, 12) + '-' + crypto.randomUUID().slice(0, 8);
 }
-export function configureShorts({ api, notice, action, open, startPublish, onList }) {
+export function configureShorts({
+  api,
+  notice,
+  action,
+  open,
+  startPublish,
+  onList,
+  convertToPost,
+}) {
   let shorts = [],
     cursor = null,
     loadRevision = 0;
@@ -129,7 +137,24 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
           await load();
         });
       });
-      actions.append(edit, pub, del);
+      const conv = document.createElement('button');
+      conv.textContent = '转为文章';
+      conv.title = '以本条短记为起点新建文章';
+      conv.addEventListener('click', async () => {
+        let body = contentCache.get(item.slug);
+        if (body === undefined) {
+          try {
+            body =
+              (await api(`/api/shorts/${encodeURIComponent(item.slug)}`)).draft?.body_markdown ||
+              '';
+            contentCache.set(item.slug, body);
+          } catch {
+            body = '';
+          }
+        }
+        convertToPost?.({ date: item.date, body });
+      });
+      actions.append(edit, conv, pub, del);
       header.append(meta, actions);
 
       const bodyWrapper = document.createElement('div');
