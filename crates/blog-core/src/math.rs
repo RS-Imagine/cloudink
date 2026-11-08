@@ -1,4 +1,6 @@
 use katex::{render_to_string, KatexContext, Settings};
+use pulldown_cmark::{Event, Options, Parser, Tag};
+use std::ops::Range;
 
 use crate::utils::escape_html;
 
@@ -33,33 +35,54 @@ pub(crate) struct MathSegment {
 /// needed to restore rendered KaTeX HTML after cmark finishes.
 pub(crate) fn preprocess_math(markdown: &str) -> (String, Vec<MathSegment>) {
     let mut output = String::new();
-    let mut in_fenced_code_block = false;
+    // Use the same Markdown grammar as rendering, including nested/indented
+    // blocks and multiline code spans. Keep the existing formula syntax.
+    // Disable math in this boundary pass so an unmatched dollar before code
+    // cannot make the parser consume a literal dollar inside that code.
+    let code: Vec<(Range<usize>, bool)> =
+        Parser::new_ext(markdown, Options::all() & !Options::ENABLE_MATH)
+            .into_offset_iter()
+            .filter_map(|(event, range)| match event {
+                Event::Start(Tag::CodeBlock(_)) => Some((range, true)),
+                Event::Code(_) => Some((range, false)),
+                _ => None,
+            })
+            .collect();
+    let mut code_index = 0;
+    let mut offset = 0;
     let mut in_block_math = false;
     let mut block_math = String::new();
     let mut math_segments = Vec::new();
     let mut math_counter = 0usize;
 
-    for line in markdown.lines() {
+    for raw_line in markdown.split_inclusive('\n') {
+        let line_offset = offset;
+        offset += raw_line.len();
+        let line = raw_line
+            .strip_suffix('\n')
+            .map(|line| line.strip_suffix('\r').unwrap_or(line))
+            .unwrap_or(raw_line);
         let trimmed = line.trim();
-
-        // Track fenced code blocks so we never touch math inside them.
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            if !in_block_math {
-                in_fenced_code_block = !in_fenced_code_block;
-            }
-            output.push_str(line);
-            output.push('\n');
-            continue;
+        while code_index < code.len() && code[code_index].0.end <= line_offset {
+            code_index += 1;
         }
-
-        if in_fenced_code_block {
+        let code = &code[code_index..];
+        if !in_block_math
+            && code
+                .first()
+                .is_some_and(|(r, block)| *block && r.start < offset)
+        {
             output.push_str(line);
             output.push('\n');
             continue;
         }
 
         // Block math delimiter `$$` on its own line.
-        if trimmed == "$$" {
+        let delimiter_offset = line_offset + line.len() - line.trim_start().len();
+        let delimiter_in_code = code
+            .first()
+            .is_some_and(|(r, _)| r.contains(&delimiter_offset));
+        if trimmed == "$$" && (in_block_math || !delimiter_in_code) {
             if in_block_math {
                 let placeholder = block_placeholder(math_counter);
                 math_segments.push(MathSegment {
@@ -85,7 +108,11 @@ pub(crate) fn preprocess_math(markdown: &str) -> (String, Vec<MathSegment>) {
         }
 
         // Single-line block math `$$...$$` (longer than 4 chars).
-        if trimmed.starts_with("$$") && trimmed.ends_with("$$") && trimmed.len() > 4 {
+        if !delimiter_in_code
+            && trimmed.starts_with("$$")
+            && trimmed.ends_with("$$")
+            && trimmed.len() > 4
+        {
             let inner = trimmed
                 .trim_start_matches("$$")
                 .trim_end_matches("$$")
@@ -105,6 +132,8 @@ pub(crate) fn preprocess_math(markdown: &str) -> (String, Vec<MathSegment>) {
         // Inline math `$...$` anywhere on the line.
         output.push_str(&render_inline_math(
             line,
+            line_offset,
+            code,
             &mut math_segments,
             &mut math_counter,
         ));
@@ -153,19 +182,26 @@ fn block_placeholder(n: usize) -> String {
 /// placeholder, collecting the corresponding [`MathSegment`].
 fn render_inline_math(
     line: &str,
+    line_offset: usize,
+    code: &[(Range<usize>, bool)],
     math_segments: &mut Vec<MathSegment>,
     math_counter: &mut usize,
 ) -> String {
     let chars: Vec<(usize, char)> = line.char_indices().collect();
     let mut output = String::new();
     let mut index = 0;
-    let mut in_inline_code = false;
+    let mut code_index = 0;
 
     while index < chars.len() {
-        let (_, ch) = chars[index];
-
-        if ch == '`' {
-            in_inline_code = !in_inline_code;
+        let (offset, ch) = chars[index];
+        let position = line_offset + offset;
+        while code_index < code.len() && code[code_index].0.end <= position {
+            code_index += 1;
+        }
+        if code
+            .get(code_index)
+            .is_some_and(|(r, _)| r.contains(&position))
+        {
             output.push(ch);
             index += 1;
             continue;
@@ -183,7 +219,7 @@ fn render_inline_math(
             continue;
         }
 
-        if ch == '$' && !in_inline_code {
+        if ch == '$' {
             // `$$` at this position means a block-math delimiter; pass through.
             if chars.get(index + 1).map(|(_, next)| *next) == Some('$') {
                 output.push_str("$$");
@@ -194,10 +230,15 @@ fn render_inline_math(
             // Try to find the closing `$`.
             let mut math = String::new();
             let mut lookahead = index + 1;
+            let mut code_lookahead = code_index;
             let mut found_closing = false;
 
             while lookahead < chars.len() {
-                let (_, next_ch) = chars[lookahead];
+                let (next_offset, next_ch) = chars[lookahead];
+                let next_position = line_offset + next_offset;
+                while code_lookahead < code.len() && code[code_lookahead].0.end <= next_position {
+                    code_lookahead += 1;
+                }
 
                 if next_ch == '\\' {
                     math.push(next_ch);
@@ -210,7 +251,14 @@ fn render_inline_math(
                     continue;
                 }
 
-                if next_ch == '$' {
+                // A formula opened before backticks may contain them as TeX.
+                // Only a dollar outside code can close it, so an unmatched
+                // dollar in ordinary text cannot consume a code span's dollar.
+                if next_ch == '$'
+                    && !code
+                        .get(code_lookahead)
+                        .is_some_and(|(r, _)| r.contains(&next_position))
+                {
                     found_closing = true;
                     break;
                 }

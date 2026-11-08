@@ -111,6 +111,116 @@ test('500 drafts export and restore within per-request budgets; checkpoint retri
   assert.equal((await post(target, '/api/backup/jobs/' + task.id + '/finish')).phase, 'complete');
 });
 
+test('restored short summaries match normal saves across buckets, pagination, retries and conflicts', async (t) => {
+  const from = await fixture(t),
+    to = await fixture(t);
+  await from.login();
+  await to.login();
+  const sourceBucket = await from.mf.getR2Bucket('STORAGE'),
+    targetBucket = await to.mf.getR2Bucket('STORAGE');
+  for (const bucket of [sourceBucket, targetBucket])
+    await bucket.put('uploads/restore-note.png', new Uint8Array([137, 80, 78, 71]), {
+      httpMetadata: { contentType: 'image/png' },
+    });
+  const notes = {
+    plain: 'Restored summary.',
+    mixed: '图片\n![Photo](/images/uploads/restore-note.png)\n```js\nconst x = 1;\n```',
+    long: '中文摘要\r\n' + '长文'.repeat(200),
+  };
+  const files = {},
+    drafts = {},
+    metadata = {};
+  for (const [slug, body] of Object.entries(notes)) {
+    const saved = await from.request('/api/shorts/' + slug, 'PUT', {
+      front_matter: { slug, date: '2026-11-08 12:00', draft: true },
+      body_markdown: body,
+    });
+    assert.equal(saved.status, 200, await saved.clone().text());
+    const record = await (await from.request('/api/shorts/' + slug)).json();
+    drafts[slug] = record.draft;
+    files['shorts/' + slug + '.md'] = record.source;
+    metadata[slug] = (await sourceBucket.head('shorts/' + slug + '.md')).customMetadata;
+  }
+  const pointer = await (await targetBucket.get('state/published.json')).text();
+  async function restore() {
+    let task = await startRestore(to, files);
+    task = await preflightAll(to, task, files);
+    task = await post(to, '/api/backup/jobs/' + task.id + '/apply', { batch: 0 });
+    return post(to, '/api/backup/jobs/' + task.id + '/finish');
+  }
+  const done = await restore();
+  assert.equal(done.result.restored, 3);
+  const first = await (await to.request('/api/shorts?limit=2')).json();
+  const second = await (
+    await to.request('/api/shorts?limit=2&cursor=' + encodeURIComponent(first.cursor))
+  ).json();
+  assert.equal(first.total, 3);
+  assert.equal(second.cursor, null);
+  const versions = {};
+  for (const item of [...first.shorts, ...second.shorts]) {
+    const slug = item.slug,
+      key = 'shorts/' + slug + '.md';
+    assert.equal(item.snippet, notes[slug].slice(0, 300).replace(/\r?\n/g, ' '));
+    assert.equal(item.published, false);
+    assert.equal((await (await to.request('/api/shorts/' + slug)).json()).source, files[key]);
+    const object = await targetBucket.head(key);
+    assert.deepEqual(object.customMetadata, metadata[slug]);
+    const unchanged = await to.request('/api/shorts/' + slug, 'PUT', {
+      ...drafts[slug],
+      etag: object.etag,
+    });
+    assert.equal(unchanged.status, 200);
+    assert.equal((await unchanged.json()).unchanged, true);
+    versions[key] = object.version;
+  }
+  assert.equal((await restore()).result.restored, 0);
+  for (const [key, version] of Object.entries(versions))
+    assert.equal((await targetBucket.head(key)).version, version);
+  const image = await targetBucket.head('uploads/restore-note.png');
+  assert.equal(
+    (await to.request('/api/images', 'DELETE', { key: image.key, etag: image.etag })).status,
+    409,
+    'restored short references continue to protect their images',
+  );
+  assert.equal(await (await targetBucket.get('state/published.json')).text(), pointer);
+  // Historical restores can repair missing summaries by saving the full original once.
+  const key = 'shorts/plain.md';
+  await targetBucket.put(key, files[key], { customMetadata: { date: '2026-11-08 12:00' } });
+  const legacy = await targetBucket.head(key);
+  assert.equal(
+    (
+      await to.request('/api/shorts/plain', 'PUT', {
+        ...drafts.plain,
+        etag: legacy.etag,
+      })
+    ).status,
+    200,
+  );
+  assert.deepEqual((await targetBucket.head(key)).customMetadata, metadata.plain);
+  let task = await startRestore(to, files);
+  task = await preflightAll(to, task, files);
+  const current = await targetBucket.head(key);
+  assert.equal(
+    (
+      await to.request('/api/shorts/plain', 'PUT', {
+        ...drafts.plain,
+        body_markdown: 'Concurrent short edit',
+        etag: current.etag,
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await to.request('/api/backup/jobs/' + task.id + '/apply', 'POST', { batch: 0 })).status,
+    409,
+  );
+  assert.equal(
+    (await (await to.request('/api/shorts/plain')).json()).draft.body_markdown,
+    'Concurrent short edit',
+  );
+  await post(to, '/api/backup/jobs/' + task.id + '/cancel');
+});
+
 test('export budgets count live originals separately from deleted article and short markers', async (t) => {
   const f = await fixture(t);
   await f.login();

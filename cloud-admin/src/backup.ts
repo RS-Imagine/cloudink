@@ -4,7 +4,7 @@ import { imageDimensions, parentImageKey, contentImageKey } from './image-varian
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { currentRelease } from './publishing';
-import { draftSummary } from './post-metadata';
+import { draftSummary, shortSummary } from './post-metadata';
 import { assertWritableAddress } from './post-addresses';
 import {
   HttpError,
@@ -22,7 +22,7 @@ import {
   validSiteIconKey,
 } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
-import { ensureManagedImages, imageReferenceMetadata } from './image-library';
+import { ensureManagedImages } from './image-library';
 
 const MAX_TEXT = 8_000_000;
 const MAX_MANIFEST = 18_000_000;
@@ -226,10 +226,7 @@ async function restoreBackup(request: Request, env: CloudInkEnv): Promise<Respon
       onlyIf: tombstoneEtag ? { etagMatches: tombstoneEtag } : { etagDoesNotMatch: '*' },
       httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
       customMetadata: isShort
-        ? {
-            date: (draft as ShortDraft).front_matter.date,
-            ...(await imageReferenceMetadata(source, env.STORAGE)),
-          }
+        ? await shortSummary(draft as ShortDraft, source, env.STORAGE)
         : await draftSummary(draft as Draft, env.STORAGE),
     });
     if (saved) restored++;

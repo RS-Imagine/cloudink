@@ -1,6 +1,21 @@
 import { digest } from './auth';
 import { imageReferenceMetadata } from './image-reference-index';
-import type { Draft } from './models';
+import { sourceDigest } from './save-digest';
+import type { Draft, ShortDraft } from './models';
+
+export async function shortSummary(
+  draft: ShortDraft,
+  source: string,
+  storage: R2Bucket,
+  previous?: Record<string, string>,
+): Promise<Record<string, string>> {
+  return {
+    source_digest: await sourceDigest(source),
+    date: draft.front_matter.date,
+    snippet: draft.body_markdown.slice(0, 300).replace(/\r?\n/g, ' '),
+    ...(await imageReferenceMetadata(source, storage, previous?.image_refs_hash)),
+  };
+}
 
 export function editorial(draft: Draft): string {
   const f = draft.front_matter;
