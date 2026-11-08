@@ -224,14 +224,14 @@
     </section>
     <div id="app-view" class="app" hidden>
       <header class="workspace-header studio-masthead">
-        <div class="flclash-header-brand-block">
-          <a class="brand flclash-brand" href="#" aria-label="返回工作台">
+        <div class="studio-brand-block flclash-header-brand-block">
+          <a class="brand studio-brand flclash-brand" href="#" aria-label="返回工作台">
             <span class="brand-mark"><img src="/favicon.svg" width="30" height="30" alt="" /></span>
-            <div class="flclash-brand-text">
-              <span class="flclash-admin-title"
+            <div class="studio-brand-text flclash-brand-text">
+              <span class="studio-admin-title flclash-admin-title"
                 >CloudInk<span class="studio-title-context"> 写作后台</span></span
               >
-              <span class="flclash-admin-subtitle">专注写作，随时发布。</span>
+              <span class="studio-admin-subtitle flclash-admin-subtitle">专注写作，随时发布。</span>
             </div>
           </a>
           <span id="site-brand-title" hidden></span>
@@ -329,7 +329,7 @@
             ><span data-action-label>网站设置</span>
           </button>
         </nav>
-        <div class="workspace-actions flclash-header-actions">
+        <div class="workspace-actions studio-header-actions flclash-header-actions">
           <button
             id="studio-menu-toggle"
             class="shell-icon studio-menu-toggle"
@@ -423,9 +423,12 @@
             ><span>新文章</span>
           </button>
           <details id="studio-tools" class="studio-tools">
-            <summary class="shell-icon flclash-user-summary" aria-label="更多操作">
-              <span class="flclash-user-avatar">云</span>
-              <span class="flclash-user-label" id="flclash-user-label">云砚</span>
+            <summary
+              class="shell-icon studio-user-summary flclash-user-summary"
+              aria-label="更多操作"
+            >
+              <span class="studio-user-avatar flclash-user-avatar">云</span>
+              <span class="studio-user-label flclash-user-label" id="studio-user-label">云砚</span>
               <svg
                 width="12"
                 height="12"
@@ -457,7 +460,11 @@
             发布博客首页
           </button>
         </div>
-        <section id="home-view" class="home-view flclash-home-view" aria-labelledby="home-heading">
+        <section
+          id="home-view"
+          class="home-view studio-home-view flclash-home-view"
+          aria-labelledby="home-heading"
+        >
           <div class="studio-welcome">
             <div>
               <span class="workflow-eyebrow">CLOUDINK · 写作空间</span>
@@ -484,8 +491,12 @@
               ><small>记下此刻的片段</small>
             </button>
           </div>
-          <aside class="flclash-sidebar" aria-label="快捷分类与短记">
-            <button id="flclash-sidebar-new-btn" class="flclash-sidebar-new-btn" type="button">
+          <aside class="studio-quick-rail flclash-sidebar" aria-label="快捷分类与短记">
+            <button
+              id="flclash-sidebar-new-btn"
+              class="studio-sidebar-new-btn flclash-sidebar-new-btn"
+              type="button"
+            >
               <svg
                 width="20"
                 height="20"
@@ -501,7 +512,7 @@
               </svg>
               <span>新建文章</span>
             </button>
-            <div class="flclash-sidebar-bottom-widget">
+            <div class="studio-quick-widget flclash-sidebar-bottom-widget">
               <div class="sidebar-widget-header">
                 <span class="widget-title">记录短记</span>
                 <button
@@ -533,7 +544,7 @@
               </button>
             </div>
           </aside>
-          <div class="flclash-admin-main-column">
+          <div class="studio-main-column flclash-admin-main-column">
             <h1 id="posts-title" hidden>所有文章</h1>
             <div id="article-search-slot">
               <div id="article-browser" class="article-browser">

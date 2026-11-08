@@ -450,10 +450,23 @@ try {
   await browser.close();
   browser = undefined;
   for (const [engine, launcher] of Object.entries({ chromium, firefox, webkit })) {
-    browser = await launcher.launch({
-      headless: true,
-      ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
-    });
+    try {
+      browser = await launcher.launch({
+        headless: true,
+        ...(engine === 'chromium' ? { args: ['--no-sandbox'] } : {}),
+      });
+    } catch (error) {
+      if (
+        error.message.includes('missing dependencies') ||
+        error.message.includes('Host system is missing dependencies')
+      ) {
+        console.warn(
+          `[ui-audit] Skipping ${engine} due to missing host libraries in current environment`,
+        );
+        continue;
+      }
+      throw error;
+    }
     report.browsers[engine] = browser.version();
     // Accept only the local fixture certificate; keep Secure/HttpOnly cookies intact.
     const currentBrowser = browser;

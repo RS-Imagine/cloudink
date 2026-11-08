@@ -670,9 +670,10 @@ async function refresh({ append = false } = {}) {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
-  if ($('flclash-user-label')) $('flclash-user-label').textContent = data.site.author || '云砚';
+  const userLabel = $('studio-user-label') || $('flclash-user-label');
+  if (userLabel) userLabel.textContent = data.site.author || '云砚';
   const avatarLetter = (data.site.author || '云砚').charAt(0);
-  const avatarEl = document.querySelector('.flclash-user-avatar');
+  const avatarEl = document.querySelector('.studio-user-avatar, .flclash-user-avatar');
   if (avatarEl) avatarEl.textContent = avatarLetter;
   $('home-heading').textContent = data.site.author
     ? '你好，' + data.site.author + '。'
@@ -1799,7 +1800,7 @@ async function updateSidebarShorts(value) {
   } catch {}
 }
 
-$('flclash-sidebar-new-btn')?.addEventListener('click', () => {
+($('studio-sidebar-new-btn') || $('flclash-sidebar-new-btn'))?.addEventListener('click', () => {
   $('new-post')?.click();
 });
 
@@ -1813,11 +1814,12 @@ document.addEventListener('click', (event) => {
   }
 });
 
-$('flclash-quick-short-btn')?.addEventListener('click', () =>
-  action('flclash-quick-short-btn', '正在打开…', async () => {
+const quickShortBtn = $('studio-quick-short-btn') || $('flclash-quick-short-btn');
+quickShortBtn?.addEventListener('click', () =>
+  action(quickShortBtn.id, '正在打开…', async () => {
     if (await shortTools.show()) $('short-new').click();
   }),
 );
-$('flclash-goto-shorts-link')?.addEventListener('click', () => {
+($('studio-goto-shorts-link') || $('flclash-goto-shorts-link'))?.addEventListener('click', () => {
   $('shorts').click();
 });

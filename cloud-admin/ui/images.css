@@ -165,3 +165,34 @@
     flex: 1 1 auto;
   }
 }
+.image-library-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0 12px;
+}
+.image-library-filters > input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 440px;
+}
+.image-library-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.image-library-filters input[type='checkbox'] {
+  width: auto;
+}
+.image-preview-dialog {
+  width: min(1000px, 94vw);
+}
+.image-preview-dialog > img {
+  display: block;
+  max-width: 100%;
+  max-height: 75vh;
+  margin: 16px auto 0;
+  object-fit: contain;
+}
