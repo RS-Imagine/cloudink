@@ -8,8 +8,6 @@ await build({
   outfile: new URL('ui/app.generated.js', root).pathname,
   bundle: true,
   format: 'esm',
-  // The asset is served as UTF-8; do not expand Chinese UI copy into ASCII escapes.
-  charset: 'utf8',
   target: 'es2022',
   minify: true,
   external: [

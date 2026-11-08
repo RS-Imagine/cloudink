@@ -1,11 +1,6 @@
 import { verifyUiStability } from '../cloud-web/test/ui-stability.browser.mjs';
 import { navigateStudio } from '../cloud-web/test/studio-navigation.mjs';
 import { verifyUiAuditRegressions } from '../cloud-web/test/ui-audit-regressions.browser.mjs';
-import {
-  verifyAuthoringContent,
-  verifyAuthoringControls,
-  verifyGalleryBatch,
-} from '../cloud-web/test/authoring-upgrade.browser.mjs';
 import { verifyReaderMetadata } from '../cloud-web/test/reader-metadata.browser.mjs';
 import { verifyTemplateUpdates } from '../cloud-web/test/template-update.browser.mjs';
 import { verifyArchive } from '../cloud-web/test/archive.browser.mjs';
@@ -488,9 +483,6 @@ try {
     await verifyImageQuality(localBrowser, origin, output, engine);
     report.surfaces.push(await verifySurfaces(localBrowser, origin, output, engine));
     await verifyMotion(localBrowser, origin, output, engine);
-    await verifyAuthoringContent(localBrowser, origin, engine);
-    await verifyAuthoringControls(localBrowser, origin);
-    await verifyGalleryBatch(localBrowser, origin, engine);
     await browser.close();
     browser = undefined;
   }

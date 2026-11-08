@@ -1,10 +1,9 @@
 // Responsive presentation only; data navigation still uses the guarded app handlers.
-const $ = (id) => document.getElementById(id);
 export function mountStudioShell() {
-  const disclosures = ['studio-tools', 'post-switcher'].map($);
-  const dialog = $('studio-sheet');
+  const disclosures = ['studio-tools', 'post-switcher'].map((id) => document.getElementById(id));
+  const dialog = document.getElementById('studio-sheet');
   const navigation = document.querySelector('.studio-nav');
-  const menuToggle = $('studio-menu-toggle');
+  const menuToggle = document.getElementById('studio-menu-toggle');
   const narrow = matchMedia('(max-width:759px)');
   let presented = null;
   function restore(focus = true) {
@@ -36,18 +35,18 @@ export function mountStudioShell() {
     const trigger = node.querySelector('summary');
     panel.before(panelAnchor);
     const isPosts = node.id === 'post-switcher';
-    const search = isPosts ? $('search') : null;
+    const search = isPosts ? document.getElementById('search') : null;
     const searchAnchor = search ? document.createComment('search position') : null;
     if (search) search.before(searchAnchor);
     presented = { node, panel, panelAnchor, trigger, search, searchAnchor };
-    $('studio-sheet-title').textContent = isPosts ? '选择文章' : '更多操作';
+    document.getElementById('studio-sheet-title').textContent = isPosts ? '选择文章' : '更多操作';
     dialog.dataset.sheet = isPosts ? 'list' : 'compact';
-    if (search) $('studio-sheet-search').append(search);
-    $('studio-sheet-content').append(panel);
+    if (search) document.getElementById('studio-sheet-search').append(search);
+    document.getElementById('studio-sheet-content').append(panel);
     window.CloudInkMotion.openDialog(dialog);
-    (panel.querySelector('button:not(:disabled)') || $('studio-sheet-close')).focus({
-      preventScroll: true,
-    });
+    (
+      panel.querySelector('button:not(:disabled)') || document.getElementById('studio-sheet-close')
+    ).focus({ preventScroll: true });
   }
   menuToggle.addEventListener('click', () => {
     if (!narrow.matches) return;
@@ -56,9 +55,9 @@ export function mountStudioShell() {
     navigation.before(panelAnchor);
     presented = { panel: navigation, panelAnchor, trigger: menuToggle };
     menuToggle.setAttribute('aria-expanded', 'true');
-    $('studio-sheet-title').textContent = '写作空间导航';
+    document.getElementById('studio-sheet-title').textContent = '写作空间导航';
     dialog.dataset.sheet = 'compact';
-    $('studio-sheet-content').append(navigation);
+    document.getElementById('studio-sheet-content').append(navigation);
     window.CloudInkMotion.openDialog(dialog);
     (navigation.querySelector('[aria-current]') || navigation.querySelector('button')).focus({
       preventScroll: true,
@@ -67,9 +66,9 @@ export function mountStudioShell() {
   dialog.addEventListener('close', () => {
     if (!dialog.open) restore();
   });
-  $('studio-sheet-close').addEventListener('click', () =>
-    window.CloudInkMotion.closeDialog(dialog),
-  );
+  document
+    .getElementById('studio-sheet-close')
+    .addEventListener('click', () => window.CloudInkMotion.closeDialog(dialog));
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) window.CloudInkMotion.closeDialog(dialog);
   });
@@ -95,7 +94,7 @@ export function mountStudioShell() {
       )
         node.open = false;
     const target = event.target.closest('[data-studio-shortcut]');
-    if (target) $(target.dataset.studioShortcut)?.click();
+    if (target) document.getElementById(target.dataset.studioShortcut)?.click();
     if (presented?.panel === navigation && event.target.closest('[data-studio-nav]')) close(true);
     if (event.target.closest('.studio-tools-panel button')) close();
   });
