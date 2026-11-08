@@ -342,26 +342,61 @@
     position: relative;
     top: 0;
   }
-  .studio-home-view {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .studio-quick-rail,
-  .studio-main-column {
-    grid-column: 1;
-    grid-row: auto;
-  }
-  .studio-quick-rail {
-    display: none;
-  }
-  .studio-main-column {
-    width: 100%;
-  }
   .editor-toolbar,
   .settings-nav {
     position: static;
   }
 }
+@media (max-width: 1099px) and (min-width: 760px) {
+  .studio-home-view {
+    grid-template-columns: minmax(0, 1fr) 68px;
+    gap: 20px;
+  }
+  .studio-quick-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .studio-main-column {
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+  }
+  .studio-sidebar-new-btn {
+    width: 48px;
+    padding: 0;
+  }
+  .studio-sidebar-new-btn span,
+  .sidebar-widget-header .widget-title,
+  .sidebar-short-snippet,
+  .sidebar-more-shorts {
+    display: none;
+  }
+  .studio-quick-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 8px;
+    gap: 8px;
+  }
+  .sidebar-pen-icon {
+    padding: 0;
+  }
+}
 @media (max-width: 759px) {
+  .studio-home-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-quick-rail {
+    display: none;
+  }
+  .studio-main-column {
+    grid-column: 1;
+    width: 100%;
+  }
   .studio-site-link {
     display: none;
   }
@@ -437,8 +472,8 @@
   }
   .studio-welcome {
     gap: 12px;
-    padding: 24px;
-    border-radius: 20px;
+    padding: 20px 16px;
+    border-radius: 16px;
   }
   .studio-welcome img {
     display: none;
@@ -450,15 +485,16 @@
   .studio-stat {
     min-height: 104px;
     gap: 4px;
-    padding: 14px 16px;
-    border-radius: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
   }
   .studio-stat > small {
     display: none;
   }
   .studio-home-view .article-card {
     grid-template-columns: minmax(0, 1fr) auto;
-    padding: 20px 16px;
+    padding: 18px 14px;
+    border-radius: 14px;
   }
   .studio-home-view .article-card small {
     grid-row: 1;

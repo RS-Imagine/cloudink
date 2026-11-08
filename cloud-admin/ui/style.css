@@ -21,15 +21,10 @@ button {
   background: var(--paper);
   color: var(--ink);
   cursor: pointer;
-  transition: all 0.15s var(--ci-ease);
 }
 button:hover {
   background: var(--pale);
   border-color: var(--accent);
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: wait;
 }
 .quiet {
   background: transparent;
@@ -242,15 +237,8 @@ h3 {
 }
 #notice {
   position: fixed;
-  right: 24px;
-  top: 22px;
-  z-index: 20;
-  background: var(--paper);
-  color: var(--ink);
   padding: 14px 22px;
-  border-radius: 10px;
   border: 1px solid var(--line);
-  box-shadow: 0 6px 30px #0002;
   max-width: min(500px, calc(100vw - 40px));
   font-size: 13px;
   line-height: 1.6;
@@ -263,21 +251,10 @@ h3 {
   background: var(--pale);
   color: var(--ink);
 }
-#notice[data-tone='error'] {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
 dialog {
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 15px;
   padding: 28px;
   width: min(600px, 90vw);
   max-height: 80vh;
-}
-dialog::backdrop {
-  background: var(--ci-overlay);
 }
 .dialog-heading {
   display: flex;
@@ -291,9 +268,6 @@ dialog::backdrop {
 code {
   font-family: Consolas, monospace;
   font-size: 0.95em;
-}
-button:active {
-  transform: translateY(1px);
 }
 #save-state {
   font-size: 12px;
@@ -317,45 +291,9 @@ button:active {
   line-height: 1.7;
   margin-top: 6px;
 }
-
-/* Shared interface rhythm: paper surfaces, quiet rules, semantic accents. */
-
-body {
-  transition:
-    background-color 0.3s,
-    color 0.3s;
-}
-.workspace-header h2,
-.settings-card h3,
-.images-view h1 {
-  font-family: var(--ci-font-ui);
-  font-weight: 600;
-}
-.workspace-actions,
-.appearance-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.theme-toggle {
-  flex-shrink: 0;
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 999px;
-}
 @media (max-width: 650px) {
   .details-fields > label {
     min-width: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
   }
 }
 
