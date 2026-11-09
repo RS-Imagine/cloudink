@@ -41,7 +41,8 @@ export async function readerHtml(
   if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
   const path = url.pathname.replace(/\/index\.html$/, '/');
   const canonical = new URL(path, url.origin);
-  if (/^\/(about|archive|posts\/[A-Za-z0-9_-]+)$/.test(path)) canonical.pathname += '/';
+  if (/^\/(about|archive|post|post\/page\/[1-9]\d*|posts\/[A-Za-z0-9_-]+)$/.test(path))
+    canonical.pathname += '/';
   const isPost = /^\/posts\/[A-Za-z0-9_-]+\/$/.test(canonical.pathname);
   let title = '',
     description = '',
@@ -308,13 +309,23 @@ export async function discovery(
     const paths = ['/'];
     if (pages) {
       for (const path of Object.keys(pages)) {
-        if (['about/index.html', 'archive/index.html', 'shorts/index.html'].includes(path))
+        if (
+          [
+            'about/index.html',
+            'post/index.html',
+            'archive/index.html',
+            'shorts/index.html',
+          ].includes(path)
+        )
           paths.push('/' + path.replace('index.html', ''));
         const post = path.match(/^posts\/([A-Za-z0-9_-]{1,100})\/index\.html$/);
+        if (/^post\/page\/[1-9]\d*\/index\.html$/.test(path))
+          paths.push('/' + path.replace('index.html', ''));
         if (post) paths.push('/posts/' + post[1] + '/');
       }
     } else if (id && (await bucket.head(`public/${id}/index.html`))) {
       if (await bucket.head(`public/${id}/about/index.html`)) paths.push('/about/');
+      if (await bucket.head(`public/${id}/post/index.html`)) paths.push('/post/');
       if (await bucket.head(`public/${id}/archive/index.html`)) paths.push('/archive/');
       if (await bucket.head(`public/${id}/shorts/index.html`)) paths.push('/shorts/');
       let cursor: string | undefined;

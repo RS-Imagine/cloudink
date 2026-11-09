@@ -322,6 +322,124 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function mountPostList() {
+    const host = document.querySelector('.post-index');
+    const list = host?.querySelector('.post-index-list');
+    const next = host?.querySelector('#post-list-next');
+    const footer = host?.querySelector('.post-index-pagination');
+    const status = host?.querySelector('#post-list-status');
+    if (!list || !next || next.hidden || !footer || !status) return;
+    const listUrl = location.pathname + location.search;
+    let loading = false,
+      disposed = false,
+      automatic = true,
+      refreshRequired = false;
+    let request = null,
+      observer = null;
+    async function load(manual = false) {
+      if (loading || disposed || next.hidden || refreshRequired) return;
+      const target = new URL(next.href, location.href);
+      if (target.origin !== location.origin || !/^\/post\/page\/[1-9]\d*\/$/.test(target.pathname))
+        return;
+      loading = true;
+      automatic = true;
+      request = new AbortController();
+      const timeout = setTimeout(() => request?.abort(), 12000);
+      footer.setAttribute('aria-busy', 'true');
+      next.setAttribute('aria-disabled', 'true');
+      status.textContent = '正在加载下一批文章…';
+      let changed = false;
+      try {
+        const response = await fetch(target, {
+          headers: { Accept: 'text/html' },
+          signal: request.signal,
+        });
+        if (!response.ok || new URL(response.url).origin !== location.origin) {
+          await response.body?.cancel();
+          throw new Error('Article batch unavailable');
+        }
+        const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+        if (disposed || !host.isConnected) return;
+        const batch = doc.querySelector('.post-index');
+        const items = [...(batch?.querySelector('.post-index-list')?.children || [])];
+        if (!batch || !items.length || items.length > 10) throw new Error('Invalid article batch');
+        if (batch.dataset.postRevision !== host.dataset.postRevision) {
+          automatic = false;
+          refreshRequired = true;
+          status.textContent = '文章列表已更新，请刷新后继续浏览。';
+          next.href = listUrl;
+          next.textContent = '刷新文章列表';
+          return;
+        }
+        if (Number(batch.dataset.postStart) !== Number(host.dataset.postEnd) + 1)
+          throw new Error('Out-of-order article batch');
+        const added = items.map((item) => document.importNode(item, true));
+        list.append(...added);
+        host.dataset.postEnd = batch.dataset.postEnd;
+        const following = batch.querySelector('#post-list-next');
+        if (following) next.href = following.href;
+        else {
+          next.hidden = true;
+          observer?.disconnect();
+        }
+        status.textContent =
+          '已显示第 ' +
+          host.dataset.postStart +
+          '–' +
+          host.dataset.postEnd +
+          ' 篇，共 ' +
+          host.dataset.postTotal +
+          ' 篇。';
+        next.textContent = '继续浏览';
+        if (manual) added[0].querySelector('a')?.focus({ preventScroll: true });
+        changed = true;
+      } catch {
+        if (!disposed && host.isConnected) {
+          automatic = false;
+          status.textContent = '加载暂时没有完成，当前文章仍可浏览。请点击重试。';
+          next.textContent = '重试加载';
+        }
+      } finally {
+        clearTimeout(timeout);
+        loading = false;
+        footer.removeAttribute('aria-busy');
+        next.removeAttribute('aria-disabled');
+        // Preserve expanded batches for the existing back/forward scroll restoration.
+        if (changed && !disposed && host.isConnected)
+          swup?.cache.update(listUrl, { html: document.documentElement.outerHTML });
+      }
+    }
+    const click = (event) => {
+      if (
+        refreshRequired ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      event.preventDefault();
+      void load(true);
+    };
+    next.addEventListener('click', click);
+    if ('IntersectionObserver' in window) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (automatic && entries.some((entry) => entry.isIntersecting)) void load();
+        },
+        { rootMargin: '240px 0px' },
+      );
+      observer.observe(footer);
+    }
+    cleanupFunctions.push(() => {
+      disposed = true;
+      request?.abort();
+      observer?.disconnect();
+      next.removeEventListener('click', click);
+    });
+  }
+
   function initPageFeatures(visit) {
     cleanupFunctions.forEach((fn) => fn());
     cleanupFunctions = [];
@@ -331,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const swupContainer = document.getElementById('swup');
     if (!swupContainer) return;
     syncReaderNavigation();
+    mountPostList();
     window.CloudInkTheme?.setPalette(
       swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink',
     );

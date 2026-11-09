@@ -18,6 +18,7 @@ import {
 
 const coreFiles = [
   'index.html',
+  'post/index.html',
   'archive/index.html',
   'shorts/index.html',
   '404.html',
@@ -67,6 +68,10 @@ export function requiredPages(release: Release): string[] {
   }
   return [
     ...coreFiles,
+    ...Array.from(
+      { length: Math.max(0, Math.ceil(slugs.size / 10) - 1) },
+      (_, i) => `post/page/${i + 2}/index.html`,
+    ),
     ...(release.about_markdown ? ['about/index.html'] : []),
     ...[...slugs].sort().map((slug) => `posts/${slug}/index.html`),
   ];
@@ -96,7 +101,10 @@ export function aboutSource(markdown: string): string {
   return '+++\ntitle = "About"\ndescription = ""\n+++\n\n' + markdown;
 }
 export function publicType(path: string): string {
-  if (path === 'archive/index.html' || path === 'shorts/index.html')
+  if (
+    ['post/index.html', 'archive/index.html', 'shorts/index.html'].includes(path) ||
+    /^post\/page\/[1-9]\d*\/index\.html$/.test(path)
+  )
     return 'text/html; charset=utf-8';
   if (/^(?:index|404|about\/index|posts\/[A-Za-z0-9_-]{1,100}\/index)\.html$/.test(path))
     return 'text/html; charset=utf-8';
@@ -171,8 +179,10 @@ export async function selectRenderFiles(
     ),
   );
   if (changedPosts.size) {
-    for (const path of ['index.html', 'archive/index.html', 'search_index.json']) changed.add(path);
+    for (const path of ['index.html', 'post/index.html', 'archive/index.html', 'search_index.json'])
+      changed.add(path);
     for (const slug of changedPosts) changed.add('posts/' + slug + '/index.html');
+    for (const path of generatedFiles(state)) if (path.startsWith('post/page/')) changed.add(path);
   }
   if (
     JSON.stringify(base.markdown_shorts || {}) !== JSON.stringify(release.markdown_shorts || {})

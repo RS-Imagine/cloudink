@@ -1,4 +1,5 @@
 import { verifyHome } from './home.browser.mjs';
+import { verifyPostList } from './post-list.browser.mjs';
 import { verifyStudio } from './studio.browser.mjs';
 import { verifyUiAuditRegressions } from './ui-audit-regressions.browser.mjs';
 import { navigateStudio } from './studio-navigation.mjs';
@@ -476,6 +477,7 @@ try {
   await navigateStudio(page, 'settings');
   await verifyUiAuditRegressions(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await verifyHome(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
+  await verifyPostList(browser, 'http://localhost:8791');
   await verifyStudio(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);

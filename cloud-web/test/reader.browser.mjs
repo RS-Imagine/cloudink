@@ -244,7 +244,7 @@ export async function verifyReader(browser, origin, output, engine) {
     false,
   );
   await plain.locator('.article-back').click();
-  await expect(plain.locator('.home-layout')).toBeVisible();
+  await expect(plain.locator('.post-index')).toBeVisible();
   await native.close();
   await verifyProgressivePreview(browser, origin, output, engine);
   await verifyShareFeedback(browser, origin);

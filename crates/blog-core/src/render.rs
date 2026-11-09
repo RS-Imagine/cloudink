@@ -274,7 +274,7 @@ pub fn render_index_with_shorts(
     let mut visible: Vec<_> = posts.iter().filter(|p| !p.draft()).collect();
     visible.sort_by(|a, b| b.date().cmp(a.date()));
     let mut cards = String::new();
-    for (index, post) in visible.iter().enumerate() {
+    for (index, post) in visible.iter().take(POSTS_PER_PAGE).enumerate() {
         let featured = index == 0;
         let mut art = post_thumbnail(post, featured);
         if featured && art.is_empty() {
@@ -316,7 +316,7 @@ pub fn render_index_with_shorts(
     if visible.is_empty() {
         cards.push_str(&format!(r#"<section id="posts" class="panel home-empty"><h2>文字，即将生长。</h2><p>这里还没有发布的文章，欢迎稍后再来。</p>{}</section>"#, home_illustration(config)));
     } else {
-        cards.push_str(r#"<div class="blog-feed-end"><span>慢慢写，认真记。</span><a class="blog-text-link" href="/archive/">查看全部文章 →</a></div></section>"#);
+        cards.push_str(r#"<div class="blog-feed-end"><span>慢慢写，认真记。</span><a class="blog-text-link" href="/post/">查看全部文章 →</a></div></section>"#);
     }
     let title = config
         .big_title
@@ -358,6 +358,93 @@ pub fn render_index_with_shorts(
 /// Renders the blog index page listing all published posts.
 pub fn render_index(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
     render_index_with_shorts(config, posts, &[], css_hash)
+}
+
+pub const POSTS_PER_PAGE: usize = 10;
+
+/// The first article batch; subsequent batches also work as ordinary HTML pages.
+pub fn render_posts(config: &SiteConfig, posts: &[Post], css_hash: &str) -> String {
+    render_posts_page(config, posts, css_hash, 1)
+}
+
+pub fn render_posts_page(
+    config: &SiteConfig,
+    posts: &[Post],
+    css_hash: &str,
+    page_number: usize,
+) -> String {
+    let mut visible: Vec<_> = posts.iter().filter(|post| !post.draft()).collect();
+    visible.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    let revision = crate::content_hash(
+        &serde_json::to_string(
+            &visible
+                .iter()
+                .map(|p| (p.slug(), p.title(), p.date(), reading_minutes(p)))
+                .collect::<Vec<_>>(),
+        )
+        .expect("article metadata is serializable"),
+    );
+    let page_number = page_number.max(1);
+    let start = (page_number - 1)
+        .saturating_mul(POSTS_PER_PAGE)
+        .min(visible.len());
+    let end = start.saturating_add(POSTS_PER_PAGE).min(visible.len());
+    let mut items = String::new();
+    for post in &visible[start..end] {
+        items.push_str(&format!(
+            r#"<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/{slug}/">{title}</a></h2><div class="story-meta"><time datetime="{date}">{date}</time><span>{minutes} 分钟阅读</span></div></div></article></li>"#,
+            slug = escape_html(post.slug()),
+            title = escape_html(post.title()),
+            date = escape_html(post.date()),
+            minutes = reading_minutes(post),
+        ));
+    }
+    let contents = if visible.is_empty() {
+        String::from("<p class=\"post-index-empty\">这里还没有发布的文章，欢迎稍后再来。</p>")
+    } else {
+        let previous = if page_number > 1 {
+            format!(
+                r#"<a class="blog-text-link" href="{}">← 上一页</a>"#,
+                if page_number == 2 {
+                    "/post/".into()
+                } else {
+                    format!("/post/page/{}/", page_number - 1)
+                }
+            )
+        } else {
+            String::new()
+        };
+        let next = if end < visible.len() {
+            format!(
+                r#"<a class="plain-button" id="post-list-next" href="/post/page/{}/" data-no-swup>继续浏览</a>"#,
+                page_number + 1
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            r#"<ol class="post-index-list" id="post-index-list" start="{first}">{items}</ol><nav class="post-index-pagination" aria-label="文章分页"><p id="post-list-status" role="status" aria-live="polite">已显示第 {first}–{end} 篇，共 {total} 篇。</p><div>{previous}{next}<a class="blog-text-link" href="/archive/">按时间归档 →</a></div></nav>"#,
+            first = start + 1,
+            total = visible.len(),
+        )
+    };
+    let body = format!(
+        r#"<section class="panel blog-feed post-index" aria-labelledby="post-index-heading" data-post-revision="{revision}" data-post-start="{start}" data-post-end="{end}" data-post-total="{count}"><header class="blog-section-heading"><h1 id="post-index-heading">文章</h1><p class="post-index-count">共 {count} 篇</p></header>{contents}</section>"#,
+        count = visible.len(),
+        start = start + 1,
+    );
+    page(
+        &format!("文章 · {}", config.title),
+        &config.description,
+        &config.title,
+        &config.description,
+        &body,
+        "",
+        css_hash,
+        config,
+        "posts",
+        &author_context(config),
+    )
 }
 
 /// Renders the archive page: every published post grouped by month, newest first.
@@ -464,7 +551,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         })
         .unwrap_or_default();
     let body = format!(
-        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="back-link article-back" href="/">← 返回列表</a><span>文章阅读</span></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><p>感谢阅读。</p><a class="back-link" href="/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
+        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="back-link article-back" href="/post/">← 返回列表</a><span>文章阅读</span></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><p>感谢阅读。</p><a class="back-link" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
         title = display_title(post.title()),
         description = escape_html(post.description()),
         initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
@@ -478,7 +565,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         author = escape_html(&config.author),
         date = escape_html(post.date()),
         link = icon("link"),
-        related = r#"<section class="panel related-panel"><h2>继续阅读</h2><div id="related-stories"><a class="related-story" href="/archive/">浏览全部文章 →</a></div></section>"#
+        related = r#"<section class="panel related-panel"><h2>继续阅读</h2><div id="related-stories"><a class="related-story" href="/post/">浏览全部文章 →</a></div></section>"#
     );
     let (icon_url, _) = site_icon(config);
     let extra_head = format!(
@@ -658,7 +745,7 @@ fn page(
     let about_available = config.about.as_deref().is_none_or(|s| !s.trim().is_empty());
     let navigation = [
         ("home", "/", "首页"),
-        ("posts", "/#posts", "文章"),
+        ("posts", "/post/", "文章"),
         ("shorts", "/shorts/", "短记"),
         ("archive", "/archive/", "归档"),
         ("about", "/about/", "关于"),

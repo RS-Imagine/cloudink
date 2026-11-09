@@ -76,6 +76,10 @@ function publicPath(path: string): string | null {
   if (path === '/' || path === '/index.html') return 'index.html';
   if (['/404.html', '/search_index.json', '/_release.json'].includes(path)) return path.slice(1);
   if (/^\/about(?:\/|\/index.html)?$/.test(path)) return 'about/index.html';
+  if (/^\/post(?:\/|\/index.html)?$/.test(path)) return 'post/index.html';
+  const postListPage = path.match(/^\/post\/page\/([1-9]\d*)(?:\/|\/index.html)?$/);
+  if (postListPage && Number(postListPage[1]) >= 2)
+    return `post/page/${postListPage[1]}/index.html`;
   if (/^\/archive(?:\/|\/index.html)?$/.test(path)) return 'archive/index.html';
   if (/^\/shorts(?:\/|\/index.html)?$/.test(path)) return 'shorts/index.html';
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
@@ -243,6 +247,7 @@ const web = {
         );
       if (key === 'index.html') return staticAsset(request, env, '/');
       if (key === 'about/index.html') return staticAsset(request, env, '/about/');
+      if (key === 'post/index.html') return staticAsset(request, env, '/post/');
       if (key === 'shorts/index.html') return staticAsset(request, env, '/shorts/');
       if (key === 'search_index.json') return staticAsset(request, env, '/search_index.json');
       return staticAsset(request, env, '/404.html', 404, analytics);

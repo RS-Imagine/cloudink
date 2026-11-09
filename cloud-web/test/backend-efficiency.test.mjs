@@ -4,6 +4,58 @@ import { createHash } from 'node:crypto';
 import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture, draft } from './fixture.mjs';
 const sha = (text) => createHash('sha256').update(text).digest('hex');
+test('article batch manifests use ten published posts per page and route extra batches as canonical HTML', async (t) => {
+  const bundle = await build({
+    entryPoints: ['cloud-admin/src/browser-publishing.ts'],
+    bundle: true,
+    write: false,
+    format: 'esm',
+    platform: 'node',
+  });
+  const { requiredPages, publicType } = await import(
+    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
+  );
+  const source = (slug, hidden = false) =>
+    '+++\ntitle = "Article"\nslug = "' +
+    slug +
+    '"\ndate = "2026-11-09"\ndraft = ' +
+    hidden +
+    '\n+++\n\nBody';
+  const release = { markdown_posts: {}, markdown_shorts: {} };
+  for (let i = 0; i < 21; i++) release.markdown_posts['item-' + i] = source('item-' + i);
+  release.markdown_posts.private = source('private', true);
+  assert.deepEqual(
+    requiredPages(release).filter((p) => p.startsWith('post/')),
+    ['post/index.html', 'post/page/2/index.html', 'post/page/3/index.html'],
+  );
+  delete release.markdown_posts['item-20'];
+  assert(!requiredPages(release).includes('post/page/3/index.html'));
+  assert.match(publicType('post/page/2/index.html'), /text\/html/);
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const key = 'a'.repeat(64);
+  await bucket.put(
+    'public/content/' + key,
+    '<html><head><title>Batch</title></head><body>Public batch</body></html>',
+  );
+  await bucket.put(
+    'state/published.json',
+    JSON.stringify({
+      id: 'batch-release',
+      pages: { 'index.html': key, 'post/page/2/index.html': key },
+    }),
+  );
+  for (const path of ['/post/page/2/', '/post/page/2', '/post/page/2/index.html']) {
+    const response = await f.request(path);
+    assert.equal(response.status, 200);
+    assert.match(
+      await response.text(),
+      /rel="canonical" href="https:\/\/notes.reader.workers.dev\/post\/page\/2\/"/,
+    );
+  }
+  assert.equal((await f.request('/post/page/3/')).status, 404);
+});
 async function planned(f, state, receipts = true) {
   const paths = (state.render_files || state.files).filter(
     (path) =>
@@ -142,8 +194,58 @@ test('short publication refreshes the home and short feed while preserving unrel
       200,
     );
     const current = await (await bucket.get('state/published.json')).json();
-    for (const path of ['posts/live/index.html', 'archive/index.html', 'search_index.json'])
+    for (const path of [
+      'posts/live/index.html',
+      'post/index.html',
+      'archive/index.html',
+      'search_index.json',
+    ])
       assert.equal(current.pages[path], original.pages[path], operation + ': ' + path);
+  }
+});
+test('article creation, edits and withdrawal refresh the public article list without publishing other drafts', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const first = await f.prepare();
+  let pages = await planned(f, first);
+  assert.equal(
+    (
+      await f.request('/api/publish/' + first.release_id + '/commit', 'POST', {
+        receipts: pages.receipts,
+      })
+    ).status,
+    200,
+  );
+  await f.request('/api/posts/private', 'PUT', { draft: draft('private'), etag: null });
+  let etag = null;
+  for (const operation of ['create', 'edit', 'unpublish']) {
+    let input = { unpublish: 'listed' };
+    if (operation !== 'unpublish') {
+      const saved = await (
+        await f.request('/api/posts/listed', 'PUT', { draft: draft('listed', operation), etag })
+      ).json();
+      etag = saved.etag;
+      input = { slug: 'listed', etag };
+    }
+    const state = await f.prepare(input);
+    assert(
+      state.render_files.includes('post/index.html'),
+      operation + ' must refresh the article list',
+    );
+    assert.equal(Object.hasOwn(state.browser_release.markdown_posts, 'private'), false);
+    assert.equal(
+      Object.hasOwn(state.browser_release.markdown_posts, 'listed'),
+      operation !== 'unpublish',
+    );
+    pages = await planned(f, state);
+    assert.equal(
+      (
+        await f.request('/api/publish/' + state.release_id + '/commit', 'POST', {
+          receipts: pages.receipts,
+        })
+      ).status,
+      200,
+    );
   }
 });
 test('article summaries avoid source reads and paginated private lists reject stale cursors', async (t) => {
