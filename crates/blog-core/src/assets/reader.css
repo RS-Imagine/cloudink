@@ -298,6 +298,57 @@
   display: grid;
   gap: 4px;
 }
+@media (min-width: 1024px) and (min-height: 640px) {
+  .reader-shell:has([data-page='post']) #reader-context {
+    /* Leave room for the 80px page header and the bottom margin before sticking. */
+    display: block;
+    height: calc(100dvh - 104px);
+    max-height: none;
+    overflow: visible;
+  }
+  .reader-shell:has([data-page='post']) #reader-context-content {
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto minmax(112px, 0.65fr);
+  }
+  .reader-shell :is(.article-toc-panel, .related-panel) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .reader-shell :is(.article-toc-panel, .related-panel) > h2,
+  .reader-shell .reading-progress-widget {
+    flex: none;
+  }
+  .reader-shell .article-toc-panel .reader-toc-slot {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .reader-shell .article-toc-panel .toc-container {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    scrollbar-width: thin;
+  }
+  .reader-shell #related-stories {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
+  }
+  .reader-shell .article-info-panel dd {
+    min-width: 0;
+    max-width: 70%;
+    overflow-wrap: anywhere;
+  }
+}
+@media (min-width: 1024px) and (max-height: 639px) {
+  .reader-shell:has([data-page='post']) #reader-context {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
 .reader-shell .toc-container .toc-title,
 .reader-shell .toc-container .toc-close {
   display: none;
