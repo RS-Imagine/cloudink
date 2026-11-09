@@ -43,6 +43,7 @@ export async function verifyStudio(browser, origin, output, engine) {
       for (const id of ['articles-nav', 'shorts', 'images', 'settings'])
         await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#publish-welcome')).toBeVisible();
+      await expect(page.locator('.manage-intro #publish-welcome')).toHaveCount(1);
     }
     await page.locator('#new-post').click();
     await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
@@ -88,6 +89,7 @@ export async function verifyStudio(browser, origin, output, engine) {
     await expect(page.locator('#home-view')).toBeVisible();
     await navigateStudio(page, 'settings');
     await expect(page.locator('#publish-welcome')).toBeVisible();
+    await expect(page.locator('.settings-intro #publish-welcome')).toHaveCount(1);
     const font = page.locator('#reading-font');
     const originalFont = await font.inputValue();
     await font.selectOption('sans');
