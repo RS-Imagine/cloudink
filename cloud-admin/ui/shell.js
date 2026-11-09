@@ -21,14 +21,9 @@ export function mountStudioShell() {
   const maintenance = document.getElementById('publishing-summary');
   function placeMaintenance() {
     const view = document.getElementById('app-view').dataset.view;
+    maintenance.hidden = !['home', 'posts', 'settings'].includes(view);
     document
-      .getElementById(
-        ['home', 'posts'].includes(view)
-          ? 'manage-maintenance-slot'
-          : view === 'settings'
-            ? 'settings-maintenance-slot'
-            : 'maintenance-global',
-      )
+      .getElementById(view === 'settings' ? 'settings-maintenance-slot' : 'manage-maintenance-slot')
       .append(maintenance);
   }
   function restoreMetadata() {

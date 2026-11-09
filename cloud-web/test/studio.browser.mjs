@@ -44,8 +44,18 @@ export async function verifyStudio(browser, origin, output, engine) {
         await expect(page.locator('#' + id)).toBeVisible();
       await expect(page.locator('#publish-welcome')).toBeVisible();
       await expect(page.locator('.manage-intro #publish-welcome')).toHaveCount(1);
+      for (const id of ['images', 'shorts']) {
+        await navigateStudio(page, id);
+        await expect(page.locator('#' + id + '-view')).toBeVisible();
+        await expect(page.locator('#publishing-summary')).toBeHidden();
+        await expect(page.locator('#publish-welcome')).toBeHidden();
+      }
+      await navigateStudio(page, 'articles-nav');
+      await expect(page.locator('#publish-welcome')).toBeVisible();
     }
     await page.locator('#new-post').click();
+    await expect(page.locator('#publishing-summary')).toBeHidden();
+    await expect(page.locator('#publish-welcome')).toBeHidden();
     await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.studio-nav')).toBeHidden();
     await page.locator('#title').fill('V4 private draft ' + engine);
@@ -83,6 +93,7 @@ export async function verifyStudio(browser, origin, output, engine) {
       .click();
     await expect(page.locator('#body')).toHaveValue(before);
     await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('#publish-welcome')).toBeHidden();
     await page.screenshot({ path: resolve(output, 'v4-editor-' + engine + '-1440.png') });
     await page.locator('#delete-post').click();
     await acceptConfirmation(page);

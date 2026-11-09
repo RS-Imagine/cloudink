@@ -231,7 +231,7 @@ html[data-cloudink-admin] {
   min-width: 0;
   max-width: 100%;
 }
-.publishing-summary {
+.publishing-summary:not([hidden]) {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -575,9 +575,6 @@ html[data-cloudink-admin] {
   padding: 10px 12px;
   min-height: 40px;
   flex: none;
-}
-.maintenance-global:not(:empty) {
-  margin: 0 0 20px;
 }
 .editor-toolbar {
   display: none;

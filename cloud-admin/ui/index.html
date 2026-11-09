@@ -427,29 +427,28 @@
       </header>
       <main id="workspace" class="workspace" tabindex="-1" aria-labelledby="workspace-title">
         <div id="navigation-status" class="navigation-status" role="status" hidden=""></div>
-        <div class="maintenance-global" id="maintenance-global">
-          <div id="publishing-summary" class="publishing-summary">
-            <div id="publish-banner" class="publish-banner" hidden="" role="status"></div>
-            <button id="cancel-publish" hidden="">取消未完成的发布</button>
-            <div class="template-maintenance" aria-label="网站排版">
-              <p id="template-status" role="status" hidden=""></p>
-              <button
-                id="publish-welcome"
-                aria-describedby="template-status"
-                title="只重新生成已发布页面，保留草稿和待发布的网站设置"
-              >
-                发布博客首页
-              </button>
-            </div>
-          </div>
-        </div>
         <section id="home-view" class="home-view" aria-labelledby="home-heading">
           <div class="manage-intro">
             <div class="intro-copy">
               <h2 id="home-heading">把文章整理清楚。</h2>
               <p>找到要继续写的内容，检查修改，再决定发布。</p>
             </div>
-            <div id="manage-maintenance-slot" class="maintenance-slot"></div>
+            <div id="manage-maintenance-slot" class="maintenance-slot">
+              <div id="publishing-summary" class="publishing-summary">
+                <div id="publish-banner" class="publish-banner" hidden="" role="status"></div>
+                <button id="cancel-publish" hidden="">取消未完成的发布</button>
+                <div class="template-maintenance" aria-label="网站排版">
+                  <p id="template-status" role="status" hidden=""></p>
+                  <button
+                    id="publish-welcome"
+                    aria-describedby="template-status"
+                    title="只重新生成已发布页面，保留草稿和待发布的网站设置"
+                  >
+                    发布博客首页
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="manage-columns">
