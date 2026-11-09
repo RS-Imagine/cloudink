@@ -1148,6 +1148,10 @@
   height: 100%;
   object-fit: cover;
 }
+.reader-shell .home-thumbnail img,
+.reader-shell .home-illustration img {
+  object-fit: contain;
+}
 .author-avatar {
   display: inline-grid;
   place-items: center;
