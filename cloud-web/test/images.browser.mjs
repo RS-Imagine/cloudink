@@ -85,6 +85,7 @@ try {
     ),
   );
   await page.locator('#new-post').click();
+  await page.locator('#show-split').click();
   await page.locator('#title').fill('An article using an existing image');
   await page.locator('#body').fill('Original text');
   await page.locator('#choose-library-image').click();

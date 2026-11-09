@@ -1,6 +1,6 @@
 import { navigateStudio } from './studio-navigation.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
-import { openPostSwitcher } from './studio.browser.mjs';
+import { openArticleList } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
 import {
   Miniflare,
@@ -49,6 +49,8 @@ try {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const counts = { list: 0, poll: 0 };
+  let releaseBeta;
+  const betaGate = new Promise((resolve) => (releaseBeta = resolve));
   let delayList = 0,
     delayGet = 0,
     delaySave = 0,
@@ -63,6 +65,8 @@ try {
       await sleep(delayList);
     }
     if (url.pathname === '/api/publish/status') counts.poll++;
+    // Hold beta's first read even if the list speculatively prefetches it.
+    if (url.pathname === '/api/posts/beta' && method === 'GET') await betaGate;
     if (/^\/api\/posts\//.test(url.pathname)) await sleep(method === 'PUT' ? delaySave : delayGet);
     if (url.pathname === '/api/image') {
       imageRequested = true;
@@ -90,9 +94,10 @@ try {
   await page.locator('#home-view').waitFor({ state: 'visible' });
   await expect(page.locator('#site-link')).toHaveAttribute('href', 'http://localhost:8788');
   await expect(page.locator('#site-brand-title')).toHaveText('Test blog');
-  await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
+  await openArticleList(page);
+  await page.locator('.article-title-button').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#title')).toHaveValue('alpha');
+  await page.locator('#show-split').click();
   await page.frameLocator('#preview-frame').locator('.katex').first().waitFor();
   assert.equal(imageFinished, false, 'Text preview must render before images finish');
   await expect.poll(() => imageRequested).toBe(true);
@@ -103,8 +108,12 @@ try {
     false,
   );
   // Theme changes preserve the draft and update the script-free preview in place.
-  const themeToggle = page.locator('.workspace-header [data-theme-toggle]');
-  await themeToggle.click();
+  // The editor keeps its top actions focused on saving and publishing.
+  const togglePreviewTheme = () =>
+    page.evaluate(() =>
+      CloudInkTheme.setMode(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'),
+    );
+  await togglePreviewTheme();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
     'data-theme',
@@ -119,7 +128,7 @@ try {
     path: resolve('cloud-web/dist/editor-dark.browser.png'),
     fullPage: true,
   });
-  await themeToggle.click();
+  await togglePreviewTheme();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   const initialLists = counts.list;
   delaySave = 500;
@@ -131,16 +140,18 @@ try {
   await expect(page.locator('#notice')).toContainText('草稿已保存');
   assert.equal(counts.list, initialLists, 'Saving must not refetch the entire article list');
   await page.locator('#body').fill('Latest alpha content');
-  await openPostSwitcher(page);
+  await openArticleList(page);
   const start = Date.now();
-  await page.locator('.post-item').filter({ hasText: 'beta' }).click();
+  // Keyboard activation avoids hover prefetch, so the pending-open feedback is observable.
+  await page.locator('.article-title-button').filter({ hasText: 'beta' }).press('Enter');
   await expect(page.locator('#navigation-status')).toBeVisible();
+  releaseBeta();
   await expect(page.locator('#title')).toHaveValue('beta');
   const uncachedMs = Date.now() - start;
-  assert.ok(uncachedMs < 1600, `save/fetch should overlap: ${uncachedMs}ms`);
-  await openPostSwitcher(page);
+  assert.ok(uncachedMs < 1600, `opening must not refetch the full list: ${uncachedMs}ms`);
+  await openArticleList(page);
   const cachedStart = Date.now();
-  await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
+  await page.locator('.article-title-button').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#title')).toHaveValue('alpha');
   const cachedMs = Date.now() - cachedStart;
   assert.ok(cachedMs < 600, `cached switch should not wait for network: ${cachedMs}ms`);
@@ -153,14 +164,14 @@ try {
   await expect(page.locator('.workspace-header')).toBeVisible();
   await expect(page.locator('#body')).toHaveValue('Latest alpha content');
   // Rapid selection must leave the last selected article visible.
-  await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'gamma' }).click();
-  await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'beta' }).click();
+  await openArticleList(page);
+  await page.locator('.article-title-button').filter({ hasText: 'gamma' }).click();
+  await openArticleList(page);
+  await page.locator('.article-title-button').filter({ hasText: 'beta' }).click();
   await expect(page.locator('#title')).toHaveValue('beta');
   await sleep(900);
   await expect(page.locator('#title')).toHaveValue('beta');
-  await page.locator('.post-details summary').click();
+  await expect(page.locator('#download-post')).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
   await page.locator('#download-post').click();
   await downloadPromise;
@@ -179,15 +190,15 @@ try {
   });
   await expect(page.locator('#notice')).toContainText('已导入 1 篇');
   await expect(page.locator('#title')).toHaveValue('Imported');
-  await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'beta' }).click();
+  await openArticleList(page);
+  await page.locator('.article-title-button').filter({ hasText: 'beta' }).click();
   await expect(page.locator('#title')).toHaveValue('beta');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.locator('#post-switcher summary')).toBeVisible();
-  await openPostSwitcher(page);
-  await expect(page.locator('#studio-sheet-search #search')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page.locator('.studio-nav')).toBeHidden();
+  await page.locator('#editor-info-toggle').click();
+  await expect(page.locator('#date')).toBeVisible();
+  await page.locator('#editor-info-close').click();
   assert.equal(
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     true,
@@ -195,7 +206,7 @@ try {
   );
   await page.locator('#show-preview').click();
   await expect(page.locator('#preview-frame')).toBeVisible();
-  await themeToggle.click();
+  await togglePreviewTheme();
   await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
     'data-theme',
     'dark',
@@ -204,7 +215,7 @@ try {
     path: resolve('cloud-web/dist/editor-mobile.browser.png'),
     fullPage: true,
   });
-  await themeToggle.click();
+  await togglePreviewTheme();
   await page.locator('#show-writing').click();
   await page.setViewportSize({ width: 1440, height: 1000 });
   // A failed save must retain text and offer a visible error; never navigate away.
@@ -221,11 +232,10 @@ try {
   await page.locator('#save-post').click();
   await expect(page.locator('#notice')).toContainText('另一个窗口');
   await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
-  await openPostSwitcher(page);
-  await page.locator('.post-item').filter({ hasText: 'alpha' }).click();
+  await page.locator('#editor-back').click();
   await expect(page.locator('#notice')).toContainText('云端冲突');
   await expect(page.locator('#title')).toHaveValue('beta');
-  await navigateStudio(page, 'dashboard-nav');
+  await navigateStudio(page, 'articles-nav');
   await expect(page.locator('#editor-view')).toBeVisible();
   await expect(page.locator('#body')).toHaveValue('DO NOT LOSE THIS DRAFT');
   await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');

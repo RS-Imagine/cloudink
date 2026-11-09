@@ -34,8 +34,7 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
       assert.equal(response.status(), 200);
     }
     await page.reload();
-    await expect(page.locator('#sidebar-shorts-count')).toHaveText(String(before.total + 3));
-    await page.locator('#flclash-goto-shorts-link').click();
+    await navigateStudio(page, 'shorts');
     await expect(page.locator('#shorts-view')).toBeVisible();
     await expect(page.locator('#home-view')).toBeHidden();
     await expect(page.locator('.short-admin-card')).toHaveCount(before.total + 3);
@@ -55,7 +54,7 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     await page.keyboard.press('Escape');
     await expect(page.locator('#confirmation-dialog')).toBeHidden();
     await expect(page.locator('#short-body')).toHaveValue(unsaved);
-    await navigateStudio(page, 'dashboard-nav');
+    await navigateStudio(page, 'articles-nav');
     await navigateStudio(page, 'shorts');
     await expect(page.locator('#short-body')).toHaveValue(unsaved);
     await page
@@ -185,8 +184,9 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     });
     assert.equal(removed.status(), 200);
     await page.locator('#short-cancel').click();
-    await navigateStudio(page, 'dashboard-nav');
-    await page.locator('#flclash-quick-short-btn').click();
+    await navigateStudio(page, 'articles-nav');
+    await navigateStudio(page, 'shorts');
+    await page.locator('#short-new').click();
     await expect(page.locator('#short-editor')).toBeVisible();
     await expect(page.locator('#short-body')).toHaveValue('');
     await page.locator('#short-cancel').click();

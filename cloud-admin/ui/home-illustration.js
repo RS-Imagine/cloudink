@@ -16,7 +16,7 @@ export function configureHomeIllustration({ api, notice }) {
     preview.hidden = !field.value;
     if (field.value)
       preview.src =
-        field.value === 'default' ? '/editorial-botanical.webp' : '/images/' + field.value;
+        field.value === 'default' ? '/writing-illustration.svg' : '/images/' + field.value;
     status.textContent =
       mode.value === 'custom' && !selected
         ? '请先选择或上传插画，再保存。'

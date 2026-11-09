@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 import { owner, password } from './fixture.mjs';
-import { openPostSwitcher } from './studio.browser.mjs';
+import { openArticleList } from './studio.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 
 async function settled(page) {
@@ -160,49 +160,29 @@ export async function verifyMobile(browser, origin, output, engine) {
   await page.locator('#body').fill('Keep this draft through mobile menus and rotation.');
   await page.locator('#save-post').click();
   await expect(page.locator('#save-state')).toHaveAttribute('data-tone', 'success');
-  await openPostSwitcher(page);
-  await expect(page.locator('#studio-sheet')).toBeVisible();
-  await settled(page);
-  await expect(page.locator('#studio-sheet #search')).toHaveCount(1);
-  await expect(page.locator('#article-browser #search')).toHaveCount(0);
+  await openArticleList(page);
+  await expect(page.locator('#studio-sheet')).toBeHidden();
+  await expect(page.locator('#article-browser #search')).toHaveCount(1);
   await page.locator('#search').fill('Mobile draft ' + engine);
-  await expect(page.locator('#post-list .post-item')).toHaveCount(1);
+  await expect(page.locator('.article-title-button')).toHaveCount(1);
   await page.screenshot({
     path: resolve(output, 'mobile-post-picker-' + engine + '.png'),
     fullPage: false,
   });
-  await page.locator('#post-list .post-item').click();
-  await expect(page.locator('#studio-sheet')).toBeHidden();
-  await expect(page.locator('#article-browser #search')).toHaveCount(1);
+  await page.locator('.article-title-button').click();
   await expect(page.locator('#body')).toHaveValue(
     'Keep this draft through mobile menus and rotation.',
   );
-  await openPostSwitcher(page);
-  await expect(page.locator('#studio-sheet')).toBeVisible();
-  await settled(page);
-  const pickerGrip = page.locator('#studio-sheet > .ci-sheet-grip');
-  await pickerGrip.dispatchEvent('pointerdown', {
-    pointerId: 19,
-    pointerType: 'touch',
-    button: 0,
-    isPrimary: true,
-    clientY: 400,
-  });
-  await pickerGrip.dispatchEvent('pointermove', {
-    pointerId: 19,
-    pointerType: 'touch',
-    button: 0,
-    isPrimary: true,
-    clientY: 460,
-  });
+  await page.locator('#editor-info-toggle').click();
+  await expect(page.locator('#date')).toBeVisible();
   await page.setViewportSize({ width: 844, height: 390 });
-  await expect(page.locator('#studio-sheet')).toBeHidden();
-  await expect(page.locator('#article-browser #search')).toHaveCount(1);
+  await expect(page.locator('#editor-info-dialog')).toBeHidden();
   await expect(page.locator('#body')).toHaveValue(
     'Keep this draft through mobile menus and rotation.',
   );
   await page.setViewportSize({ width: 360, height: 844 });
   await page.evaluate(() => CloudInkTheme.setMode('dark'));
+  await openArticleList(page);
   await page.locator('#studio-tools summary').click();
   await expect(page.locator('#studio-sheet')).toBeVisible();
   await settled(page);
@@ -212,6 +192,8 @@ export async function verifyMobile(browser, origin, output, engine) {
   });
   await page.keyboard.press('Escape');
   await expect(page.locator('#studio-tools summary')).toBeFocused();
+  await page.locator('.article-title-button').click();
+  await page.locator('#editor-info-toggle').click();
   let deletions = 0;
   page.on('request', (request) => {
     if (request.method() === 'DELETE' && request.url().includes('/api/posts/')) deletions++;

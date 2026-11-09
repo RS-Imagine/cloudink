@@ -1,4 +1,4 @@
-/* Shared bootstrap: readers follow the system; authors retain admin preferences. */
+/* Shared bootstrap: readers default to the system; reader and author overrides are independent. */
 (() => {
   if (window.CloudInkTheme) return;
   const root = document.documentElement;
@@ -14,7 +14,8 @@
       return null;
     }
   };
-  let mode = admin ? validMode(read('theme')) : 'auto';
+  const themeKey = admin ? 'theme' : 'cloudink-reader-theme';
+  let mode = validMode(read(themeKey));
   let effectsMode = admin && read('cloudink-effects') === 'off' ? 'off' : 'auto';
   const effectMedia = [
     matchMedia('(prefers-reduced-transparency: reduce)'),
@@ -58,9 +59,11 @@
   else root.dataset.palette = validPalette(root.dataset.palette || 'brown');
   function apply() {
     if (!admin) {
-      document.querySelectorAll('.reader-preferences,#theme-toggle-btn').forEach((control) => {
-        control.remove();
-      });
+      document
+        .querySelectorAll('.reader-preferences,#theme-toggle-btn:not([data-reader-theme])')
+        .forEach((control) => {
+          control.remove();
+        });
     }
     applyEffects();
     const dark = mode === 'dark' || (mode === 'auto' && system.matches);
@@ -84,12 +87,10 @@
     document.dispatchEvent(new Event('cloudink:theme'));
   }
   function setMode(value) {
-    mode = admin ? validMode(value) : 'auto';
-    if (admin) {
-      try {
-        localStorage.setItem('theme', mode);
-      } catch {}
-    }
+    mode = validMode(value);
+    try {
+      localStorage.setItem(themeKey, mode);
+    } catch {}
     apply();
   }
   function setPalette(value) {
@@ -121,8 +122,8 @@
       effectsMode = read('cloudink-effects') === 'off' ? 'off' : 'auto';
       applyEffects();
     }
-    if (event.key === 'theme' || event.key === null) {
-      mode = validMode(read('theme'));
+    if (event.key === themeKey || event.key === null) {
+      mode = validMode(read(themeKey));
       apply();
     }
     if (admin && (event.key === 'cloudink-admin-palette' || event.key === null)) {

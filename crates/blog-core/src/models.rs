@@ -29,6 +29,14 @@ pub struct SiteConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub theme_palette: Option<String>,
+    /// Reading typography; legacy settings default to the original serif family.
+    #[serde(
+        rename = "readingFont",
+        alias = "reading_font",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reading_font: Option<String>,
     /// Content-addressed uploaded SVG or ICO; absent values use the project icon.
     #[serde(rename = "siteIcon", default, skip_serializing_if = "Option::is_none")]
     pub site_icon: Option<String>,
@@ -53,6 +61,7 @@ impl Default for SiteConfig {
             clarity_id: None,
             about: None,
             theme_palette: None,
+            reading_font: None,
             site_icon: None,
             home_illustration: None,
         }

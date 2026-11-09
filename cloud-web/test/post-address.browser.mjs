@@ -1,3 +1,5 @@
+import { openArticleInfo } from './studio-navigation.mjs';
+import { publishArticle } from './workflows.browser.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -71,6 +73,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await page.locator('#save-post').click();
   await expect(page.locator('#save-state')).toHaveAttribute('data-tone', 'success');
   await expect(page.locator('#slug')).toHaveAttribute('readonly', '');
+  await openArticleInfo(page);
   await page.locator('#change-post-address').click();
   const dialog = page.locator('#post-address-dialog');
   const input = page.locator('#post-address-input');
@@ -84,6 +87,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await expect(page.locator('#change-post-address')).toBeFocused();
+  await openArticleInfo(page);
   await page.locator('#change-post-address').click();
   await input.fill(second);
   await page.evaluate(() => CloudInkTheme.setPalette('brown'));
@@ -93,11 +97,11 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(page.locator('#slug')).toHaveValue(second);
   await expect(page.locator('#body')).toHaveValue(body);
   assert.equal((await page.request.get(origin + '/posts/' + second + '/')).status(), 404);
-  await page.locator('#publish-post').click();
-  await expect(page.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
+  await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   const updated = body + '\n\n这段刚保存的文字随改址发布。';
   await page.locator('#body').fill(updated);
+  await openArticleInfo(page);
   await page.locator('#change-post-address').click();
   await expect(page.locator('#post-address-submit')).toHaveText('修改地址并发布');
   await expect(page.locator('#post-address-help')).toContainText('保存并发布');
@@ -142,6 +146,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
     .toBeGreaterThan(0);
   await reader.close();
   const downloadEvent = page.waitForEvent('download');
+  await openArticleInfo(page);
   await page.locator('#download-post').click();
   const download = await downloadEvent;
   assert.equal(download.suggestedFilename(), live + '.md');

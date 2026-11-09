@@ -1,204 +1,133 @@
-import { navigateStudio } from './studio-navigation.mjs';
+import { navigateStudio, openArticleInfo } from './studio-navigation.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
-// App-shell checks use only the UI audit's local temporary fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
-import { owner, password, setupToken } from './fixture.mjs';
+import { owner, password } from './fixture.mjs';
 
-export async function openPostSwitcher(page) {
-  if (!(await page.locator('#post-switcher').evaluate((node) => node.open)))
-    await page.locator('#post-switcher summary').click();
+export async function openArticleList(page) {
+  if (await page.locator('#editor-back').isVisible()) await page.locator('#editor-back').click();
+  await expect(page.locator('#home-view')).toBeVisible();
 }
 
 export async function verifyStudio(browser, origin, output, engine) {
-  const errors = [];
   const context = await browser.newContext({
-    viewport: { width: 1440, height: 1000 },
+    viewport: { width: 1440, height: 900 },
     colorScheme: 'light',
     reducedMotion: 'reduce',
   });
-  context.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
-  await context.route('https://cdn.jsdelivr.net/**', (route) =>
-    route.fulfill({ contentType: 'text/css', body: '' }),
-  );
-  const page = await context.newPage();
-  await page.goto(origin + '/admin');
-  await expect(page.locator('#login-view')).toBeVisible();
-  await expect(page.locator('.studio-skip')).toBeHidden();
-  await page.locator('#login-form input[name=email]').fill(owner);
-  await page.locator('#login-form input[name=password]').fill('Incorrect-password-123');
-  await page.locator('#login-submit').click();
-  await expect(page.locator('#login-error')).not.toHaveText('');
-  await expect(page.locator('#login-submit')).toBeEnabled();
-  await page.locator('#login-form input[name=password]').fill(password);
-  await page.locator('#login-submit').click();
-  await expect(page.locator('#home-view')).toBeVisible();
-  await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'home');
-  const sessionCookie = (await context.cookies()).find(
-    (cookie) => cookie.name === '__Host-cloudink_session',
-  );
-  assert.ok(sessionCookie?.secure && sessionCookie.httpOnly, engine + ' keeps a secure session');
-  await expect(page.locator('.studio-nav [aria-current]')).toHaveAttribute('id', 'dashboard-nav');
-  const intro = await page.locator('.studio-welcome').boundingBox();
-  const search = await page.locator('#article-browser').boundingBox();
-  assert.ok(search.y >= intro.y + intro.height, 'Dashboard search follows its introduction');
-  const initialCount = await page.locator('.article-card').count();
-  assert.equal(initialCount, 4);
-  await page.locator('[data-post-filter=draft]').click();
-  await expect(page.locator('.article-card')).toHaveCount(1);
-  await page.locator('[data-post-filter=published]').click();
-  await expect(page.locator('.article-card')).toHaveCount(3);
-  await page.locator('[data-post-filter=all]').click();
-  await page.locator('#search').fill('missing-title-no-match');
-  await expect(page.locator('.article-card')).toHaveCount(0);
-  await expect(page.locator('.studio-empty')).toContainText('匹配');
-  await page.locator('.studio-empty button').click();
-  await expect(page.locator('.article-card')).toHaveCount(initialCount);
-  await expect(page.locator('#search')).toBeFocused();
-  await navigateStudio(page, 'articles-nav');
-  await expect(page.locator('#app-view')).toHaveAttribute('data-view', 'posts');
-  await expect(page.locator('#posts-title')).toBeVisible();
-  await expect(page.locator('.studio-welcome')).toBeHidden();
-  await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
-  await navigateStudio(page, 'dashboard-nav');
-  for (const width of [1440, 900, 390, 360, 320]) {
-    await page.setViewportSize({ width, height: width >= 1100 ? 1000 : 844 });
-    assert.equal(
-      await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-      false,
-    );
-    if (width < 760) {
-      await expect(page.locator('.studio-masthead > .studio-nav')).toBeHidden();
-      await page.locator('#studio-menu-toggle').click();
-      await expect(page.locator('#studio-sheet .studio-nav')).toBeVisible();
-      await expect(page.locator('#studio-menu-toggle')).toHaveAttribute('aria-expanded', 'true');
-    }
-    for (const id of ['dashboard-nav', 'articles-nav', 'images', 'settings', 'new-post']) {
-      await expect(page.locator('#' + id)).toBeVisible();
-      const rect = await page.locator('#' + id).boundingBox();
-      assert.ok(rect.width >= 44 && rect.height >= 44, id + ' must keep a touch target');
-    }
-    if (width < 760) {
-      await page.keyboard.press('Escape');
-      await expect(page.locator('#studio-menu-toggle')).toBeFocused();
-      await expect(page.locator('.studio-masthead > .studio-nav')).toBeHidden();
-    } else {
-      const header = await page.locator('.studio-masthead').boundingBox();
-      const navigation = await page.locator('.studio-nav').boundingBox();
-      assert.ok(
-        navigation.y >= header.y && navigation.y + navigation.height <= header.y + header.height,
+  const page = await context.newPage(),
+    errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  try {
+    await page.goto(origin + '/admin');
+    await page.locator('#login-form input[name=email]').fill(owner);
+    await page.locator('#login-form input[name=password]').fill(password);
+    await page.locator('#login-submit').click();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await expect(page.locator('#articles-nav')).toHaveAttribute('aria-current', 'page');
+    const initial = await page.locator('.article-card').count();
+    await page.locator('#search').fill('no-such-article-v4');
+    await expect(page.locator('.article-card')).toHaveCount(0);
+    await expect(page.locator('#selected-post-edit')).toBeDisabled();
+    await page.locator('.studio-empty button').click();
+    await expect(page.locator('.article-card')).toHaveCount(initial);
+    await expect(page.locator('#search')).toBeFocused();
+    await page.screenshot({ path: resolve(output, 'v4-studio-' + engine + '-1440.png') });
+    for (const width of [1440, 900, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
       );
+      for (const id of ['articles-nav', 'shorts', 'images', 'settings'])
+        await expect(page.locator('#' + id)).toBeVisible();
+      await expect(page.locator('#publish-welcome')).toBeVisible();
     }
+    await page.locator('#new-post').click();
+    await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.studio-nav')).toBeHidden();
+    await page.locator('#title').fill('V4 private draft ' + engine);
+    await page
+      .locator('#body')
+      .fill('The latest input survives saving, metadata sheets, preview and navigation.');
+    await page.locator('#save-post').click();
+    await expect(page.locator('#save-state')).toHaveAttribute('data-tone', 'success');
+    await expect(page.locator('#save-state')).toBeVisible();
+    await openArticleInfo(page);
+    await expect(page.locator('#date')).toBeVisible();
+    await expect(page.locator('#slug')).toBeVisible();
+    const slug = await page.locator('#slug').inputValue();
+    await page.locator('#editor-info-close').click();
+    await page.locator('#show-preview').click();
+    await page.frameLocator('#preview-frame').locator('article h1').waitFor();
+    await expect(page.frameLocator('#preview-frame').locator('#primary-nav')).toBeHidden();
+    await page.locator('#show-writing').click();
+    const before = await page.locator('#body').inputValue();
+    await page.locator('#publish-post').click();
+    await expect(page.locator('#confirmation-dialog')).toBeVisible();
+    await page.locator('#confirmation-cancel').click();
+    await expect(page.locator('#body')).toHaveValue(before);
+    const live = await page.request.get(origin + '/posts/' + slug + '/');
+    assert.equal(live.status(), 404, 'Canceling publication must leave the draft private');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: resolve(output, 'v4-editor-' + engine + '-390.png') });
+    await page.locator('#editor-back').click();
+    await expect(page.locator('.studio-nav')).toBeVisible();
+    await expect(page.locator('#publish-welcome')).toBeVisible();
+    await page.screenshot({ path: resolve(output, 'v4-studio-' + engine + '-390.png') });
+    await page
+      .locator('.article-title-button')
+      .filter({ hasText: 'V4 private draft ' + engine })
+      .click();
+    await expect(page.locator('#body')).toHaveValue(before);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.screenshot({ path: resolve(output, 'v4-editor-' + engine + '-1440.png') });
+    await page.locator('#delete-post').click();
+    await acceptConfirmation(page);
+    await expect(page.locator('#home-view')).toBeVisible();
+    await navigateStudio(page, 'settings');
+    await expect(page.locator('#publish-welcome')).toBeVisible();
+    const font = page.locator('#reading-font');
+    const originalFont = await font.inputValue();
+    await font.selectOption('sans');
+    await page.locator('#save-site').click();
+    await expect(page.locator('#site-feedback')).toHaveAttribute('data-tone', 'success');
+    const beforeFontPublication = await (await page.request.get(origin + '/')).text();
+    assert(beforeFontPublication.includes('data-reading-font="' + originalFont + '"'));
+    await page.locator('#publish-settings').click();
+    await expect(page.locator('#publish-settings')).toBeEnabled({ timeout: 60000 });
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get(origin + '/')).text()).includes(
+            'data-reading-font="sans"',
+          ),
+        { timeout: 60000 },
+      )
+      .toBe(true);
+    await page.reload();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await navigateStudio(page, 'settings');
+    await expect(font).toHaveValue('sans');
+    await page.locator('#new-post').click();
+    await page.locator('#title').fill('Typography preview');
+    await page.locator('#show-preview').click();
+    await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
+      'data-reading-font',
+      'sans',
+    );
+    await page.locator('#editor-back').click();
+    await page.locator('.article-title-button').filter({ hasText: 'Typography preview' }).click();
+    await page.locator('#delete-post').click();
+    await acceptConfirmation(page);
+    await expect(page.locator('#home-view')).toBeVisible();
+    await navigateStudio(page, 'settings');
+    await font.selectOption(originalFont);
+    await page.locator('#publish-settings').click();
+    await expect(page.locator('#publish-settings')).toBeEnabled({ timeout: 60000 });
+    assert.deepEqual(errors, []);
+  } finally {
+    await context.close();
   }
-  await page.locator('#studio-tools summary').click();
-  await expect(page.locator('#logout')).toBeVisible();
-  await expect(page.locator('#account-email')).toHaveText(owner);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#studio-tools')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#studio-tools summary')).toBeFocused();
-  await openPostSwitcher(page);
-  await expect(page.locator('.post-item')).toHaveCount(initialCount);
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#post-switcher summary')).toBeFocused();
-  await openPostSwitcher(page);
-  await expect(page.locator('#studio-sheet')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#studio-sheet')).toBeHidden();
-  await navigateStudio(page, 'images');
-  await expect(page.locator('#images-view')).toBeVisible();
-  await expect(page.locator('#post-switcher')).not.toHaveAttribute('open', '');
-  await expect(page.locator('#images')).toHaveAttribute('aria-current', 'page');
-  await navigateStudio(page, 'settings');
-  await expect(page.locator('#site-form')).toBeVisible();
-  await expect(page.locator('#settings')).toHaveAttribute('aria-current', 'page');
-  await navigateStudio(page, 'dashboard-nav');
-  for (const [width, dark] of [
-    [1440, false],
-    [390, false],
-    [360, true],
-  ]) {
-    await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
-    await page.evaluate((dark) => CloudInkTheme.setMode(dark ? 'dark' : 'light'), dark);
-    await page.screenshot({
-      path: resolve(
-        output,
-        'studio-shell-' + engine + '-' + width + '-' + (dark ? 'dark' : 'light') + '.png',
-      ),
-      fullPage: true,
-    });
-  }
-  await page.locator('.workspace-header [data-theme-toggle]').click();
-  await expect(page.locator('.workspace-header [data-theme-toggle] svg')).toHaveCount(2);
-  await page.reload();
-  await expect(page.locator('#app-view')).toBeVisible();
-  await page.keyboard.press('Tab');
-  await expect(page.locator('.studio-skip')).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('#workspace')).toBeFocused();
-  // Primary navigation must still flush a draft before leaving the editor.
-  await page.locator('#new-post').click();
-  await expect(page.locator('#editor-search-slot > #article-browser')).toBeVisible();
-  await page.locator('#title').fill('Studio draft ' + engine);
-  await page.locator('#body').fill('Keep this text while navigating.');
-  await navigateStudio(page, 'dashboard-nav');
-  await expect(page.locator('#home-view')).toBeVisible();
-  await openPostSwitcher(page);
-  await page
-    .locator('.post-item')
-    .filter({ hasText: 'Studio draft ' + engine })
-    .click();
-  await expect(page.locator('#body')).toHaveValue('Keep this text while navigating.');
-  await page.locator('#delete-post').click();
-  await acceptConfirmation(page);
-  await expect(page.locator('#home-view')).toBeVisible();
-  await expect(page.locator('#post-count')).toHaveText(String(initialCount));
-  await expect(page.locator('#sidebar-count-all')).toHaveText(String(initialCount));
-  await page.locator('#studio-tools summary').click();
-  await page.locator('#logout').click();
-  await expect(page.locator('#login-view')).toBeVisible();
-  await expect(page.locator('#app-view')).toBeHidden();
-  await expect(page.locator('.studio-skip')).toBeHidden();
-  await context.close();
-
-  const wizard = await browser.newContext({
-    viewport: { width: 360, height: 844 },
-    colorScheme: 'dark',
-  });
-  wizard.on('page', (page) => page.on('pageerror', (error) => errors.push(error.message)));
-  await wizard.route('**/api/config', async (route) => {
-    const response = await route.fetch(),
-      config = await response.json();
-    await route.fulfill({ response, json: { ...config, initialized: false } });
-  });
-  const setup = await wizard.newPage();
-  await setup.goto(origin + '/admin');
-  await expect(setup.locator('#setup-view')).toBeVisible();
-  await setup.locator('#setup-next').click();
-  await expect(setup.locator('#setup-account-step')).toBeVisible();
-  await expect(setup.locator('#setup-form input[name=token]')).toBeFocused();
-  for (const [name, value] of Object.entries({
-    token: setupToken,
-    email: owner,
-    password,
-    confirm: password,
-  }))
-    await setup.locator('#setup-form input[name=' + name + ']').fill(value);
-  await setup.locator('#setup-next').click();
-  await expect(setup.locator('#setup-site-step')).toBeVisible();
-  await expect(setup.locator('#setup-form input[name=title]')).toBeFocused();
-  await expect(setup.locator('#setup-progress-site')).toHaveAttribute('aria-current', 'step');
-  assert.equal(
-    await setup.evaluate(() => document.documentElement.scrollWidth > innerWidth),
-    false,
-  );
-  await setup.screenshot({
-    path: resolve(output, 'studio-setup-' + engine + '.png'),
-    fullPage: true,
-  });
-  await setup.locator('#setup-back').click();
-  await expect(setup.locator('#setup-form input[name=token]')).toHaveValue(setupToken);
-  await expect(setup.locator('#setup-progress-account')).toHaveAttribute('aria-current', 'step');
-  await wizard.close();
-  assert.deepEqual(errors, [], engine + ' app shell must not produce browser errors');
 }

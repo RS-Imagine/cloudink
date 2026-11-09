@@ -1,7 +1,9 @@
+import { verifyHome } from './home.browser.mjs';
+import { verifyStudio } from './studio.browser.mjs';
 import { verifyUiAuditRegressions } from './ui-audit-regressions.browser.mjs';
 import { navigateStudio } from './studio-navigation.mjs';
 import { svgBytes, icoBytes } from './icon-fixtures.mjs';
-import { acceptConfirmation } from './workflows.browser.mjs';
+import { acceptConfirmation, publishArticle } from './workflows.browser.mjs';
 import {
   Miniflare,
   convertV4MiniflareOptions,
@@ -78,7 +80,7 @@ try {
     route.fulfill({ status: 200, contentType: 'text/css', body: '' }),
   );
   await live.goto('http://localhost:8791/');
-  await expect(live.locator('.hero h1')).toHaveText('Browser deployed blog');
+  await expect(live.locator('.reader-site-heading')).toHaveText('Browser deployed blog');
   await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', svgIconURL);
   await expect(live.locator('.site-mark img')).toHaveAttribute('src', svgIconURL);
   await expect
@@ -88,6 +90,7 @@ try {
     .toBe(true);
   await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
   await page.locator('#new-post').click();
+  await page.locator('#show-split').click();
   await page.locator('#title').fill('Browser published mathematics');
   const codeExamples =
     '````markdown\n```\n$literal_fence$\n```\n````\n\n~~~~markdown\n```\n$literal_tilde$\n~~~\n~~~~\n\n    $literal_indent$\n\n``a ` $literal_inline$``';
@@ -142,8 +145,7 @@ try {
         .evaluate((image) => image.src.startsWith('blob:')),
     )
     .toBe(true);
-  await page.locator('#publish-post').click();
-  await expect(page.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
+  await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
@@ -265,7 +267,7 @@ try {
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
   await expect(live.locator('.toc-container')).toHaveCount(1);
   await live.goBack();
-  await expect(live.locator('.hero h1')).toHaveText('Browser deployed blog');
+  await expect(live.locator('.reader-site-heading')).toHaveText('Browser deployed blog');
   await expect(live.locator('.toc-container')).toHaveCount(0);
   await live.setViewportSize({ width: 390, height: 844 });
   assert.equal(await live.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -304,6 +306,7 @@ try {
     }),
   );
   await page.locator('#publish-post').click();
+  await acceptConfirmation(page);
   await expect(page.locator('#notice')).toContainText('Test upload failure');
   await expect(page.locator('#body')).toHaveValue(
     'New version that must remain a draft after failure.',
@@ -311,8 +314,7 @@ try {
   const after = await (await mf.dispatchFetch('http://localhost:8791/_release.json')).json();
   assert.equal(after.id, original.id);
   await page.unroute('**/api/publish/*/file?**');
-  await page.locator('#publish-post').click();
-  await expect(page.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
+  await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article')).toContainText(
@@ -421,7 +423,7 @@ try {
     if (!saved.ok) throw new Error(await saved.text());
   }, slug);
   const draftBeforeLayout = await bucket.head(`drafts/${slug}.md`);
-  await navigateStudio(page, 'dashboard-nav');
+  await navigateStudio(page, 'articles-nav');
   await expect(page.locator('#publish-welcome')).toBeVisible();
   await expect(page.locator('#publish-welcome')).toHaveText('更新网站排版');
   await page.locator('#publish-welcome').click();
@@ -449,10 +451,8 @@ try {
     await page.locator('#short-publish').click();
     await expect(page.locator('#short-editor')).toBeHidden({ timeout: 45000 });
     await live.goto('http://localhost:8791/');
-    await expect(live.locator('.flclash-shorts-list')).toContainText(body);
-    await expect(
-      live.locator('.flclash-stat-item').filter({ hasText: '短记' }).locator('.flclash-stat-num'),
-    ).toHaveText('1');
+    await expect(live.locator('.blog-notes')).toContainText(body);
+    await expect(live.locator('.blog-notes .blog-note')).toHaveCount(1);
     assert.ok(
       (await (await live.request.get('http://localhost:8791/shorts/')).text()).includes(body),
     );
@@ -471,12 +471,12 @@ try {
   await acceptConfirmation(page);
   await expect(page.locator('#notice')).toContainText('短记已删除');
   await live.reload();
-  await expect(live.locator('.flclash-shorts-list')).toContainText('暂无短记发布');
-  await expect(
-    live.locator('.flclash-stat-item').filter({ hasText: '短记' }).locator('.flclash-stat-num'),
-  ).toHaveText('0');
+  await expect(live.locator('.blog-notes')).toContainText('还没有发布短记。');
+  await expect(live.locator('.blog-notes .blog-note')).toHaveCount(0);
   await navigateStudio(page, 'settings');
   await verifyUiAuditRegressions(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
+  await verifyHome(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
+  await verifyStudio(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();

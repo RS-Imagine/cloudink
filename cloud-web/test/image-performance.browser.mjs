@@ -1,3 +1,4 @@
+import { publishArticle } from './workflows.browser.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -49,7 +50,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
     );
   await page.locator('#save-post').click();
   await expect(page.locator('#notice')).toContainText('草稿已保存');
-  await page.locator('#publish-post').click();
+  await publishArticle(page);
   await expect(page.locator('#notice')).toContainText('发布', { timeout: 60000 });
   await expect
     .poll(

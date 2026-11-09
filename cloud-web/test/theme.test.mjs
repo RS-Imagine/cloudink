@@ -78,3 +78,60 @@ test('all six author palettes persist without changing published settings', asyn
   const release = await f.prepare({ settings: true });
   assert.equal(release.browser_release.site.themePalette, 'brown');
 });
+
+test('reading fonts are validated, saved privately, published and backward compatible', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const original = await (await f.request('/api/settings')).json();
+  assert.equal(original.site.readingFont, undefined);
+  assert.equal((await (await f.request('/api/posts')).json()).appearance.readingFont, 'serif');
+  const response = await f.request('/api/settings', 'PUT', {
+    site: { ...original.site, readingFont: 'sans' },
+    etag: original.etag,
+  });
+  assert.equal(response.status, 200);
+  const sans = await response.json();
+  const list = await (await f.request('/api/posts')).json();
+  assert.equal(list.appearance.readingFont, 'sans');
+  assert.equal(list.site.readingFont, undefined, 'Saving the preference must not publish it');
+  for (const readingFont of ['custom-font', null, 1, {}, '"><style>bad</style>'])
+    assert.equal(
+      (
+        await f.request('/api/settings', 'PUT', {
+          site: { ...sans.site, readingFont },
+          etag: sans.etag,
+        })
+      ).status,
+      400,
+    );
+  assert.equal(
+    (
+      await f.request('/api/settings', 'PUT', {
+        site: { ...sans.site, readingFont: 'serif' },
+        etag: original.etag,
+      })
+    ).status,
+    409,
+  );
+  const publication = await f.prepare({ settings: true });
+  assert.equal(publication.browser_release.site.readingFont, 'sans');
+  await f.stage(
+    publication,
+    [],
+    '<!doctype html><html data-reading-font="sans"><head><title>Font</title></head><body>Published</body></html>',
+  );
+  assert.equal((await f.commit(publication)).status, 200);
+  assert.match(await (await f.request('/')).text(), /data-reading-font="sans"/);
+  const legacy = { ...sans.site };
+  delete legacy.readingFont;
+  assert.equal(
+    (await f.request('/api/settings', 'PUT', { site: legacy, etag: sans.etag })).status,
+    200,
+  );
+  assert.equal((await (await f.request('/api/posts')).json()).appearance.readingFont, 'serif');
+  assert.equal(
+    (await (await f.request('/api/posts')).json()).site.readingFont,
+    'sans',
+    'Restoring legacy settings remains private until publication',
+  );
+});

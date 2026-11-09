@@ -60,7 +60,11 @@
   function stylesheet(kind) {
     if (styles.has(kind)) return styles.get(kind);
     const promise = new Promise((resolve, reject) => {
-      let link = document.querySelector('link[data-reader-style="' + kind + '"]');
+      let link = document.querySelector(
+        kind === 'reading'
+          ? '#reader-font-styles,link[data-reader-style="reading"]'
+          : 'link[data-reader-style="' + kind + '"]',
+      );
       if (link?.sheet) {
         resolve();
         return;
@@ -70,7 +74,8 @@
         link = document.createElement('link');
         link.rel = 'stylesheet';
         link.dataset.readerStyle = kind;
-        link.href = path + (kind === 'math' ? 'katex.css' : 'code.css');
+        link.href =
+          path + { math: 'katex.css', code: 'code.css', reading: 'editorial-font.css' }[kind];
       }
       const done = (error) => {
         clearTimeout(timer);
@@ -121,6 +126,9 @@
       await retryMathStyles();
       retryMathFonts = false;
     }
+    // Reading font faces have system fallbacks; a font failure must not block navigation.
+    if (doc.documentElement.dataset.readingFont === 'serif')
+      void stylesheet('reading').catch(() => {});
     await Promise.all([
       ...(math ? [stylesheet('math')] : []),
       ...(doc.querySelector('.article-body pre code') ? [stylesheet('code')] : []),
@@ -328,7 +336,10 @@
           page = { url: url.pathname + url.search, html: await response.text() };
         }
         const doc = new DOMParser().parseFromString(page.html, 'text/html');
-        if (!doc.getElementById('swup')) {
+        if (
+          !doc.getElementById('swup') ||
+          !swup.options.containers.every((selector) => doc.querySelector(selector))
+        ) {
           if (pending === visit && !current.signal.aborted) native();
           return;
         }

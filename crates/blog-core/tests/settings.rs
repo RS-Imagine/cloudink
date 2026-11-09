@@ -35,7 +35,7 @@ fn author_palette_is_safe_and_shared_by_every_page() {
     }
     site.theme_palette = Some("\"><script>bad()</script>".into());
     assert!(render::render_index(&site, &[], "test")
-        .contains("<html lang=\"en\" data-palette=\"ink\">"));
+        .contains("<html lang=\"zh-CN\" data-palette=\"ink\""));
 }
 
 #[test]
@@ -74,4 +74,30 @@ fn custom_icons_use_only_valid_content_addresses_on_all_pages() {
         assert!(html.contains("type=\"image/svg+xml\" href=\"/favicon.svg\""));
         assert!(!html.contains("<script>alert"));
     }
+}
+
+#[test]
+fn reading_fonts_default_to_master_serif_and_accept_the_v4_sans_family() {
+    let mut site = SiteConfig::default();
+    assert!(serde_json::to_value(&site)
+        .unwrap()
+        .get("readingFont")
+        .is_none());
+    let legacy = render::render_index(&site, &[], "test");
+    assert!(legacy.contains("data-reading-font=\"serif\""));
+    assert!(legacy.contains("id=\"reader-font-styles\""));
+    site.reading_font = Some("sans".into());
+    for html in [
+        render::render_index(&site, &[], "test"),
+        render::render_404(&site, "test"),
+    ] {
+        assert!(html.contains("data-reading-font=\"sans\""));
+        assert!(!html.contains("id=\"reader-font-styles\""));
+    }
+    let serialized = serde_json::to_value(&site).unwrap();
+    assert_eq!(serialized["readingFont"], "sans");
+    site.reading_font = Some("\"><style>bad</style>".into());
+    let safe = render::render_404(&site, "test");
+    assert!(safe.contains("data-reading-font=\"serif\""));
+    assert!(!safe.contains("<style>bad"));
 }

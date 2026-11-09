@@ -26,7 +26,7 @@ export async function verifyThemes(browser, origin, output, engine) {
   const page = await context.newPage();
   const root = page.locator('html');
   const controls =
-    '.reader-preferences,select[data-theme-mode],select[data-effects-mode],#theme-toggle-btn';
+    '.reader-preferences,select[data-theme-mode],select[data-effects-mode],#theme-toggle-btn:not([data-reader-theme])';
   await page.goto(origin + '/');
   const publishedPalette = await root.getAttribute('data-palette');
   const darkBackground = publishedPalette === 'ink' ? 'rgb(24, 24, 24)' : 'rgb(22, 18, 14)';
@@ -38,9 +38,12 @@ export async function verifyThemes(browser, origin, output, engine) {
   await expect(page.locator('body')).toHaveCSS('background-color', darkBackground);
   await page.reload();
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  await page.evaluate(() => CloudInkTheme.setMode('light'));
-  await expect(root).toHaveAttribute('data-theme', 'dark');
-  await expect(root).toHaveAttribute('data-theme-mode', 'auto');
+  await page.locator('#theme-toggle-btn').click();
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await expect(root).toHaveAttribute('data-theme-mode', 'light');
+  await page.reload();
+  await expect(root).toHaveAttribute('data-theme', 'light');
+  await page.evaluate(() => CloudInkTheme.setMode('auto'));
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(root).toHaveAttribute('data-theme', 'light');
 
@@ -215,7 +218,7 @@ async function verifyPalettePicker(browser, origin, output, engine) {
       await page.reload();
       await expect(page.locator('#home-view')).toBeVisible();
       await expect(root).toHaveAttribute('data-palette', 'brown');
-      await page.locator('.article-card').first().click();
+      await page.locator('.article-title-button').first().click();
       await page.locator('#show-preview').click();
       await expect(page.frameLocator('#preview-frame').locator('html')).toHaveAttribute(
         'data-palette',

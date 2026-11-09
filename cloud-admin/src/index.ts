@@ -247,6 +247,7 @@ async function apiRoute(
       site: release.site,
       appearance: {
         themePalette: (savedSite || release.site).themePalette || 'ink',
+        readingFont: (savedSite || release.site).readingFont || 'serif',
         siteIcon: (savedSite || release.site).siteIcon || '',
         homeIllustration: (savedSite || release.site).homeIllustration || '',
       },

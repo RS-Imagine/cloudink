@@ -20,13 +20,15 @@ pub fn stylesheet() -> &'static str {
         "\n",
         include_str!("../../../assets/motion.css"),
         "\n",
-        include_str!("assets/home.css"),
-        "\n",
-        include_str!("assets/reader.css"),
-        "\n",
         include_str!("../../../assets/mobile.css"),
         "\n",
-        include_str!("../../../assets/expressive.css")
+        include_str!("../../../assets/expressive.css"),
+        "\n",
+        include_str!("assets/home.css"),
+        "\n",
+        include_str!("assets/reader-tools.css"),
+        "\n",
+        include_str!("assets/reader.css")
     )
 }
 
@@ -90,9 +92,11 @@ fn home_illustration(config: &SiteConfig) -> String {
         return String::new();
     };
     if key == "default" {
-        return String::from(
-            r#"<figure class="home-illustration" aria-hidden="true"><img src="/editorial-botanical.webp" width="360" height="420" alt="" decoding="async"></figure>"#,
-        );
+        return String::from(concat!(
+            r#"<figure class="home-illustration" aria-hidden="true">"#,
+            include_str!("../../../assets/writing-illustration.svg"),
+            "</figure>"
+        ));
     }
 
     let svg = key
@@ -171,15 +175,6 @@ fn post_thumbnail(post: &Post, featured: bool) -> String {
     String::new()
 }
 
-fn home_subtitle_class(text: &str) -> &'static str {
-    let is_cjk = |c: char| matches!(c as u32, 0x2e80..=0x9fff | 0xac00..=0xd7af);
-    if text.chars().any(is_cjk) {
-        "home-subtitle"
-    } else {
-        "home-subtitle subtitle-italic"
-    }
-}
-
 /// Keep short clauses together, while allowing long clauses to wrap normally.
 fn display_title(title: &str) -> String {
     title
@@ -192,208 +187,171 @@ fn display_title(title: &str) -> String {
         .join("<wbr>")
 }
 
-/// Renders the blog index page listing all published posts and shorts.
+fn icon(name: &str) -> String {
+    let path = match name {
+        "home" => {
+            r#"<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>"#
+        }
+        "article" => r#"<path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/>"#,
+        "shorts" => r#"<path d="M4 4h16v14H9l-5 3V4Z"/><path d="M8 9h8M8 13h5"/>"#,
+        "archive" => r#"<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>"#,
+        "about" => r#"<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>"#,
+        "link" => {
+            r#"<path d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M16 9l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"/>"#
+        }
+        _ => r#"<path d="M4 12h16m-6-6 6 6-6 6"/>"#,
+    };
+    format!(
+        r#"<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{path}</svg>"#
+    )
+}
+
+fn author_context(config: &SiteConfig) -> String {
+    let about = if config.about.as_deref().is_none_or(|s| !s.trim().is_empty()) {
+        format!(
+            r#"<a class="plain-button" href="/about/">{}更多关于我</a>"#,
+            icon("about")
+        )
+    } else {
+        String::new()
+    };
+    let avatar = if config.site_icon.is_some() {
+        format!(
+            r#"<img src="{}" width="42" height="42" alt="">"#,
+            escape_html(&site_icon(config).0)
+        )
+    } else {
+        escape_html(&config.author.chars().next().unwrap_or(' ').to_string())
+    };
+    format!(
+        r#"<section class="panel author-card"><div class="author-head"><span class="author-avatar" aria-hidden="true">{initial}</span><div><h2>你好，我是{author}。</h2><p class="author-sub">{subtitle}</p></div></div><p class="author-intro">{description}</p>{about}</section>"#,
+        initial = avatar,
+        author = escape_html(&config.author),
+        subtitle = escape_html(&config.subtitle),
+        description = escape_html(&config.description)
+    )
+}
+
+fn home_context(config: &SiteConfig, shorts: &[Short]) -> String {
+    let entries = shorts.iter().filter(|s| !s.draft()).take(2).map(|short| {
+        let text = short.body_plain_text.trim();
+        let excerpt: String = text.chars().take(100).collect();
+        format!(r#"<article class="blog-note"><time datetime="{date}">{date}</time><p><a href="/shorts/#{slug}">{text}{more}</a></p></article>"#,
+            date = escape_html(short.date()), slug = escape_html(short.slug()), text = escape_html(&excerpt), more = if text.chars().count() > 100 { "…" } else { "" })
+    }).collect::<String>();
+    format!(
+        r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link" href="/shorts/">更多 ↗</a></div>{}</section><section class="panel archive-card"><p class="note-kicker">文字，留在时间里</p><h2>旧文章，也值得再读一次。</h2><p>按时间翻翻以前写下的内容，也许能找到此刻需要的那一篇。</p><a class="plain-button" href="/archive/">{}浏览文章归档</a></section>"#,
+        author_context(config),
+        if entries.is_empty() {
+            "<p class=\"muted\">还没有发布短记。</p>"
+        } else {
+            &entries
+        },
+        icon("archive")
+    )
+}
+
+fn reading_minutes(post: &Post) -> usize {
+    let cjk = |c: char| matches!(c as u32, 0x3400..=0x9fff | 0x3040..=0x30ff | 0xac00..=0xd7af);
+    let characters = post.body_plain_text.chars().filter(|c| cjk(*c)).count();
+    let words = post
+        .body_plain_text
+        .split_whitespace()
+        .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !cjk(c)))
+        .count();
+    (characters as f64 / 400.0 + words as f64 / 200.0)
+        .ceil()
+        .max(1.0) as usize
+}
+
+/// Published content only; the first post is featured once and never repeated.
 pub fn render_index_with_shorts(
     config: &SiteConfig,
     posts: &[Post],
     shorts: &[Short],
     css_hash: &str,
 ) -> String {
+    let mut visible: Vec<_> = posts.iter().filter(|p| !p.draft()).collect();
+    visible.sort_by(|a, b| b.date().cmp(a.date()));
     let mut cards = String::new();
-    let mut count = 0;
-    for post in posts.iter().filter(|post| !post.draft()) {
-        let featured = count == 0;
-        count += 1;
-        let updated = post
-            .updated()
-            .filter(|date| *date != post.date())
-            .map(|date| {
-                format!(
-                    "<span>更新 <time datetime=\"{date}\">{date}</time></span>",
-                    date = escape_html(date)
-                )
-            })
-            .unwrap_or_default();
-        let art = post_thumbnail(post, featured);
-        let art_link = if art.is_empty() {
+    for (index, post) in visible.iter().enumerate() {
+        let featured = index == 0;
+        let mut art = post_thumbnail(post, featured);
+        if featured && art.is_empty() {
+            art = home_illustration(config);
+        }
+        let cover = if art.is_empty() {
             String::new()
         } else {
             format!(
-                r#"<a href="/posts/{slug}/" class="home-card-art-link" aria-hidden="true" tabindex="-1">{art}</a>"#,
-                slug = escape_html(post.slug()),
-                art = art
+                r#"<a class="{class}" href="/posts/{slug}/" aria-hidden="true" tabindex="-1">{art}</a>"#,
+                class = if featured {
+                    "feature-cover"
+                } else {
+                    "blog-post-cover"
+                },
+                slug = escape_html(post.slug())
             )
         };
-        cards.push_str(&format!(
-            r#"<article class="post-card home-card{featured_class}">
-  <div class="home-card-copy">
-    <h2><a href="/posts/{slug}/">{title}</a></h2>
-    <p>{description}</p>
-    <div class="home-card-meta meta"><time datetime="{date}">{date}</time>{updated}<span class="post-arrow" aria-hidden="true">&rarr;</span></div>
-  </div>{art_link}
-</article>"#,
-            featured_class = if featured { " home-feature" } else { "" },
-            slug = escape_html(post.slug()),
-            title = escape_html(post.title()),
-            description = escape_html(post.description()),
+        let meta = format!(
+            r#"<div class="story-meta"><span>{author}</span><time datetime="{date}">{date}</time><span>{minutes} 分钟阅读</span>{updated}</div>"#,
+            author = escape_html(&config.author),
             date = escape_html(post.date()),
-            updated = updated,
-            art_link = art_link,
-        ));
+            minutes = reading_minutes(post),
+            updated = post
+                .updated()
+                .filter(|date| *date != post.date())
+                .map(|date| format!("<span>更新 {}</span>", escape_html(date)))
+                .unwrap_or_default()
+        );
+        if featured {
+            cards.push_str(&format!(r#"<article class="post-card home-card home-feature panel featured-article{without_cover}"><div class="feature-copy"><div class="story-eyebrow">{document}<span>最近发布</span></div><h2><a href="/posts/{slug}/">{title}</a></h2>{meta}<p class="feature-summary">{description}</p><a class="plain-button primary feature-read" href="/posts/{slug}/">{document}阅读全文</a></div>{cover}</article>"#,
+                without_cover = if cover.is_empty() { " without-cover" } else { "" }, document = icon("article"), slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
+            cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link" href="/archive/">浏览归档 ↗</a></div>"#);
+        } else {
+            cards.push_str(&format!(r#"<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/{slug}/">{title}</a></h3><p>{description}</p>{meta}</div>{cover}</article>"#,
+                slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
+        }
+    }
+    if visible.is_empty() {
+        cards.push_str(&format!(r#"<section id="posts" class="panel home-empty"><h2>文字，即将生长。</h2><p>这里还没有发布的文章，欢迎稍后再来。</p>{}</section>"#, home_illustration(config)));
+    } else {
+        cards.push_str(r#"<div class="blog-feed-end"><span>慢慢写，认真记。</span><a class="blog-text-link" href="/archive/">查看全部文章 →</a></div></section>"#);
     }
     let title = config
         .big_title
         .as_deref()
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or(&config.title);
-
-    let about_btn = if config
-        .about
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or(if config.subtitle.trim().is_empty() {
+            &config.title
+        } else {
+            &config.subtitle
+        });
+    let welcome = if config
+        .big_title
         .as_deref()
-        .is_none_or(|value| !value.trim().is_empty())
+        .is_some_and(|s| !s.trim().is_empty())
     {
-        r#"<a href="/about/" class="flclash-btn-outline">了解更多关于我 &rarr;</a>"#
+        &config.subtitle
     } else {
-        ""
+        "欢迎来到我的一小块写作空间。"
     };
-
-    let archive_heading_link = if count > 0 {
-        r#"<a href="/archive/" class="flclash-more-link">查看全部文章 &rarr;</a>"#
-    } else {
-        ""
-    };
-
-    // Build real published shorts list for right sidebar
-    let active_shorts: Vec<_> = shorts.iter().filter(|s| !s.draft()).collect();
-    let shorts_count = active_shorts.len();
-
-    let mut shorts_list_html = String::new();
-    if active_shorts.is_empty() {
-        shorts_list_html.push_str(r#"<li class="flclash-empty-short"><p style="color:var(--ci-muted);font-size:13px;margin:0;">暂无短记发布</p></li>"#);
-    } else {
-        for short in active_shorts.iter().take(5) {
-            let raw = short.body_plain_text.trim();
-            let snippet = if raw.chars().count() > 60 {
-                format!("{}…", raw.chars().take(60).collect::<String>())
-            } else {
-                raw.to_string()
-            };
-            shorts_list_html.push_str(&format!(
-                r#"<li>
-  <span class="flclash-short-dot"></span>
-  <div class="flclash-short-body">
-    <p><a href="/shorts/#{slug}">{snippet}</a></p>
-    <time datetime="{date}">{date}</time>
-  </div>
-</li>"#,
-                slug = escape_html(short.slug()),
-                snippet = escape_html(&snippet),
-                date = escape_html(short.date()),
-            ));
-        }
-    }
-
-    let avatar_content = if config.site_icon.is_some() {
-        let (icon_url, _) = site_icon(config);
-        format!(
-            r#"<img src="{icon}" width="42" height="42" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;">"#,
-            icon = escape_html(&icon_url)
-        )
-    } else {
-        r#"<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>"#.to_string()
-    };
-
+    let body = format!(
+        r#"<div class="reader-welcome"><h1>{title}<span>{subtitle}</span></h1></div><div class="home-layout">{cards}</div>"#,
+        title = escape_html(title),
+        subtitle = escape_html(welcome)
+    );
     page(
         &config.title,
         &config.description,
         &config.title,
         &config.description,
-        &format!(
-            r#"<div class="home-layout flclash-home-layout">
-<aside class="flclash-sidebar-left" aria-label="个人简介与统计">
-  <div class="flclash-card flclash-profile-card">
-    <div class="flclash-avatar" aria-hidden="true">
-      {avatar_content}
-    </div>
-    <h2 class="flclash-profile-name">{author}</h2>
-    <p class="flclash-profile-subtitle">{subtitle}</p>
-    <p class="flclash-profile-bio">{description}</p>
-    {about_btn}
-  </div>
-  <div class="flclash-card flclash-stats-card">
-    <div class="flclash-stat-item">
-      <span class="flclash-stat-num">{count}</span>
-      <span class="flclash-stat-label">文章</span>
-    </div>
-    <div class="flclash-stat-item">
-      <span class="flclash-stat-num">{shorts_count}</span>
-      <span class="flclash-stat-label">短记</span>
-    </div>
-  </div>
-</aside>
-<div class="flclash-main-content">
-  <section class="hero home-hero{illustrated}" aria-labelledby="home-title">
-    <div class="home-intro">
-      <div class="home-eyebrow"><span aria-hidden="true"></span> {author}</div>
-      <h1 id="home-title">{title}</h1>
-      <p class="{subtitle_class}">{subtitle}</p>
-      <p class="home-description">{description}</p>
-    </div>
-    {illustration}
-  </section>
-  <section id="posts" aria-labelledby="posts-heading" class="flclash-posts-section">
-    <div class="home-section-heading">
-      <h2 id="posts-heading"><span class="heading-star">⭐</span> 精选文章</h2>
-      {archive_heading_link}
-    </div>
-    <div class="grid home-post-grid">{cards}</div>
-    {archive_link}
-  </section>
-</div>
-<aside class="flclash-sidebar-right" aria-label="微动态短记">
-  <div class="flclash-card flclash-shorts-card">
-    <div class="flclash-card-header">
-      <h3 class="flclash-card-title">📝 即时短记</h3>
-      <a href="/shorts/" class="flclash-card-more">查看全部短记 &rarr;</a>
-    </div>
-    <ul class="flclash-shorts-list">
-      {shorts_list_html}
-    </ul>
-  </div>
-</aside>
-</div>"#,
-            illustrated = if home_illustration(config).is_empty() {
-                ""
-            } else {
-                " has-illustration"
-            },
-            illustration = home_illustration(config),
-            author = escape_html(&config.author),
-            title = display_title(title),
-            subtitle = escape_html(&config.subtitle),
-            subtitle_class = home_subtitle_class(&config.subtitle),
-            description = escape_html(&config.description),
-            about_btn = about_btn,
-            archive_heading_link = archive_heading_link,
-            count = count,
-            shorts_count = shorts_count,
-            avatar_content = avatar_content,
-            shorts_list_html = shorts_list_html,
-            cards = if cards.is_empty() {
-                "<div class=\"home-empty\"><h3>文字，即将生长。</h3><p>这里还没有发布的文章，欢迎稍后再来。</p></div>".to_owned()
-            } else {
-                cards
-            },
-            archive_link = if count > 0 {
-                "<p class=\"home-archive-link\"><a href=\"/archive/\">查看全部 &rarr;</a></p>"
-            } else {
-                ""
-            },
-        ),
+        &body,
         "",
         css_hash,
         config,
         "home",
+        &home_context(config, shorts),
     )
 }
 
@@ -452,6 +410,7 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
         css_hash,
         config,
         "archive",
+        &author_context(config),
     )
 }
 
@@ -460,7 +419,7 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
 /// each card shows the minute-precision timestamp and the rendered body.
 pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> String {
     let mut visible: Vec<&Short> = shorts.iter().filter(|short| !short.draft()).collect();
-    visible.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    visible.sort_by(|a, b| b.date().cmp(a.date()));
     let mut items = String::new();
     for short in visible {
         items.push_str(&format!(
@@ -486,82 +445,51 @@ pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> S
         css_hash,
         config,
         "shorts",
+        &author_context(config),
     )
 }
 
-/// Renders a single blog post page.
+/// Renders a single article. Related links use the existing public index so
+/// incremental publishing does not need to regenerate every other article.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
+    let minutes = reading_minutes(post);
     let updated = post
         .updated()
-        .filter(|value| *value != post.date())
-        .map(|value| {
+        .filter(|date| *date != post.date())
+        .map(|date| {
             format!(
                 "<span>更新于 <time datetime=\"{date}\">{date}</time></span>",
-                date = escape_html(value)
+                date = escape_html(date)
             )
         })
         .unwrap_or_default();
-    // Approximate mixed Chinese/Japanese/Korean characters and space-separated words.
-    let is_cjk = |c: char| matches!(c as u32, 0x3400..=0x9fff | 0x3040..=0x30ff | 0xac00..=0xd7af);
-    let characters = post.body_plain_text.chars().filter(|c| is_cjk(*c)).count();
-    let words = post
-        .body_plain_text
-        .split_whitespace()
-        .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !is_cjk(c)))
-        .count();
-    let minutes = (characters as f64 / 400.0 + words as f64 / 200.0)
-        .ceil()
-        .max(1.0) as usize;
-
     let body = format!(
-        r#"<div id="reading-progress" class="reading-progress" aria-hidden="true"></div>
-<section class="article-shell reader-article">
-  <article>
-    <header class="article-heading">
-      <a class="back-link article-back" href="/">&larr; 所有文章</a>
-      <h1>{title}</h1>
-      <p class="meta article-description">{description}</p>
-      <div class="article-author"><span class="home-avatar" aria-hidden="true">{initial}</span><div><span class="article-author-name">{author}</span><div class="meta article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div></div>
-    </header>
-    <div class="article-body">{body}</div>
-    <div class="share-container article-end">
-      <a class="back-link" href="/">&larr; 返回文章</a>
-      <div class="article-share-actions">
-        <button id="share-btn" class="share-button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4"/></svg>分享文章</button>
-      </div>
-      <span id="share-status" role="status"></span>
-    </div>
-  </article>
-  <div class="reader-toc-slot"></div>
-</section>"#,
-        date = escape_html(post.date()),
-        updated = updated,
-        minutes = minutes,
+        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="back-link article-back" href="/">← 返回列表</a><span>文章阅读</span></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><p>感谢阅读。</p><a class="back-link" href="/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
         title = display_title(post.title()),
         description = escape_html(post.description()),
-        author = escape_html(&config.author),
         initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
-        body = post.body_html,
+        author = escape_html(&config.author),
+        date = escape_html(post.date()),
+        link = icon("link"),
+        body = post.body_html
     );
-
+    let context = format!(
+        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{link}复制文章链接</button></section>{related}"#,
+        author = escape_html(&config.author),
+        date = escape_html(post.date()),
+        link = icon("link"),
+        related = r#"<section class="panel related-panel"><h2>继续阅读</h2><div id="related-stories"><a class="related-story" href="/archive/">浏览全部文章 →</a></div></section>"#
+    );
     let (icon_url, _) = site_icon(config);
     let extra_head = format!(
-        r#"<meta property="og:title" content="{title}">
-<meta property="og:description" content="{description}">
-<meta property="og:type" content="article">
-<meta property="og:image" content="{icon_url}">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{title}">
-<meta name="twitter:description" content="{description}">
-<meta name="twitter:image" content="{icon_url}">"#,
+        r#"<meta property="og:title" content="{title}"><meta property="og:description" content="{description}"><meta property="og:type" content="article"><meta property="og:image" content="{icon_url}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="{title}"><meta name="twitter:description" content="{description}"><meta name="twitter:image" content="{icon_url}">"#,
         title = escape_html(post.title()),
         description = escape_html(post.description()),
-        icon_url = escape_html(&icon_url),
+        icon_url = escape_html(&icon_url)
     );
-
     page(
-        &post.front_matter.title,
-        &post.front_matter.description,
+        post.title(),
+        post.description(),
         &config.title,
         &config.description,
         &body,
@@ -569,6 +497,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         css_hash,
         config,
         "post",
+        &context,
     )
 }
 
@@ -602,6 +531,7 @@ pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> 
         css_hash,
         config,
         "about",
+        &author_context(config),
     )
 }
 
@@ -621,6 +551,7 @@ pub fn render_404(config: &SiteConfig, css_hash: &str) -> String {
         css_hash,
         config,
         "not-found",
+        &author_context(config),
     )
 }
 
@@ -644,6 +575,7 @@ fn page(
     css_hash: &str,
     config: &SiteConfig,
     page_kind: &str,
+    context: &str,
 ) -> String {
     // Build the document in segments to avoid a 500-line format! string with
     // escaped braces.  Each segment is a distinct format! call or a raw push.
@@ -653,12 +585,22 @@ fn page(
         _ => "ink",
     };
 
+    let reading_font = if config.reading_font.as_deref() == Some("sans") {
+        "sans"
+    } else {
+        "serif"
+    };
+    let reading_font_style = if reading_font == "serif" {
+        r#"<link id="reader-font-styles" rel="stylesheet" href="/reader-assets/editorial-font.css">"#
+    } else {
+        ""
+    };
     let (icon_url, icon_type) = site_icon(config);
 
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(
         r##"<!doctype html>
-<html lang="en" data-palette="{palette}">
+<html lang="zh-CN" data-palette="{palette}" data-reading-font="{reading_font}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -666,7 +608,7 @@ fn page(
   <meta name="author" content="{author}">
   <title>{title}</title>
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
-  <link rel="stylesheet" href="/reader-assets/editorial-font.css">
+  {reading_font_style}
   <link rel="icon" type="{icon_type}" href="{icon_url}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
@@ -679,6 +621,8 @@ fn page(
   <script>{theme_bootstrap}</script>
 "##,
         palette = palette,
+        reading_font = reading_font,
+        reading_font_style = reading_font_style,
         theme_bootstrap = include_str!("../../../assets/theme.js"),
         description = escape_html(description),
         author = escape_html(&config.author),
@@ -711,62 +655,48 @@ fn page(
         .map(str::to_owned)
         .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
-    let navigation = format!(
-        r#"<a href="/#posts" data-reader-nav="posts"{posts_current}>文章</a><a href="/shorts/" data-reader-nav="shorts"{shorts_current}>短记</a>{about}"#,
-        posts_current = if page_kind == "home" {
-            " aria-current=\"page\""
+    let about_available = config.about.as_deref().is_none_or(|s| !s.trim().is_empty());
+    let navigation = [
+        ("home", "/", "首页"),
+        ("posts", "/#posts", "文章"),
+        ("shorts", "/shorts/", "短记"),
+        ("archive", "/archive/", "归档"),
+        ("about", "/about/", "关于"),
+    ]
+    .into_iter()
+    .filter(|(key, _, _)| *key != "about" || about_available)
+    .map(|(key, href, label)| {
+        let active = if page_kind == "post" {
+            key == "posts"
         } else {
-            ""
-        },
-        shorts_current = if page_kind == "shorts" {
-            " aria-current=\"page\""
-        } else {
-            ""
-        },
-        about = if config
-            .about
-            .as_deref()
-            .is_none_or(|value| !value.trim().is_empty())
-        {
-            format!(
-                "<a href=\"/about/\" data-reader-nav=\"about\"{}>关于</a>",
-                if page_kind == "about" {
-                    " aria-current=\"page\""
-                } else {
-                    ""
-                }
-            )
-        } else {
-            String::new()
-        },
-    );
+            key == page_kind
+        };
+        format!(
+            r#"<a href="{href}" data-reader-nav="{key}"{current}>{icon}<span>{label}</span></a>"#,
+            icon = icon(if key == "posts" { "article" } else { key }),
+            current = if active { " aria-current=\"page\"" } else { "" }
+        )
+    })
+    .collect::<String>();
 
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
-        r##"<body>
+        r##"<body class="reader-shell">
   <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
+  <aside class="reader-sidebar" id="primary-nav" aria-label="站点导航">
+    <a class="site-brand" href="/" title="{site_title}"><span class="site-mark"><img src="{icon_url}" width="24" height="24" alt=""></span><span class="site-title">{site_title}</span></a>
+    <nav class="reader-side-nav" aria-label="博客导航">{navigation}</nav>
+    <p class="reader-sidebar-note">{subtitle}</p>
+  </aside>
   <div class="wrapper reader-layout">
-    <header class="site-header reader-header">
-      <a class="site-brand" href="/" title="{site_title}">
-        <span class="site-mark"><img src="{icon_url}" width="26" height="26" alt=""></span>
-        <span class="site-title">{site_title}</span>
-      </a>
-      <div class="reader-navigation">
-        <nav class="site-nav desktop-reader-nav" aria-label="博客导航">{navigation}</nav>
-        <div class="reader-tools">
-          <button id="site-search-btn" class="reader-icon search-btn flclash-search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-          <details class="reader-menu" id="reader-menu">
-            <summary class="reader-icon" aria-label="博客菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg><span class="reader-sr-only">菜单</span></summary>
-            <nav class="reader-menu-links" aria-label="手机博客导航">{navigation}</nav>
-          </details>
-        </div>
-      </div>
-    </header>
-    <main id="swup" class="transition-fade" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
-      {body}
+    <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button></div></header>
+    <main id="swup" class="blog-layout" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
+      <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
+      <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>
     </main>
-    <footer class="site-footer"><div class="site-footer-copy"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></div></footer>
+    <footer class="site-footer"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></footer>
   </div>
+  <nav class="reader-dock" aria-label="手机博客导航">{navigation}</nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
       <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
@@ -784,6 +714,8 @@ fn page(
         site_title = escape_html(site_title),
         body = body,
         navigation = navigation,
+        subtitle = escape_html(&config.subtitle),
+        context = context,
         page_kind = page_kind,
         footer = escape_html(&footer),
         client_hash = crate::content_hash(client_script()),

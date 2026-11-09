@@ -42,7 +42,7 @@ export function confirmAction(
 }
 export function mountEditorPanes({ preview, invalidate }) {
   const wide = matchMedia('(min-width:1100px)');
-  let preferred = 'split';
+  let preferred = 'writing';
   $('editor-panes').dataset.ciPanes = '';
   $('show-split').dataset.ciPaneControl = '';
   function render() {

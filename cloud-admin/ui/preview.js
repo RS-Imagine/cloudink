@@ -145,7 +145,7 @@ async function pump() {
     const style = page.createElement('style');
     style.textContent =
       css +
-      '\n .site-header,.site-footer,.share-container,.article-back{display:none!important}.wrapper{max-width:100%!important;padding:0 22px!important}.article-shell{padding-top:18px!important}.reader-article{display:block!important;max-width:720px!important;margin-inline:auto!important}.reader-toc-slot{display:none!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
+      '\n .site-header,.site-footer,.share-container,.article-back,#primary-nav,.reader-dock,#reader-context{display:none!important}.wrapper{max-width:100%!important;margin:0!important;padding:0 22px!important}#swup{display:block!important}.article-shell{padding-top:18px!important}.reader-article{display:block!important;max-width:720px!important;margin-inline:auto!important}.reader-toc-slot{display:none!important}img[data-r2-key]{display:block;min-height:60px;background:var(--code-bg)}';
     page.head.append(style);
     page
       .querySelectorAll('#hljs-light,#hljs-dark,link[href*="katex"]')

@@ -1,4 +1,4 @@
-import { navigateStudio } from './studio-navigation.mjs';
+import { navigateStudio, openArticleInfo } from './studio-navigation.mjs';
 // Exercise the shipped workflows against the audit's ephemeral Miniflare fixture.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
@@ -9,6 +9,18 @@ export async function acceptConfirmation(page) {
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-accept').click();
   await expect(page.locator('#confirmation-dialog')).toBeHidden();
+}
+export async function publishArticle(page) {
+  const committed = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /^\/api\/publish\/[^/]+\/commit$/.test(new URL(response.url()).pathname),
+    { timeout: 60000 },
+  );
+  await page.locator('#publish-post').click();
+  await acceptConfirmation(page);
+  assert.equal((await committed).status(), 200);
+  await expect(page.locator('#publish-post')).not.toHaveAttribute('aria-busy', 'true');
 }
 export async function verifyWorkflows(browser, origin, output, engine) {
   const context = await browser.newContext({
@@ -69,9 +81,7 @@ export async function verifyWorkflows(browser, origin, output, engine) {
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
       false,
     );
-    const metadata = page.locator('.post-details');
-    const expanded = await metadata.evaluate((node) => node.open);
-    if (!expanded) await metadata.locator('summary').click();
+    await openArticleInfo(page);
     await expect(page.locator('#download-post')).toBeVisible();
     for (const id of [
       'save-post',
@@ -88,7 +98,8 @@ export async function verifyWorkflows(browser, origin, output, engine) {
         engine + '/' + id + ' remains touchable: ' + JSON.stringify({ width, theme, rect }),
       );
     }
-    if (!expanded) await metadata.locator('summary').click();
+    if (await page.locator('#editor-info-dialog').isVisible())
+      await page.locator('#editor-info-close').click();
     if (width < 1100) {
       await expect(page.locator('#show-split')).toBeHidden();
       await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
@@ -99,6 +110,7 @@ export async function verifyWorkflows(browser, origin, output, engine) {
         fullPage: true,
       });
   }
+  await openArticleInfo(page);
   await page.locator('#delete-post').click();
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await expect(page.locator('#confirmation-cancel')).toBeFocused();
