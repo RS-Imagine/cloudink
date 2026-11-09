@@ -10,6 +10,7 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
+  '/writing-illustration.svg',
   '/backup.js',
   '/publication.js',
   '/home-illustration.js',

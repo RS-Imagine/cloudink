@@ -33,7 +33,7 @@ import { verifyMobile } from '../cloud-web/test/mobile.browser.mjs';
 import { verifyRelease } from '../cloud-web/test/release.browser.mjs';
 import { verifyCompletion } from '../cloud-web/test/completion.browser.mjs';
 import { verifyWorkflows } from '../cloud-web/test/workflows.browser.mjs';
-import { verifyStudio, openPostSwitcher } from '../cloud-web/test/studio.browser.mjs';
+import { verifyStudio, openArticleList } from '../cloud-web/test/studio.browser.mjs';
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
 import { verifyHome } from '../cloud-web/test/home.browser.mjs';
 import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
@@ -91,7 +91,7 @@ const demoPosts = [
   },
 ];
 const ready = {
-  home: '.hero h1',
+  home: '.reader-site-heading',
   article: 'article h1',
   dashboard: '#home-view',
   editor: '#preview-frame',
@@ -251,8 +251,8 @@ try {
   await copyFile('build-work/editorial-photo/source.json', resolve(output, 'photo-source.json'));
   // Generate real Rust/WASM pages through the local publication UI.
   for (const post of demoPosts.slice(0, 3)) {
-    await openPostSwitcher(admin);
-    await admin.locator('.post-item').filter({ hasText: post.title }).click();
+    await openArticleList(admin);
+    await admin.locator('.article-title-button').filter({ hasText: post.title }).click();
     await expect(admin.locator('#title')).toHaveValue(post.title);
     if (post.slug === 'slow-days') {
       await admin.locator('#image-files').setInputFiles({
@@ -351,14 +351,12 @@ try {
         );
         if (screen === 'editor') {
           await expect(page.locator('#home-view')).toBeVisible();
-          await openPostSwitcher(page);
-          await page.locator('.post-item').filter({ hasText: demoPosts[0].title }).click();
-          if (width >= 1100)
-            await page
-              .frameLocator('#preview-frame')
-              .locator('article h1')
-              .waitFor({ state: 'attached' });
-          else await expect(page.locator('#body')).toBeVisible();
+          await openArticleList(page);
+          await page
+            .locator('.article-title-button')
+            .filter({ hasText: demoPosts[0].title })
+            .click();
+          await expect(page.locator('#body')).toBeVisible();
         } else await expect(page.locator(ready[screen])).toBeVisible();
         await capture(page, 'production', screen, theme, width);
         if (screen === 'editor' && width < 1100) {

@@ -56,7 +56,7 @@ export async function verifyRelease(browser, origin, output, engine) {
   await expect(page.locator('#site-form')).toBeVisible();
   await noOverflow(page, engine + ' settings text spacing');
   // Every primary destination remains operable after a text-spacing override.
-  for (const id of ['dashboard-nav', 'articles-nav', 'images', 'settings']) {
+  for (const id of ['articles-nav', 'articles-nav', 'images', 'settings']) {
     await navigateStudio(page, id);
     await expect(page.locator('#' + id)).toHaveAttribute('aria-current', 'page');
     await noOverflow(page, engine + ' ' + id + ' text spacing');

@@ -11,15 +11,6 @@ async function filter(locator) {
     return style.backdropFilter || style.webkitBackdropFilter || 'none';
   });
 }
-async function openReaderMenu(page) {
-  const menu = page.locator('#reader-menu');
-  if (!(await menu.evaluate((node) => node.open))) await menu.locator('summary').click();
-  await expect(menu).toHaveAttribute('open', '');
-}
-async function closeReaderMenu(page) {
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#reader-menu')).not.toHaveAttribute('open', '');
-}
 async function readerEffects(page, mode) {
   await page.evaluate(
     (mode) => __setSurfaceMedia('(prefers-reduced-transparency: reduce)', mode === 'off'),
@@ -157,28 +148,26 @@ export async function verifySurfaces(browser, origin, output, engine) {
     await expect(root).toHaveAttribute('data-effects', enabled);
     for (const palette of ['ink', 'neutral', 'brown', 'blue', 'violet', 'rose']) {
       await page.evaluate((palette) => CloudInkTheme.setPalette(palette), palette);
-      await openReaderMenu(page);
+      await expect(page.locator('.reader-dock')).toBeVisible();
       if (supported) {
         assert.equal(
-          await filter(page.locator('.reader-menu-links')),
+          await filter(page.locator('.reader-dock')),
           'none',
           'Reader navigation stays opaque to keep background blur bounded',
         );
-        contrasts.push(...(await contrast(page, '.reader-menu-links')));
+        contrasts.push(...(await contrast(page, '.reader-dock')));
       }
       areas.push(await checkArea(page));
-      await closeReaderMenu(page);
     }
     await page.evaluate(() => CloudInkTheme.setPalette('ink'));
     for (const mode of ['auto', 'off']) {
       await readerEffects(page, mode);
-      await openReaderMenu(page);
-      if (mode === 'off') assert.equal(await filter(page.locator('.reader-menu-links')), 'none');
+      await expect(page.locator('.reader-dock')).toBeVisible();
+      if (mode === 'off') assert.equal(await filter(page.locator('.reader-dock')), 'none');
       await page.screenshot({
         path: resolve(output, 'surface-reader-' + mode + '-' + theme + '-' + engine + '.png'),
         fullPage: false,
       });
-      await closeReaderMenu(page);
     }
   }
   for (const pair of contrasts) assert.ok(pair.ratio >= 4.5, JSON.stringify(pair));
@@ -250,7 +239,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
     await page.evaluate((theme) => CloudInkTheme.setMode(theme), theme);
     for (const mode of ['auto', 'off']) {
       await page.evaluate((mode) => CloudInkTheme.setEffects(mode), mode);
-      await page.locator('#studio-menu-toggle').click();
+      await page.locator('#studio-tools summary').click();
       assert.equal(
         await filter(page.locator('#studio-sheet')),
         'none',
@@ -264,7 +253,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
         fullPage: false,
       });
       await page.keyboard.press('Escape');
-      await expect(page.locator('#studio-menu-toggle')).toBeFocused();
+      await expect(page.locator('#studio-tools summary')).toBeFocused();
     }
   }
   await navigateStudio(page, 'settings');
@@ -322,9 +311,7 @@ export async function verifySurfaces(browser, origin, output, engine) {
   const staticPage = await staticContext.newPage();
   await staticPage.goto(origin + '/');
   await expect(staticPage.locator('[data-effects-control]')).toHaveCount(0);
-  await staticPage.locator('#reader-menu summary').click();
-  assert.equal(await filter(staticPage.locator('.reader-menu-links')), 'none');
-  await staticPage.locator('#reader-menu summary').click();
+  assert.equal(await filter(staticPage.locator('.reader-dock')), 'none');
   await staticPage.locator('.post-card h2 a').first().click();
   await expect(staticPage.locator('article h1')).toBeVisible();
   await staticContext.close();

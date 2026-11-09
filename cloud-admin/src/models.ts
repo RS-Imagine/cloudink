@@ -40,6 +40,7 @@ export interface SiteConfig {
   clarityId?: string;
   about?: string;
   themePalette?: ThemePalette;
+  readingFont?: 'serif' | 'sans';
   siteIcon?: string;
   homeIllustration?: string;
 }
@@ -244,7 +245,7 @@ export function validateSite(input: unknown): SiteConfig {
   const v = input as Record<string, unknown>;
   const appearance: Pick<
     SiteConfig,
-    'footer' | 'clarityId' | 'themePalette' | 'siteIcon' | 'homeIllustration'
+    'footer' | 'clarityId' | 'themePalette' | 'readingFont' | 'siteIcon' | 'homeIllustration'
   > = {};
   if (v.footer !== undefined) appearance.footer = text(v.footer, '页脚', 2000, false);
   if (v.clarityId !== undefined) {
@@ -255,6 +256,11 @@ export function validateSite(input: unknown): SiteConfig {
   if (v.themePalette !== undefined) {
     if (!isThemePalette(v.themePalette)) throw new HttpError(400, '请选择支持的主题色。');
     appearance.themePalette = v.themePalette;
+  }
+  if (v.readingFont !== undefined) {
+    if (v.readingFont !== 'serif' && v.readingFont !== 'sans')
+      throw new HttpError(400, '请选择支持的阅读字体。');
+    appearance.readingFont = v.readingFont;
   }
   if (v.homeIllustration !== undefined) {
     if (!validHomeIllustration(v.homeIllustration))

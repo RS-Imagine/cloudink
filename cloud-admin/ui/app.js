@@ -19,6 +19,7 @@ import { editorStore } from './store.js';
 const motion = window.CloudInkMotion;
 motion.mount();
 const shell = mountStudioShell();
+let selectedPostSlug = null;
 let postFilter = 'all',
   postCursor = null,
   postCounts = null,
@@ -130,6 +131,7 @@ function applySiteAppearance(config) {
   iconPicker.apply(config);
   if (site) {
     site.themePalette = palette;
+    site.readingFont = config?.readingFont || 'serif';
     site.siteIcon = config?.siteIcon || '';
     site.homeIllustration = config?.homeIllustration || '';
   }
@@ -349,13 +351,13 @@ function view(name, { focus = true } = {}) {
   const changingView = $('app-view').dataset.view !== name;
   const sectionName = name === 'posts' ? 'home' : name;
   const fromNavigation = document.activeElement?.closest(
-    '.studio-nav,#post-list,.article-card,[data-studio-shortcut],.brand',
+    '.studio-nav,.article-card,[data-studio-shortcut],.brand',
   );
   shell.close();
   $('app-view').dataset.view = name;
   for (const button of document.querySelectorAll('[data-studio-nav]')) {
     const selected =
-      button.dataset.studioNav === (name === 'editor' || name === 'posts' ? 'articles' : name);
+      button.dataset.studioNav === (['home', 'editor', 'posts'].includes(name) ? 'articles' : name);
     if (selected) button.setAttribute('aria-current', 'page');
     else button.removeAttribute('aria-current');
   }
@@ -365,18 +367,14 @@ function view(name, { focus = true } = {}) {
     section.hidden = id !== sectionName;
     section.tabIndex = -1;
   }
-  if (changingView && $('article-search-slot'))
-    $(name === 'editor' ? 'editor-search-slot' : 'article-search-slot').prepend(
-      $('article-browser'),
-    );
-  $('article-browser').hidden = !['home', 'posts', 'editor'].includes(name);
-  $('posts-title').hidden = name !== 'posts';
-  $('home-view').setAttribute('aria-labelledby', name === 'posts' ? 'posts-title' : 'home-heading');
+  $('article-browser').hidden = !['home', 'posts'].includes(name);
+  $('home-view').setAttribute('aria-labelledby', 'home-heading');
+  shell.placeMaintenance();
   motion.enter($(sectionName + '-view'), { kind: 'content' });
   $('workspace-title').textContent = {
-    home: '工作台',
-    posts: '所有文章',
-    editor: '文章编辑',
+    home: '文章管理',
+    posts: '文章管理',
+    editor: '编辑文章',
     settings: '网站设置',
     images: '图片库',
     shorts: '短记',
@@ -537,7 +535,7 @@ function renderLists() {
   const draftCount = postCounts?.draft ?? posts.filter((p) => !p.published).length;
 
   $('post-count').textContent = totalCount;
-  $('load-more-posts').hidden = $('load-more-switcher').hidden = !postCursor;
+  $('load-more-posts').hidden = !postCursor;
   document.querySelector('[data-post-count]').textContent = totalCount;
   for (const button of document.querySelectorAll('[data-post-filter]'))
     button.setAttribute('aria-pressed', String(button.dataset.postFilter === postFilter));
@@ -548,59 +546,66 @@ function renderLists() {
   if (sidebarPub) sidebarPub.textContent = publishedCount;
   const sidebarDraft = $('sidebar-count-draft');
   if (sidebarDraft) sidebarDraft.textContent = draftCount;
-  for (const item of document.querySelectorAll('[data-sidebar-filter]')) {
-    const selected = item.dataset.sidebarFilter === postFilter;
-    item.classList.toggle('is-active', selected);
-    item.setAttribute('aria-pressed', String(selected));
-  }
-
   let shown = 0;
+  const visiblePosts = [];
   $('summary').textContent = `${publishedCount} 篇已发布 · ${draftCount} 篇草稿`;
-  $('post-list').replaceChildren();
   $('article-grid').replaceChildren();
   for (const post of sorted) {
     if (query && !`${post.title} ${post.description} ${post.slug}`.toLowerCase().includes(query))
       continue;
-    const button = document.createElement('button');
-    button.className = 'post-item' + (doc?.front_matter.slug === post.slug ? ' active' : '');
-    const title = document.createElement('span');
-    title.textContent = post.title;
-    const small = document.createElement('small');
-    small.textContent = `${post.date} · ${badge(post)}`;
-    button.append(title, small);
-    button.addEventListener('pointerenter', () => prefetchArticle(post.slug));
-    button.addEventListener('focus', () => prefetchArticle(post.slug));
-    button.addEventListener('click', () =>
-      openPost(post.slug).catch((error) => notice(error.message)),
-    );
-    $('post-list').append(button);
     if (
       (postFilter === 'published' && !post.published) ||
       (postFilter === 'draft' && post.published)
     )
       continue;
     shown++;
-    const card = document.createElement('button');
+    visiblePosts.push(post);
+    const card = document.createElement('article');
     card.className = 'article-card';
-    const tag = document.createElement('span');
-    tag.className = 'badge' + (post.changed || !post.published ? ' draft' : '');
-    tag.textContent = badge(post);
+    card.dataset.slug = post.slug;
+    card.tabIndex = 0;
+    card.setAttribute('aria-label', '选择文章：' + post.title);
+    const copy = document.createElement('div');
+    copy.className = 'article-card-copy';
     const h = document.createElement('h3');
-    h.textContent = post.title;
-    const p = document.createElement('p');
-    p.textContent = post.description || '没有摘要';
-    const date = document.createElement('small');
+    const titleButton = document.createElement('button');
+    titleButton.className = 'article-title-button';
+    titleButton.textContent = post.title;
+    const open = () => openPost(post.slug).catch((error) => notice(error.message));
+    titleButton.addEventListener('click', open);
+    h.append(titleButton);
+    const address = document.createElement('p');
+    address.className = 'article-address';
+    address.textContent = '/posts/' + post.slug + '/';
+    copy.append(h, address);
+    const tag = document.createElement('span');
+    tag.className =
+      'badge ' + (post.published ? (post.changed ? 'changed' : 'published') : 'draft');
+    tag.textContent = badge(post);
+    const date = document.createElement('time');
+    date.className = 'article-modified';
     date.textContent = post.date;
-    const arrow = document.createElement('span');
-    arrow.className = 'article-card-arrow';
-    arrow.setAttribute('aria-hidden', 'true');
-    arrow.textContent = '→';
-    card.append(tag, h, p, date, arrow);
+    date.dateTime = post.date;
+    const edit = document.createElement('button');
+    edit.className = 'article-edit';
+    edit.textContent = '编辑';
+    edit.setAttribute('aria-label', '编辑：' + post.title);
+    edit.addEventListener('click', open);
+    card.append(copy, tag, date, edit);
+    const select = () => {
+      selectedPostSlug = post.slug;
+      renderSelection(post);
+    };
+    card.addEventListener('click', select);
+    card.addEventListener('focus', select);
+    card.addEventListener('keydown', (event) => {
+      if (event.target === card && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        select();
+      }
+    });
     card.addEventListener('pointerenter', () => prefetchArticle(post.slug));
     card.addEventListener('focus', () => prefetchArticle(post.slug));
-    card.addEventListener('click', () =>
-      openPost(post.slug).catch((error) => notice(error.message)),
-    );
     $('article-grid').append(card);
   }
   if (!shown) {
@@ -626,15 +631,41 @@ function renderLists() {
     }
     $('article-grid').append(empty);
   }
-  if (!$('post-list').childElementCount) {
-    const empty = document.createElement('p');
-    empty.className = 'studio-list-empty';
-    empty.textContent = hasPosts
-      ? '没有匹配的文章，请修改搜索关键词。'
-      : '还没有文章，先开始新文章。';
-    $('post-list').append(empty);
-  }
+  const selected = visiblePosts.find((post) => post.slug === selectedPostSlug) || visiblePosts[0];
+  selectedPostSlug = selected?.slug || null;
+  renderSelection(selected);
 }
+
+function renderSelection(post) {
+  $('selected-post-title').textContent = post?.title || '选择一篇文章';
+  $('selected-post-description').textContent =
+    post?.description || (post ? '这篇文章还没有摘要。' : '从列表选择内容，再继续编辑。');
+  $('selected-post-status').textContent = post ? badge(post) : '';
+  $('selected-post-status').className =
+    'badge ' + (post?.published ? (post.changed ? 'changed' : 'published') : 'draft');
+  $('selected-post-date').textContent = post?.date || '—';
+  $('selected-post-change').textContent = !post
+    ? '—'
+    : !post.published
+      ? '仅你可见'
+      : post.changed
+        ? '有待发布修改'
+        : '与公开版本一致';
+  $('selected-post-edit').disabled = !post;
+  $('selected-post-public').hidden = !post?.published;
+  if (post?.published)
+    $('selected-post-public').href = new URL(
+      '/posts/' + encodeURIComponent(post.slug) + '/',
+      appConfig.siteUrl,
+    ).href;
+  else $('selected-post-public').removeAttribute('href');
+  for (const row of $('article-grid').querySelectorAll('.article-card'))
+    row.classList.toggle('selected', row.dataset.slug === post?.slug);
+}
+$('selected-post-edit').addEventListener('click', () => {
+  if (selectedPostSlug) void openPost(selectedPostSlug).catch((error) => notice(error.message));
+});
+
 async function refresh({ append = false } = {}) {
   clearTimeout(searchTimer);
   const revision = ++listRevision;
@@ -670,20 +701,13 @@ async function refresh({ append = false } = {}) {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
-  if ($('flclash-user-label')) $('flclash-user-label').textContent = data.site.author || '云砚';
-  const avatarLetter = (data.site.author || '云砚').charAt(0);
-  const avatarEl = document.querySelector('.flclash-user-avatar');
-  if (avatarEl) avatarEl.textContent = avatarLetter;
-  $('home-heading').textContent = data.site.author
-    ? '你好，' + data.site.author + '。'
-    : '从一个想法开始。';
+  $('home-heading').textContent = '把文章整理清楚。';
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
     if (!post || (post.etag && post.etag !== cached.etag)) articleCache.delete(slug);
   }
   renderLists();
   showPublishing(data.publishing);
-  void updateSidebarShorts();
 }
 function currentDraft() {
   return {
@@ -971,7 +995,7 @@ $('search').addEventListener('input', () => {
   if (postCursor || (postCounts && posts.length < postCounts.total))
     searchTimer = setTimeout(() => void refresh().catch((error) => notice(error.message)), 250);
 });
-for (const id of ['load-more-posts', 'load-more-switcher'])
+for (const id of ['load-more-posts'])
   $(id).addEventListener('click', () => action(id, '正在读取…', () => refresh({ append: true })));
 async function returnToList(name = 'home') {
   if (editorLocked) return;
@@ -992,7 +1016,7 @@ document.querySelector('.brand').addEventListener('click', (event) => {
   event.preventDefault();
   void returnToList();
 });
-$('dashboard-nav').addEventListener('click', () => void returnToList());
+$('editor-back').addEventListener('click', () => void returnToList());
 $('articles-nav').addEventListener('click', () => void returnToList('posts'));
 $('post-filters').addEventListener('click', (event) => {
   const button = event.target.closest('[data-post-filter]');
@@ -1041,6 +1065,7 @@ function download(data, name, type) {
 for (const id of ['download-post', 'change-post-address'])
   $(id)?.addEventListener('click', () => {
     if (!doc || (id === 'change-post-address' && (editorLocked || publishingBusy))) return;
+    shell.close();
     import('/post-address.js')
       .then(({ postAction }) =>
         postAction(id, {
@@ -1130,8 +1155,18 @@ $('cancel-publish').addEventListener('click', () =>
     '发布状态已更新；草稿仍然保留。',
   ),
 );
-$('publish-post').addEventListener('click', () => {
-  if (!doc || editorLocked) return;
+$('publish-post').addEventListener('click', async () => {
+  if (!doc || editorLocked || publishingBusy || publishRequest) return;
+  const slug = doc.front_matter.slug;
+  if (
+    !(await confirmAction(
+      '保存最新草稿后，将只发布当前这篇文章。其他草稿和待发布网站设置保持私有。',
+      { title: '发布这篇文章？', accept: '确认发布' },
+    ))
+  )
+    return;
+  if (!doc || doc.front_matter.slug !== slug || editorLocked || publishingBusy || publishRequest)
+    return;
   void action('publish-post', '正在提交发布…', async () => {
     lockEditor(true);
     try {
@@ -1284,7 +1319,6 @@ const shortTools = configureShorts({
   api,
   notice,
   action,
-  onList: (data) => updateSidebarShorts(data),
   open: async () => {
     if (editorLocked) return false;
     const version = ++navigationVersion;
@@ -1612,6 +1646,7 @@ $('settings').addEventListener('click', async () => {
     iconPicker.load(data.site);
     homePicker.load(data.site);
     $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
+    $('site-form').elements.readingFont.value = data.site.readingFont || 'serif';
     applySiteAppearance(data.site);
     for (const [key, value] of Object.entries(data.site))
       if ($('site-form').elements[key]) $('site-form').elements[key].value = value;
@@ -1759,6 +1794,7 @@ function loadBackup() {
           ))
             input.value = '';
           $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
+          $('site-form').elements.readingFont.value = result.site.readingFont || 'serif';
           iconPicker.load(result.site);
           illustrationPicker?.load(result.site);
           applySiteAppearance(result.site);
@@ -1785,39 +1821,3 @@ if (typeof window !== 'undefined' && window.visualViewport) {
   window.visualViewport.addEventListener('scroll', syncVisualViewport, { passive: true });
   syncVisualViewport();
 }
-
-async function updateSidebarShorts(value) {
-  try {
-    const data = value || (await api('/api/shorts?limit=1'));
-    if (data && data.shorts) {
-      const shortsCountEl = $('sidebar-shorts-count');
-      if (shortsCountEl) shortsCountEl.textContent = data.total;
-      const previewEl = $('sidebar-short-preview');
-      if (previewEl)
-        previewEl.textContent = data.shorts[0]?.snippet || '从这里随时记录此刻想法与简短日志…';
-    }
-  } catch {}
-}
-
-$('flclash-sidebar-new-btn')?.addEventListener('click', () => {
-  $('new-post')?.click();
-});
-
-document.addEventListener('click', (event) => {
-  const sidebarFilterBtn = event.target.closest('[data-sidebar-filter]');
-  if (sidebarFilterBtn) {
-    const filter = sidebarFilterBtn.dataset.sidebarFilter;
-    if (filter === 'all' || filter === 'published' || filter === 'draft') {
-      document.querySelector(`[data-post-filter="${filter}"]`)?.click();
-    }
-  }
-});
-
-$('flclash-quick-short-btn')?.addEventListener('click', () =>
-  action('flclash-quick-short-btn', '正在打开…', async () => {
-    if (await shortTools.show()) $('short-new').click();
-  }),
-);
-$('flclash-goto-shorts-link')?.addEventListener('click', () => {
-  $('shorts').click();
-});

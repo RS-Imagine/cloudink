@@ -9,10 +9,9 @@
     <meta name="theme-color" content="#5c3a21" />
     <script src="/admin-theme.js"></script>
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="/reader-assets/editorial-font.css" />
   </head>
   <body>
-    <a id="studio-skip" class="studio-skip" href="#workspace" hidden>跳到工作区</a>
+    <a id="studio-skip" class="studio-skip" href="#workspace" hidden="">跳到工作区</a>
     <div id="notice" role="status" aria-live="polite"></div>
     <section
       id="startup-view"
@@ -30,7 +29,7 @@
         <h1 id="startup-title">留一点时间，给写作。</h1>
         <p id="startup-message" role="status">正在打开你的写作空间…</p>
         <div class="form-actions">
-          <button id="startup-retry" type="button" class="primary" hidden>重试</button>
+          <button id="startup-retry" type="button" class="primary" hidden="">重试</button>
           <a class="startup-reload" href="/admin">重新加载</a>
         </div>
         <noscript>
@@ -44,7 +43,7 @@
         </noscript>
       </div>
     </section>
-    <section id="login-view" class="login-view" hidden>
+    <section id="login-view" class="login-view" hidden="">
       <aside class="auth-cover" aria-label="CloudInk 写作空间">
         <span>CLOUDINK · 云砚</span>
         <h2>让文字，<br />有一处归所。</h2>
@@ -95,20 +94,20 @@
         <h1 id="login-title">回到你的写作空间</h1>
         <p id="login-description">写下所想，慢慢整理，再与世界分享。</p>
         <form id="login-form">
-          <label>邮箱<input name="email" type="email" autocomplete="username" required /></label
+          <label>邮箱<input name="email" type="email" autocomplete="username" required="" /></label
           ><label
             >密码<input
               name="password"
               type="password"
               autocomplete="current-password"
-              required /></label
+              required="" /></label
           ><button class="primary wide" id="login-submit">登录</button>
           <p id="login-error" class="error" role="alert"></p>
         </form>
         <small>仅限站点作者使用</small>
       </div>
     </section>
-    <section id="setup-view" class="login-view" hidden>
+    <section id="setup-view" class="login-view" hidden="">
       <aside class="auth-cover" aria-label="CloudInk 写作空间">
         <span>CLOUDINK · 云砚</span>
         <h2>让文字，<br />有一处归所。</h2>
@@ -171,7 +170,7 @@
                 autocomplete="off"
                 minlength="16"
                 maxlength="128"
-                required
+                required=""
                 aria-describedby="setup-token-help"
               /><small id="setup-token-help">填写部署时设置的口令，仅用于这次初始化。</small></label
             >
@@ -181,7 +180,7 @@
                 type="email"
                 autocomplete="username"
                 maxlength="254"
-                required
+                required=""
               /><small>作为登录账号使用，无需接入邮件服务。</small></label
             >
             <div class="settings-columns">
@@ -192,23 +191,23 @@
                   autocomplete="new-password"
                   minlength="12"
                   maxlength="128"
-                  required /></label
+                  required="" /></label
               ><label
                 >再次输入密码<input
                   name="confirm"
                   type="password"
                   autocomplete="new-password"
-                  required
+                  required=""
               /></label>
             </div>
             <button type="button" id="setup-next" class="primary wide">下一步 · 设置博客</button>
           </fieldset>
-          <fieldset id="setup-site-step" hidden disabled>
+          <fieldset id="setup-site-step" hidden="" disabled="">
             <legend>给你的博客一个名字</legend>
             <label
-              >博客名称<input name="title" maxlength="300" required placeholder="例如：我的随笔"
+              >博客名称<input name="title" maxlength="300" required="" placeholder="例如：我的随笔"
             /></label>
-            <label>作者名称<input name="author" maxlength="300" required /></label>
+            <label>作者名称<input name="author" maxlength="300" required="" /></label>
             <label
               >一句话介绍<input name="subtitle" maxlength="1000" placeholder="记录生活，也记录思考"
             /></label>
@@ -222,47 +221,18 @@
         </form>
       </div>
     </section>
-    <div id="app-view" class="app" hidden>
-      <header class="workspace-header studio-masthead">
-        <div class="flclash-header-brand-block">
-          <a class="brand flclash-brand" href="#" aria-label="返回工作台">
-            <span class="brand-mark"><img src="/favicon.svg" width="30" height="30" alt="" /></span>
-            <div class="flclash-brand-text">
-              <span class="flclash-admin-title"
-                >CloudInk<span class="studio-title-context"> 写作后台</span></span
-              >
-              <span class="flclash-admin-subtitle">专注写作，随时发布。</span>
-            </div>
-          </a>
-          <span id="site-brand-title" hidden></span>
-        </div>
+    <div id="app-view" class="app" hidden="">
+      <aside class="studio-sidebar" id="studio-sidebar" aria-label="写作空间">
+        <a class="brand" href="#" aria-label="返回文章管理"
+          ><span class="brand-mark"><img src="/favicon.svg" width="24" height="24" alt="" /></span
+          ><span id="site-brand-title">Cloudink</span></a
+        >
         <nav class="studio-nav" aria-label="写作空间导航">
-          <button
-            id="dashboard-nav"
-            title="工作台"
-            data-studio-nav="home"
-            aria-label="工作台"
-            aria-current="page"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m3 10 9-7 9 7v11H3zM9 21v-8h6v8" /></svg
-            ><span data-action-label>工作台</span>
-          </button>
           <button
             id="articles-nav"
             title="所有文章"
             data-studio-nav="articles"
-            aria-label="所有文章"
+            aria-label="文章管理"
           >
             <svg
               width="20"
@@ -276,9 +246,22 @@
               aria-hidden="true"
             >
               <path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6" /></svg
-            ><span data-action-label>所有文章</span><small data-post-count>0</small>
-          </button>
-          <button id="images" title="图片库" data-studio-nav="images" aria-label="图片库">
+            ><span data-action-label>文章管理</span><small data-post-count>0</small></button
+          ><button id="shorts" title="短记" data-studio-nav="shorts" aria-label="短记">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 4h16v14H9l-5 3V4Z M8 9h8M8 13h5" /></svg
+            ><span data-action-label>短记</span></button
+          ><button id="images" title="图片库" data-studio-nav="images" aria-label="图片库">
             <svg
               width="20"
               height="20"
@@ -293,24 +276,8 @@
               <rect x="3" y="3" width="18" height="18" rx="3" />
               <circle cx="8" cy="8" r="1.5" />
               <path d="m3 17 6-5 4 4 4-7 4 6" /></svg
-            ><span data-action-label>图片库</span>
-          </button>
-          <button id="shorts" title="短记" data-studio-nav="shorts" aria-label="短记">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M10 4H4v16h16v-6M8 16l1-4L18 3l3 3-9 9zM16 5l3 3" /></svg
-            ><span data-action-label>短记</span>
-          </button>
-          <button id="settings" title="网站设置" data-studio-nav="settings" aria-label="网站设置">
+            ><span data-action-label>图片库</span></button
+          ><button id="settings" title="网站设置" data-studio-nav="settings" aria-label="网站设置">
             <svg
               width="20"
               height="20"
@@ -329,30 +296,8 @@
             ><span data-action-label>网站设置</span>
           </button>
         </nav>
-        <div class="workspace-actions flclash-header-actions">
-          <button
-            id="studio-menu-toggle"
-            class="shell-icon studio-menu-toggle"
-            type="button"
-            aria-label="打开导航"
-            aria-haspopup="dialog"
-            aria-controls="studio-sheet"
-            aria-expanded="false"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+        <div class="studio-sidebar-bottom">
+          <p>专注写作，清楚管理。<br />保存草稿，确认后发布。</p>
           <a
             id="site-link"
             class="shell-icon studio-site-link"
@@ -373,6 +318,35 @@
               <path d="M14 4h6v6m0-6L10 14M10 4H5v15h15v-5" /></svg
             ><span>查看博客</span></a
           >
+        </div>
+      </aside>
+      <header class="workspace-header studio-masthead">
+        <div class="studio-heading">
+          <button
+            id="editor-back"
+            type="button"
+            class="shell-icon"
+            aria-label="返回文章管理"
+            title="返回文章管理"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 12H4m7-7-7 7 7 7" />
+            </svg>
+          </button>
+          <h1 id="workspace-title">文章管理</h1>
+        </div>
+
+        <div class="workspace-actions flclash-header-actions">
           <button
             type="button"
             class="theme-toggle shell-icon"
@@ -420,218 +394,144 @@
               aria-hidden="true"
             >
               <path d="M14 3H5v18h14V8zM14 3v5h5M8 14h6m-3-3v6" /></svg
-            ><span>新文章</span>
+            ><span>新建文章</span>
           </button>
           <details id="studio-tools" class="studio-tools">
-            <summary class="shell-icon flclash-user-summary" aria-label="更多操作">
-              <span class="flclash-user-avatar">云</span>
-              <span class="flclash-user-label" id="flclash-user-label">云砚</span>
+            <summary class="shell-icon" aria-label="更多操作">
               <svg
-                width="12"
-                height="12"
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
+                fill="currentColor"
+                aria-hidden="true"
               >
-                <path d="m6 9 6 6 6-6" />
+                <circle cx="12" cy="5" r="1.6" />
+                <circle cx="12" cy="12" r="1.6" />
+                <circle cx="12" cy="19" r="1.6" />
               </svg>
             </summary>
             <div class="studio-tools-panel">
               <span class="studio-tools-label">当前账号</span><span id="account-email"></span>
               <button id="import-posts">导入 Markdown</button
-              ><input id="import-files" type="file" accept=".md,.markdown" multiple hidden />
+              ><input id="import-files" type="file" accept=".md,.markdown" multiple="" hidden="" />
               <button id="logout" class="danger">退出登录</button>
             </div>
           </details>
         </div>
+        <div class="editor-toolbar">
+          <div class="toolbar-actions">
+            <button id="save-post">保存草稿</button>
+            <button id="publish-post" class="primary">发布这篇</button>
+          </div>
+        </div>
       </header>
       <main id="workspace" class="workspace" tabindex="-1" aria-labelledby="workspace-title">
-        <h2 id="workspace-title" class="studio-sr-only">工作台</h2>
-        <div id="navigation-status" class="navigation-status" role="status" hidden></div>
-        <div id="publish-banner" class="publish-banner" hidden role="status"></div>
-        <button id="cancel-publish" hidden>取消未完成的发布</button>
-        <div class="template-maintenance" aria-label="网站排版">
-          <p id="template-status" role="status" hidden></p>
-          <button id="publish-welcome" title="只重新生成已发布页面，保留草稿和待发布的网站设置">
-            发布博客首页
-          </button>
-        </div>
-        <section id="home-view" class="home-view flclash-home-view" aria-labelledby="home-heading">
-          <div class="studio-welcome">
-            <div>
-              <span class="workflow-eyebrow">CLOUDINK · 写作空间</span>
-              <h1 id="home-heading">从一个想法开始。</h1>
-              <p>把灵感写下来，让每一篇文字慢慢生长。</p>
+        <div id="navigation-status" class="navigation-status" role="status" hidden=""></div>
+        <div id="publish-banner" class="publish-banner" hidden="" role="status"></div>
+        <button id="cancel-publish" hidden="">取消未完成的发布</button>
+        <div class="maintenance-global" id="maintenance-global"></div>
+        <section id="home-view" class="home-view" aria-labelledby="home-heading">
+          <div class="manage-intro">
+            <h2 id="home-heading">把文章整理清楚。</h2>
+            <p>找到要继续写的内容，检查修改，再决定发布。</p>
+          </div>
+
+          <div class="manage-columns">
+            <div class="manage-main">
+              <div class="manage-toolbar">
+                <div id="article-search-slot">
+                  <div id="article-browser" class="article-browser">
+                    <label class="studio-sr-only" for="search">搜索文章标题、摘要或地址</label>
+                    <input
+                      id="search"
+                      type="search"
+                      class="search"
+                      placeholder="搜索标题、摘要或地址…"
+                      aria-label="搜索文章"
+                    />
+                  </div>
+                </div>
+                <div id="post-filters" class="post-filters" role="group" aria-label="文章筛选">
+                  <button data-post-filter="all" aria-pressed="true">
+                    全部 <span id="sidebar-count-all">0</span></button
+                  ><button data-post-filter="published" aria-pressed="false">
+                    已发布 <span id="sidebar-count-published">0</span></button
+                  ><button data-post-filter="draft" aria-pressed="false">
+                    草稿 <span id="sidebar-count-draft">0</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="manage-caption">
+                <span>标题 / 地址</span><span>状态</span><span>文章日期</span><span>操作</span>
+              </div>
+              <div id="article-grid" class="article-grid"></div>
+              <button id="load-more-posts" type="button" hidden="">加载更多文章</button>
+
+              <div class="manage-footer">
+                <span id="summary"></span><span>保存草稿不会更新公开版本</span
+                ><span id="post-count" hidden="">0</span>
+              </div>
             </div>
-            <img src="/editorial-botanical.webp" width="144" height="160" alt="" />
-          </div>
-          <div class="studio-stats" aria-label="内容概览">
-            <button type="button" class="studio-stat" data-sidebar-filter="all">
-              <span>全部文章</span><strong id="sidebar-count-all">0</strong
-              ><small>所有写下的想法</small>
-            </button>
-            <button type="button" class="studio-stat" data-sidebar-filter="published">
-              <span>已发布</span><strong id="sidebar-count-published">0</strong
-              ><small>与读者分享的文字</small>
-            </button>
-            <button type="button" class="studio-stat" data-sidebar-filter="draft">
-              <span>草稿</span><strong id="sidebar-count-draft">0</strong
-              ><small>留给下一次灵感</small>
-            </button>
-            <button type="button" class="studio-stat" data-studio-shortcut="shorts">
-              <span>短记</span><strong id="sidebar-shorts-count">0</strong
-              ><small>记下此刻的片段</small>
-            </button>
-          </div>
-          <aside class="flclash-sidebar" aria-label="快捷分类与短记">
-            <button id="flclash-sidebar-new-btn" class="flclash-sidebar-new-btn" type="button">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M14 3H5v18h14V8zM14 3v5h5M8 14h6m-3-3v6" />
-              </svg>
-              <span>新建文章</span>
-            </button>
-            <div class="flclash-sidebar-bottom-widget">
-              <div class="sidebar-widget-header">
-                <span class="widget-title">记录短记</span>
-                <button
-                  type="button"
-                  id="flclash-quick-short-btn"
-                  class="sidebar-pen-icon"
-                  aria-label="撰写短记"
-                >
+            <aside class="manage-context" id="manage-context">
+              <section class="selected-post-context">
+                <p class="context-kicker">所选文章</p>
+                <h2 id="selected-post-title">选择一篇文章</h2>
+                <span id="selected-post-status" class="badge"></span>
+                <p id="selected-post-description"></p>
+                <div class="context-actions">
+                  <button id="selected-post-edit" class="primary" disabled="">编辑这篇文章</button
+                  ><a
+                    id="selected-post-public"
+                    class="context-public"
+                    target="_blank"
+                    rel="noopener"
+                    hidden=""
+                    >查看公开版本</a
+                  >
+                </div>
+                <dl>
+                  <div>
+                    <dt>文章日期</dt>
+                    <dd id="selected-post-date">—</dd>
+                  </div>
+                  <div>
+                    <dt>当前内容</dt>
+                    <dd id="selected-post-change">—</dd>
+                  </div>
+                </dl>
+              </section>
+              <div class="template-maintenance" aria-label="网站排版">
+                <h2 class="">
                   <svg
-                    width="20"
-                    height="20"
+                    width="18"
+                    height="18"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
                     aria-hidden="true"
                   >
-                    <path d="m4 16-1 5 5-1L21 7l-4-4zM14 6l4 4" />
-                  </svg>
+                    <path
+                      d="M20 8a8 8 0 0 0-14-3L3 8M3 3v5h5M4 16a8 8 0 0 0 14 3l3-3M16 16h5v5"
+                    /></svg
+                  >网站排版
+                </h2>
+                <p id="template-status" role="status" hidden=""></p>
+                <button
+                  id="publish-welcome"
+                  title="只重新生成已发布页面，保留草稿和待发布的网站设置"
+                >
+                  发布博客首页
                 </button>
+                <p class="maintenance-help">
+                  模板有更新时，重新生成已经发布的页面。草稿和待发布设置保持私有。
+                </p>
               </div>
-              <p class="sidebar-short-snippet" id="sidebar-short-preview">
-                从这里随时记录此刻想法与简短日志…
-              </p>
-              <button type="button" id="flclash-goto-shorts-link" class="sidebar-more-shorts">
-                查看全部短记 →
-              </button>
-            </div>
-          </aside>
-          <div class="flclash-admin-main-column">
-            <h1 id="posts-title" hidden>所有文章</h1>
-            <div id="article-search-slot">
-              <div id="article-browser" class="article-browser">
-                <label class="studio-sr-only" for="search">搜索文章标题、摘要或地址</label>
-                <input
-                  id="search"
-                  type="search"
-                  class="search"
-                  placeholder="搜索你的文章…"
-                  aria-label="搜索文章"
-                />
-                <details id="post-switcher" class="post-switcher">
-                  <summary>
-                    切换文章
-                    <span aria-hidden="true"
-                      ><svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="m6 9 6 6 6-6" /></svg
-                    ></span>
-                  </summary>
-                  <div class="post-list-panel">
-                    <p>打开一篇文章</p>
-                    <div id="post-list" class="post-list"></div>
-                    <button id="load-more-switcher" type="button" hidden>加载更多文章</button>
-                  </div>
-                </details>
-              </div>
-            </div>
-            <div class="section-heading dashboard-heading">
-              <div>
-                <h2>我的文章 <span id="post-count" class="muted">0</span></h2>
-                <span id="summary" class="muted"></span>
-              </div>
-              <div id="post-filters" class="post-filters" role="group" aria-label="文章筛选">
-                <button data-post-filter="all" aria-pressed="true">全部</button
-                ><button data-post-filter="draft" aria-pressed="false">草稿</button
-                ><button data-post-filter="published" aria-pressed="false">已发布</button>
-              </div>
-            </div>
-            <div id="article-grid" class="article-grid"></div>
-            <button id="load-more-posts" type="button" hidden>加载更多文章</button>
-            <div class="dashboard-tips">
-              <section class="dashboard-tip">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="4" />
-                  <circle cx="8" cy="8" r="1.5" />
-                  <path d="m3 17 6-5 4 3 4-6 4 5" />
-                </svg>
-                <div>
-                  <h3>让文字，也有画面</h3>
-                  <p>整理图片，收藏下一篇文章的灵感。</p>
-                  <button data-studio-shortcut="images" class="quiet">打开图片库 →</button>
-                </div>
-              </section>
-              <section class="dashboard-tip">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M6 3h8l4 4v14H6Z" />
-                  <path d="M14 3v5h4M9 12h6m-6 4h5" />
-                </svg>
-                <div>
-                  <h3>写下的，都好好留着</h3>
-                  <p>整理网站信息，也为文字留一份备份。</p>
-                  <button data-studio-shortcut="settings" class="quiet">网站设置与备份 →</button>
-                </div>
-              </section>
-            </div>
+            </aside>
           </div>
         </section>
-        <section id="images-view" class="images-view" aria-labelledby="library-title" hidden>
+        <section id="images-view" class="images-view" aria-labelledby="library-title" hidden="">
           <div class="section-heading">
             <div>
               <span class="workflow-eyebrow">你的创作素材</span>
@@ -644,16 +544,16 @@
               </p>
             </div>
             <div class="form-actions">
-              <button id="image-library-back" hidden>返回当前文章</button>
+              <button id="image-library-back" hidden="">返回当前文章</button>
               <button id="image-library-refresh">刷新</button>
-              <button id="image-library-reindex" hidden>更新引用索引</button>
+              <button id="image-library-reindex" hidden="">更新引用索引</button>
               <button id="image-library-upload" class="primary">上传图片</button>
               <input
                 id="image-library-files"
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                multiple
-                hidden
+                multiple=""
+                hidden=""
               />
             </div>
           </div>
@@ -683,14 +583,14 @@
             >
             <div class="toolbar-actions">
               <button id="image-library-optimize">扫描并优化</button>
-              <button id="image-library-pause" hidden>完成当前图片后暂停</button>
+              <button id="image-library-pause" hidden="">完成当前图片后暂停</button>
               <button id="image-library-republish">更新已发布文章的图片</button>
             </div>
             <progress
               id="image-optimize-progress"
               value="0"
               max="1"
-              hidden
+              hidden=""
               aria-label="图片优化进度"
             ></progress>
             <p id="image-optimize-status" class="muted" role="status" aria-live="polite"></p>
@@ -700,13 +600,13 @@
             </p>
           </details>
           <p id="image-library-status" class="muted" role="status" aria-live="polite"></p>
-          <p id="image-library-warning" class="error" role="alert" hidden></p>
+          <p id="image-library-warning" class="error" role="alert" hidden=""></p>
           <div id="image-library-grid" class="image-library-grid" aria-busy="false"></div>
-          <div id="image-library-empty" class="workflow-empty" hidden></div>
-          <button id="image-library-retry" hidden>重新加载图片库</button>
-          <button id="image-library-more" hidden>加载更多图片</button>
+          <div id="image-library-empty" class="workflow-empty" hidden=""></div>
+          <button id="image-library-retry" hidden="">重新加载图片库</button>
+          <button id="image-library-more" hidden="">加载更多图片</button>
         </section>
-        <section id="shorts-view" class="shorts-view" aria-labelledby="shorts-title" hidden>
+        <section id="shorts-view" class="shorts-view" aria-labelledby="shorts-title" hidden="">
           <div class="section-heading">
             <div>
               <span class="workflow-eyebrow">即时想法</span>
@@ -717,7 +617,7 @@
               <button id="short-new" class="primary">写短记</button>
             </div>
           </div>
-          <div id="short-editor" class="short-editor" hidden>
+          <div id="short-editor" class="short-editor" hidden="">
             <label
               >发布时间<input
                 id="short-date"
@@ -741,36 +641,10 @@
             </div>
           </div>
           <div id="short-list" class="short-list"></div>
-          <div id="short-empty" class="workflow-empty" hidden>还没有短记，写第一条吧。</div>
+          <div id="short-empty" class="workflow-empty" hidden="">还没有短记，写第一条吧。</div>
         </section>
-        <div class="editor-toolbar">
-          <div class="editor-save-status">
-            <span class="status-dot" aria-hidden="true"></span
-            ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
-            <button
-              type="button"
-              id="open-draft-history"
-              class="quiet"
-              title="查看本地版本快照与历史恢复"
-              aria-label="本地草稿版本历史"
-              style="
-                font-size: 12px;
-                margin-left: 8px;
-                padding: 2px 6px;
-                border-radius: 4px;
-                border: 1px solid var(--line);
-              "
-            >
-              历史快照
-            </button>
-          </div>
-          <div id="editor-search-slot"></div>
-          <div class="toolbar-actions">
-            <button id="save-post">保存草稿</button>
-            <button id="publish-post" class="primary">发布这篇</button>
-          </div>
-        </div>
-        <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden>
+
+        <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden="">
           <div class="editor-document">
             <label class="editor-field-label" for="title">文章标题</label>
             <input
@@ -789,353 +663,395 @@
               maxlength="2000"
               rows="2"
             ></textarea>
-            <details class="post-details">
-              <summary>
-                文章日期和地址
-                <span aria-hidden="true"
-                  ><svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
+            <div class="editor-save-status">
+              <span class="status-dot" aria-hidden="true"></span
+              ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
+              <button
+                type="button"
+                id="open-draft-history"
+                class="quiet"
+                title="查看本地版本快照与历史恢复"
+                aria-label="本地草稿版本历史"
+                style="
+                  font-size: 12px;
+                  margin-left: 8px;
+                  padding: 2px 6px;
+                  border-radius: 4px;
+                  border: 1px solid var(--line);
+                "
+              >
+                历史快照
+              </button>
+            </div>
+          </div>
+
+          <div class="editor-workspace">
+            <div class="editor-surface">
+              <div class="pane-heading">
+                <div class="editor-view-switch" role="group" aria-label="编辑视图">
+                  <button
+                    id="show-writing"
+                    class="tab"
+                    aria-pressed="false"
+                    aria-controls="editor-panes"
                   >
-                    <path d="m6 9 6 6 6-6" /></svg
-                ></span>
-              </summary>
-              <div class="details-fields">
-                <label>日期<input id="date" type="date" /></label>
-                <div class="post-address-field">
-                  <label for="slug">文章地址</label>
+                    写作
+                  </button>
+                  <button
+                    id="show-split"
+                    class="tab active"
+                    aria-pressed="true"
+                    aria-controls="editor-panes"
+                  >
+                    分栏
+                  </button>
+                  <button
+                    id="show-preview"
+                    class="tab"
+                    aria-pressed="false"
+                    aria-controls="editor-panes"
+                  >
+                    预览
+                  </button>
+                  <button class="editor-info-toggle" id="editor-info-toggle" type="button">
+                    文章信息
+                  </button>
+                </div>
+                <div class="editor-format-actions" role="toolbar" aria-label="Markdown 格式工具栏">
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="bold"
+                    title="加粗 (Ctrl+B)"
+                    aria-label="加粗"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M6 4h7a4 4 0 0 1 0 8H6m0 0h8a4 4 0 0 1 0 8H6V4" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="italic"
+                    title="斜体 (Ctrl+I)"
+                    aria-label="斜体"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M10 4h9M5 20h9M15 4 9 20" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="heading"
+                    title="标题 H2-H4"
+                    aria-label="标题"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 4v16M18 4v16M5 12h13" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="quote"
+                    title="引用"
+                    aria-label="引用"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M4 5h6v7H4zM10 12c0 4-2 6-5 7M14 5h6v7h-6zM20 12c0 4-2 6-5 7" />
+                    </svg>
+                  </button>
+                  <span class="tool-sep" aria-hidden="true"></span>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="code"
+                    title="行内代码/代码块"
+                    aria-label="代码"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m7 6-5 6 5 6m10-12 5 6-5 6M14 4l-4 16" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="link"
+                    title="超链接 (Ctrl+K)"
+                    aria-label="超链接"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 3 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"
+                        transform="translate(1 1)"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="ul"
+                    title="无序列表"
+                    aria-label="无序列表"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M9 6h12M9 12h12M9 18h12" />
+                      <circle cx="3.5" cy="6" r=".75" fill="currentColor" />
+                      <circle cx="3.5" cy="12" r=".75" fill="currentColor" />
+                      <circle cx="3.5" cy="18" r=".75" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="ol"
+                    title="有序列表"
+                    aria-label="有序列表"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M10 5h11M10 12h11M10 19h11M3 3h1v4m-1 3c3-2 4 1 1 2l-1 1h3m-3 4h2l-1 2c3 0 2 3-1 2"
+                      />
+                    </svg>
+                  </button>
+                  <span class="tool-sep" aria-hidden="true"></span>
+                  <button
+                    type="button"
+                    class="quiet tool-btn"
+                    data-format="zen"
+                    id="toggle-zen"
+                    aria-pressed="false"
+                    title="进入专注写作"
+                    aria-label="进入专注写作"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="editor-image-actions">
+                  <button
+                    id="choose-library-image"
+                    class="quiet"
+                    aria-label="图片库"
+                    title="图片库"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <circle cx="8" cy="8" r="1.5" />
+                      <path d="m3 17 6-5 4 4 4-7 4 6" /></svg
+                    ><span data-action-label>图片库</span>
+                  </button>
+                  <button id="upload-image" class="quiet" aria-label="上传图片" title="上传图片">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" /></svg
+                    ><span data-action-label>上传图片</span>
+                  </button>
                   <input
-                    id="slug"
-                    pattern="[A-Za-z0-9_-]+"
-                    maxlength="100"
-                    aria-describedby="post-address-hint"
+                    id="image-files"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                    multiple=""
+                    hidden=""
                   />
-                  <small id="post-address-hint">首次保存前可直接编辑；保存后点击“修改地址”。</small>
-                  <button id="change-post-address" type="button" class="quiet">修改地址</button>
                 </div>
               </div>
-              <button id="download-post" class="quiet">下载原稿</button>
-            </details>
-          </div>
-          <div class="pane-heading">
-            <div class="editor-view-switch" role="group" aria-label="编辑视图">
-              <button
-                id="show-writing"
-                class="tab"
-                aria-pressed="false"
-                aria-controls="editor-panes"
-              >
-                写作
-              </button>
-              <button
-                id="show-split"
-                class="tab active"
-                aria-pressed="true"
-                aria-controls="editor-panes"
-              >
-                分栏
-              </button>
-              <button
-                id="show-preview"
-                class="tab"
-                aria-pressed="false"
-                aria-controls="editor-panes"
-              >
-                预览
-              </button>
-            </div>
-            <div class="editor-format-actions" role="toolbar" aria-label="Markdown 格式工具栏">
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="bold"
-                title="加粗 (Ctrl+B)"
-                aria-label="加粗"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M6 4h7a4 4 0 0 1 0 8H6m0 0h8a4 4 0 0 1 0 8H6V4" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="italic"
-                title="斜体 (Ctrl+I)"
-                aria-label="斜体"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M10 4h9M5 20h9M15 4 9 20" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="heading"
-                title="标题 H2-H4"
-                aria-label="标题"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 4v16M18 4v16M5 12h13" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="quote"
-                title="引用"
-                aria-label="引用"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4 5h6v7H4zM10 12c0 4-2 6-5 7M14 5h6v7h-6zM20 12c0 4-2 6-5 7" />
-                </svg>
-              </button>
-              <span class="tool-sep" aria-hidden="true"></span>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="code"
-                title="行内代码/代码块"
-                aria-label="代码"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="m7 6-5 6 5 6m10-12 5 6-5 6M14 4l-4 16" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="link"
-                title="超链接 (Ctrl+K)"
-                aria-label="超链接"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 3 1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"
-                    transform="translate(1 1)"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="ul"
-                title="无序列表"
-                aria-label="无序列表"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M9 6h12M9 12h12M9 18h12" />
-                  <circle cx="3.5" cy="6" r=".75" fill="currentColor" />
-                  <circle cx="3.5" cy="12" r=".75" fill="currentColor" />
-                  <circle cx="3.5" cy="18" r=".75" fill="currentColor" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="ol"
-                title="有序列表"
-                aria-label="有序列表"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M10 5h11M10 12h11M10 19h11M3 3h1v4m-1 3c3-2 4 1 1 2l-1 1h3m-3 4h2l-1 2c3 0 2 3-1 2"
-                  />
-                </svg>
-              </button>
-              <span class="tool-sep" aria-hidden="true"></span>
-              <button
-                type="button"
-                class="quiet tool-btn"
-                data-format="zen"
-                id="toggle-zen"
-                aria-pressed="false"
-                title="进入专注写作"
-                aria-label="进入专注写作"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
-                </svg>
-              </button>
-            </div>
-            <div class="editor-image-actions">
-              <button id="choose-library-image" class="quiet" aria-label="图片库" title="图片库">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="3" />
-                  <circle cx="8" cy="8" r="1.5" />
-                  <path d="m3 17 6-5 4 4 4-7 4 6" /></svg
-                ><span data-action-label>图片库</span>
-              </button>
-              <button id="upload-image" class="quiet" aria-label="上传图片" title="上传图片">
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" /></svg
-                ><span data-action-label>上传图片</span>
-              </button>
-              <input
-                id="image-files"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-                multiple
-                hidden
-              />
-            </div>
-          </div>
-          <div id="editor-panes" class="editor-panes">
-            <textarea
-              id="body"
-              class="markdown-input"
-              spellcheck="false"
-              placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。"
-              aria-label="Markdown 正文"
-              aria-describedby="writing-help"
-            ></textarea>
-            <div
-              id="editor-splitter"
-              class="editor-splitter"
-              role="separator"
-              aria-orientation="vertical"
-              title="拖动调整分栏比例"
-            ></div>
-            <div class="preview-pane">
-              <iframe
-                id="preview-frame"
-                title="文章发布效果预览"
-                sandbox="allow-same-origin"
-              ></iframe>
-              <div id="preview-loading" class="preview-loading" role="status">
-                正在加载 Rust 预览引擎…
+              <div id="editor-panes" class="editor-panes">
+                <textarea
+                  id="body"
+                  class="markdown-input"
+                  spellcheck="false"
+                  placeholder="从这里开始写作… 支持 Markdown、代码和数学公式。也可以直接粘贴图片。"
+                  aria-label="Markdown 正文"
+                  aria-describedby="writing-help"
+                ></textarea>
+                <div
+                  id="editor-splitter"
+                  class="editor-splitter"
+                  role="separator"
+                  aria-orientation="vertical"
+                  title="拖动调整分栏比例"
+                ></div>
+                <div class="preview-pane">
+                  <iframe
+                    id="preview-frame"
+                    title="文章发布效果预览"
+                    sandbox="allow-same-origin"
+                  ></iframe>
+                  <div id="preview-loading" class="preview-loading" role="status">
+                    正在加载 Rust 预览引擎…
+                  </div>
+                </div>
+              </div>
+              <div class="editor-footer">
+                <span id="word-count" class="muted"></span>
+                <span id="writing-help">Markdown · 支持粘贴与拖入图片</span>
               </div>
             </div>
-          </div>
-          <div class="editor-footer">
-            <span id="word-count" class="muted"></span>
-            <span id="writing-help">Markdown · 支持粘贴与拖入图片</span>
-          </div>
-          <div class="editor-danger-zone">
-            <p>保存草稿仅保存原稿；点击发布，读者才会看到更新。</p>
-            <div>
-              <button id="unpublish-post" class="quiet danger">取消发布</button
-              ><button id="delete-post" class="quiet danger">删除草稿</button>
-            </div>
+            <aside class="editor-information" id="editor-information">
+              <details class="post-details" open="">
+                <summary>
+                  文章日期和地址
+                  <span aria-hidden="true"
+                    ><svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6" /></svg
+                  ></span>
+                </summary>
+                <div class="details-fields">
+                  <label>日期<input id="date" type="date" /></label>
+                  <div class="post-address-field">
+                    <label for="slug">文章地址</label>
+                    <input
+                      id="slug"
+                      pattern="[A-Za-z0-9_-]+"
+                      maxlength="100"
+                      aria-describedby="post-address-hint"
+                    />
+                    <small id="post-address-hint"
+                      >首次保存前可直接编辑；保存后点击“修改地址”。</small
+                    >
+                    <button id="change-post-address" type="button" class="quiet">修改地址</button>
+                  </div>
+                </div>
+                <button id="download-post" class="quiet">下载原稿</button>
+              </details>
+              <div class="editor-danger-zone">
+                <p>保存草稿仅保存原稿；点击发布，读者才会看到更新。</p>
+                <div>
+                  <button id="unpublish-post" class="quiet danger">取消发布</button
+                  ><button id="delete-post" class="quiet danger">删除草稿</button>
+                </div>
+              </div>
+            </aside>
           </div>
         </section>
-        <section id="settings-view" class="settings-view" aria-labelledby="settings-title" hidden>
+        <section
+          id="settings-view"
+          class="settings-view"
+          aria-labelledby="settings-title"
+          hidden=""
+        >
           <div class="workflow-heading">
             <span class="workflow-eyebrow">属于你的文字角落</span>
             <h1 id="settings-title">网站设置</h1>
@@ -1156,10 +1072,10 @@
                   </div>
                 </div>
                 <p class="muted">保存后仍需点击发布，线上网站才会更新。</p>
-                <label>网站标题<input name="title" required maxlength="300" /></label
+                <label>网站标题<input name="title" required="" maxlength="300" /></label
                 ><label>首页大标题<input name="bigTitle" maxlength="300" /></label
                 ><label>首页副标题<input name="subtitle" maxlength="1000" /></label
-                ><label>作者<input name="author" required maxlength="300" /></label
+                ><label>作者<input name="author" required="" maxlength="300" /></label
                 ><label
                   >网站描述<textarea name="description" maxlength="2000" rows="3"></textarea>
                 </label>
@@ -1189,7 +1105,7 @@
                       id="site-icon-file"
                       type="file"
                       accept=".svg,.ico,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
-                      hidden
+                      hidden=""
                     />
                     <p id="site-icon-help">
                       支持 SVG / ICO，最多 256 KB。SVG
@@ -1221,7 +1137,7 @@
                       type="hidden"
                       value=""
                     />
-                    <div id="home-illustration-custom" hidden>
+                    <div id="home-illustration-custom" hidden="">
                       <label for="home-illustration-choices">图片库中的图片</label>
                       <select id="home-illustration-choices">
                         <option value="">选择图片库中的图片</option>
@@ -1232,7 +1148,7 @@
                         id="home-illustration-file"
                         type="file"
                         accept=".svg,image/svg+xml"
-                        hidden
+                        hidden=""
                       />
                       <p>SVG 最多 256 KB，上传时校验；普通图片请先在图片库上传，然后在这里选择。</p>
                     </div>
@@ -1242,7 +1158,7 @@
                       height="210"
                       alt="首页插画预览"
                       style="object-fit: contain; max-width: 100%"
-                      hidden
+                      hidden=""
                     />
                     <p id="home-illustration-status" role="status" class="operation-feedback"></p>
                   </div>
@@ -1278,7 +1194,7 @@
                           name="themePalette"
                           value="brown"
                           aria-label="暖棕 Brown"
-                          checked
+                          checked=""
                         />
                         <span
                           class="palette-swatch"
@@ -1323,6 +1239,15 @@
                   <p id="palette-help">
                     保存后应用到后台和预览；发布网站信息后，公开网页统一更新主题色。
                   </p>
+                  <label for="reading-font"
+                    >阅读字体<select id="reading-font" name="readingFont">
+                      <option value="serif" selected>经典衬线（默认）</option>
+                      <option value="sans">简洁无衬线</option>
+                    </select></label
+                  >
+                  <p>
+                    用于文章标题和正文，导航与后台保持无衬线字体。保存后应用到文章预览，发布网站信息后更新公开网页。
+                  </p>
                   <label
                     >本机明暗模式<select data-theme-mode>
                       <option value="auto">跟随系统</option>
@@ -1331,7 +1256,7 @@
                     </select></label
                   >
                   <p>明暗模式只影响本机后台。公开网站跟随系统，不会强制跟随后台。</p>
-                  <label data-effects-control hidden
+                  <label data-effects-control hidden=""
                     >本机视觉效果<select data-effects-mode>
                       <option value="auto">自动</option>
                       <option value="off">简洁（不透明）</option>
@@ -1379,7 +1304,7 @@
                   class="operation-feedback"
                   role="status"
                   aria-live="polite"
-                  hidden
+                  hidden=""
                 ></p>
               </form>
               <form id="account-form" class="settings-card" aria-labelledby="account-form-title">
@@ -1397,14 +1322,14 @@
                     type="email"
                     maxlength="254"
                     autocomplete="username"
-                    required /></label
+                    required="" /></label
                 ><label
                   >当前密码<input
                     name="current_password"
                     type="password"
                     maxlength="128"
                     autocomplete="current-password"
-                    required
+                    required=""
                 /></label>
                 <div class="settings-columns">
                   <label
@@ -1428,7 +1353,7 @@
                   class="operation-feedback"
                   role="status"
                   aria-live="polite"
-                  hidden
+                  hidden=""
                 ></p>
               </form>
               <section id="backup-card" class="settings-card" aria-labelledby="backup-title">
@@ -1447,7 +1372,7 @@
                   <button id="download-backup">下载网站备份</button
                   ><button id="cancel-backup" type="button">取消未完成任务</button>
                   <button id="restore-backup">从备份恢复</button
-                  ><input id="backup-file" type="file" accept=".zip" hidden />
+                  ><input id="backup-file" type="file" accept=".zip" hidden="" />
                 </div>
                 <p class="muted">
                   恢复为草稿与待发布设置，不修改登录账号或当前线上版本；检查后再发布。相同内容会跳过，不覆盖已有的不同原稿。
@@ -1486,7 +1411,7 @@
                   </div>
                 </dl>
                 <p class="muted">
-                  自定义域名在 Cloudflare 的 Domains & Routes 中绑定。程序更新由 GitHub 与
+                  自定义域名在 Cloudflare 的 Domains &amp; Routes 中绑定。程序更新由 GitHub 与
                   Cloudflare Builds 管理，网站设置会保留。
                 </p>
                 <a
@@ -1501,6 +1426,13 @@
         </section>
       </main>
     </div>
+    <dialog class="editor-info-dialog" id="editor-info-dialog" aria-labelledby="editor-info-title">
+      <div class="editor-info-heading">
+        <h2 id="editor-info-title">文章信息</h2>
+        <button type="button" id="editor-info-close" aria-label="关闭文章信息">完成</button>
+      </div>
+      <div id="editor-info-content"></div>
+    </dialog>
     <dialog
       data-sheet="compact"
       id="image-preview-dialog"
@@ -1516,14 +1448,13 @@
     <dialog
       id="studio-sheet"
       class="studio-sheet"
-      data-sheet="list"
+      data-sheet="compact"
       aria-labelledby="studio-sheet-title"
     >
       <div class="studio-sheet-heading">
-        <h2 id="studio-sheet-title">选择文章</h2>
+        <h2 id="studio-sheet-title">更多操作</h2>
         <button id="studio-sheet-close" type="button" aria-label="关闭菜单">关闭</button>
       </div>
-      <div id="studio-sheet-search" class="studio-sheet-search"></div>
       <div id="studio-sheet-content"></div>
     </dialog>
     <dialog
@@ -1538,7 +1469,7 @@
         <h2 id="confirmation-title">继续操作？</h2>
         <p id="confirmation-message"></p>
         <div class="form-actions">
-          <button id="confirmation-cancel" value="cancel" autofocus>暂不操作</button
+          <button id="confirmation-cancel" value="cancel" autofocus="">暂不操作</button
           ><button id="confirmation-accept" value="confirm" class="primary">继续</button>
         </div>
       </form>
@@ -1560,7 +1491,7 @@
           name="slug"
           pattern="[A-Za-z0-9_-]+"
           maxlength="100"
-          required
+          required=""
           autocomplete="off"
           autocapitalize="off"
           spellcheck="false"
@@ -1574,7 +1505,7 @@
           class="operation-feedback"
           role="status"
           aria-live="polite"
-          hidden
+          hidden=""
         ></p>
         <div class="form-actions">
           <button id="post-address-close" type="button">取消</button>

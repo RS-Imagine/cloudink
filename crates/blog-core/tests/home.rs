@@ -21,7 +21,7 @@ fn post(slug: &str, title: &str, draft: bool) -> Post {
 }
 
 #[test]
-fn home_keeps_each_published_url_once_and_features_first_visible_post() {
+fn home_shows_each_published_post_once_and_features_first_visible_post() {
     let html = render::render_index(
         &SiteConfig::default(),
         &[
@@ -32,7 +32,7 @@ fn home_keeps_each_published_url_once_and_features_first_visible_post() {
         "test",
     );
     assert!(!html.contains("/posts/private/"));
-    assert_eq!(html.matches("href=\"/posts/first/\"").count(), 1);
+    assert_eq!(html.matches("href=\"/posts/first/\"").count(), 2);
     assert_eq!(html.matches("href=\"/posts/next/\"").count(), 1);
     assert_eq!(html.matches("post-card home-card home-feature").count(), 1);
     assert!(html.find("/posts/first/").unwrap() < html.find("/posts/next/").unwrap());
@@ -50,7 +50,7 @@ fn empty_home_and_disabled_about_are_complete_without_fake_content() {
     assert!(!html.contains("篇文章"));
     assert!(!html.contains("home-feature-art"));
     assert!(!html.contains("href=\"/about/\""));
-    assert!(html.contains("<details class=\"reader-menu\""));
+    assert!(html.contains("class=\"reader-dock\""));
     assert!(html.contains("href=\"#swup\""));
 }
 
@@ -91,10 +91,10 @@ fn home_escapes_author_text_and_uses_configured_title_without_html_injection() {
 fn navigation_state_is_present_in_ssr_on_every_page_kind() {
     let site = SiteConfig::default();
     let home = render::render_index(&site, &[], "test");
-    assert!(home.contains("data-reader-nav=\"posts\" aria-current=\"page\""));
+    assert!(home.contains("data-reader-nav=\"home\" aria-current=\"page\""));
     let article = render::render_post(&site, &post("safe", "Post", false), "test");
     assert!(article.contains("data-page=\"post\""));
-    assert!(!article.contains("data-reader-nav=\"posts\" aria-current="));
+    assert!(article.contains("data-reader-nav=\"posts\" aria-current=\"page\""));
     let about = render::render_page(
         &site,
         &Page {
@@ -114,7 +114,7 @@ fn navigation_state_is_present_in_ssr_on_every_page_kind() {
         assert!(!html.contains("class=\"reader-preferences\""));
         assert!(!html.contains("<select data-theme-mode"));
         assert!(!html.contains("<select data-effects-mode"));
-        assert!(!html.contains("id=\"theme-toggle-btn\""));
+        assert!(html.contains("data-reader-theme"));
     }
 }
 
@@ -124,7 +124,7 @@ fn home_illustrations_are_optional_and_only_use_managed_sources() {
     assert!(!render::render_index(&site, &[], "test").contains("class=\"home-illustration\""));
     site.home_illustration = Some("default".into());
     let default = render::render_index(&site, &[], "test");
-    assert!(default.contains("home-hero has-illustration"));
+    assert!(default.contains("class=\"story-art\""));
     assert!(default.contains("class=\"home-illustration\""));
     for key in [
         "https://example.com/image.svg",
@@ -153,13 +153,13 @@ fn home_thumbnail_uses_managed_images_and_a_non_tabbable_duplicate_link() {
         "sizes=\"(max-width: 759px) calc(100vw - 48px), ",
         "(max-width: 1199px) 36vw, 400px\""
     )));
-    assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 2);
+    assert_eq!(html.matches("href=\"/posts/illustrated/\"").count(), 3);
     assert!(html.contains(concat!(
         "<h2><a href=\"/posts/illustrated/\">",
         "An illustrated note</a></h2>"
     )));
     assert!(html.contains(concat!(
-        "<a href=\"/posts/illustrated/\" class=\"home-card-art-link\" ",
+        "<a class=\"feature-cover\" href=\"/posts/illustrated/\" ",
         "aria-hidden=\"true\" tabindex=\"-1\">"
     )));
     for body in [
@@ -174,7 +174,7 @@ fn home_thumbnail_uses_managed_images_and_a_non_tabbable_duplicate_link() {
         let plain = render::render_index(&SiteConfig::default(), &[article.clone()], "test");
         assert!(!plain.contains("class=\"home-thumbnail\""));
         assert!(!plain.contains("class=\"home-card-art-link\""));
-        assert_eq!(plain.matches("href=\"/posts/illustrated/\"").count(), 1);
+        assert_eq!(plain.matches("href=\"/posts/illustrated/\"").count(), 2);
     }
 }
 
@@ -227,7 +227,7 @@ fn home_links_to_archive_when_posts_exist() {
     );
     assert!(html.contains("href=\"/archive/\""));
     let empty = render::render_index(&SiteConfig::default(), &[], "test");
-    assert!(!empty.contains("href=\"/archive/\""));
+    assert!(empty.contains("href=\"/archive/\""));
 }
 
 #[test]
@@ -242,7 +242,31 @@ fn all_drafts_show_the_empty_home_without_an_archive_link() {
     );
     assert!(html.contains("home-empty"));
     assert!(!html.contains("home-archive-link"));
-    assert!(!html.contains("/archive/"));
+    assert!(html.contains("/archive/"));
     assert!(!html.contains("/posts/one/"));
     assert!(!html.contains("Private two"));
+}
+
+#[test]
+fn public_views_have_persistent_reading_columns_and_never_link_to_the_admin() {
+    let site = SiteConfig::default();
+    for html in [
+        render::render_index(&site, &[], "test"),
+        render::render_post(&site, &post("safe", "Post", false), "test"),
+        render::render_archive(&site, &[], "test"),
+        render::render_shorts(&site, &[], "test"),
+        render::render_404(&site, "test"),
+    ] {
+        for id in [
+            "primary-nav",
+            "reader-center",
+            "reader-context",
+            "reader-center-content",
+            "reader-context-content",
+        ] {
+            assert!(html.contains(&format!("id=\"{id}\"")));
+        }
+        assert!(!html.contains("href=\"/admin"));
+        assert!(!html.contains("写作后台"));
+    }
 }

@@ -77,6 +77,7 @@ await build({
   minify: true,
 });
 const paths = [
+  ['/writing-illustration.svg', '../assets/writing-illustration.svg', 'image/svg+xml'],
   ['/backup.js', 'ui/backup.generated.js', 'text/javascript; charset=utf-8'],
   ['/publication.js', 'ui/publication.generated.js', 'text/javascript; charset=utf-8'],
   ['/post-address.js', 'ui/post-address.generated.js', 'text/javascript; charset=utf-8'],

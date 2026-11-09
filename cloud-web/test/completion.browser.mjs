@@ -111,7 +111,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
 
   await page.bringToFront();
   // Keyboard navigation through a card must enter the new work area, not a hidden card.
-  const card = page.locator('.article-card').first();
+  const card = page.locator('.article-title-button').first();
   await card.focus();
   await card.press('Enter');
   await expect(page.locator('#editor-view')).toBeVisible();
@@ -119,6 +119,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
   const text = await page.locator('#body').inputValue();
   await page.locator('#body').evaluate((node) => node.setSelectionRange(1, 4));
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('#show-split').click();
   await expect(page.locator('#show-split')).toHaveAttribute('aria-pressed', 'true');
   const article = page.frameLocator('#preview-frame').locator('article');
   await expect(article).toBeVisible();
@@ -153,7 +154,7 @@ export async function verifyCompletion(browser, origin, output, engine) {
   await page.locator('#show-split').focus();
   await page.setViewportSize({ width: 360, height: 844 });
   await expect(page.locator('#show-writing')).toBeFocused();
-  await navigateStudio(page, 'dashboard-nav');
+  await navigateStudio(page, 'articles-nav');
   await expect(page.locator('#home-view')).toBeFocused();
   await page.locator('#studio-tools summary').click();
   await page.locator('#logout').click();

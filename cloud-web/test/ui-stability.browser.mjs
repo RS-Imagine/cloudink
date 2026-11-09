@@ -179,7 +179,7 @@ export async function verifyUiStability(browser, origin, output, engine) {
     await expect(page.locator('#image-library-grid')).toHaveAttribute('aria-busy', 'false');
     await expect(page.locator('.image-actions .danger').first()).toBeEnabled();
 
-    await navigateStudio(page, 'dashboard-nav');
+    await navigateStudio(page, 'articles-nav');
     await page.locator('#new-post').click();
     await page.locator('#title').fill('UI stability ' + engine);
     await page.locator('#body').fill('Keep this draft and its cursor.');
