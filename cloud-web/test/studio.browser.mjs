@@ -42,6 +42,18 @@ export async function verifyStudio(browser, origin, output, engine) {
       );
       for (const id of ['articles-nav', 'shorts', 'images', 'settings'])
         await expect(page.locator('#' + id)).toBeVisible();
+      const themeToggle = page.locator('#studio-theme-toggle');
+      await expect(themeToggle).toBeVisible();
+      const target = await themeToggle.boundingBox();
+      assert(target.width >= 44 && target.height >= 44);
+      const previousTheme = await page.locator('html').getAttribute('data-theme');
+      await themeToggle.click();
+      await expect(page.locator('html')).toHaveAttribute(
+        'data-theme',
+        previousTheme === 'light' ? 'dark' : 'light',
+      );
+      await themeToggle.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', previousTheme);
       await expect(page.locator('#publish-welcome')).toBeVisible();
       await expect(page.locator('.manage-intro #publish-welcome')).toHaveCount(1);
       for (const id of ['images', 'shorts']) {
@@ -53,6 +65,11 @@ export async function verifyStudio(browser, origin, output, engine) {
       await navigateStudio(page, 'articles-nav');
       await expect(page.locator('#publish-welcome')).toBeVisible();
     }
+    await page.locator('#studio-theme-toggle').click();
+    await page.reload();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.locator('#studio-theme-toggle').click();
     await page.locator('#new-post').click();
     await expect(page.locator('#publishing-summary')).toBeHidden();
     await expect(page.locator('#publish-welcome')).toBeHidden();

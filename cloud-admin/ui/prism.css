@@ -188,6 +188,13 @@ html[data-cloudink-admin] {
   border-radius: 50%;
   background: var(--ci-surface);
 }
+#studio-theme-toggle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
+}
 .studio-masthead .shell-new {
   padding: 9px 16px;
   min-height: 40px;
@@ -1098,9 +1105,6 @@ html[data-cloudink-admin] {
   .studio-masthead .shell-new svg {
     width: 15px;
     height: 15px;
-  }
-  .studio-masthead .workspace-actions > .theme-toggle {
-    display: none;
   }
   .studio-masthead .workspace-actions > #studio-tools > .shell-icon {
     width: 36px;
