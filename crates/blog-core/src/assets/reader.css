@@ -580,10 +580,22 @@
   --reader-font-family: var(--ci-font-ui);
 }
 .reader-shell .article-shell .article-headline h1,
+.reader-shell .article-shell .article-deck,
 .reader-shell .article-body,
-.reader-shell .article-body :is(h2, h3, h4),
+.reader-shell :is(.article-body, .short-body) :is(h1, h2, h3, h4, h5, h6),
 .reader-shell .reader-page article > h1,
 .reader-shell .featured-article h2,
-.reader-shell .blog-post h3 {
+.reader-shell .feature-summary,
+.reader-shell .blog-post h3,
+.reader-shell .blog-post .post-copy > p,
+.reader-shell .archive-group a,
+.reader-shell .short-body,
+.reader-shell .blog-note p,
+.reader-shell .reader-welcome h1,
+.reader-shell .author-intro,
+.reader-shell .author-sub,
+.reader-shell .search-result-title,
+.reader-shell .search-result-excerpt,
+.reader-shell .related-story > span {
   font-family: var(--reader-font-family);
 }

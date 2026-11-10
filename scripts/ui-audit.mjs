@@ -37,6 +37,7 @@ import { verifyStudio, openArticleList } from '../cloud-web/test/studio.browser.
 import { verifyReader } from '../cloud-web/test/reader.browser.mjs';
 import { verifyHome } from '../cloud-web/test/home.browser.mjs';
 import { verifyReaderLayout } from '../cloud-web/test/reader-layout.browser.mjs';
+import { verifyReaderTypography } from '../cloud-web/test/reader-typography.browser.mjs';
 import { verifyMotion } from '../cloud-web/test/motion.browser.mjs';
 import { verifyMarkdownImport } from '../cloud-web/test/import.browser.mjs';
 import { verifyThemes } from '../cloud-web/test/theme.browser.mjs';
@@ -470,6 +471,7 @@ try {
     await verifyWorkflows(localBrowser, origin, output, engine);
     await verifyHome(localBrowser, origin, output, engine);
     await verifyReaderLayout(localBrowser, origin, output, engine);
+    await verifyReaderTypography(localBrowser, origin, output, engine);
     await verifyReader(localBrowser, origin, output, engine);
     await verifyMobile(localBrowser, origin, output, engine);
     await verifyRelease(localBrowser, origin, output, engine);

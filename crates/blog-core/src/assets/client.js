@@ -784,6 +784,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const palette = getComputedStyle(document.documentElement);
         const readingFont =
+          palette.getPropertyValue('--reader-font-family').trim() ||
           palette.getPropertyValue('--ci-font-reading').trim() ||
           "'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', serif";
         const uiFont =
