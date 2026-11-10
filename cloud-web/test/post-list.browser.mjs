@@ -115,7 +115,17 @@ export async function verifyPostList(browser, origin) {
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,
       );
-      await page.evaluate(() => scrollTo(0, 0));
+      // Back navigation restores again on the next frame; reset only after it settles.
+      await page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            requestAnimationFrame(() => {
+              scrollTo({ top: 0, behavior: 'instant' });
+              requestAnimationFrame(resolve);
+            });
+          }),
+      );
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
       const reloaded = await page.reload();
       assert.equal(
         ((await reloaded.text()).match(/class="post-card blog-post"/g) || []).length,
