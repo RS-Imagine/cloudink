@@ -145,6 +145,27 @@ async function verifyContentWidths(context, page, origin, output, engine, slug) 
         );
       }
       if (kind === 'mixed') {
+        const avatar = page.locator('.article-metadata .author-avatar');
+        for (const initial of ['Q', '云']) {
+          const offset = await avatar.evaluate((node, value) => {
+            node.textContent = value;
+            const box = node.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const text = range.getBoundingClientRect();
+            return {
+              x: Math.abs(text.left + text.width / 2 - (box.left + box.width / 2)),
+              y: Math.abs(text.top + text.height / 2 - (box.top + box.height / 2)),
+            };
+          }, initial);
+          assert.ok(
+            offset.x <= 1 && offset.y <= 3,
+            engine + '/' + width + ': author initial must be centered: ' + JSON.stringify(offset),
+          );
+        }
+        await avatar.evaluate((node) => {
+          node.textContent = 'Q';
+        });
         for (const font of ['serif', 'sans']) {
           await page.evaluate((value) => {
             document.documentElement.dataset.readingFont = value;

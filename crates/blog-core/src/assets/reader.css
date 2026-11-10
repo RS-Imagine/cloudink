@@ -47,12 +47,6 @@
   color: var(--muted);
   font-size: 11px;
 }
-.article-metadata > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .article-body-text {
   font-size: 17px;
   line-height: 1.95;
