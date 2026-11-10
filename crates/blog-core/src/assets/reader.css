@@ -182,6 +182,7 @@
 .reader-shell .article-shell {
   padding: 0;
   display: block;
+  min-width: 0;
 }
 .reader-shell .article-shell article {
   max-width: none;
