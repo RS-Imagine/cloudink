@@ -17,14 +17,6 @@
   :root[data-effects='glass'] .mobile-toc-btn:hover {
     border-color: var(--ci-outline);
   }
-  :root[data-effects='glass'] .reader-header {
-    background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
-    box-shadow:
-      inset 0 1px 0 var(--ci-glass-highlight),
-      var(--ci-shadow-floating);
-    -webkit-backdrop-filter: blur(var(--ci-glass-blur));
-    backdrop-filter: blur(var(--ci-glass-blur));
-  }
   @media (min-width: 760px) {
     :root[data-effects='glass'] #studio-tools[open] > .studio-tools-panel {
       background: color-mix(in srgb, var(--ci-elevated) var(--ci-glass-opacity), transparent);
