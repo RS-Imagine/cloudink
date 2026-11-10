@@ -111,6 +111,15 @@ export async function verifyPostList(browser, origin) {
       await page.goBack();
       await expect(page.locator('.post-index-list > li')).toHaveCount(68);
       await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(lastPosition - 100);
+      for (const backLink of ['.article-back-row .article-back', '.article-end .back-link']) {
+        const listPosition = await page.evaluate(() => scrollY);
+        await page.locator('.post-index-list h2 a').last().click();
+        await expect(page.locator('.article-body')).toBeVisible();
+        await page.locator(backLink).click();
+        await expect(page).toHaveURL(origin + '/post/');
+        await expect(page.locator('.post-index-list > li')).toHaveCount(68);
+        await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(listPosition - 100);
+      }
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,

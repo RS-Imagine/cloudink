@@ -1397,8 +1397,12 @@ document.addEventListener('DOMContentLoaded', () => {
       let position = null;
       if (visit.history.popstate) {
         position = positions.get(currentIndex) || pathPositions.get(location.pathname);
-      } else if (location.pathname === '/' || location.pathname === '') {
-        position = pathPositions.get('/');
+      } else if (
+        location.pathname === '/' ||
+        location.pathname === '' ||
+        /^\/post\/(?:page\/[1-9]\d*\/)?$/.test(location.pathname)
+      ) {
+        position = pathPositions.get(location.pathname || '/');
       }
       if (!visit.history.popstate && !position) positions.delete(currentIndex);
       const restore = () => {
