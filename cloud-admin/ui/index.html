@@ -348,6 +348,7 @@
 
         <div class="workspace-actions flclash-header-actions">
           <button
+            id="studio-theme-toggle"
             type="button"
             class="theme-toggle shell-icon"
             data-theme-toggle
@@ -427,13 +428,28 @@
       </header>
       <main id="workspace" class="workspace" tabindex="-1" aria-labelledby="workspace-title">
         <div id="navigation-status" class="navigation-status" role="status" hidden=""></div>
-        <div id="publish-banner" class="publish-banner" hidden="" role="status"></div>
-        <button id="cancel-publish" hidden="">取消未完成的发布</button>
-        <div class="maintenance-global" id="maintenance-global"></div>
         <section id="home-view" class="home-view" aria-labelledby="home-heading">
           <div class="manage-intro">
-            <h2 id="home-heading">把文章整理清楚。</h2>
-            <p>找到要继续写的内容，检查修改，再决定发布。</p>
+            <div class="intro-copy">
+              <h2 id="home-heading">把文章整理清楚。</h2>
+              <p>找到要继续写的内容，检查修改，再决定发布。</p>
+            </div>
+            <div id="manage-maintenance-slot" class="maintenance-slot">
+              <div id="publishing-summary" class="publishing-summary">
+                <div id="publish-banner" class="publish-banner" hidden="" role="status"></div>
+                <button id="cancel-publish" hidden="">取消未完成的发布</button>
+                <div class="template-maintenance" aria-label="网站排版">
+                  <p id="template-status" role="status" hidden=""></p>
+                  <button
+                    id="publish-welcome"
+                    aria-describedby="template-status"
+                    title="只重新生成已发布页面，保留草稿和待发布的网站设置"
+                  >
+                    发布博客首页
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="manage-columns">
@@ -501,33 +517,6 @@
                   </div>
                 </dl>
               </section>
-              <div class="template-maintenance" aria-label="网站排版">
-                <h2 class="">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20 8a8 8 0 0 0-14-3L3 8M3 3v5h5M4 16a8 8 0 0 0 14 3l3-3M16 16h5v5"
-                    /></svg
-                  >网站排版
-                </h2>
-                <p id="template-status" role="status" hidden=""></p>
-                <button
-                  id="publish-welcome"
-                  title="只重新生成已发布页面，保留草稿和待发布的网站设置"
-                >
-                  发布博客首页
-                </button>
-                <p class="maintenance-help">
-                  模板有更新时，重新生成已经发布的页面。草稿和待发布设置保持私有。
-                </p>
-              </div>
             </aside>
           </div>
         </section>
@@ -1052,10 +1041,13 @@
           aria-labelledby="settings-title"
           hidden=""
         >
-          <div class="workflow-heading">
-            <span class="workflow-eyebrow">属于你的文字角落</span>
-            <h1 id="settings-title">网站设置</h1>
-            <p>整理博客的外观、账号与备份，让写作更安心。</p>
+          <div class="workflow-heading settings-intro">
+            <div class="intro-copy">
+              <span class="workflow-eyebrow">属于你的文字角落</span>
+              <h1 id="settings-title">网站设置</h1>
+              <p>整理博客的外观、账号与备份，让写作更安心。</p>
+            </div>
+            <div id="settings-maintenance-slot" class="maintenance-slot"></div>
           </div>
           <div class="settings-layout">
             <nav class="settings-nav" aria-label="设置分类">
@@ -1246,7 +1238,7 @@
                     </select></label
                   >
                   <p>
-                    用于文章标题和正文，导航与后台保持无衬线字体。保存后应用到文章预览，发布网站信息后更新公开网页。
+                    用于前台的内容标题、正文和摘要，包括文章列表、归档、短记及关于页面；导航与后台保持无衬线字体。保存后应用到文章预览，发布网站信息后更新公开网页。
                   </p>
                   <label
                     >本机明暗模式<select data-theme-mode>

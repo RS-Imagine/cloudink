@@ -18,11 +18,12 @@ export function mountStudioShell() {
   const information = document.getElementById('editor-information');
   const metadataHome = document.createComment('article information');
   information.before(metadataHome);
-  const maintenance = document.querySelector('.template-maintenance');
+  const maintenance = document.getElementById('publishing-summary');
   function placeMaintenance() {
-    const list = ['home', 'posts'].includes(document.getElementById('app-view').dataset.view);
+    const view = document.getElementById('app-view').dataset.view;
+    maintenance.hidden = !['home', 'posts', 'settings'].includes(view);
     document
-      .getElementById(list && !compact.matches ? 'manage-context' : 'maintenance-global')
+      .getElementById(view === 'settings' ? 'settings-maintenance-slot' : 'manage-maintenance-slot')
       .append(maintenance);
   }
   function restoreMetadata() {
@@ -46,7 +47,6 @@ export function mountStudioShell() {
   compact.addEventListener('change', () => {
     if (metadataDialog.open) metadataDialog.close();
     restoreMetadata();
-    placeMaintenance();
   });
   let presented = null;
   function restore(focus = true) {

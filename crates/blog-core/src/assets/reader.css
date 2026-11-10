@@ -47,12 +47,6 @@
   color: var(--muted);
   font-size: 11px;
 }
-.article-metadata > span:first-child {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .article-body-text {
   font-size: 17px;
   line-height: 1.95;
@@ -182,6 +176,7 @@
 .reader-shell .article-shell {
   padding: 0;
   display: block;
+  min-width: 0;
 }
 .reader-shell .article-shell article {
   max-width: none;
@@ -297,6 +292,57 @@
   box-shadow: none;
   display: grid;
   gap: 4px;
+}
+@media (min-width: 1024px) and (min-height: 640px) {
+  .reader-shell:has([data-page='post']) #reader-context {
+    /* Leave room for the 80px page header and the bottom margin before sticking. */
+    display: block;
+    height: calc(100dvh - 104px);
+    max-height: none;
+    overflow: visible;
+  }
+  .reader-shell:has([data-page='post']) #reader-context-content {
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr) auto minmax(112px, 0.65fr);
+  }
+  .reader-shell :is(.article-toc-panel, .related-panel) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .reader-shell :is(.article-toc-panel, .related-panel) > h2,
+  .reader-shell .reading-progress-widget {
+    flex: none;
+  }
+  .reader-shell .article-toc-panel .reader-toc-slot {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .reader-shell .article-toc-panel .toc-container {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    scrollbar-width: thin;
+  }
+  .reader-shell #related-stories {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
+  }
+  .reader-shell .article-info-panel dd {
+    min-width: 0;
+    max-width: 70%;
+    overflow-wrap: anywhere;
+  }
+}
+@media (min-width: 1024px) and (max-height: 639px) {
+  .reader-shell:has([data-page='post']) #reader-context {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
 }
 .reader-shell .toc-container .toc-title,
 .reader-shell .toc-container .toc-close {
@@ -534,10 +580,22 @@
   --reader-font-family: var(--ci-font-ui);
 }
 .reader-shell .article-shell .article-headline h1,
+.reader-shell .article-shell .article-deck,
 .reader-shell .article-body,
-.reader-shell .article-body :is(h2, h3, h4),
+.reader-shell :is(.article-body, .short-body) :is(h1, h2, h3, h4, h5, h6),
 .reader-shell .reader-page article > h1,
 .reader-shell .featured-article h2,
-.reader-shell .blog-post h3 {
+.reader-shell .feature-summary,
+.reader-shell .blog-post h3,
+.reader-shell .blog-post .post-copy > p,
+.reader-shell .archive-group a,
+.reader-shell .short-body,
+.reader-shell .blog-note p,
+.reader-shell .reader-welcome h1,
+.reader-shell .author-intro,
+.reader-shell .author-sub,
+.reader-shell .search-result-title,
+.reader-shell .search-result-excerpt,
+.reader-shell .related-story > span {
   font-family: var(--reader-font-family);
 }

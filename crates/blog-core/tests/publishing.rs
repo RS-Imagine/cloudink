@@ -161,6 +161,7 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
         "404.html",
         "about/index.html",
         "archive/index.html",
+        "post/index.html",
         "posts/visible/index.html",
         "search_index.json",
         "site.json",
@@ -175,6 +176,7 @@ fn browser_release_matches_native_pages_and_excludes_drafts() {
         );
     }
     assert!(!files.contains_key("posts/private/index.html"));
+    assert!(!files["post/index.html"].contains("/posts/private/"));
     assert!(!files["search_index.json"].contains("private"));
     let mut invalid = bundle;
     invalid["markdown_posts"]["visible"] = invalid["markdown_posts"]["private"].clone();
@@ -255,6 +257,13 @@ fn selective_release_pages_match_full_render_and_omit_unaffected_pages() {
         "markdown_posts": {"selected": source}
     });
     let full = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    release["render_paths"] = serde_json::json!(["post/index.html", "_release.json"]);
+    let listing = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    assert_eq!(listing.len(), 2);
+    assert_eq!(listing["post/index.html"], full["post/index.html"]);
+    assert!(listing["post/index.html"].contains("/posts/selected/"));
+    release["render_paths"] = serde_json::json!(["post/page/2/index.html"]);
+    assert!(blog_core::bundle::render_release(&release.to_string()).is_err());
     release["render_paths"] = serde_json::json!(["posts/selected/index.html", "_release.json"]);
     let selected = blog_core::bundle::render_release(&release.to_string()).unwrap();
     assert_eq!(selected.len(), 2);
@@ -268,4 +277,31 @@ fn selective_release_pages_match_full_render_and_omit_unaffected_pages() {
     assert_eq!(marker.len(), 1);
     release["render_paths"] = serde_json::json!(["../private"]);
     assert!(blog_core::bundle::render_release(&release.to_string()).is_err());
+}
+
+#[test]
+fn article_batch_pages_match_native_output_and_remove_obsolete_batches() {
+    let p = temp();
+    let input = p.join("content");
+    let output = p.join("public");
+    let mut sources = serde_json::Map::new();
+    for i in 0..21 {
+        let slug = format!("batch-{i:02}");
+        let path = content::save_post(&input, &draft(&slug, false)).unwrap();
+        sources.insert(slug, fs::read_to_string(path).unwrap().into());
+    }
+    build_site(&input, &output).unwrap();
+    let release = serde_json::json!({"schema_version":1,"id":"batches","created_at":"2026-11-09","site":SiteConfig::default(),"markdown_posts":sources});
+    let files = blog_core::bundle::render_release(&release.to_string()).unwrap();
+    for path in [
+        "post/index.html",
+        "post/page/2/index.html",
+        "post/page/3/index.html",
+    ] {
+        assert_eq!(files[path], fs::read_to_string(output.join(path)).unwrap());
+    }
+    content::save_post(&input, &draft("batch-20", true)).unwrap();
+    build_site(&input, &output).unwrap();
+    assert!(!output.join("post/page/3").exists());
+    fs::remove_dir_all(p).unwrap();
 }

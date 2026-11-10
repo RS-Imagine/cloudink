@@ -94,6 +94,38 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
         render::render_index_with_shorts(&config, &posts, &shorts, &css_hash),
     )?;
 
+    // Complete article list.
+    let post_list_dir = output_root.join("post");
+    fs::create_dir_all(&post_list_dir)?;
+    write_if_changed(
+        post_list_dir.join("index.html"),
+        render::render_posts(&config, &posts, &css_hash),
+    )?;
+    let list_pages = posts.len().div_ceil(render::POSTS_PER_PAGE).max(1);
+    let page_root = post_list_dir.join("page");
+    if page_root.exists() {
+        for entry in fs::read_dir(&page_root)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir()
+                && entry
+                    .file_name()
+                    .to_str()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .is_some_and(|page| page > list_pages)
+            {
+                fs::remove_dir_all(entry.path())?;
+            }
+        }
+    }
+    for number in 2..=list_pages {
+        let dir = page_root.join(number.to_string());
+        fs::create_dir_all(&dir)?;
+        write_if_changed(
+            dir.join("index.html"),
+            render::render_posts_page(&config, &posts, &css_hash, number),
+        )?;
+    }
+
     // Archive page.
     let archive_dir = output_root.join("archive");
     fs::create_dir_all(&archive_dir)?;

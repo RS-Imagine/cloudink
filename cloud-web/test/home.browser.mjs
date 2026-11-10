@@ -95,6 +95,34 @@ export async function verifyHome(browser, origin, output, engine) {
     await page.locator('#theme-toggle-btn').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.screenshot({ path: resolve(output, 'v4-home-' + engine + '-320-dark.png') });
+    // Both navigation surfaces open a real, complete list, including direct reloads.
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(origin + '/');
+      const navigation = page.locator(width >= 768 ? '.reader-side-nav' : '.reader-dock');
+      await navigation.locator('[data-reader-nav="posts"]').click();
+      await expect(page).toHaveURL(origin + '/post/');
+      await expect(page.locator('.post-index')).toBeVisible();
+      await expect(navigation.locator('[data-reader-nav="posts"]')).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+      await expect(page.locator('.post-index-list h2 a')).toHaveCount(Math.min(10, index.length));
+      const last = page.locator('.post-index-list h2 a').last();
+      await last.scrollIntoViewIfNeeded();
+      await expect(last).toBeInViewport();
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+      );
+      await page.reload();
+      await expect(page.locator('.post-index-list h2 a')).toHaveCount(Math.min(10, index.length));
+      await page.locator('.post-index-list h2 a').first().click();
+      await expect(page.locator('.article-body')).toBeVisible();
+      await page.locator('.article-back').click();
+      await expect(page).toHaveURL(origin + '/post/');
+      await expect(page.locator('.post-index-list h2 a')).toHaveCount(Math.min(10, index.length));
+    }
     assert.deepEqual(errors, []);
   } finally {
     await context.close();
@@ -106,7 +134,9 @@ export async function verifyHome(browser, origin, output, engine) {
   try {
     const page = await native.newPage();
     await page.goto(origin + '/');
-    await page.locator('.home-feature h2 a').click();
+    await page.locator('.reader-dock [data-reader-nav="posts"]').click();
+    await expect(page).toHaveURL(origin + '/post/');
+    await page.locator('.post-index-list h2 a').first().click();
     await expect(page.locator('.article-body')).toBeVisible();
     assert.equal(await page.locator('a[href^="/admin"]').count(), 0);
   } finally {

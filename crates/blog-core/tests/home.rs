@@ -38,7 +38,7 @@ fn home_shows_each_published_post_once_and_features_first_visible_post() {
     assert!(html.find("/posts/first/").unwrap() < html.find("/posts/next/").unwrap());
     assert!(!html.contains("篇文章"));
     assert_eq!(html.matches("<h1").count(), 1);
-    assert!(html.contains("href=\"/#posts\""));
+    assert!(html.contains("href=\"/post/\""));
 }
 
 #[test]
@@ -253,6 +253,7 @@ fn public_views_have_persistent_reading_columns_and_never_link_to_the_admin() {
     for html in [
         render::render_index(&site, &[], "test"),
         render::render_post(&site, &post("safe", "Post", false), "test"),
+        render::render_posts(&site, &[], "test"),
         render::render_archive(&site, &[], "test"),
         render::render_shorts(&site, &[], "test"),
         render::render_404(&site, "test"),
@@ -269,4 +270,53 @@ fn public_views_have_persistent_reading_columns_and_never_link_to_the_admin() {
         assert!(!html.contains("href=\"/admin"));
         assert!(!html.contains("写作后台"));
     }
+}
+
+#[test]
+fn article_list_contains_all_published_titles_in_date_order_and_escapes_text() {
+    let mut articles: Vec<_> = (0..68)
+        .map(|i| post(&format!("article-{i:02}"), &format!("文章 {i}"), false))
+        .collect();
+    articles[0].front_matter.date = "2026-11-09".into();
+    articles[0].front_matter.title = "<script>Title & text</script>".into();
+    articles.push(post("private", "Private title", true));
+    let home = render::render_index(&SiteConfig::default(), &articles, "test");
+    assert_eq!(home.matches("post-card home-card").count(), 10);
+    let html = render::render_posts(&SiteConfig::default(), &articles, "test");
+    assert_eq!(html.matches("class=\"post-card blog-post\"").count(), 10);
+    assert!(html.contains("href=\"/post/page/2/\""));
+    assert!(html.contains("共 68 篇"));
+    assert!(html.contains("href=\"/posts/article-67/\""));
+    assert!(html.contains("&lt;script&gt;Title &amp; text&lt;/script&gt;"));
+    assert!(!html.contains("Private title"));
+    assert!(!html.contains("/posts/private/"));
+    assert!(html.find("/posts/article-00/").unwrap() < html.find("/posts/article-67/").unwrap());
+    assert!(html.contains("data-reader-nav=\"posts\" aria-current=\"page\""));
+    assert!(!html.contains("/#posts"));
+    assert_eq!(html.matches("<h1").count(), 1);
+    let pages: Vec<_> = (1..=7)
+        .map(|page| render::render_posts_page(&SiteConfig::default(), &articles, "test", page))
+        .collect();
+    assert_eq!(
+        pages
+            .iter()
+            .map(|p| p.matches("class=\"post-card blog-post\"").count())
+            .sum::<usize>(),
+        68
+    );
+    for article in &articles[..68] {
+        let target = format!("href=\"/posts/{}/\"", article.slug());
+        assert_eq!(
+            pages
+                .iter()
+                .map(|page| page.matches(&target).count())
+                .sum::<usize>(),
+            1
+        );
+    }
+    assert_eq!(pages[6].matches("class=\"post-card blog-post\"").count(), 8);
+    assert!(!pages[6].contains("id=\"post-list-next\""));
+    let empty = render::render_posts(&SiteConfig::default(), &[], "test");
+    assert!(empty.contains("还没有发布的文章"));
+    assert!(!empty.contains("class=\"post-card blog-post\""));
 }

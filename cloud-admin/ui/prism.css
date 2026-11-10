@@ -188,6 +188,13 @@ html[data-cloudink-admin] {
   border-radius: 50%;
   background: var(--ci-surface);
 }
+#studio-theme-toggle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  flex: none;
+}
 .studio-masthead .shell-new {
   padding: 9px 16px;
   min-height: 40px;
@@ -214,6 +221,41 @@ html[data-cloudink-admin] {
 }
 .manage-intro {
   margin: 0 3px 24px;
+}
+.manage-intro,
+.settings-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.intro-copy {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.maintenance-slot {
+  min-width: 0;
+  max-width: 100%;
+}
+.publishing-summary:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.publishing-summary #publish-banner {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.publishing-summary #publish-banner[data-tone='success'] {
+  display: none;
 }
 .manage-intro h2 {
   font: 700 22px/1.5 var(--ci-font-ui);
@@ -451,8 +493,7 @@ html[data-cloudink-admin] {
   top: 100px;
   min-width: 0;
 }
-.selected-post-context,
-.manage-context .template-maintenance {
+.selected-post-context {
   padding: 24px;
   border: 0;
   border-radius: 30px;
@@ -519,19 +560,15 @@ html[data-cloudink-admin] {
   text-align: right;
 }
 .template-maintenance {
-  display: grid;
-  gap: 14px;
-  align-items: start;
-  margin: 0;
-}
-.template-maintenance h2 {
   display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 9px;
-  font-size: 14px;
+  flex-wrap: wrap;
   margin: 0;
 }
 .template-maintenance p {
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0;
   font-size: 11px;
   line-height: 1.9;
@@ -544,26 +581,7 @@ html[data-cloudink-admin] {
   border-radius: 18px;
   padding: 10px 12px;
   min-height: 40px;
-}
-.maintenance-global:not(:empty) {
-  margin: 0 0 20px;
-}
-.maintenance-global .template-maintenance {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 20px;
-  background: var(--ci-surface);
-}
-.maintenance-global .template-maintenance #template-status {
-  flex: 1;
-  font-size: 11px;
-}
-.maintenance-global .template-maintenance h2,
-.maintenance-global .maintenance-help {
-  display: none;
+  flex: none;
 }
 .editor-toolbar {
   display: none;
@@ -1088,9 +1106,6 @@ html[data-cloudink-admin] {
     width: 15px;
     height: 15px;
   }
-  .studio-masthead .workspace-actions > .theme-toggle {
-    display: none;
-  }
   .studio-masthead .workspace-actions > #studio-tools > .shell-icon {
     width: 36px;
     height: 36px;
@@ -1108,7 +1123,6 @@ html[data-cloudink-admin] {
   }
   .manage-intro p {
     font-size: 12px;
-    max-width: 24ch;
   }
   .manage-toolbar {
     display: grid;
@@ -1168,19 +1182,6 @@ html[data-cloudink-admin] {
   }
   .manage-footer > span:last-of-type {
     display: none;
-  }
-  .maintenance-global .template-maintenance {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-  .maintenance-global .template-maintenance #template-status {
-    flex-basis: 100%;
-    font-size: 10px;
-  }
-  .maintenance-global .template-maintenance button {
-    min-height: 36px;
-    font-size: 11px;
-    padding: 8px 12px;
   }
   #app-view[data-view='editor'] {
     padding-bottom: 0;
@@ -1384,14 +1385,6 @@ html[data-cloudink-admin] {
 .selected-post-context button {
   box-shadow: none;
 }
-.maintenance-global .template-maintenance {
-  background: transparent;
-  padding: 0;
-  justify-content: flex-end;
-}
-.maintenance-global .template-maintenance #template-status {
-  flex: initial;
-}
 @media (max-width: 767px) {
   .studio-masthead {
     flex-direction: row;
@@ -1401,9 +1394,6 @@ html[data-cloudink-admin] {
   .editor-view-switch button {
     min-height: 44px;
     min-width: 58px;
-  }
-  .maintenance-global .template-maintenance #template-status {
-    flex-basis: auto;
   }
   .manage-intro {
     margin-top: 0;

@@ -40,6 +40,7 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
                 matches!(
                     path.as_str(),
                     "index.html"
+                        | "post/index.html"
                         | "archive/index.html"
                         | "shorts/index.html"
                         | "404.html"
@@ -52,13 +53,24 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
                         | "site.json"
                         | "_release.json"
                         | "about/index.html"
-                ) || post_slug.is_some_and(|slug| release.markdown_posts.contains_key(slug)),
+                ) || post_slug.is_some_and(|slug| release.markdown_posts.contains_key(slug))
+                    || path
+                        .strip_prefix("post/page/")
+                        .and_then(|s| s.strip_suffix("/index.html"))
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .is_some_and(|page| page >= 2
+                            && path.as_str() == format!("post/page/{page}/index.html")),
                 "Unknown render path"
             );
         }
     }
-    let aggregates =
-        wants("index.html") || wants("archive/index.html") || wants("search_index.json");
+    let aggregates = wants("index.html")
+        || wants("post/index.html")
+        || paths
+            .as_ref()
+            .is_some_and(|paths| paths.iter().any(|p| p.starts_with("post/page/")))
+        || wants("archive/index.html")
+        || wants("search_index.json");
     let mut posts = Vec::new();
     for (slug, source) in &release.markdown_posts {
         if !aggregates && !wants(&format!("posts/{slug}/index.html")) {
@@ -79,6 +91,18 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             .cmp(a.updated().unwrap_or(a.date()))
             .then_with(|| b.slug().cmp(a.slug()))
     });
+    let post_pages = posts.len().div_ceil(render::POSTS_PER_PAGE).max(1);
+    if let Some(paths) = &paths {
+        for path in paths.iter().filter(|p| p.starts_with("post/page/")) {
+            let number = path
+                .strip_prefix("post/page/")
+                .unwrap()
+                .strip_suffix("/index.html")
+                .unwrap()
+                .parse::<usize>()?;
+            ensure!(number <= post_pages, "Unknown article list page");
+        }
+    }
     let css_hash = content_hash(render::stylesheet());
     let mut files = BTreeMap::new();
     if wants("styles.css") {
@@ -123,6 +147,21 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             "archive/index.html".into(),
             render::render_archive(&release.site, &posts, &css_hash),
         );
+    }
+    if wants("post/index.html") {
+        files.insert(
+            "post/index.html".into(),
+            render::render_posts(&release.site, &posts, &css_hash),
+        );
+    }
+    for number in 2..=post_pages {
+        let path = format!("post/page/{number}/index.html");
+        if wants(&path) {
+            files.insert(
+                path,
+                render::render_posts_page(&release.site, &posts, &css_hash, number),
+            );
+        }
     }
     if wants("404.html") {
         files.insert(

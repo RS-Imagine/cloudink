@@ -42,9 +42,37 @@ export async function verifyStudio(browser, origin, output, engine) {
       );
       for (const id of ['articles-nav', 'shorts', 'images', 'settings'])
         await expect(page.locator('#' + id)).toBeVisible();
+      const themeToggle = page.locator('#studio-theme-toggle');
+      await expect(themeToggle).toBeVisible();
+      const target = await themeToggle.boundingBox();
+      assert(target.width >= 44 && target.height >= 44);
+      const previousTheme = await page.locator('html').getAttribute('data-theme');
+      await themeToggle.click();
+      await expect(page.locator('html')).toHaveAttribute(
+        'data-theme',
+        previousTheme === 'light' ? 'dark' : 'light',
+      );
+      await themeToggle.click();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', previousTheme);
+      await expect(page.locator('#publish-welcome')).toBeVisible();
+      await expect(page.locator('.manage-intro #publish-welcome')).toHaveCount(1);
+      for (const id of ['images', 'shorts']) {
+        await navigateStudio(page, id);
+        await expect(page.locator('#' + id + '-view')).toBeVisible();
+        await expect(page.locator('#publishing-summary')).toBeHidden();
+        await expect(page.locator('#publish-welcome')).toBeHidden();
+      }
+      await navigateStudio(page, 'articles-nav');
       await expect(page.locator('#publish-welcome')).toBeVisible();
     }
+    await page.locator('#studio-theme-toggle').click();
+    await page.reload();
+    await expect(page.locator('#home-view')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.locator('#studio-theme-toggle').click();
     await page.locator('#new-post').click();
+    await expect(page.locator('#publishing-summary')).toBeHidden();
+    await expect(page.locator('#publish-welcome')).toBeHidden();
     await expect(page.locator('#show-writing')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.studio-nav')).toBeHidden();
     await page.locator('#title').fill('V4 private draft ' + engine);
@@ -82,12 +110,14 @@ export async function verifyStudio(browser, origin, output, engine) {
       .click();
     await expect(page.locator('#body')).toHaveValue(before);
     await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator('#publish-welcome')).toBeHidden();
     await page.screenshot({ path: resolve(output, 'v4-editor-' + engine + '-1440.png') });
     await page.locator('#delete-post').click();
     await acceptConfirmation(page);
     await expect(page.locator('#home-view')).toBeVisible();
     await navigateStudio(page, 'settings');
     await expect(page.locator('#publish-welcome')).toBeVisible();
+    await expect(page.locator('.settings-intro #publish-welcome')).toHaveCount(1);
     const font = page.locator('#reading-font');
     const originalFont = await font.inputValue();
     await font.selectOption('sans');

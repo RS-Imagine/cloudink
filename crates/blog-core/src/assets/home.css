@@ -1126,6 +1126,49 @@
 .reader-shell .blog-post:not(:last-child) {
   border-bottom: 1px solid var(--line);
 }
+.post-index .blog-section-heading h1 {
+  font: 700 24px/1.5 var(--ci-font-ui);
+}
+.post-index-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+.post-index-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.post-index-list > li:not(:last-child) {
+  border-bottom: 1px solid var(--line);
+}
+.reader-shell .post-index h2 {
+  margin: 0 0 12px;
+  font: 600 20px/1.65 var(--reader-font-family);
+  overflow-wrap: anywhere;
+}
+.post-index-empty {
+  padding-block: 28px;
+  color: var(--muted);
+}
+.post-index-pagination {
+  padding: 22px 0 12px;
+  border-top: 1px solid var(--line);
+  overflow-anchor: none;
+}
+.post-index-pagination p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.post-index-pagination > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.post-index-pagination .plain-button {
+  min-height: 44px;
+}
 .reader-shell .story-meta {
   column-gap: 14px;
   row-gap: 6px;
@@ -1147,6 +1190,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.reader-shell .home-thumbnail img,
+.reader-shell .home-illustration img {
+  object-fit: contain;
 }
 .author-avatar {
   display: inline-grid;
