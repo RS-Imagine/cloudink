@@ -336,12 +336,17 @@
           page = { url: url.pathname + url.search, html: await response.text() };
         }
         const doc = new DOMParser().parseFromString(page.html, 'text/html');
-        if (
-          !doc.getElementById('swup') ||
-          !swup.options.containers.every((selector) => doc.querySelector(selector))
-        ) {
+        if (!doc.getElementById('swup')) {
           if (pending === visit && !current.signal.aborted) native();
           return;
+        }
+        if (!swup.options.containers.every((selector) => doc.querySelector(selector))) {
+          if (document.getElementById('swup')) {
+            visit.containers = ['#swup'];
+          } else {
+            if (pending === visit && !current.signal.aborted) native();
+            return;
+          }
         }
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');

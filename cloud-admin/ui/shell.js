@@ -1,9 +1,11 @@
 // Responsive presentation only; data navigation still uses the guarded app handlers.
 export function mountStudioShell() {
-  const disclosures = ['studio-tools'].map((id) => document.getElementById(id));
-  const dialog = document.getElementById('studio-sheet');
+  const $ = (id) => document.getElementById(id);
+  const motion = window.CloudInkMotion;
+  const disclosures = ['studio-tools'].map($);
+  const dialog = $('studio-sheet');
   const narrow = matchMedia('(max-width:767px)');
-  const siteLink = document.getElementById('site-link');
+  const siteLink = $('site-link');
   const siteHome = document.createComment('public site link');
   siteLink.before(siteHome);
   function placeSiteLink() {
@@ -14,35 +16,32 @@ export function mountStudioShell() {
   placeSiteLink();
   const compact = matchMedia('(max-width:1149px)');
   const metadata = document.querySelector('.post-details');
-  const metadataDialog = document.getElementById('editor-info-dialog');
-  const information = document.getElementById('editor-information');
+  const metadataDialog = $('editor-info-dialog');
+  const information = $('editor-information');
   const metadataHome = document.createComment('article information');
   information.before(metadataHome);
-  const maintenance = document.getElementById('publishing-summary');
+  const maintenance = $('publishing-summary');
   function placeMaintenance() {
-    const view = document.getElementById('app-view').dataset.view;
+    const view = $('app-view').dataset.view;
     maintenance.hidden = !['home', 'posts', 'settings'].includes(view);
-    document
-      .getElementById(view === 'settings' ? 'settings-maintenance-slot' : 'manage-maintenance-slot')
-      .append(maintenance);
+    $(view === 'settings' ? 'settings-maintenance-slot' : 'manage-maintenance-slot').append(
+      maintenance,
+    );
   }
   function restoreMetadata() {
     metadataHome.after(information);
     metadata.open = true;
   }
-  document.getElementById('editor-info-toggle').addEventListener('click', () => {
+  $('editor-info-toggle').addEventListener('click', () => {
     if (!compact.matches) return;
-    document.getElementById('editor-info-content').append(information);
+    $('editor-info-content').append(information);
     metadata.open = true;
-    window.CloudInkMotion.openDialog(metadataDialog);
+    motion.openDialog(metadataDialog);
   });
-  document
-    .getElementById('editor-info-close')
-    .addEventListener('click', () => window.CloudInkMotion.closeDialog(metadataDialog));
+  $('editor-info-close').addEventListener('click', () => motion.closeDialog(metadataDialog));
   metadataDialog.addEventListener('close', () => {
     restoreMetadata();
-    if (!document.getElementById('editor-view').hidden)
-      document.getElementById('editor-info-toggle').focus({ preventScroll: true });
+    if (!$('editor-view').hidden) $('editor-info-toggle').focus({ preventScroll: true });
   });
   compact.addEventListener('change', () => {
     if (metadataDialog.open) metadataDialog.close();
@@ -77,22 +76,20 @@ export function mountStudioShell() {
     const trigger = node.querySelector('summary');
     panel.before(panelAnchor);
     presented = { node, panel, panelAnchor, trigger };
-    document.getElementById('studio-sheet-title').textContent = '更多操作';
+    $('studio-sheet-title').textContent = '更多操作';
     dialog.dataset.sheet = 'compact';
-    document.getElementById('studio-sheet-content').append(panel);
-    window.CloudInkMotion.openDialog(dialog);
-    (
-      panel.querySelector('button:not(:disabled)') || document.getElementById('studio-sheet-close')
-    ).focus({ preventScroll: true });
+    $('studio-sheet-content').append(panel);
+    motion.openDialog(dialog);
+    (panel.querySelector('button:not(:disabled)') || $('studio-sheet-close')).focus({
+      preventScroll: true,
+    });
   }
   dialog.addEventListener('close', () => {
     if (!dialog.open) restore();
   });
-  document
-    .getElementById('studio-sheet-close')
-    .addEventListener('click', () => window.CloudInkMotion.closeDialog(dialog));
+  $('studio-sheet-close').addEventListener('click', () => motion.closeDialog(dialog));
   dialog.addEventListener('click', (event) => {
-    if (event.target === dialog) window.CloudInkMotion.closeDialog(dialog);
+    if (event.target === dialog) motion.closeDialog(dialog);
   });
   narrow.addEventListener('change', () => {
     close();
@@ -119,7 +116,7 @@ export function mountStudioShell() {
       )
         node.open = false;
     const target = event.target.closest('[data-studio-shortcut]');
-    if (target) document.getElementById(target.dataset.studioShortcut)?.click();
+    if (target) $(target.dataset.studioShortcut)?.click();
     if (event.target.closest('.studio-tools-panel button')) close();
   });
   document.addEventListener('keydown', (event) => {

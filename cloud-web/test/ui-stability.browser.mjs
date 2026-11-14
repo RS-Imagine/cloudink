@@ -1,4 +1,4 @@
-import { navigateStudio } from './studio-navigation.mjs';
+import { navigateStudio, openArticleInfo } from './studio-navigation.mjs';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
@@ -221,6 +221,7 @@ export async function verifyUiStability(browser, origin, output, engine) {
       await page.locator('#image-library-back').click();
       await expect(page.locator('#body')).toHaveValue('Retain unsaved editor content at ' + width);
     }
+    await openArticleInfo(page);
     await page.locator('#delete-post').click();
     await page.locator('#confirmation-accept').click();
     await expect(page.locator('#home-view')).toBeVisible();

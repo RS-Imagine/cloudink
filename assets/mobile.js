@@ -60,7 +60,9 @@
       from: 0,
       mass: 1,
       stiffness: 320,
-      damping: 34,
+      dampingRatio: 1,
+      bounds: [0, 1.05],
+      bounce: 0.25,
       onUpdate: draw,
       onComplete() {
         if (!active.has(record)) return;
@@ -263,8 +265,10 @@
         gesture.last = event.clientY;
         gesture.moved ||= Math.abs(event.clientY - gesture.start) > 6;
         let pixels = gesture.offset + event.clientY - gesture.start;
-        if (pixels < 0) pixels *= 0.2;
-        if (pixels > height) pixels = height + (pixels - height) * 0.15;
+        const rb = motion.rubberBand;
+        if (pixels < 0) pixels = rb ? rb(pixels, height, 0.55) : pixels * 0.2;
+        else if (pixels > height)
+          pixels = height + (rb ? rb(pixels - height, height, 0.55) : (pixels - height) * 0.15);
         spring.jump(pixels / height);
         event.preventDefault();
       },

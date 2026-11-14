@@ -78,6 +78,8 @@ pub fn client_script() -> &'static str {
         "\n",
         include_str!("../../../assets/mobile.js"),
         "\n",
+        include_str!("../../../assets/reader-runtime.js"),
+        "\n",
         include_str!("assets/client.js")
     )
 }

@@ -1382,13 +1382,12 @@ function setupEditorEnhancements() {
 
     switch (type) {
       case 'bold':
-        replacement = selected ? `**${selected}**` : '****';
-        newCursor = selected ? end + 4 : start + 2;
+      case 'italic': {
+        const tag = type === 'bold' ? '**' : '*';
+        replacement = selected ? `${tag}${selected}${tag}` : `${tag}${tag}`;
+        newCursor = selected ? end + tag.length * 2 : start + tag.length;
         break;
-      case 'italic':
-        replacement = selected ? `*${selected}*` : '**';
-        newCursor = selected ? end + 2 : start + 1;
-        break;
+      }
       case 'code':
         if (selected.includes('\n')) {
           replacement = `\`\`\`\n${selected || ''}\n\`\`\`\n`;
@@ -1399,23 +1398,17 @@ function setupEditorEnhancements() {
         }
         break;
       case 'quote':
+      case 'ul': {
+        const p = type === 'quote' ? '> ' : '- ';
         replacement = selected
           ? selected
               .split('\n')
-              .map((l) => `> ${l}`)
+              .map((l) => p + l)
               .join('\n')
-          : '> ';
+          : p;
         newCursor = start + replacement.length;
         break;
-      case 'ul':
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l) => `- ${l}`)
-              .join('\n')
-          : '- ';
-        newCursor = start + replacement.length;
-        break;
+      }
       case 'ol':
         replacement = selected
           ? selected
@@ -1581,13 +1574,15 @@ function setupEditorEnhancements() {
   const splitter = $('editor-splitter');
   const panes = $('editor-panes');
   if (splitter && panes) {
+    const setSplit = (pct) => {
+      const p = parseFloat(pct);
+      panes.style.setProperty('--editor-split-left', `${p}%`);
+      panes.style.setProperty('--editor-split-right', `${100 - p}%`);
+      panes.style.setProperty('--editor-split-percent', `${p}%`);
+    };
     try {
       const savedPercent = localStorage.getItem('cloudink-split-percent');
-      if (savedPercent) {
-        panes.style.setProperty('--editor-split-left', savedPercent);
-        panes.style.setProperty('--editor-split-right', `${100 - parseFloat(savedPercent)}%`);
-        panes.style.setProperty('--editor-split-percent', savedPercent);
-      }
+      if (savedPercent) setSplit(savedPercent);
     } catch {}
 
     let dragging = false;
@@ -1600,9 +1595,7 @@ function setupEditorEnhancements() {
       if (!dragging) return;
       const rect = panes.getBoundingClientRect();
       const percent = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
-      panes.style.setProperty('--editor-split-left', `${percent}%`);
-      panes.style.setProperty('--editor-split-right', `${100 - percent}%`);
-      panes.style.setProperty('--editor-split-percent', `${percent}%`);
+      setSplit(percent);
     });
     const stopDrag = () => {
       if (dragging) {

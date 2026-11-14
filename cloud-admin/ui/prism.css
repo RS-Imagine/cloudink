@@ -822,6 +822,12 @@ html[data-cloudink-admin] {
 #app-view .editor-panes.preview-only {
   display: block;
 }
+#app-view .editor-panes.preview-only #body {
+  display: none;
+}
+#app-view .editor-panes.writing-only .preview-pane {
+  display: none;
+}
 #app-view .write-pane {
   min-width: 0;
   height: auto;

@@ -12,7 +12,10 @@ export async function verifyArchive(browser, origin, output, engine) {
   const page = await context.newPage();
   try {
     await page.goto(origin + '/');
-    await page.locator('.home-archive-link a').click();
+    await page
+      .locator(':is(.home-archive-link, .archive-card, nav, .blog-feed) a[href="/archive/"]')
+      .first()
+      .click();
     await expect(page).toHaveURL(origin + '/archive/');
     await expect(page.locator('#swup')).toHaveAttribute('data-page', 'archive');
     await expect(page.locator('h1')).toHaveText('文章归档');

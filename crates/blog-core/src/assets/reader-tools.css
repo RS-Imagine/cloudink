@@ -95,12 +95,12 @@
   grid-row: 2;
   min-width: 0;
   margin: 0;
-  padding: 16px 16px 16px 12px;
+  padding: 16px 16px 16px 12px !important;
   border-radius: 0 16px 16px 0;
 }
 .code-block:not(.has-gutter) pre {
   margin: 0;
-  padding: 16px 20px;
+  padding: 16px 20px !important;
 }
 .code-block.has-gutter .copy-status {
   grid-column: auto;

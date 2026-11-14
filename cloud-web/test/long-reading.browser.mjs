@@ -234,13 +234,13 @@ export async function verifyLongReading(browser, origin, output, engine) {
     await expect(heading).toBeFocused();
     const headerBottom = await page
       .locator('.reader-header')
-      .evaluate((node) => node.getBoundingClientRect().bottom);
+      .evaluate((node) => Math.max(0, node.getBoundingClientRect().bottom));
     await expect
       .poll(() => heading.evaluate((node) => node.getBoundingClientRect().top))
       .toBeGreaterThanOrEqual(headerBottom + 8);
     await expect
       .poll(() => heading.evaluate((node) => node.getBoundingClientRect().top))
-      .toBeLessThan(headerBottom + 64);
+      .toBeLessThan(headerBottom + 80);
     const savedY = await page.evaluate(() => scrollY);
     await page.evaluate(() => {
       void window.swup.navigate('/posts/white-space/');

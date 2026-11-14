@@ -64,10 +64,11 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   });
   await page.locator('#new-post').click();
   await page.locator('#editor-view').waitFor();
-  await page.locator('.post-details').evaluate((node) => {
-    node.open = true;
-  });
+  await openArticleInfo(page);
   await page.locator('#slug').fill(first);
+  if (await page.locator('#editor-info-close').isVisible()) {
+    await page.locator('#editor-info-close').click();
+  }
   await page.locator('#title').fill(title);
   await page.locator('#body').fill(body);
   await page.locator('#save-post').click();
@@ -86,7 +87,11 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
-  await expect(page.locator('#change-post-address')).toBeFocused();
+  if (await page.locator('#editor-info-toggle').isVisible()) {
+    await expect(page.locator('#editor-info-toggle')).toBeFocused();
+  } else {
+    await expect(page.locator('#change-post-address')).toBeFocused();
+  }
   await openArticleInfo(page);
   await page.locator('#change-post-address').click();
   await input.fill(second);
@@ -152,6 +157,7 @@ export async function verifyPostAddresses(browser, origin, output, engine) {
   assert.equal(download.suggestedFilename(), live + '.md');
   const source = await readFile(await download.path(), 'utf8');
   assert.ok(source.includes('aliases') && source.includes(second));
+  await openArticleInfo(page);
   await page.locator('#unpublish-post').click();
   await expect(page.locator('#confirmation-dialog')).toBeVisible();
   await page.locator('#confirmation-accept').click();

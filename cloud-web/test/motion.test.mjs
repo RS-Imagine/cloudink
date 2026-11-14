@@ -186,3 +186,39 @@ test('visibility pauses time and reduced motion finishes active and future sprin
   assert.equal(completed, 2);
   assert.equal(h.frames.size, 0);
 });
+
+test('Bas Ording critically damped spring defaults to dampingRatio 1 and carries release velocity', () => {
+  const { api } = harness();
+  // With mass=1, stiffness=400, dampingRatio=1 -> damping is 2*sqrt(400)=40
+  const state = { value: 0, target: 1, velocity: 0 };
+  api.step(state, 0.2, { mass: 1, stiffness: 400 });
+  near(state.value, 1 - 5 * Math.exp(-4));
+
+  // Release velocity v0 = 5 carries initial kinetic impulse into trajectory
+  const fastState = { value: 0, target: 1, velocity: 5 };
+  api.step(fastState, 0.2, { mass: 1, stiffness: 400 });
+  // Analytical solution with v0=5, y0=-1, omega=20, a=20: b = 5 + 20*(-1) = -15
+  // next = (-1 + (-15)*0.2)*exp(-4) = -4*exp(-4) -> value = 1 - 4*exp(-4)
+  near(fastState.value, 1 - 4 * Math.exp(-4));
+});
+
+test('boundary bounce rebounds velocity and settles at boundary', () => {
+  const { api } = harness();
+  // Target is at 0, spring hits lower boundary 0 with negative velocity -10
+  const state = { value: 0.05, target: 0, velocity: -10 };
+  const bounds = [0, 1];
+  api.step(state, 0.02, { mass: 1, stiffness: 400, bounds, bounce: 0.35 });
+  // Velocity must invert and rebound
+  assert.ok(state.velocity > 0, 'velocity rebounds positively off lower boundary');
+  assert.ok(state.value >= 0, 'value stays above or at lower boundary');
+
+  // Rubber band formula adheres to Ording logarithmic/asymptotic resistance
+  assert.equal(api.rubberBand(0, 100), 0);
+  const over100 = api.rubberBand(100, 500, 0.55);
+  const over200 = api.rubberBand(200, 500, 0.55);
+  assert.ok(over100 > 0 && over100 < 100, 'rubber band resists displacement');
+  assert.ok(over200 > over100, 'monotonically increases');
+  assert.ok(over200 - over100 < over100, 'marginal displacement decreases (stiffens)');
+  // Negative displacement preserves sign
+  assert.equal(api.rubberBand(-100, 500, 0.55), -over100);
+});

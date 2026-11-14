@@ -97,7 +97,7 @@ footer { margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--border
   .post-card > .meta { grid-column: 1 / -1; }
   .post-card h2 { font-size: 19px; }
   .article-shell { padding-top: 32px; }
-  .article-body { font-size: 16px; }
+  .article-body { font-size: 17px; }
   .article-shell article h1 { font-size: 32px; }
   .article-shell article h2 { font-size: 23px; }
   .article-shell article pre { padding: 16px; }

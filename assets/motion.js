@@ -14,8 +14,22 @@
     last = null,
     sequence = 0;
   const reduced = () => !!media?.matches;
-  function step(state, dt, { mass = 1, stiffness = 420, damping = 34 } = {}) {
-    const a = damping / (2 * mass),
+  const rubberBand = (x, d = 1, c = 0.55) => (!d ? 0 : (x * d * c) / (d + c * Math.abs(x)));
+  function step(
+    state,
+    dt,
+    {
+      mass = 1,
+      stiffness = 420,
+      damping,
+      dampingRatio = 1,
+      bounds,
+      bounce,
+      restitution = 0.35,
+    } = {},
+  ) {
+    const c = damping ?? 2 * dampingRatio * Math.sqrt(mass * stiffness);
+    const a = c / (2 * mass),
       d = a * a - stiffness / mass;
     const y = state.value - state.target,
       v = state.velocity;
@@ -42,7 +56,21 @@
       next = first + second;
       velocity = r1 * first + r2 * second;
     }
-    state.value = state.target + next;
+    let nextVal = state.target + next;
+    if (bounds && bounce) {
+      const r = typeof bounce === 'number' ? bounce : restitution;
+      const hit =
+        bounds[0] !== undefined && nextVal < bounds[0] && velocity < 0
+          ? bounds[0]
+          : bounds[1] !== undefined && nextVal > bounds[1] && velocity > 0
+            ? bounds[1]
+            : null;
+      if (hit !== null) {
+        nextVal = hit + (hit - nextVal) * r;
+        velocity = -velocity * r;
+      }
+    }
+    state.value = nextVal;
     state.velocity = velocity;
   }
   function schedule() {
@@ -73,16 +101,19 @@
     velocity = 0,
     mass = 1,
     stiffness = 420,
-    damping = 34,
+    damping,
+    dampingRatio = 1,
+    bounds,
+    bounce = false,
     onUpdate = () => {},
     onComplete = () => {},
   } = {}) {
-    for (const n of [from, velocity, mass, stiffness, damping])
+    for (const n of [from, velocity, mass, stiffness, damping ?? 1, dampingRatio ?? 1])
       if (!Number.isFinite(n)) throw new TypeError('Spring values must be finite');
-    if (mass <= 0 || stiffness <= 0 || damping <= 0)
+    if (mass <= 0 || stiffness <= 0 || (damping ?? 1) <= 0 || (dampingRatio ?? 1) <= 0)
       throw new RangeError('Spring parameters must be positive');
     const state = { value: from, target: from, velocity };
-    const physics = { mass, stiffness, damping };
+    const physics = { mass, stiffness, damping, dampingRatio, bounds, bounce };
     let generation = 0;
     const record = {
       tick(dt) {
@@ -133,12 +164,12 @@
         springs.delete(record);
         unschedule();
       },
-      jump(value) {
+      jump(value, initialVelocity) {
         if (!Number.isFinite(value)) throw new TypeError('Spring value must be finite');
         generation++;
         springs.delete(record);
         state.value = state.target = value;
-        state.velocity = 0;
+        state.velocity = initialVelocity !== undefined ? initialVelocity : 0;
         onUpdate(value);
         unschedule();
       },
@@ -284,9 +315,11 @@
         return;
       let record = records.get(button);
       if (!record) {
-        record = { button, original: button.style.scale, held: false };
+        record = { button, original: button.style.scale, held: false, time: 0 };
         record.spring = spring({
           from: 1,
+          dampingRatio: 1,
+          stiffness: 420,
           onUpdate(value) {
             if (!button.isConnected) {
               record.spring.stop();
@@ -305,6 +338,7 @@
         records.set(button, record);
       }
       record.held = true;
+      record.time = performance.now();
       live.add(record);
       record.spring.to(0.965);
     }
@@ -312,7 +346,9 @@
       const record = button && records.get(button);
       if (record?.held) {
         record.held = false;
-        record.spring.to(1);
+        const elapsed = performance.now() - (record.time || 0);
+        const velocity = elapsed < 250 ? Math.min(2.5, Math.max(0.5, (250 - elapsed) / 80)) : 0;
+        record.spring.to(1, velocity);
       }
     }
     const listen = (target, name, handler) =>
@@ -386,6 +422,7 @@
   env.CloudInkMotion = Object.freeze({
     spring,
     step,
+    rubberBand,
     mount,
     cancelWithin,
     openDialog,
