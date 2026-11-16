@@ -3,6 +3,127 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 
+export async function verifyMediaPanels(browser, origin, path, output) {
+  for (const width of [1920, 443, 390]) {
+    const mobile = width < 768;
+    const context = await browser.newContext({
+      viewport: { width, height: 900 },
+      isMobile: mobile,
+      hasTouch: mobile,
+      deviceScaleFactor: mobile ? 2.75 : 1,
+      colorScheme: width === 443 ? 'dark' : 'light',
+      reducedMotion: width === 390 ? 'reduce' : 'no-preference',
+      serviceWorkers: 'block',
+    });
+    const errors = [];
+    const page = await context.newPage();
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.route('https://cdn.jsdelivr.net/**', (route) =>
+      route.fulfill({ contentType: 'text/css', body: '' }),
+    );
+    const src = origin + '/images/media-panel-fixture.png';
+    await page.route(src, (route) =>
+      route.fulfill({
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#a68b6b"/></svg>',
+      }),
+    );
+    try {
+      await page.goto(origin + path);
+      const image = page.locator('.article-body img').first();
+      await expect(image).toHaveAttribute('role', 'button');
+      await image.evaluate((img, url) => {
+        img
+          .closest('picture')
+          ?.querySelectorAll('source')
+          .forEach((source) => source.remove());
+        img.removeAttribute('srcset');
+        img.src = img.dataset.fullSrc = url;
+        img.width = 1600;
+        img.height = 900;
+      }, src);
+      await expect.poll(() => image.evaluate((img) => img.naturalWidth)).toBe(1600);
+      const dialog = page.locator('dialog.reader-dialog');
+      async function checkPanel() {
+        await expect(dialog).toBeVisible();
+        const close = dialog.getByRole('button', { name: /^(关闭|Close)$/ });
+        await expect(close).toBeVisible();
+        await expect(close).toBeFocused();
+        await expect
+          .poll(() =>
+            dialog.evaluate((el) =>
+              Math.abs(parseFloat(getComputedStyle(el).translate.split(' ')[1]) || 0),
+            ),
+          )
+          .toBeLessThan(0.5);
+        await close.click({ trial: true });
+        const bounds = await dialog.evaluate((el) => {
+          const box = el.getBoundingClientRect(),
+            button = el.querySelector('.reader-dialog-close').getBoundingClientRect(),
+            media = el.querySelector('img').getBoundingClientRect();
+          return {
+            touch: [button.width, button.height],
+            top: media.top - box.top,
+            left: media.left - box.left,
+            right: box.right - media.right,
+          };
+        });
+        assert.ok(bounds.touch.every((size) => size >= 44));
+        assert.ok(bounds.top >= 44 && bounds.top <= 80, JSON.stringify(bounds));
+        assert.ok(bounds.left >= 0 && bounds.right >= 0, 'media stays inside the sheet');
+      }
+      for (const trigger of [image, page.locator('#share-btn')]) {
+        await trigger.click();
+        await checkPanel();
+        await page.screenshot({
+          path: resolve(
+            output,
+            (trigger === image ? 'lightbox-' : 'share-panel-') + width + '.png',
+          ),
+        });
+        await dialog.locator('.reader-dialog-close').click();
+        await expect(dialog).toHaveCount(0);
+        await expect(trigger).toBeFocused();
+        await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
+      }
+      await image.click();
+      await checkPanel();
+      if (mobile) await page.touchscreen.tap(4, 4);
+      else await page.mouse.click(4, 4);
+      await expect(dialog).toHaveCount(0);
+      await image.click();
+      await checkPanel();
+      await page.keyboard.press('Escape');
+      await expect(dialog).toHaveCount(0);
+      if (mobile) {
+        await image.click();
+        await checkPanel();
+        const grip = await dialog.locator('.ci-sheet-grip').boundingBox();
+        const box = await dialog.boundingBox();
+        const session = await context.newCDPSession(page);
+        const x = grip.x + grip.width / 2,
+          y = grip.y + grip.height / 2;
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchStart',
+          touchPoints: [{ x, y }],
+        });
+        for (let step = 1; step <= 8; step++)
+          await session.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ x, y: y + (Math.min(box.height * 0.85, 896 - y) * step) / 8 }],
+          });
+        await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await session.detach();
+        await expect(dialog).toHaveCount(0);
+        await expect(image).toBeFocused();
+      }
+      assert.deepEqual(errors, [], 'media panels must not produce errors');
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 export async function verifyReader(browser, origin, output, engine) {
   const errors = [];
   const context = await browser.newContext({

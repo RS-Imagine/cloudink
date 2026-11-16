@@ -154,19 +154,14 @@ const operationAreas = {
   'download-backup': 'backup-status',
   'restore-backup': 'backup-status',
   'image-library-upload': 'image-library-status',
+  'image-library-refresh': 'image-library-status',
 };
 async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
-  const button = $(id),
-    labelNode = button.querySelector('[data-action-label]') || button,
-    original = labelNode.textContent,
-    originalInlineSize = button.style.inlineSize,
-    initialWidth = button.offsetWidth;
+  const button = $(id);
   activeActions.add(id);
-  if (initialWidth) button.style.inlineSize = `min(${initialWidth}px, 100%)`;
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  labelNode.textContent = label;
   feedback(operationAreas[id], label, 'pending');
   try {
     await work();
@@ -180,8 +175,6 @@ async function action(id, label, work, success = '') {
   } finally {
     activeActions.delete(id);
     button.removeAttribute('aria-busy');
-    button.style.inlineSize = originalInlineSize;
-    labelNode.textContent = original;
     button.disabled = false;
     publishingControls();
   }

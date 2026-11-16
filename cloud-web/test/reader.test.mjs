@@ -4,6 +4,84 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixture, draft, origin } from './fixture.mjs';
 
+test('legacy published image URLs use public media without changing stored snapshots or API authentication', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const key = 'uploads/2026/11/legacy-route.png';
+  const legacy = '/api/image?key=' + encodeURIComponent(key);
+  const foreign = 'https://other.example' + legacy;
+  const invalid = [
+    '/api/image?key=auth%2Faccount.json',
+    '/api/image?key=uploads%2F..%2Fsecret.png',
+    '/api/image?key=uploads%252Fphoto.png',
+    '/api/image?key=uploads%2Fbad%ZZ.png',
+    '/api/image?key=uploads%2Fa.png&key=uploads%2Fb.png',
+    foreign,
+  ];
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  await bucket.put(key, new Uint8Array([1, 2, 3]), {
+    httpMetadata: { contentType: 'image/png' },
+  });
+  const state = await f.prepare();
+  const html =
+    '<!doctype html><html><head><title>Legacy media</title></head><body>' +
+    '<div class="short-body"><img id="relative" src="' +
+    legacy +
+    '">' +
+    '<img id="absolute" src="' +
+    origin +
+    legacy +
+    '">' +
+    '<picture><source srcset="' +
+    legacy +
+    ' 1x, ' +
+    origin +
+    legacy +
+    ' 2x">' +
+    '<img src="' +
+    legacy +
+    '" data-full-src="' +
+    legacy +
+    '"></picture>' +
+    invalid.map((src, i) => '<img id="invalid-' + i + '" src="' + src + '">').join('') +
+    '</div></body></html>';
+  await f.stage(state, [], html);
+  assert.equal((await f.commit(state)).status, 200);
+  const pointer = await (await bucket.get('state/published.json')).json();
+  const storageKey = pointer.pages
+    ? 'public/content/' + pointer.pages['index.html']
+    : 'public/' + state.release_id + '/index.html';
+  const stored = await (await bucket.get(storageKey)).text();
+  assert.ok(stored.includes(legacy), 'compatibility must not rewrite stored author content');
+  const response = await f.mf.dispatchFetch(origin + '/');
+  const result = await response.text();
+  assert.match(result, /id="relative" src="\/images\/uploads\/2026\/11\/legacy-route.png"/);
+  assert.match(result, /id="absolute" src="\/images\/uploads\/2026\/11\/legacy-route.png"/);
+  assert.match(
+    result,
+    /srcset="\/images\/uploads\/2026\/11\/legacy-route.png 1x,\/images\/uploads\/2026\/11\/legacy-route.png 2x"/,
+  );
+  assert.match(result, /data-full-src="\/images\/uploads\/2026\/11\/legacy-route.png"/);
+  for (const [i, src] of invalid.entries()) {
+    assert.ok(
+      result.includes('id="invalid-' + i + '" src="' + src.replaceAll('&', '&amp;') + '"') ||
+        result.includes('id="invalid-' + i + '" src="' + src + '"'),
+    );
+  }
+  assert.equal((await f.mf.dispatchFetch(origin + legacy)).status, 401);
+  assert.equal((await f.mf.dispatchFetch(origin + '/images/' + key)).status, 200);
+  assert.equal((await f.mf.dispatchFetch(origin + '/images/auth/account.json')).status, 404);
+  assert.equal(
+    (
+      await f.mf.dispatchFetch(origin + '/', {
+        headers: { 'If-None-Match': response.headers.get('ETag') },
+      })
+    ).status,
+    304,
+  );
+  assert.equal(await (await bucket.get(storageKey)).text(), stored);
+});
+
 test('public metadata, lazy images and discovery follow the live release without private content', async (t) => {
   const f = await fixture(t);
   await f.login();

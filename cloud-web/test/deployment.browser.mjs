@@ -1,6 +1,7 @@
 import { verifyHome } from './home.browser.mjs';
 import { verifyReaderLayout } from './reader-layout.browser.mjs';
 import { verifyReaderTypography } from './reader-typography.browser.mjs';
+import { verifyMediaPanels } from './reader.browser.mjs';
 import { verifyPostList } from './post-list.browser.mjs';
 import { verifyStudio } from './studio.browser.mjs';
 import { verifyUiAuditRegressions } from './ui-audit-regressions.browser.mjs';
@@ -223,6 +224,12 @@ try {
   await expect(live.locator('.share-download')).toHaveAttribute('download', 'cloudink-share.png');
   await live.keyboard.press('Escape');
   await expect(live.locator('#share-btn')).toBeFocused();
+  await verifyMediaPanels(
+    browser,
+    'http://localhost:8791',
+    new URL(live.url()).pathname,
+    'cloud-web/dist',
+  );
   const headingIds = await live
     .locator('.article-body h2')
     .evaluateAll((nodes) => nodes.map((n) => n.id));

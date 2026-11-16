@@ -32,7 +32,7 @@
     handle.setAttribute('aria-description', '上下方向键调整面板，Esc 关闭');
     if (!surface.id) surface.id = 'ci-sheet-' + ++sequence;
     handle.setAttribute('aria-controls', surface.id);
-    surface.prepend(handle);
+    (surface.querySelector('[data-sheet-header]') || surface).prepend(handle);
     let height = 1,
       peek = 0,
       position = 0,

@@ -1,5 +1,6 @@
 import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
+import { legacyImagePath } from '../../cloud-admin/src/media';
 export async function readerEtag(etag: string, url: URL): Promise<string> {
   const input = new TextEncoder().encode(
     'reader-v4:' +
@@ -55,6 +56,26 @@ export async function readerHtml(
     hasCode = false;
   // The first image remains eager; later images do not compete with initial text.
   const html = await new HTMLRewriter()
+    .on('img, source', {
+      element(el) {
+        for (const attribute of ['src', 'data-full-src']) {
+          const path = legacyImagePath(decode(el.getAttribute(attribute) || ''), url.origin);
+          if (path) el.setAttribute(attribute, path);
+        }
+        const srcset = el.getAttribute('srcset');
+        if (srcset) {
+          const normalized = srcset
+            .split(',')
+            .map((candidate) => {
+              const [src, ...descriptor] = candidate.trim().split(/\s+/);
+              const path = legacyImagePath(decode(src), url.origin);
+              return path ? [path, ...descriptor].join(' ') : candidate;
+            })
+            .join(',');
+          if (normalized !== srcset) el.setAttribute('srcset', normalized);
+        }
+      },
+    })
     .on('script[src="/analytics.js"]', {
       element(el) {
         if (!analytics) el.remove();
