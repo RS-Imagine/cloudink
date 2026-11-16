@@ -413,7 +413,7 @@ summary {
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+  transition: all var(--ci-motion-fast) var(--ci-ease);
 }
 .editor-format-actions .tool-btn:hover {
   background: var(--paper-strong, #fff);
@@ -438,7 +438,7 @@ summary {
   color: var(--muted);
   padding: 6px 14px;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+  transition: all var(--ci-motion-fast) var(--ci-ease);
 }
 .tab.active {
   background: var(--paper, #fff);

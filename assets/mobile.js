@@ -60,7 +60,7 @@
       from: 0,
       mass: 1,
       stiffness: 320,
-      dampingRatio: 1,
+      dampingRatio: motion.response.dampingRatio,
       bounds: [0, 1.05],
       bounce: 0.25,
       onUpdate: draw,

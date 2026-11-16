@@ -14,6 +14,27 @@
     last = null,
     sequence = 0;
   const reduced = () => !!media?.matches;
+  const response = Object.freeze({ stiffness: 360, dampingRatio: 0.72 });
+  let curve;
+  function springCurve() {
+    if (curve) return curve;
+    const state = { value: 0, target: 1, velocity: 0 };
+    const values = [0];
+    for (let i = 0; i < 90; i++) {
+      step(state, 1 / 60, response);
+      values.push(state.value);
+      if (Math.abs(state.value - 1) < 0.001 && Math.abs(state.velocity) < 0.01) break;
+    }
+    values[values.length - 1] = 1;
+    const easing = `linear(${values.map((value) => value.toFixed(4)).join(',')})`;
+    curve = {
+      duration: ((values.length - 1) * 1000) / 60,
+      easing: env.CSS?.supports('transition-timing-function', easing)
+        ? easing
+        : 'cubic-bezier(0.34,1.56,0.64,1)',
+    };
+    return curve;
+  }
   const rubberBand = (x, d = 1, c = 0.55) => (!d ? 0 : (x * d * c) / (d + c * Math.abs(x)));
   function step(
     state,
@@ -102,7 +123,7 @@
     mass = 1,
     stiffness = 420,
     damping,
-    dampingRatio = 1,
+    dampingRatio = response.dampingRatio,
     bounds,
     bounce = false,
     onUpdate = () => {},
@@ -175,22 +196,38 @@
       },
     };
   }
-  function duration(enter) {
-    const value = env
-      .getComputedStyle?.(doc.documentElement)
-      .getPropertyValue(enter ? '--ci-motion-standard' : '--ci-motion-fast');
-    return value ? parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000) : enter ? 250 : 150;
-  }
-  function transition(element, enter, { kind = 'dialog', onFinish, signal, delay = 0 } = {}) {
+  function transition(
+    element,
+    enter,
+    { kind = 'dialog', onFinish, signal, delay = 0, axis = 'y', direction = 1 } = {},
+  ) {
     const previous = current.get(element);
     const visual = previous ? env.getComputedStyle(element) : null;
+    const distance = kind === 'reveal' ? 28 : kind === 'content' ? 24 : 16;
+    const offset = axis === 'x' ? [distance * direction, 0] : [0, distance * direction];
     const start = {
-      opacity: visual?.opacity || (enter ? (kind === 'content' ? '0.7' : '0') : '1'),
-      translate:
-        visual?.translate ||
-        (enter && kind !== 'content' ? (kind === 'reveal' ? '0 24px' : '0 8px') : '0 0'),
+      opacity: visual?.opacity ?? (enter ? 0 : 1),
+      translate: visual?.translate || (enter ? `${offset[0]}px ${offset[1]}px` : '0 0'),
+      scale: visual?.scale || (enter && kind === 'dialog' ? 0.96 : 1),
     };
-    previous?.cancel();
+    const end = {
+      opacity: enter ? 1 : 0,
+      translate: enter ? '0 0' : `${offset[0] * 0.5}px ${offset[1] * 0.5}px`,
+      scale: enter || kind !== 'dialog' ? 1 : 0.98,
+    };
+    return animate(element, [start, end], {
+      onFinish,
+      signal,
+      delay,
+      duration: springCurve().duration * (enter ? 1 : 0.7),
+    });
+  }
+  function animate(
+    element,
+    keyframes,
+    { onFinish, signal, delay = 0, duration = springCurve().duration } = {},
+  ) {
+    current.get(element)?.cancel();
     if (signal?.aborted) return { finished: Promise.resolve(false), cancel() {} };
     if (reduced() || !element.animate || !element.isConnected) {
       onFinish?.();
@@ -201,21 +238,12 @@
     const finished = new Promise((r) => {
       resolve = r;
     });
-    const animation = element.animate(
-      [
-        start,
-        {
-          opacity: enter ? 1 : 0,
-          translate: enter || kind === 'content' ? '0 0' : '0 6px',
-        },
-      ],
-      {
-        duration: kind === 'reveal' ? 650 : duration(enter),
-        delay,
-        easing: 'cubic-bezier(0.22,1,0.36,1)',
-        fill: 'both',
-      },
-    );
+    const animation = element.animate(keyframes, {
+      duration,
+      delay,
+      easing: springCurve().easing,
+      fill: 'both',
+    });
     const settle = (ok) => {
       if (done) return;
       done = true;
@@ -226,10 +254,6 @@
       try {
         if (ok) onFinish?.();
       } finally {
-        if (!enter && ok) {
-          element.style.opacity = '0';
-          element.style.transition = 'none';
-        }
         animation.cancel();
         resolve(ok);
       }
@@ -296,14 +320,89 @@
       },
     });
   }
+  function followSelection(root) {
+    const indicator = doc.createElement('span');
+    indicator.className = 'ci-selection';
+    indicator.setAttribute('aria-hidden', 'true');
+    indicator.hidden = true;
+    root.append(indicator);
+    const values = [0, 0];
+    const draw = () => {
+      indicator.style.transform = `translate(${values[0]}px,${values[1]}px)`;
+    };
+    const axes = values.map((from, index) =>
+      spring({
+        from,
+        ...response,
+        onUpdate(value) {
+          values[index] = value;
+          draw();
+        },
+      }),
+    );
+    function sync(animate = true) {
+      const selected = root.querySelector(
+        '[aria-current],[aria-selected="true"],[aria-pressed="true"]',
+      );
+      if (!selected?.offsetWidth || !selected.offsetHeight || !root.isConnected) {
+        axes.forEach((axis) => axis.stop());
+        indicator.hidden = true;
+        return;
+      }
+      const next = [selected.offsetLeft, selected.offsetTop];
+      const first = indicator.hidden;
+      indicator.hidden = false;
+      indicator.style.borderRadius = env.getComputedStyle(selected).borderRadius;
+      root.dataset.ciSelection = '';
+      indicator.style.width = selected.offsetWidth + 'px';
+      indicator.style.height = selected.offsetHeight + 'px';
+      axes.forEach((axis, index) => {
+        if (!first && animate) axis.to(next[index]);
+        else axis.jump(next[index]);
+      });
+    }
+    const mutations = new env.MutationObserver((changes) => {
+      if (changes.some((change) => change.target !== indicator)) sync();
+    });
+    mutations.observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-current', 'aria-selected', 'aria-pressed', 'hidden'],
+    });
+    const resize = env.ResizeObserver ? new env.ResizeObserver(() => sync(false)) : null;
+    resize?.observe(root);
+    sync(false);
+    return {
+      root,
+      reset: () => sync(false),
+      dispose() {
+        mutations.disconnect();
+        resize?.disconnect();
+        axes.forEach((axis) => axis.stop());
+        indicator.remove();
+        delete root.dataset.ciSelection;
+      },
+    };
+  }
   function mount(root = doc) {
     if (mounted.has(root)) return mounted.get(root);
     doc.documentElement.dataset.ciMotion = '';
+    for (const name of ['--ci-ease', '--ci-ease-out', '--ci-ease-in'])
+      doc.documentElement.style.setProperty(name, springCurve().easing);
     const abort = new AbortController(),
       records = new WeakMap(),
       live = new Set(),
       pointers = new Map();
-    const buttonAt = (event) => event.target.closest?.('button,[data-motion-press]');
+    const selections = env.MutationObserver
+      ? Array.from(
+          root.querySelectorAll(
+            '.reader-side-nav,.reader-dock,.studio-nav,.post-filters,.editor-view-switch',
+          ),
+          followSelection,
+        )
+      : [];
+    const buttonAt = (event) =>
+      event.target.closest?.('button,a[href],summary,[role="button"],[data-motion-press]');
     function press(button) {
       if (
         !button ||
@@ -318,7 +417,7 @@
         record = { button, original: button.style.scale, held: false, time: 0 };
         record.spring = spring({
           from: 1,
-          dampingRatio: 1,
+          dampingRatio: response.dampingRatio,
           stiffness: 420,
           onUpdate(value) {
             if (!button.isConnected) {
@@ -355,6 +454,8 @@
       target.addEventListener(name, handler, { signal: abort.signal });
     const binding = {
       reset(container = root) {
+        for (const selection of selections)
+          if (container === root || container.contains(selection.root)) selection.reset();
         for (const record of live)
           if (container === root || container.contains(record.button)) {
             record.held = false;
@@ -368,6 +469,7 @@
       },
       dispose() {
         binding.reset();
+        selections.forEach((selection) => selection.dispose());
         abort.abort();
         mounts.delete(binding);
         mounted.delete(root);
@@ -395,6 +497,15 @@
       if (event.key === ' ' || event.key === 'Enter') release(buttonAt(event));
     });
     listen(root, 'focusout', (event) => release(buttonAt(event)));
+    root.addEventListener(
+      'toggle',
+      (event) => {
+        if (event.target.tagName !== 'DETAILS' || !event.target.open) return;
+        for (const child of event.target.children)
+          if (child.tagName !== 'SUMMARY') transition(child, true, { kind: 'content' });
+      },
+      { signal: abort.signal, capture: true },
+    );
     listen(env, 'blur', () => binding.reset());
     listen(env, 'pagehide', () => {
       binding.reset();
@@ -420,6 +531,8 @@
     for (const record of effects) doc.hidden ? record.animation.pause() : record.animation.play();
   });
   env.CloudInkMotion = Object.freeze({
+    response,
+    animate,
     spring,
     step,
     rubberBand,

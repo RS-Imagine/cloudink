@@ -210,6 +210,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     $('short-body').readOnly = $('short-date').readOnly = !!item;
     $('short-save').disabled = $('short-publish').disabled = !!item;
     $('short-editor').hidden = false;
+    window.CloudInkMotion.enter($('short-editor'), { kind: 'content' });
     savedEditorValue = editorValue();
     updateWordCount();
     if (item) {
@@ -237,6 +238,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
   }
   function closeEditor() {
     ++editorRevision;
+    window.CloudInkMotion.cancelWithin($('short-editor'));
     $('short-editor').hidden = true;
     editing = null;
     $('short-body').value = $('short-date').value = '';

@@ -276,17 +276,13 @@ test('the generated social cover can be fetched anonymously without Referer', as
   assert.equal(await cached.text(), '');
 });
 
-test('native transition cancellation is handled while DOM replacement failures still reject', async () => {
+test('prepared navigation delegates DOM replacement and preserves page loader failures', async () => {
   const source = await readFile('assets/reader-runtime.js', 'utf8');
   const hooks = new Map();
   const window = { addEventListener() {} };
   const document = {
-    startViewTransition(callback) {
-      return {
-        ready: Promise.reject(new Error('visual transition cancelled')),
-        finished: Promise.reject(new Error('visual transition cancelled')),
-        updateCallbackDone: Promise.resolve().then(callback),
-      };
+    startViewTransition() {
+      assert.fail('Navigation must not layer a browser snapshot over its spring transition');
     },
   };
   runInNewContext(source, { window, document });
@@ -299,16 +295,17 @@ test('native transition cancellation is handled while DOM replacement failures s
       on() {},
     },
   });
-  const replace = hooks.get('content:replace');
-  let updates = 0;
-  await replace({}, {}, async () => {
-    updates++;
-  });
-  assert.equal(updates, 1);
+  assert.equal(hooks.has('content:replace'), false);
+  const load = hooks.get('page:load');
+  const page = { url: '/shorts/', html: '<main>Prepared</main>' };
+  assert.equal(
+    await load({ meta: { readerPage: page } }, {}, () => assert.fail('Do not fetch twice')),
+    page,
+  );
   await assert.rejects(
-    replace({}, {}, async () => {
-      throw new Error('DOM replacement failed');
+    load({ meta: {} }, {}, async () => {
+      throw new Error('Page loader failed');
     }),
-    /DOM replacement failed/,
+    /Page loader failed/,
   );
 });

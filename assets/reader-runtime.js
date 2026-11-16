@@ -385,19 +385,6 @@
       'page:load',
       (visit, args, original) => visit.meta.readerPage || original(visit, args),
     );
-    if (
-      typeof document.startViewTransition === 'function' &&
-      !window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    ) {
-      swup.hooks.replace('content:replace', (visit, args, original) => {
-        const transition = document.startViewTransition(() => original(visit, args));
-        // Browser cancellation only skips the visual effect. Keep real DOM errors
-        // on updateCallbackDone so Swup can still handle a failed replacement.
-        transition.ready.catch(() => {});
-        transition.finished.catch(() => {});
-        return transition.updateCallbackDone;
-      });
-    }
     swup.hooks.on('page:view', (visit) => {
       if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
     });

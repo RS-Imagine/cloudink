@@ -324,6 +324,7 @@ function showLogin({ focus = false } = {}) {
   $('setup-view').hidden = !wizard;
   $('login-view').hidden = wizard;
   $('startup-view').hidden = true;
+  motion.enter($(wizard ? 'setup-view' : 'login-view'), { kind: 'content' });
   if (focus)
     (wizard ? $('setup-form').elements.token : $('login-form').elements.email).focus({
       preventScroll: true,
@@ -370,7 +371,7 @@ function view(name, { focus = true } = {}) {
   $('article-browser').hidden = !['home', 'posts'].includes(name);
   $('home-view').setAttribute('aria-labelledby', 'home-heading');
   shell.placeMaintenance();
-  motion.enter($(sectionName + '-view'), { kind: 'content' });
+  if (changingView) motion.enter($(sectionName + '-view'), { kind: 'content' });
   $('workspace-title').textContent = {
     home: '文章管理',
     posts: '文章管理',
