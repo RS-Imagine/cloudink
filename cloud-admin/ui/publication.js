@@ -2,6 +2,7 @@ export async function publishInBrowser(
   result,
   { api, engineTask, showPublishing, refresh, notice },
 ) {
+  let deployed;
   try {
     showPublishing({ ...result, status: 'building' });
     const rendered = await engineTask('site', {
@@ -60,24 +61,37 @@ export async function publishInBrowser(
       method: 'POST',
       body: { receipts },
     });
+    if (done.status !== 'deployed' || done.release_id !== result.release_id)
+      throw new Error('尚未确认这次发布已上线，请检查发布状态。');
+    deployed = done;
     showPublishing(done);
   } catch (error) {
     const stopped = await api(`/api/publish/${result.release_id}/cancel`, {
       method: 'POST',
       body: {},
     }).catch(() => null);
-    if (stopped?.status === 'deployed') showPublishing(stopped);
-    else {
+    if (stopped?.status === 'deployed' && stopped.release_id === result.release_id) {
+      deployed = stopped;
+      showPublishing(stopped);
+    } else {
+      const unconfirmed = '发布结果尚未确认，请联网后检查发布状态；原稿仍然保留。';
       showPublishing(
-        stopped || {
+        (stopped?.release_id === result.release_id && stopped.status !== 'deployed'
+          ? stopped
+          : null) || {
           ...result,
           status: 'failed',
-          error: '发布未完成，草稿和上次上线版本已保留。联网后可取消这次发布并重试。',
+          error: unconfirmed,
         },
       );
-      throw error;
+      throw stopped ? error : new Error(unconfirmed);
     }
   }
-  await refresh();
-  notice('发布完成，网站已更新。', 'success');
+  try {
+    await refresh();
+    notice('发布完成，网站已更新。', 'success');
+  } catch {
+    notice('发布已上线，管理列表暂未刷新，请稍后重试。', 'info');
+  }
+  return deployed;
 }

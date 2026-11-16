@@ -1,5 +1,6 @@
 import { navigateStudio } from './studio-navigation.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
+import { verifyAuthoring } from './authoring.browser.mjs';
 import { verifyStudioMotion } from './navigation-motion.browser.mjs';
 import { openArticleList } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
@@ -329,6 +330,7 @@ try {
   await paging.locator('#load-more-posts').click();
   await expect(paging.locator('.article-card')).toHaveCount(total);
   await paging.close();
+  await verifyAuthoring(browser);
 } finally {
   await browser?.close();
   await mf.dispose();

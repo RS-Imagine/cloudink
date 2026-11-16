@@ -1,6 +1,7 @@
 import { navigateStudio } from './studio-navigation.mjs';
 import { verifyImageMaintenance } from './image-maintenance.browser.mjs';
 import { verifyImagePerformance } from './image-performance.browser.mjs';
+import { verifyUiStability } from './ui-stability.browser.mjs';
 import { acceptConfirmation } from './workflows.browser.mjs';
 import {
   Miniflare,
@@ -174,6 +175,7 @@ try {
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });
   await verifyImagePerformance(browser, context, page, mf, origin);
   await verifyImageMaintenance(context, page, mf, origin);
+  await verifyUiStability(browser, origin, 'cloud-web/dist', 'chromium');
   assert.deepEqual(errors, []);
   console.log(
     JSON.stringify({

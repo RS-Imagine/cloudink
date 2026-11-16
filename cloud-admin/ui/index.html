@@ -601,6 +601,13 @@
               <span class="workflow-eyebrow">即时想法</span>
               <h1 id="shorts-title">短记</h1>
               <p class="muted">一句话的想法，精确到分钟。发布后出现在网站的「短记」页面。</p>
+              <p
+                id="short-operation-status"
+                class="workflow-feedback"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
             </div>
             <div class="form-actions">
               <button id="short-new" class="primary">写短记</button>
@@ -636,13 +643,14 @@
         <section id="editor-view" class="editor-view" aria-label="文章编辑器" hidden="">
           <div class="editor-document">
             <label class="editor-field-label" for="title">文章标题</label>
-            <input
+            <textarea
               id="title"
               class="title-input"
+              rows="1"
               placeholder="给想法一个标题"
               aria-label="文章标题"
               maxlength="300"
-            />
+            ></textarea>
             <label class="editor-field-label" for="description">摘要 <span>可选</span></label>
             <textarea
               id="description"
