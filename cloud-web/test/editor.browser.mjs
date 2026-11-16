@@ -1,5 +1,6 @@
 import { navigateStudio } from './studio-navigation.mjs';
 import { verifyMarkdownImport } from './import.browser.mjs';
+import { verifyStudioMotion } from './navigation-motion.browser.mjs';
 import { openArticleList } from './studio.browser.mjs';
 import { workerOptions, owner, password, setupToken } from './fixture.mjs';
 import {
@@ -48,9 +49,12 @@ try {
   });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  const counts = { list: 0, poll: 0 };
-  let releaseBeta;
+  const counts = { list: 0, poll: 0, alphaGet: 0 };
+  let releaseBeta,
+    releaseAlpha,
+    holdAlpha = false;
   const betaGate = new Promise((resolve) => (releaseBeta = resolve));
+  const alphaGate = new Promise((resolve) => (releaseAlpha = resolve));
   let delayList = 0,
     delayGet = 0,
     delaySave = 0,
@@ -65,6 +69,10 @@ try {
       await sleep(delayList);
     }
     if (url.pathname === '/api/publish/status') counts.poll++;
+    if (url.pathname === '/api/posts/alpha' && method === 'GET') {
+      counts.alphaGet++;
+      if (holdAlpha) await alphaGate;
+    }
     // Hold beta's first read even if the list speculatively prefetches it.
     if (url.pathname === '/api/posts/beta' && method === 'GET') await betaGate;
     if (/^\/api\/posts\//.test(url.pathname)) await sleep(method === 'PUT' ? delaySave : delayGet);
@@ -94,6 +102,7 @@ try {
   await page.locator('#home-view').waitFor({ state: 'visible' });
   await expect(page.locator('#site-link')).toHaveAttribute('href', 'http://localhost:8788');
   await expect(page.locator('#site-brand-title')).toHaveText('Test blog');
+  await verifyStudioMotion(page);
   await openArticleList(page);
   await page.locator('.article-title-button').filter({ hasText: 'alpha' }).click();
   await expect(page.locator('#title')).toHaveValue('alpha');
@@ -150,12 +159,19 @@ try {
   const uncachedMs = Date.now() - start;
   assert.ok(uncachedMs < 1600, `opening must not refetch the full list: ${uncachedMs}ms`);
   await openArticleList(page);
+  const cachedReads = counts.alphaGet;
+  holdAlpha = true;
   const cachedStart = Date.now();
-  await page.locator('.article-title-button').filter({ hasText: 'alpha' }).click();
+  // Keyboard activation measures cache latency without Playwright's pointer-stability wait.
+  await page.locator('.article-title-button').filter({ hasText: 'alpha' }).press('Enter');
   await expect(page.locator('#title')).toHaveValue('alpha');
   const cachedMs = Date.now() - cachedStart;
   assert.ok(cachedMs < 600, `cached switch should not wait for network: ${cachedMs}ms`);
+  await expect.poll(() => counts.alphaGet).toBe(cachedReads + 1);
   await expect(page.locator('#body')).toHaveValue('Latest alpha content');
+  // Cached content is usable while its single background ETag revalidation is still held.
+  holdAlpha = false;
+  releaseAlpha();
   await page.locator('#toggle-zen').click();
   await expect(page.locator('#toggle-zen')).toHaveAttribute('aria-label', '退出专注写作');
   await expect(page.locator('.workspace-header')).toBeHidden();

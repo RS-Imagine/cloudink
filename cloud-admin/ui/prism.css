@@ -58,7 +58,7 @@ html[data-cloudink-admin] {
   white-space: nowrap;
 }
 .studio-sidebar .studio-nav {
-  position: static;
+  position: relative;
   display: grid;
   grid-template-columns: 1fr;
   gap: 5px;

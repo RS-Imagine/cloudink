@@ -42,7 +42,8 @@ export function confirmAction(
 }
 export function mountEditorPanes({ preview, invalidate }) {
   const wide = matchMedia('(min-width:1100px)');
-  let preferred = 'writing';
+  let preferred = 'writing',
+    renderedMode = null;
   $('editor-panes').dataset.ciPanes = '';
   $('show-split').dataset.ciPaneControl = '';
   function render() {
@@ -59,6 +60,12 @@ export function mountEditorPanes({ preview, invalidate }) {
     $('editor-panes').classList.toggle('preview-only', mode === 'preview');
     $('editor-panes').classList.toggle('writing-only', mode === 'writing');
     $('show-split').hidden = !wide.matches;
+    if (renderedMode !== mode) {
+      window.CloudInkMotion.cancelWithin($('editor-panes'));
+      for (const pane of $('editor-panes').querySelectorAll('.markdown-input,.preview-pane'))
+        if (pane.getClientRects().length) window.CloudInkMotion.enter(pane, { kind: 'content' });
+      renderedMode = mode;
+    }
     // Hiding a focused iframe resets focus in Firefox; select the visible control afterwards.
     if (moveFocus) $('show-' + mode).focus({ preventScroll: true });
     if (mode === 'writing') invalidate();

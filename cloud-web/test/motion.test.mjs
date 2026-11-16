@@ -92,6 +92,23 @@ test('underdamped springs overshoot naturally; damping dissipates mechanical ene
   near(state.value, 1, 0.00001);
 });
 
+test('the shared interaction response visibly rebounds and releases its animation frame', () => {
+  const h = harness();
+  let maximum = 0;
+  const spring = h.api.spring({
+    ...h.api.response,
+    onUpdate(value) {
+      maximum = Math.max(maximum, value);
+    },
+  });
+  spring.to(1);
+  h.settle();
+  assert.ok(maximum > 1.02, 'Interactive motion must cross its destination before settling');
+  near(spring.value, 1);
+  assert.equal(h.api.stats().springs, 0);
+  assert.equal(h.api.stats().framePending, false);
+});
+
 test('retargeting preserves position and velocity, explicit release velocity is supported', () => {
   const h = harness();
   let completed = 0;

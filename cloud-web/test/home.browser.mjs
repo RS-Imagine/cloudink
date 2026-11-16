@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
+import { verifyNavigationMotion } from './navigation-motion.browser.mjs';
 
 export async function verifyHome(browser, origin, output, engine) {
   const context = await browser.newContext({
@@ -142,4 +143,5 @@ export async function verifyHome(browser, origin, output, engine) {
   } finally {
     await native.close();
   }
+  await verifyNavigationMotion(browser, origin);
 }

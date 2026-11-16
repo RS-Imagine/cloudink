@@ -1,4 +1,59 @@
-/* Durations come from the shared tokens; idle pages have no motion loop. */
+/* Shared spring easing is supplied by motion.js; idle pages have no motion loop. */
+.reader-layout {
+  overflow-x: clip;
+}
+.reader-side-nav,
+.post-filters,
+.editor-view-switch {
+  position: relative;
+}
+[data-ci-selection] {
+  isolation: isolate;
+}
+.ci-selection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  pointer-events: none;
+  transform-origin: 0 0;
+  background: var(--ci-selection-color, var(--ci-surface));
+  transition:
+    width var(--ci-motion-standard) var(--ci-ease),
+    height var(--ci-motion-standard) var(--ci-ease);
+}
+.ci-selection[hidden] {
+  display: none;
+}
+.reader-side-nav,
+.studio-nav {
+  --ci-selection-color: var(--selected, var(--ci-pressed));
+}
+.reader-dock {
+  --ci-selection-color: var(--inset);
+}
+[data-ci-selection] > :is([aria-current], [aria-selected='true'], [aria-pressed='true']) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+[data-ci-selection] > [aria-current]::before {
+  display: none;
+}
+:is(.reader-side-nav, .studio-nav) > .ci-selection::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 4px;
+  background: var(--primary, var(--ci-primary));
+}
+@media (max-width: 767px) {
+  .studio-nav > .ci-selection::before {
+    display: none;
+  }
+}
 body {
   transition:
     background-color var(--ci-motion-standard),
@@ -21,7 +76,7 @@ a {
 [data-motion-press],
 button[data-motion-press],
 .post-card {
-  will-change: transform;
+  transform-origin: center;
 }
 .site-nav a,
 .site-nav .search-btn,

@@ -10,12 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
           containers: document.getElementById('reader-center-content')
             ? ['#reader-center-content', '#reader-context-content']
             : ['#swup'],
-          animationSelector: reducedMotion.matches ? false : '[class*="transition-"]',
+          animationSelector: motion || reducedMotion.matches ? false : '[class*="transition-"]',
         })
       : null;
   reducedMotion.addEventListener('change', () => {
     if (swup)
-      swup.options.animationSelector = reducedMotion.matches ? false : '[class*="transition-"]';
+      swup.options.animationSelector =
+        motion || reducedMotion.matches ? false : '[class*="transition-"]';
   });
   window.swup = swup;
   window.CloudInkReader?.attach(swup);
@@ -623,7 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
           disposed = true;
           cancel();
         });
-        if (!reducedMotion.matches && typeof clone.animate === 'function') {
+        if (motion && !reducedMotion.matches && typeof clone.animate === 'function') {
           requestAnimationFrame(() => {
             const finalRect = clone.getBoundingClientRect();
             if (finalRect.width > 0 && finalRect.height > 0) {
@@ -633,19 +634,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialRect.left + initialRect.width / 2 - (finalRect.left + finalRect.width / 2);
               const translateY =
                 initialRect.top + initialRect.height / 2 - (finalRect.top + finalRect.height / 2);
-              clone.animate(
-                [
-                  {
-                    transform: `translate(${translateX.toFixed(1)}px, ${translateY.toFixed(1)}px) scale(${scaleX.toFixed(3)}, ${scaleY.toFixed(3)})`,
-                    opacity: 0.85,
-                  },
-                  { transform: 'none', opacity: 1 },
-                ],
+              motion.animate(clone, [
                 {
-                  duration: 260,
-                  easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                  transform: `translate(${translateX}px, ${translateY}px) scale(${scaleX}, ${scaleY})`,
+                  opacity: 0.85,
                 },
-              );
+                { transform: 'none', opacity: 1 },
+              ]);
             }
           });
         }
@@ -1356,10 +1351,25 @@ document.addEventListener('DOMContentLoaded', () => {
   } // end initPageFeatures
 
   initPageFeatures();
-  const initialHome = document.querySelector('.home-layout');
-  if (initialHome) motion?.enter(initialHome, { kind: 'content' });
+  const enterPage = (direction = 1) => {
+    for (const [index, id] of ['reader-center-content', 'reader-context-content'].entries()) {
+      const content = document.getElementById(id);
+      if (content?.getClientRects().length)
+        motion?.enter(content, {
+          kind: 'content',
+          axis: index ? 'y' : 'x',
+          direction,
+          delay: index ? 35 : 0,
+        });
+    }
+  };
+  enterPage();
   swup?.hooks.on('page:view', (visit) => {
+    const order = ['home', 'posts', 'shorts', 'archive', 'about'];
+    const from = document.querySelector('[data-reader-nav][aria-current]')?.dataset.readerNav;
     initPageFeatures(visit);
+    const to = document.querySelector('[data-reader-nav][aria-current]')?.dataset.readerNav;
+    enterPage(order.indexOf(to) < order.indexOf(from) ? -1 : 1);
     if (!visit.history.popstate) document.getElementById('swup')?.focus({ preventScroll: true });
   });
 

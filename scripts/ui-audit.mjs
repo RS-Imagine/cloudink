@@ -583,7 +583,11 @@ try {
   report.assets['shared/motion.min.js+css'] = {
     gzip: gzipSync(motionJS).length + gzipSync(motionCSS).length,
   };
-  assert.ok(report.assets['shared/motion.min.js+css'].gzip <= 4096, 'Motion runtime gzip budget');
+  // Includes shared spring easing and selection tracking across public/admin navigation.
+  assert.ok(
+    report.assets['shared/motion.min.js+css'].gzip <= 5 * 1024,
+    'Motion runtime gzip budget',
+  );
   const homeCSS = (
     await transform(await readFile('crates/blog-core/src/assets/home.css', 'utf8'), {
       minify: true,
@@ -669,7 +673,7 @@ try {
     'build-work/web-public/reader-assets/code.css': 4 * 1024,
     'build-work/web-public/reader-assets/katex.css': 8 * 1024,
     'build-work/web-public/styles.css': 18 * 1024,
-    'cloud-admin/ui/app.generated.js': 30 * 1024,
+    'cloud-admin/ui/app.generated.js': 31 * 1024,
     'cloud-admin/ui/publication.generated.js': 4 * 1024,
     'cloud-admin/ui/backup.generated.js': 16 * 1024,
     'cloud-admin/ui/home-illustration.generated.js': 3 * 1024,
