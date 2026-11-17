@@ -12,6 +12,25 @@ export function validImageKey(key: string): boolean {
       !key.split('/').some((part) => !part || part === '.' || part === '..'))
   );
 }
+// Older published snapshots used the authenticated editor URL. Rewrite only
+// same-origin URLs for objects that the public media route already allows.
+export function legacyImagePath(input: string, origin: string): string | null {
+  try {
+    const url = new URL(input, origin);
+    if (
+      url.origin !== origin ||
+      url.username ||
+      url.password ||
+      url.pathname !== '/api/image' ||
+      url.searchParams.getAll('key').length !== 1
+    )
+      return null;
+    const key = url.searchParams.get('key')!;
+    return validImageKey(key) ? '/images/' + key : null;
+  } catch {
+    return null;
+  }
+}
 export function imageType(bytes: Uint8Array): { type: string; ext: string } {
   const text = new TextDecoder().decode(bytes.slice(0, 16));
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)

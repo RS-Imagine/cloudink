@@ -142,6 +142,33 @@ try {
   assert.equal(await (await mf.getR2Bucket('STORAGE')).head(key), null);
   await page.locator('#image-library-unused').uncheck();
   await expect(page.locator('.image-card')).toHaveCount(1);
+  let releaseRefresh;
+  const imageListRoute = (url) => url.pathname === '/api/images';
+  await page.route(imageListRoute, async (route) => {
+    await new Promise((resolve) => {
+      releaseRefresh = resolve;
+    });
+    await route.continue().catch(() => {});
+  });
+  const refresh = page.locator('#image-library-refresh');
+  const layoutSize = (button) => ({ width: button.offsetWidth, height: button.offsetHeight });
+  const beforeRefresh = await refresh.evaluate(layoutSize);
+  const originalLabel = await refresh.textContent();
+  try {
+    await refresh.click();
+    await expect(refresh).toHaveAttribute('aria-busy', 'true');
+    assert.equal(await refresh.textContent(), originalLabel);
+    const busy = await refresh.evaluate(layoutSize);
+    assert.ok(Math.abs(busy.width - beforeRefresh.width) <= 1);
+    assert.ok(Math.abs(busy.height - beforeRefresh.height) <= 1);
+    await expect(page.locator('#image-library-status')).toHaveAttribute('data-tone', 'pending');
+    await expect(page.locator('#image-library-status')).toContainText('正在读取图片库');
+    await expect.poll(() => typeof releaseRefresh).toBe('function');
+  } finally {
+    releaseRefresh?.();
+    await page.unroute(imageListRoute);
+  }
+  await expect(refresh).not.toHaveAttribute('aria-busy', 'true');
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });

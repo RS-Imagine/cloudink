@@ -1,12 +1,13 @@
 import { decodeHTML, decodeHTMLAttribute } from 'entities';
 import { micromark } from 'micromark';
-import { validImageKey } from './media';
+import { legacyImagePath, validImageKey } from './media';
 
 export const IMAGE_REFERENCE_VERSION = '2';
 
 function keyFromUrl(input: string, origin: string, local: boolean): string | null {
   try {
-    const url = new URL(decodeHTMLAttribute(input), origin);
+    const decoded = decodeHTMLAttribute(input);
+    const url = new URL(legacyImagePath(decoded, origin) || decoded, origin);
     if (local && url.origin !== origin) return null;
     if (!url.pathname.startsWith('/images/')) return null;
     const key = decodeURIComponent(url.pathname.slice('/images/'.length));

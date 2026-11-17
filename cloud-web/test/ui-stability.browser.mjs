@@ -63,16 +63,26 @@ export async function verifyUiStability(browser, origin, output, engine) {
     return page.locator('#' + id).evaluate((button) => {
       const rect = button.getBoundingClientRect();
       const icon = button.querySelector('svg')?.getBoundingClientRect();
-      return { width: rect.width, height: rect.height, icon: icon?.width };
+      return {
+        width: rect.width,
+        height: rect.height,
+        icon: icon?.width,
+        label: button.textContent,
+      };
     });
   }
   async function stable(id, before) {
     await expect(page.locator('#' + id)).toHaveAttribute('aria-busy', 'true');
     const after = await bounds(id);
+    assert.equal(after.label, before.label, id + ' retains its complete original label');
     const labelFits = await page.locator('#' + id).evaluate((button) => {
       const label = button.querySelector('[data-action-label]');
       if (!label || getComputedStyle(label).display === 'none') return true;
-      return label.getBoundingClientRect().right <= button.getBoundingClientRect().right + 1;
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const text = range.getBoundingClientRect(),
+        rect = button.getBoundingClientRect();
+      return text.left >= rect.left - 1 && text.right <= rect.right + 1;
     });
     assert.ok(labelFits, id + ' keeps loading text inside the button');
     assert.ok(Math.abs(before.width - after.width) <= 1, id + ' keeps its width');

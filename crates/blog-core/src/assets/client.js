@@ -508,11 +508,19 @@ document.addEventListener('DOMContentLoaded', () => {
       dialog.className = 'reader-dialog';
       dialog.dataset.sheet = 'compact';
       dialog.setAttribute('aria-label', label);
+      const header = document.createElement('div');
+      header.className = 'reader-dialog-header';
+      header.dataset.sheetHeader = '';
       const close = document.createElement('button');
-      close.className = 'reader-dialog-close reader-sr-only';
-      close.textContent = t('关闭', 'Close');
+      close.type = 'button';
+      close.className = 'reader-dialog-close';
+      close.textContent = '×';
       close.setAttribute('aria-label', t('关闭', 'Close'));
-      dialog.append(close, content);
+      header.append(close);
+      const body = document.createElement('div');
+      body.className = 'reader-dialog-body';
+      body.append(content);
+      dialog.append(header, body);
       document.body.append(dialog);
       const overflow = document.body.style.overflow;
       const finish = () => {
@@ -531,8 +539,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.style.overflow = 'hidden';
       if (motion) motion.openDialog(dialog);
       else dialog.showModal();
-      close.focus();
+      close.focus({ preventScroll: true });
       dialogs.add(dialog);
+      return dialog;
     };
     images.forEach((img) => {
       // Linked images retain their author's link action.
@@ -620,11 +629,16 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         retry.addEventListener('click', load);
         const initialRect = img.getBoundingClientRect();
-        showDialog(content, img.alt || t('图片预览', 'Image preview'), img, () => {
+        const dialog = showDialog(content, img.alt || t('图片预览', 'Image preview'), img, () => {
           disposed = true;
           cancel();
         });
-        if (motion && !reducedMotion.matches && typeof clone.animate === 'function') {
+        if (
+          motion &&
+          !dialog.hasAttribute('data-ci-sheet-active') &&
+          !reducedMotion.matches &&
+          typeof clone.animate === 'function'
+        ) {
           requestAnimationFrame(() => {
             const finalRect = clone.getBoundingClientRect();
             if (finalRect.width > 0 && finalRect.height > 0) {

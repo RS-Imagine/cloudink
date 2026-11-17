@@ -169,18 +169,51 @@
   min-width: min(280px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
-  padding: 24px 20px 20px;
+  padding: 8px 20px 20px;
   border-radius: 24px;
   border: 1px solid var(--ci-divider);
   color: var(--ci-text);
   background: var(--ci-elevated);
   box-shadow: var(--ci-shadow-overlay);
 }
+.reader-dialog[open] {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr);
+  gap: 8px;
+}
+.reader-dialog-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  min-width: 0;
+  background: var(--ci-elevated);
+}
+.reader-dialog-close {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 4;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ci-surface);
+  color: var(--ci-text);
+  font-size: 28px;
+  line-height: 1;
+}
+.reader-dialog-body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
 .reader-dialog::backdrop,
 dialog.search-modal::backdrop {
   background: var(--ci-overlay);
 }
-.reader-dialog-close.reader-sr-only,
 .reader-sr-only {
   position: absolute;
   width: 1px;

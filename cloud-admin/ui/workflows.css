@@ -4,17 +4,6 @@
 }
 button[aria-busy='true'] {
   position: relative;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-button[aria-busy='true'] [data-action-label] {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-button[aria-busy='true']:not(:has(svg)) > [data-action-label] {
-  display: block;
 }
 button[aria-busy='true']:has(svg)::before {
   display: none;
