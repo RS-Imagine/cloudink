@@ -37,8 +37,8 @@ export function workerOptions(bindings = {}) {
     bindings: { SETUP_TOKEN: setupToken, ...bindings },
   };
 }
-export async function fixture(t, bindings = {}) {
-  const mf = new Miniflare(convertV4MiniflareOptions(workerOptions(bindings)));
+export async function fixture(t, bindings = {}, port) {
+  const mf = new Miniflare(convertV4MiniflareOptions({ ...workerOptions(bindings), port }));
   t.after(() => mf.dispose());
   let cookie = '',
     csrf = '';

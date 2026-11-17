@@ -118,7 +118,7 @@ export function configureImages({
       body.className = 'image-card-body';
       const name = document.createElement('h3');
       name.textContent = image.name;
-      name.title = image.key;
+      name.title = image.name + '\n' + image.key;
       const meta = document.createElement('p');
       meta.className = 'muted';
       meta.textContent = `${image.srcset ? '网页 ' + size(image.displaySize) + ' / 原图 ' : ''}${size(image.size)} · ${new Date(image.uploaded).toLocaleDateString()}`;

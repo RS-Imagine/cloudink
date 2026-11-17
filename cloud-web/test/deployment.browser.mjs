@@ -459,6 +459,7 @@ try {
   for (const body of ['Published home note.', 'Edited home note.']) {
     await page.locator('#short-body').fill(body);
     await page.locator('#short-publish').click();
+    await acceptConfirmation(page);
     await expect(page.locator('#short-editor')).toBeHidden({ timeout: 45000 });
     await live.goto('http://localhost:8791/');
     await expect(live.locator('.blog-notes')).toContainText(body);

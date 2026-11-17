@@ -655,6 +655,10 @@ html[data-cloudink-admin] {
   border-radius: 6px;
   background: transparent;
   color: var(--ci-text);
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .editor-document #description {
   width: 100%;
@@ -1309,8 +1313,39 @@ html[data-cloudink-admin] {
     padding: 22px;
   }
   #app-view .image-library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+  }
+  #app-view .image-card {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+    align-items: start;
+  }
+  #app-view .image-card-body {
+    padding: 0;
+  }
+  #app-view .image-thumbnail {
+    width: 88px;
+    min-height: 0;
+    height: 88px;
+    aspect-ratio: 1;
+  }
+  #app-view .image-card h3 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #app-view .image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 8px;
+  }
+  #app-view .image-actions button {
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
   #app-view .images-view .form-actions {
     gap: 6px;

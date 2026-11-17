@@ -40,6 +40,52 @@ function imageUploadForm(file, options) {
   return prepareImageUploadForm(file, options || { compact: !keepOriginal.checked });
 }
 const fields = ['title', 'description', 'date', 'slug', 'body'];
+const titleField = $('title');
+function sizeTitle() {
+  if (!titleField.clientWidth) return;
+  titleField.style.height = 'auto';
+  titleField.style.height = titleField.scrollHeight + 'px';
+  titleField.scrollTop = titleField.scrollLeft = 0;
+}
+function normalizeTitle() {
+  const value = titleField.value;
+  if (!/[\r\n]/.test(value)) return;
+  const start = titleField.selectionStart,
+    end = titleField.selectionEnd;
+  const singleLine = (text) => text.replace(/[\r\n]+/g, ' ');
+  titleField.value = singleLine(value);
+  titleField.setSelectionRange(
+    singleLine(value.slice(0, start)).length,
+    singleLine(value.slice(0, end)).length,
+  );
+}
+titleField.addEventListener('input', (event) => {
+  if (!event.isComposing) normalizeTitle();
+  sizeTitle();
+});
+titleField.addEventListener('compositionend', () => {
+  normalizeTitle();
+  sizeTitle();
+});
+titleField.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) event.preventDefault();
+});
+titleField.addEventListener('beforeinput', (event) => {
+  if (!event.isComposing && ['insertParagraph', 'insertLineBreak'].includes(event.inputType))
+    event.preventDefault();
+});
+let titleWidth = 0,
+  titleResizeFrame = 0;
+new ResizeObserver(() => {
+  if (titleWidth === titleField.clientWidth) return;
+  titleWidth = titleField.clientWidth;
+  if (!titleResizeFrame)
+    titleResizeFrame = requestAnimationFrame(() => {
+      titleResizeFrame = 0;
+      sizeTitle();
+    });
+}).observe(titleField);
+void document.fonts.ready.then(sizeTitle);
 let csrf = '',
   posts = [],
   site = null,
@@ -159,18 +205,21 @@ const operationAreas = {
 async function action(id, label, work, success = '') {
   if (activeActions.has(id)) return;
   const button = $(id);
+  const area =
+    operationAreas[id] ||
+    (id === 'short-publish' || id.startsWith('short-publish-') ? 'short-operation-status' : null);
   activeActions.add(id);
   button.disabled = true;
   button.setAttribute('aria-busy', 'true');
-  feedback(operationAreas[id], label, 'pending');
+  feedback(area, label, 'pending');
   try {
     await work();
     const message =
       success || (id === 'publish-settings' ? '发布请求已处理，请查看上方发布状态。' : undefined);
-    feedback(operationAreas[id], message, 'success');
+    feedback(area, message, 'success');
     if (success) notice(success, 'success');
   } catch (error) {
-    feedback(operationAreas[id], error.message, 'error');
+    feedback(area, error.message, 'error');
     notice(error.message, 'error');
   } finally {
     activeActions.delete(id);
@@ -754,6 +803,7 @@ function fillEditor(draft, etag) {
   $('unpublish-post').hidden = !published;
   $('delete-post').hidden = published;
   view('editor');
+  sizeTitle();
   renderLists();
   wordCount();
   void preview();
@@ -842,6 +892,7 @@ $('open-draft-history')?.addEventListener('click', () => {
           if (snap.draft?.front_matter?.title) $('title').value = snap.draft.front_matter.title;
           if (snap.draft?.front_matter?.description)
             $('description').value = snap.draft.front_matter.description;
+          sizeTitle();
           changed();
           dialog.close();
           notice('已恢复本地快照内容。', 'success');
@@ -1093,7 +1144,9 @@ function publishingControls() {
   })) {
     if (!activeActions.has(id)) {
       $(id).disabled = publishingBusy || publishRequest;
-      $(id).textContent = publishingBusy || publishRequest ? '正在发布…' : label;
+      $(id).textContent = label;
+      if (publishingBusy || publishRequest) $(id).setAttribute('aria-busy', 'true');
+      else $(id).removeAttribute('aria-busy');
     }
   }
 }
@@ -1132,7 +1185,7 @@ async function startPublish(data) {
     });
     const result = await api('/api/publish', { method: 'POST', body: data });
     showPublishing(result);
-    await publishInBrowser(result, { api, engineTask, showPublishing, refresh, notice });
+    return await publishInBrowser(result, { api, engineTask, showPublishing, refresh, notice });
   } finally {
     publishRequest = false;
     await refresh().catch(() => {});

@@ -133,7 +133,7 @@ export async function verifyUiStability(browser, origin, output, engine) {
     const loaded = await thumb.boundingBox();
     assert.equal(placeholder.height, loaded.height, 'decoding preserves thumbnail height');
 
-    for (const width of [1440, 390, 360, 320]) {
+    for (const width of [1440, 443, 390, 360, 320]) {
       await page.setViewportSize({ width, height: width === 1440 ? 1000 : 844 });
       await page.locator('#image-library-refresh').scrollIntoViewIfNeeded();
       const before = await bounds('image-library-refresh');
@@ -165,6 +165,13 @@ export async function verifyUiStability(browser, origin, output, engine) {
       await expect(page.locator('#image-library-grid')).toHaveAttribute('aria-busy', 'false');
       await expect(page.locator('.image-actions .danger').first()).toBeEnabled();
       if (width < 760) {
+        assert.equal(
+          await page
+            .locator('#image-library-grid')
+            .evaluate((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length),
+          1,
+          'mobile gallery has one compact card per row',
+        );
         const columns = await page
           .locator('.image-card')
           .first()
@@ -176,6 +183,14 @@ export async function verifyUiStability(browser, origin, output, engine) {
         );
         const image = await page.locator('.image-thumbnail').first().boundingBox();
         assert.ok(image.width <= 96 && image.height <= 96, 'mobile thumbnail stays compact');
+        assert.ok(
+          await page
+            .locator('.image-actions button')
+            .evaluateAll((buttons) =>
+              buttons.every((button) => getComputedStyle(button).whiteSpace === 'nowrap'),
+            ),
+          'mobile action labels stay on one line',
+        );
       }
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     }

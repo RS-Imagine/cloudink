@@ -1,5 +1,5 @@
 // Shorts ("短记") management: list, compose, save draft, publish, delete.
-import { confirmAction } from './workflows.js';
+import { confirmAction, feedback } from './workflows.js';
 const $ = (id) => document.getElementById(id);
 function nowMinute() {
   const d = new Date();
@@ -58,6 +58,12 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     el.textContent = message;
     el.dataset.tone = tone;
   }
+  async function refreshPublished() {
+    feedback('short-operation-status', '短记已上线，原稿已保留。', 'success');
+    await load().catch(() => {
+      feedback('short-operation-status', '短记已上线，列表暂未刷新，请重新打开短记。', 'success');
+    });
+  }
   function updateWordCount() {
     const body = $('short-body')?.value || '';
     const count = body.replace(/\s/g, '').length;
@@ -84,7 +90,11 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
 
       const badge = document.createElement('span');
       badge.className = 'badge' + (item.published ? '' : ' draft');
-      badge.textContent = item.published ? (item.has_draft ? '已发布·有草稿' : '已发布') : '草稿';
+      badge.textContent = item.published
+        ? item.has_draft
+          ? '已发布 · 原稿保留'
+          : '已发布'
+        : '草稿';
 
       meta.append(time, badge);
 
@@ -95,16 +105,25 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       edit.addEventListener('click', () => openEditor(item));
       const pub = document.createElement('button');
       pub.id = 'short-publish-' + item.slug;
-      pub.textContent = item.published && !item.has_draft ? '已发布' : '发布';
+      pub.textContent = item.published ? (item.has_draft ? '重新发布' : '已发布') : '发布';
       pub.disabled = item.published && !item.has_draft;
       pub.classList.add('primary');
-      pub.addEventListener('click', () =>
-        action('short-publish-' + item.slug, '正在发布…', async () => {
+      pub.addEventListener('click', async () => {
+        if (
+          !(await confirmAction(
+            `将发布这条短记（${item.date}）的已保存原稿，只有当前短记会上线，其他草稿保持私有。`,
+            {
+              title: item.published ? '重新发布这条短记？' : '发布这条短记？',
+              accept: '确认发布',
+            },
+          ))
+        )
+          return;
+        await action('short-publish-' + item.slug, '正在发布…', async () => {
           await startPublish({ shortSlug: item.slug, etag: item.etag || '' });
-          notice('短记已发布。', 'success');
-          await load();
-        }),
-      );
+          await refreshPublished();
+        });
+      });
       const del = document.createElement('button');
       del.id = 'short-delete-' + item.slug;
       del.textContent = '删除';
@@ -253,8 +272,9 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     const date = $('short-date').value.trim();
     const body = $('short-body').value;
     if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(date)) {
-      status('发布时间格式不正确，请用 YYYY-MM-DD HH:MM。', 'error');
-      return null;
+      const error = new Error('发布时间格式不正确，请用 YYYY-MM-DD HH:MM。');
+      status(error.message, 'error');
+      throw error;
     }
     const slug = editing ? editing.slug : uniqueSlug(slugFor(date));
     return {
@@ -292,8 +312,18 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       await load();
     }),
   );
-  $('short-publish').addEventListener('click', () =>
-    editorAction('short-publish', '正在发布…', async () => {
+  $('short-publish').addEventListener('click', async () => {
+    const confirmedRevision = editorRevision,
+      confirmedValue = editorValue();
+    if (
+      !(await confirmAction('保存最新原稿后，只发布当前这条短记。其他草稿保持私有。', {
+        title: '发布这条短记？',
+        accept: '确认发布',
+      }))
+    )
+      return;
+    if (confirmedRevision !== editorRevision || confirmedValue !== editorValue()) return;
+    await editorAction('short-publish', '正在发布…', async () => {
       const revision = editorRevision,
         target = editing;
       const draft = await collect();
@@ -309,7 +339,6 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         savedEditorValue = editorValue(draft);
       }
       await startPublish({ shortSlug: slug, etag: saved.etag });
-      notice('短记已发布。', 'success');
       if (revision === editorRevision) {
         if (
           $('short-body').value === draft.body_markdown &&
@@ -318,9 +347,9 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
           closeEditor();
         else status('短记已发布；当前修改尚未保存。');
       }
-      await load();
-    }),
-  );
+      await refreshPublished();
+    });
+  });
   async function show() {
     if ((await open()) === false) return false;
     await load();
