@@ -149,6 +149,21 @@ export async function verifyHome(browser, origin, output, engine) {
   });
   try {
     const page = await native.newPage();
+    await page.goto(origin + '/archive/');
+    const entry = page.locator('.archive-entry').first();
+    await entry.scrollIntoViewIfNeeded();
+    assert.ok(
+      await entry.evaluate((a) => {
+        const row = a.closest('li').getBoundingClientRect();
+        return [row.top + 3, row.bottom - 3].every(
+          (y) => document.elementFromPoint(row.left + 3, y)?.closest('a') === a,
+        );
+      }),
+      'The date column and the vertical padding both belong to the archive link',
+    );
+    await entry.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.article-body')).toBeVisible();
     await page.goto(origin + '/');
     await page.locator('.reader-dock [data-reader-nav="posts"]').click();
     await expect(page).toHaveURL(origin + '/post/');

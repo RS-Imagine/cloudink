@@ -523,8 +523,15 @@
           <div class="section-heading">
             <div>
               <p class="muted">请先移除文章或网站设置中的引用，再删除图片。</p>
-              <label><input id="image-keep-original" type="checkbox" /> 保留上传原始文件</label>
-              <p class="muted">
+              <label class="checkbox-field">
+                <input
+                  id="image-keep-original"
+                  type="checkbox"
+                  aria-describedby="image-original-help"
+                />
+                <span>保留上传原始文件</span>
+              </label>
+              <p id="image-original-help" class="checkbox-help muted">
                 默认将新上传的大型静态图片压缩为宽度最多 1920
                 像素的主图，减少占用；动画、小图或无法压缩的文件保留原样。此选择也应用于编辑器上传，不修改已有图片。
               </p>
@@ -564,9 +571,10 @@
               保留原图和现有链接，为 JPEG、PNG、WebP
               生成更小版本。请保持后台页面打开；可暂停，重新运行会跳过已完成的图片。
             </p>
-            <label
-              ><input id="image-optimize-recheck" type="checkbox" />重新检查之前跳过的图片</label
-            >
+            <label class="checkbox-field">
+              <input id="image-optimize-recheck" type="checkbox" />
+              <span>重新检查之前跳过的图片</span>
+            </label>
             <div class="toolbar-actions">
               <button id="image-library-optimize">扫描并优化</button>
               <button id="image-library-pause" hidden="">完成当前图片后暂停</button>

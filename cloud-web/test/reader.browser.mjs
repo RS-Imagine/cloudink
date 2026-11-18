@@ -57,18 +57,22 @@ export async function verifyMediaPanels(browser, origin, path, output) {
           )
           .toBeLessThan(0.5);
         await close.click({ trial: true });
+        // The opening spring briefly scales the dialog and its hit targets.
+        await expect
+          .poll(async () => {
+            const box = await close.boundingBox();
+            return box ? Math.min(box.width, box.height) : 0;
+          })
+          .toBeGreaterThanOrEqual(44);
         const bounds = await dialog.evaluate((el) => {
           const box = el.getBoundingClientRect(),
-            button = el.querySelector('.reader-dialog-close').getBoundingClientRect(),
             media = el.querySelector('img').getBoundingClientRect();
           return {
-            touch: [button.width, button.height],
             top: media.top - box.top,
             left: media.left - box.left,
             right: box.right - media.right,
           };
         });
-        assert.ok(bounds.touch.every((size) => size >= 44));
         assert.ok(bounds.top >= 44 && bounds.top <= 80, JSON.stringify(bounds));
         assert.ok(bounds.left >= 0 && bounds.right >= 0, 'media stays inside the sheet');
       }

@@ -1379,7 +1379,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } // end initPageFeatures
 
+  function shortFragmentTarget() {
+    if (!location.hash) return null;
+    let id;
+    try {
+      id = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      return null;
+    }
+    const target = document.getElementById(id);
+    if (target?.classList.contains('short-card')) return target;
+    // Links in earlier publications used the bare slug.
+    const legacy = document.getElementById('note:' + id);
+    if (!legacy?.classList.contains('short-card')) return null;
+    const canonical = new URL(location.href);
+    canonical.hash = legacy.id;
+    history.replaceState(history.state, '', canonical);
+    legacy.scrollIntoView({ behavior: 'instant', block: 'start' });
+    return legacy;
+  }
   initPageFeatures();
+  shortFragmentTarget()?.focus({ preventScroll: true });
   const enterPage = (direction = 1) => {
     for (const [index, id] of ['reader-center-content', 'reader-context-content'].entries()) {
       const content = document.getElementById(id);
@@ -1399,7 +1419,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initPageFeatures(visit);
     const to = document.querySelector('[data-reader-nav][aria-current]')?.dataset.readerNav;
     enterPage(order.indexOf(to) < order.indexOf(from) ? -1 : 1);
-    if (!visit.history.popstate) document.getElementById('swup')?.focus({ preventScroll: true });
+    if (!visit.history.popstate)
+      (shortFragmentTarget() || document.getElementById('swup'))?.focus({ preventScroll: true });
   });
 
   // Restore only after AJAX content exists: native restoration can run before replacement.

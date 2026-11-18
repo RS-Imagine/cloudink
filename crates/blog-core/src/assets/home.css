@@ -1167,8 +1167,11 @@
   position: absolute;
   inset: 0;
 }
+.reader-shell :is(.blog-feed, .blog-notes) {
+  padding: var(--ci-panel-inset);
+}
 .reader-shell .blog-feed {
-  padding: var(--ci-panel-inset) var(--ci-panel-inset) 12px;
+  padding-bottom: 12px;
 }
 .reader-shell .blog-section-heading {
   align-items: baseline;
@@ -1211,6 +1214,14 @@
 .reader-shell .post-index h2 {
   margin: 0 0 12px;
   font: 600 20px/1.65 var(--reader-font-family);
+  overflow-wrap: anywhere;
+}
+.reader-shell :is(.blog-post h2, .blog-post h3, .archive-entry > span) {
+  text-wrap: balance;
+}
+.reader-shell .title-phrase {
+  display: inline-block;
+  max-inline-size: 100%;
   overflow-wrap: anywhere;
 }
 .post-index-empty {
@@ -1324,15 +1335,31 @@
   list-style: none;
 }
 .reader-shell .archive-group li {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+}
+/* Older published rows keep the date and link as siblings. */
+.reader-shell .archive-group :is(li:has(> time), .archive-entry) {
   display: grid;
   grid-template-columns: 5ch minmax(0, 1fr);
   align-items: baseline;
   gap: 16px;
-  border-bottom: 1px solid var(--line);
   padding: 18px 0;
+}
+.reader-shell .archive-group time + a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.reader-shell .archive-group li:has(> time + a:is(:hover, :focus-visible)),
+.reader-shell .archive-entry:is(:hover, :focus-visible) {
+  background: var(--ci-hover);
+  color: var(--ci-primary);
+  outline-offset: -2px;
 }
 .reader-shell .archive-group time {
   color: var(--muted);
+  font-family: var(--ci-font-ui);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1348,6 +1375,11 @@
 .reader-shell .short-card {
   padding: 20px 0;
   border-bottom: 1px solid var(--line);
+  scroll-margin-block-start: var(--ci-space-4);
+}
+.reader-shell .short-card:is(:target, :focus) .short-time {
+  color: var(--ci-primary);
+  font-weight: 600;
 }
 .reader-shell .short-time {
   font-size: 11px;

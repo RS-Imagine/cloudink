@@ -177,16 +177,40 @@ fn post_thumbnail(post: &Post, featured: bool) -> String {
     String::new()
 }
 
-/// Keep short clauses together, while allowing long clauses to wrap normally.
+/// Prefer a title/subtitle divider, then punctuation. Each phrase can wrap on narrow screens.
 fn display_title(title: &str) -> String {
-    title
-        .split_inclusive(['，', '。', '；', '：', '！', '？', ',', ';', ':', '!', '?'])
-        .map(|part| {
-            let text = escape_html(part);
-            format!(r#"<span class="title-phrase">{text}</span>"#)
-        })
-        .collect::<Vec<_>>()
-        .join("<wbr>")
+    let mut breaks: Vec<_> = title.match_indices(['|', '｜']).map(|(i, _)| i).collect();
+    if breaks.is_empty() {
+        breaks.extend(
+            title
+                .match_indices(['，', '。', '；', '：', '！', '？', ',', ';', ':', '!', '?'])
+                .map(|(i, mark)| i + mark.len()),
+        );
+    }
+    breaks.retain(|end| *end > 0 && *end < title.len());
+    if breaks.is_empty() {
+        return escape_html(title);
+    }
+
+    let mut start = 0;
+    let mut phrases = Vec::new();
+    for end in breaks.into_iter().chain([title.len()]) {
+        let part = &title[start..end];
+        let text = part.trim();
+        if text.is_empty() {
+            phrases.push(part.to_owned());
+        } else {
+            // Spaces between inline blocks must stay outside their boxes to remain visible.
+            let (leading, rest) = part.split_at(part.len() - part.trim_start().len());
+            let trailing = &rest[text.len()..];
+            phrases.push(format!(
+                r#"{leading}<span class="title-phrase">{}</span>{trailing}"#,
+                escape_html(text)
+            ));
+        }
+        start = end;
+    }
+    phrases.join("<wbr>")
 }
 
 fn icon(name: &str) -> String {
@@ -208,8 +232,8 @@ fn icon(name: &str) -> String {
     )
 }
 
-fn author_context(config: &SiteConfig) -> String {
-    let about = if config.about.as_deref().is_none_or(|s| !s.trim().is_empty()) {
+fn author_context(config: &SiteConfig, show_about_link: bool) -> String {
+    let about = if show_about_link && config.about.as_deref().is_none_or(|s| !s.trim().is_empty()) {
         format!(
             r#"<a class="plain-button" href="/about/">{}更多关于我</a>"#,
             icon("about")
@@ -234,16 +258,20 @@ fn author_context(config: &SiteConfig) -> String {
     )
 }
 
+fn short_anchor_id(short: &Short) -> String {
+    format!("note:{}", escape_html(short.slug()))
+}
+
 fn home_context(config: &SiteConfig, shorts: &[Short]) -> String {
     let entries = shorts.iter().filter(|s| !s.draft()).take(2).map(|short| {
         let text = short.body_plain_text.trim();
         let excerpt: String = text.chars().take(100).collect();
-        format!(r#"<article class="blog-note"><time datetime="{date}">{date}</time><p><a href="/shorts/#{slug}">{text}{more}</a></p></article>"#,
-            date = escape_html(short.date()), slug = escape_html(short.slug()), text = escape_html(&excerpt), more = if text.chars().count() > 100 { "…" } else { "" })
+        format!(r#"<article class="blog-note"><time datetime="{date}">{date}</time><p><a href="/shorts/#{anchor}">{text}{more}</a></p></article>"#,
+            date = escape_html(short.date()), anchor = short_anchor_id(short), text = escape_html(&excerpt), more = if text.chars().count() > 100 { "…" } else { "" })
     }).collect::<String>();
     format!(
         r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>{}</section><a class="panel archive-shortcut" href="/archive/">{}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>"#,
-        author_context(config),
+        author_context(config, true),
         if entries.is_empty() {
             "<p class=\"muted\">还没有发布短记。</p>"
         } else {
@@ -308,13 +336,13 @@ pub fn render_index_with_shorts(
         );
         if featured {
             cards.push_str(&format!(r#"<article class="post-card home-card home-feature panel featured-article{without_cover}"><div class="feature-copy"><div class="story-eyebrow">{document}<span>最近发布</span></div><h2><a href="/posts/{slug}/">{title}</a></h2><p class="feature-summary">{description}</p>{meta}<a class="plain-button primary feature-read" href="/posts/{slug}/">阅读全文 <span aria-hidden="true">→</span></a></div>{cover}</article>"#,
-                without_cover = if cover.is_empty() { " without-cover" } else { "" }, document = icon("article"), slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
+                without_cover = if cover.is_empty() { " without-cover" } else { "" }, document = icon("article"), slug = escape_html(post.slug()), title = display_title(post.title()), description = escape_html(post.description())));
             if visible.len() > 1 {
                 cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link" href="/post/">全部文章 →</a></div>"#);
             }
         } else {
             cards.push_str(&format!(r#"<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/{slug}/">{title}</a></h3><p>{description}</p>{meta}</div>{cover}</article>"#,
-                slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
+                slug = escape_html(post.slug()), title = display_title(post.title()), description = escape_html(post.description())));
         }
     }
     if visible.is_empty() {
@@ -399,7 +427,7 @@ pub fn render_posts_page(
         items.push_str(&format!(
             r#"<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/{slug}/">{title}</a></h2><div class="story-meta"><time datetime="{date}">{date}</time><span>{minutes} 分钟阅读</span></div></div></article></li>"#,
             slug = escape_html(post.slug()),
-            title = escape_html(post.title()),
+            title = display_title(post.title()),
             date = escape_html(post.date()),
             minutes = reading_minutes(post),
         ));
@@ -448,7 +476,7 @@ pub fn render_posts_page(
         css_hash,
         config,
         "posts",
-        &author_context(config),
+        &author_context(config, true),
     )
 }
 
@@ -471,11 +499,11 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
         let mut items = String::new();
         for post in list {
             items.push_str(&format!(
-                "<li><time datetime=\"{date}\">{day}</time><a href=\"/posts/{slug}/\">{title}</a></li>",
+                r#"<li><a class="archive-entry" href="/posts/{slug}/"><time datetime="{date}">{day}</time><span>{title}</span></a></li>"#,
                 date = escape_html(post.date()),
                 day = escape_html(post.date().get(5..).unwrap_or(post.date())),
                 slug = escape_html(post.slug()),
-                title = escape_html(post.title()),
+                title = display_title(post.title()),
             ));
         }
         sections.push_str(&format!(
@@ -502,7 +530,7 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
         css_hash,
         config,
         "archive",
-        &author_context(config),
+        &author_context(config, true),
     )
 }
 
@@ -515,7 +543,8 @@ pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> S
     let mut items = String::new();
     for short in visible {
         items.push_str(&format!(
-            "<article class=\"short-card\"><time class=\"short-time\" datetime=\"{date}\">{date}</time><div class=\"short-body\">{body}</div></article>",
+            r#"<article class="short-card" id="{anchor}" tabindex="-1"><time class="short-time" datetime="{date}">{date}</time><div class="short-body">{body}</div></article>"#,
+            anchor = short_anchor_id(short),
             date = escape_html(short.date()),
             body = short.body_html,
         ));
@@ -537,7 +566,7 @@ pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> S
         css_hash,
         config,
         "shorts",
-        &author_context(config),
+        &author_context(config, true),
     )
 }
 
@@ -623,7 +652,7 @@ pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> 
         css_hash,
         config,
         "about",
-        &author_context(config),
+        &author_context(config, false),
     )
 }
 
@@ -643,7 +672,7 @@ pub fn render_404(config: &SiteConfig, css_hash: &str) -> String {
         css_hash,
         config,
         "not-found",
-        &author_context(config),
+        &author_context(config, true),
     )
 }
 

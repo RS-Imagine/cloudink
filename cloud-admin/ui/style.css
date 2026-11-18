@@ -106,6 +106,25 @@ label > textarea {
   display: block;
   margin-top: 5px;
 }
+.checkbox-field {
+  display: grid;
+  grid-template-columns: var(--ci-space-5) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--ci-space-2);
+  min-height: var(--ci-control-height);
+  margin-block: 8px 0;
+  cursor: pointer;
+}
+.checkbox-field > input[type='checkbox'] {
+  width: var(--ci-space-5);
+  height: var(--ci-space-5);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+}
+.checkbox-help {
+  padding-inline-start: calc(var(--ci-space-5) + var(--ci-space-2));
+}
 h1,
 h2,
 h3,

@@ -42,6 +42,11 @@ fn shorts_feed_renders() {
     fs::remove_file(shorts.join("bad.md")).unwrap();
     build_site(&root, &out).unwrap();
     let html = fs::read_to_string(out.join("shorts").join("index.html")).unwrap();
+    let home = fs::read_to_string(out.join("index.html")).unwrap();
+    for slug in ["short-20261102-1443", "short-20261102-1515"] {
+        assert!(home.contains(&format!("href=\"/shorts/#note:{slug}\"")));
+        assert!(html.contains(&format!("id=\"note:{slug}\"")));
+    }
     assert_eq!(html.matches("short-card").count(), 2, "应渲染 2 条公开短记");
     assert!(!html.contains("草稿不该出现"), "草稿必须过滤");
     let pos1515 = html.find("2026-11-02 15:15").unwrap();

@@ -60,6 +60,20 @@ fn grouped_display_titles_escape_each_clause_and_keep_plain_metadata() {
     assert!(html.contains("写成一封长信 &lt;img src=x&gt;</span>"));
     assert!(!html.contains("<img src=x>"));
     assert!(html.contains("<title>把日子，写成一封长信 &lt;img src=x&gt;"));
+
+    post.front_matter.title = "墨与纸，第一期 | Paper & ink".into();
+    let site = SiteConfig::default();
+    let posts = std::slice::from_ref(&post);
+    for page in [
+        render::render_post(&site, &post, "test"),
+        render::render_index(&site, posts, "test"),
+        render::render_posts(&site, posts, "test"),
+        render::render_archive(&site, posts, "test"),
+    ] {
+        assert!(page.contains(
+            r#"<span class="title-phrase">墨与纸，第一期</span> <wbr><span class="title-phrase">| Paper &amp; ink</span>"#
+        ));
+    }
 }
 
 #[test]
