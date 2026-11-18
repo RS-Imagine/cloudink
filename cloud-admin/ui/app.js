@@ -744,7 +744,6 @@ async function refresh({ append = false } = {}) {
   site = data.site;
   applySiteAppearance(data.appearance || data.site);
   $('site-brand-title').textContent = data.site.title;
-  $('home-heading').textContent = '把文章整理清楚。';
   for (const [slug, cached] of articleCache) {
     const post = posts.find((p) => p.slug === slug);
     if (!post || (post.etag && post.etag !== cached.etag)) articleCache.delete(slug);

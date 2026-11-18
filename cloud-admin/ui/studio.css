@@ -926,17 +926,6 @@ body:has(dialog[open]) {
   }
 }
 
-@media (min-width: 360px) and (max-width: 759px) {
-  .studio-site-link {
-    display: inline-grid;
-    width: 48px;
-    padding: 0;
-  }
-  .studio-site-link span {
-    display: none;
-  }
-}
-
 #post-address-dialog {
   inset: 16px 0 calc(var(--ci-vp-bottom, 0px) + 16px);
   max-height: calc(var(--ci-vp-height, 100dvh) - 32px);

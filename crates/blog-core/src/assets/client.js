@@ -40,10 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (node.title !== siteTitle) node.title = siteTitle;
     }
     const kind = shell?.dataset.page;
-    // Reading keeps the navigation state from the originating list.
-    if (kind === 'post') return;
     for (const link of document.querySelectorAll('[data-reader-nav]')) {
-      if (link.dataset.readerNav === kind) link.setAttribute('aria-current', 'page');
+      const dock = link.closest('.reader-dock');
+      const section = kind === 'post' || (dock && kind === 'archive') ? 'posts' : kind;
+      if (link.dataset.readerNav === section)
+        link.setAttribute('aria-current', section === kind ? 'page' : 'location');
       else link.removeAttribute('aria-current');
     }
   };
@@ -725,9 +726,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const button = document.createElement('button');
       button.className = 'copy-code';
       button.type = 'button';
-      button.setAttribute('aria-label', t('复制代码', 'Copy code'));
       button.innerHTML =
-        '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label">复制</span>';
+        '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label"></span><span class="reader-sr-only"></span>';
+      const label = button.querySelector('.copy-label');
+      const copyLabel = t('复制', 'Copy');
+      const copiedLabel = t('已复制', 'Copied');
+      label.textContent = copyLabel;
+      button.lastElementChild.textContent = t('代码', ' code');
 
       actions.append(feedback, button);
       header.append(meta, actions);
@@ -746,21 +751,25 @@ document.addEventListener('DOMContentLoaded', () => {
       let resetTimer = null;
       button.addEventListener('click', async () => {
         try {
-          await navigator.clipboard.writeText(codeEl?.textContent || pre.textContent);
-          feedback.textContent = '已复制';
-          button.classList.add('copied');
-          button.innerHTML =
-            '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="copy-label">已复制</span>';
-          clearTimeout(resetTimer);
-          resetTimer = setTimeout(() => {
-            button.classList.remove('copied');
-            feedback.textContent = '';
-            button.innerHTML =
-              '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label">复制</span>';
-          }, 2000);
+          await navigator.clipboard.writeText(codeText);
         } catch {
-          feedback.textContent = '请选中代码复制';
+          clearTimeout(resetTimer);
+          button.classList.remove('copied');
+          label.textContent = copyLabel;
+          feedback.classList.remove('reader-sr-only');
+          feedback.textContent = t('请选中代码复制', 'Select the code to copy it');
+          return;
         }
+        clearTimeout(resetTimer);
+        feedback.classList.add('reader-sr-only');
+        feedback.textContent = copiedLabel;
+        button.classList.add('copied');
+        label.textContent = copiedLabel;
+        resetTimer = setTimeout(() => {
+          button.classList.remove('copied');
+          feedback.textContent = '';
+          label.textContent = copyLabel;
+        }, 2000);
       });
     });
     document.querySelectorAll('.article-body table').forEach((table) => {
@@ -987,7 +996,13 @@ document.addEventListener('DOMContentLoaded', () => {
         download.href = dataUrl;
         download.download = 'cloudink-share.png';
         download.className = 'share-download';
-        download.textContent = '下载分享图片';
+        download.textContent = t('下载分享图片', 'Download image');
+        const downloadStatus = document.createElement('p');
+        downloadStatus.className = 'share-download-status';
+        downloadStatus.setAttribute('role', 'status');
+        download.addEventListener('click', () => {
+          downloadStatus.textContent = t('已请求下载分享图片。', 'Image download requested.');
+        });
         actions.append(download);
 
         if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -1009,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
           actions.append(nativeBtn);
         }
 
-        content.append(imgElement, actions);
+        content.append(imgElement, actions, downloadStatus);
         showDialog(content, t('分享卡片', 'Share card'), shareBtn);
       });
     }
@@ -1364,7 +1379,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   } // end initPageFeatures
 
+  function shortFragmentTarget() {
+    if (!location.hash) return null;
+    let id;
+    try {
+      id = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      return null;
+    }
+    const target = document.getElementById(id);
+    if (target?.classList.contains('short-card')) return target;
+    // Links in earlier publications used the bare slug.
+    const legacy = document.getElementById('note:' + id);
+    if (!legacy?.classList.contains('short-card')) return null;
+    const canonical = new URL(location.href);
+    canonical.hash = legacy.id;
+    history.replaceState(history.state, '', canonical);
+    legacy.scrollIntoView({ behavior: 'instant', block: 'start' });
+    return legacy;
+  }
   initPageFeatures();
+  shortFragmentTarget()?.focus({ preventScroll: true });
   const enterPage = (direction = 1) => {
     for (const [index, id] of ['reader-center-content', 'reader-context-content'].entries()) {
       const content = document.getElementById(id);
@@ -1384,7 +1419,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initPageFeatures(visit);
     const to = document.querySelector('[data-reader-nav][aria-current]')?.dataset.readerNav;
     enterPage(order.indexOf(to) < order.indexOf(from) ? -1 : 1);
-    if (!visit.history.popstate) document.getElementById('swup')?.focus({ preventScroll: true });
+    if (!visit.history.popstate)
+      (shortFragmentTarget() || document.getElementById('swup'))?.focus({ preventScroll: true });
   });
 
   // Restore only after AJAX content exists: native restoration can run before replacement.

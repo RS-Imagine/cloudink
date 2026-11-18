@@ -71,7 +71,7 @@ dialog.search-modal[data-ci-sheet-active] {
   display: block;
 }
 dialog.search-modal[data-ci-sheet-active] .search-content {
-  display: block;
+  display: grid;
   max-height: none;
   padding: 0 0 8px;
   overflow: visible;

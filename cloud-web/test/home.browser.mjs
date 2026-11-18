@@ -17,6 +17,9 @@ export async function verifyHome(browser, origin, output, engine) {
     await page.goto(origin + '/');
     await expect(page.locator('h1')).toHaveCount(1);
     await expect(page.locator('.home-feature')).toHaveCount(1);
+    const feature = await page.locator('.home-feature').boundingBox();
+    const author = await page.locator('.author-card').boundingBox();
+    assert.ok(Math.abs(feature.y - author.y) <= 1, 'Both homepage columns start on the same row');
     await expect(page.locator('.reader-side-nav [aria-current]')).toHaveAttribute(
       'data-reader-nav',
       'home',
@@ -26,7 +29,7 @@ export async function verifyHome(browser, origin, output, engine) {
     await page.evaluate(() => {
       window.v4Nodes = {
         left: document.getElementById('primary-nav'),
-        html: document.getElementById('primary-nav').outerHTML,
+        links: [...document.querySelectorAll('#primary-nav a')],
         center: document.getElementById('reader-center'),
         right: document.getElementById('reader-context'),
       };
@@ -43,10 +46,14 @@ export async function verifyHome(browser, origin, output, engine) {
           v4Nodes.left === document.getElementById('primary-nav') &&
           v4Nodes.center === document.getElementById('reader-center') &&
           v4Nodes.right === document.getElementById('reader-context') &&
-          v4Nodes.html === document.getElementById('primary-nav').outerHTML,
+          v4Nodes.links.every((link, i) => link === document.querySelectorAll('#primary-nav a')[i]),
       ),
     );
     assert.equal(await page.locator('dialog[open]').count(), 0);
+    await expect(page.locator('.reader-side-nav [aria-current]')).toHaveAttribute(
+      'data-reader-nav',
+      'posts',
+    );
     assert.equal(await page.locator('a[href^="/admin"]').count(), 0);
     await page.screenshot({ path: resolve(output, 'v4-reading-' + engine + '-1440.png') });
     await page.goBack();
@@ -62,6 +69,7 @@ export async function verifyHome(browser, origin, output, engine) {
         false,
       );
       if (width < 1024) {
+        await expect(page.locator('.reader-dock [aria-current]')).toHaveAccessibleName('文章');
         await expect(page.locator('#reader-context')).toBeHidden();
         if (await page.locator('.mobile-toc-btn').count()) {
           await page.locator('.mobile-toc-btn').click();
@@ -91,6 +99,12 @@ export async function verifyHome(browser, origin, output, engine) {
     await expect(
       page.locator('#search-results a[href="/posts/' + sample.post.slug + '/"]'),
     ).toHaveCount(1);
+    const input = await page.locator('#search-input').boundingBox();
+    const status = await page.locator('#search-status').boundingBox();
+    assert.ok(
+      status.y >= input.y + input.height + 8,
+      'Leave room for the focused search field and its status',
+    );
     await page.keyboard.press('Escape');
     await expect(page.locator('#site-search-btn')).toBeFocused();
     await page.locator('#theme-toggle-btn').click();
@@ -120,6 +134,7 @@ export async function verifyHome(browser, origin, output, engine) {
       await expect(page.locator('.post-index-list h2 a')).toHaveCount(Math.min(10, index.length));
       await page.locator('.post-index-list h2 a').first().click();
       await expect(page.locator('.article-body')).toBeVisible();
+      await expect(navigation.locator('[aria-current]')).toHaveAccessibleName('文章');
       await page.locator('.article-back').click();
       await expect(page).toHaveURL(origin + '/post/');
       await expect(page.locator('.post-index-list h2 a')).toHaveCount(Math.min(10, index.length));
@@ -134,6 +149,21 @@ export async function verifyHome(browser, origin, output, engine) {
   });
   try {
     const page = await native.newPage();
+    await page.goto(origin + '/archive/');
+    const entry = page.locator('.archive-entry').first();
+    await entry.scrollIntoViewIfNeeded();
+    assert.ok(
+      await entry.evaluate((a) => {
+        const row = a.closest('li').getBoundingClientRect();
+        return [row.top + 3, row.bottom - 3].every(
+          (y) => document.elementFromPoint(row.left + 3, y)?.closest('a') === a,
+        );
+      }),
+      'The date column and the vertical padding both belong to the archive link',
+    );
+    await entry.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.article-body')).toBeVisible();
     await page.goto(origin + '/');
     await page.locator('.reader-dock [data-reader-nav="posts"]').click();
     await expect(page).toHaveURL(origin + '/post/');

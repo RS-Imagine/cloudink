@@ -48,7 +48,9 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
             ]),
           ),
           markdown_shorts: {
-            note: '+++\nslug = "note"\ndate = "2026-11-01 12:00"\n+++\n\n' + prose,
+            note:
+              '+++\nslug = "note"\ndate = "2026-11-01 12:00"\n+++\n\n' + (prose + '\n\n').repeat(3),
+            swup: '+++\nslug = "swup"\ndate = "2026-10-30 12:00"\n+++\n\n一条有独立地址的短记。',
           },
           about_markdown: '+++\ntitle = "关于 Cloudink"\n+++\n\n' + prose,
         }),
@@ -124,6 +126,8 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
             { selector, sans: font === 'sans' },
           );
           assert.deepEqual(mismatch, [], engine + '/' + font + '/' + width + path);
+          if (path === '/about/')
+            await expect(page.locator('.author-card a[href="/about/"]')).toHaveCount(0);
           if (path === '/') {
             await page.locator('#site-search-btn').click();
             await page.locator('#search-input').fill('Typography');
@@ -198,6 +202,35 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
           'data-reading-font',
           font === 'sans' ? 'sans' : 'serif',
         );
+      }
+      if (font === 'default') {
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.goto(origin + '/');
+        const cardInsets = await page.locator('.blog-feed,.blog-notes').evaluateAll((cards) =>
+          cards.map((card) => {
+            const heading = card.querySelector('.blog-section-heading');
+            const box = card.getBoundingClientRect();
+            return [
+              heading.querySelector('h2').getBoundingClientRect().left - box.left,
+              box.right - heading.querySelector('a').getBoundingClientRect().right,
+            ];
+          }),
+        );
+        assert.equal(cardInsets.length, 2);
+        assert.deepEqual(cardInsets[0], cardInsets[1]);
+        const excerpt = page.locator('.blog-note a[href="/shorts/#note:swup"]');
+        await excerpt.focus();
+        await excerpt.press('Enter');
+        const note = page.locator('article[id="note:swup"]');
+        await expect(note).toBeFocused();
+        await expect(note).toBeInViewport();
+        await page.reload();
+        await expect(note).toBeInViewport();
+        await page.goto(origin + '/');
+        await page.goto(origin + '/shorts/#swup');
+        await expect(page).toHaveURL(origin + '/shorts/#note:swup');
+        await expect(note).toBeFocused();
+        await expect(note).toBeInViewport();
       }
       assert.deepEqual(errors, []);
     } finally {

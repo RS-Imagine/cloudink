@@ -223,7 +223,7 @@
     </section>
     <div id="app-view" class="app" hidden="">
       <aside class="studio-sidebar" id="studio-sidebar" aria-label="写作空间">
-        <a class="brand" href="#" aria-label="返回文章管理"
+        <a class="brand" href="#" aria-labelledby="site-brand-title" title="返回文章管理"
           ><span class="brand-mark"><img src="/favicon.svg" width="24" height="24" alt="" /></span
           ><span id="site-brand-title">Cloudink</span></a
         >
@@ -431,8 +431,8 @@
         <section id="home-view" class="home-view" aria-labelledby="home-heading">
           <div class="manage-intro">
             <div class="intro-copy">
-              <h2 id="home-heading">把文章整理清楚。</h2>
-              <p>找到要继续写的内容，检查修改，再决定发布。</p>
+              <h2 id="home-heading">文章列表</h2>
+              <p id="summary"></p>
             </div>
             <div id="manage-maintenance-slot" class="maintenance-slot">
               <div id="publishing-summary" class="publishing-summary">
@@ -485,8 +485,7 @@
               <button id="load-more-posts" type="button" hidden="">加载更多文章</button>
 
               <div class="manage-footer">
-                <span id="summary"></span><span>保存草稿不会更新公开版本</span
-                ><span id="post-count" hidden="">0</span>
+                <span>保存草稿不会更新公开版本</span><span id="post-count" hidden="">0</span>
               </div>
             </div>
             <aside class="manage-context" id="manage-context">
@@ -520,14 +519,19 @@
             </aside>
           </div>
         </section>
-        <section id="images-view" class="images-view" aria-labelledby="library-title" hidden="">
+        <section id="images-view" class="images-view" aria-labelledby="workspace-title" hidden="">
           <div class="section-heading">
             <div>
-              <span class="workflow-eyebrow">你的创作素材</span>
-              <h1 id="library-title">图片库</h1>
-              <p class="muted">上传一次，随时复用。仍被文章或网站设置引用的图片不能删除。</p>
-              <label><input id="image-keep-original" type="checkbox" /> 保留上传原始文件</label>
-              <p class="muted">
+              <p class="muted">请先移除文章或网站设置中的引用，再删除图片。</p>
+              <label class="checkbox-field">
+                <input
+                  id="image-keep-original"
+                  type="checkbox"
+                  aria-describedby="image-original-help"
+                />
+                <span>保留上传原始文件</span>
+              </label>
+              <p id="image-original-help" class="checkbox-help muted">
                 默认将新上传的大型静态图片压缩为宽度最多 1920
                 像素的主图，减少占用；动画、小图或无法压缩的文件保留原样。此选择也应用于编辑器上传，不修改已有图片。
               </p>
@@ -567,9 +571,10 @@
               保留原图和现有链接，为 JPEG、PNG、WebP
               生成更小版本。请保持后台页面打开；可暂停，重新运行会跳过已完成的图片。
             </p>
-            <label
-              ><input id="image-optimize-recheck" type="checkbox" />重新检查之前跳过的图片</label
-            >
+            <label class="checkbox-field">
+              <input id="image-optimize-recheck" type="checkbox" />
+              <span>重新检查之前跳过的图片</span>
+            </label>
             <div class="toolbar-actions">
               <button id="image-library-optimize">扫描并优化</button>
               <button id="image-library-pause" hidden="">完成当前图片后暂停</button>
@@ -595,12 +600,10 @@
           <button id="image-library-retry" hidden="">重新加载图片库</button>
           <button id="image-library-more" hidden="">加载更多图片</button>
         </section>
-        <section id="shorts-view" class="shorts-view" aria-labelledby="shorts-title" hidden="">
+        <section id="shorts-view" class="shorts-view" aria-labelledby="workspace-title" hidden="">
           <div class="section-heading">
             <div>
-              <span class="workflow-eyebrow">即时想法</span>
-              <h1 id="shorts-title">短记</h1>
-              <p class="muted">一句话的想法，精确到分钟。发布后出现在网站的「短记」页面。</p>
+              <p class="muted">已发布的短记按时间显示在博客的「短记」页。</p>
               <p
                 id="short-operation-status"
                 class="workflow-feedback"
@@ -668,7 +671,6 @@
                 id="open-draft-history"
                 class="quiet"
                 title="查看本地版本快照与历史恢复"
-                aria-label="本地草稿版本历史"
                 style="
                   font-size: 12px;
                   margin-left: 8px;
@@ -1046,15 +1048,10 @@
         <section
           id="settings-view"
           class="settings-view"
-          aria-labelledby="settings-title"
+          aria-labelledby="workspace-title"
           hidden=""
         >
           <div class="workflow-heading settings-intro">
-            <div class="intro-copy">
-              <span class="workflow-eyebrow">属于你的文字角落</span>
-              <h1 id="settings-title">网站设置</h1>
-              <p>整理博客的外观、账号与备份，让写作更安心。</p>
-            </div>
             <div id="settings-maintenance-slot" class="maintenance-slot"></div>
           </div>
           <div class="settings-layout">

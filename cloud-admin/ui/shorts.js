@@ -158,7 +158,10 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       bodyWrapper.setAttribute('title', '点击编辑此短记');
       bodyWrapper.addEventListener('click', () => openEditor(item));
       bodyWrapper.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') openEditor(item);
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openEditor(item);
+        }
       });
 
       const preview = document.createElement('p');

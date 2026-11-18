@@ -171,6 +171,16 @@ try {
   }
   await expect(refresh).not.toHaveAttribute('aria-busy', 'true');
   await page.setViewportSize({ width: 390, height: 844 });
+  const keepOriginal = page.getByRole('checkbox', { name: '保留上传原始文件' });
+  const checkbox = await keepOriginal.boundingBox();
+  const label = page.locator('label:has(> #image-keep-original)');
+  const text = await label.locator('span').boundingBox();
+  assert.ok(checkbox.x + checkbox.width <= text.x && checkbox.width <= 24);
+  assert.ok(Math.abs(checkbox.y + checkbox.height / 2 - text.y - text.height / 2) <= 1);
+  const initial = await keepOriginal.isChecked();
+  await label.locator('span').click();
+  assert.equal(await keepOriginal.isChecked(), !initial);
+  await label.locator('span').click();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });
   await verifyImagePerformance(browser, context, page, mf, origin);

@@ -5,12 +5,13 @@ export function mountStudioShell() {
   const disclosures = ['studio-tools'].map($);
   const dialog = $('studio-sheet');
   const narrow = matchMedia('(max-width:767px)');
+  const collapsedSidebar = matchMedia('(max-width:1279px)');
   const siteLink = $('site-link');
+  const toolsPanel = $('studio-tools').querySelector('.studio-tools-panel');
   const siteHome = document.createComment('public site link');
   siteLink.before(siteHome);
   function placeSiteLink() {
-    if (narrow.matches)
-      document.querySelector('#studio-tools .studio-tools-panel').append(siteLink);
+    if (collapsedSidebar.matches) toolsPanel.append(siteLink);
     else siteHome.after(siteLink);
   }
   placeSiteLink();
@@ -91,10 +92,8 @@ export function mountStudioShell() {
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) motion.closeDialog(dialog);
   });
-  narrow.addEventListener('change', () => {
-    close();
-    placeSiteLink();
-  });
+  narrow.addEventListener('change', () => close());
+  collapsedSidebar.addEventListener('change', placeSiteLink);
   for (const node of disclosures) {
     node.addEventListener('toggle', () => {
       if (node.open) {

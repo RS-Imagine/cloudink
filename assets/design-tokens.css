@@ -125,6 +125,9 @@
   --ci-space-14: 56px;
   --ci-space-16: 64px;
   --ci-space-20: 80px;
+  --ci-page-gutter: clamp(16px, 2vw, 32px);
+  --ci-panel-inset: clamp(20px, 2.4vw, 32px);
+  --ci-control-height: 44px;
   --ci-motion-fast: 200ms;
   --ci-motion-standard: 300ms;
   --ci-motion-emphasized: 500ms;
@@ -191,6 +194,10 @@
   --ci-dark-outline: #88998b;
   --ci-light-divider: #dce3da;
   --ci-dark-divider: #3b4a3e;
+  --ci-light-hover: #e3eae3;
+  --ci-dark-hover: #2b3831;
+  --ci-light-pressed: #d5e2d9;
+  --ci-dark-pressed: #35463a;
   --ci-light-primary: var(--ci-palette-ink);
   --ci-dark-primary: #a4d3be;
   --ci-light-on-primary: #ffffff;
@@ -203,6 +210,10 @@
   --ci-dark-on-primary-container: #c8e9d5;
 }
 :root[data-palette='neutral'] {
+  --ci-light-hover: #e6eaf0;
+  --ci-dark-hover: #303943;
+  --ci-light-pressed: #d9e1ea;
+  --ci-dark-pressed: #3b4754;
   --ci-light-primary: var(--ci-palette-neutral);
   --ci-light-on-primary: #ffffff;
   --ci-light-primary-strong: #31445d;

@@ -219,6 +219,9 @@ try {
     });
   });
   await live.locator('.copy-code').first().click();
+  await expect(live.locator('.copy-code').first()).toHaveAccessibleName(
+    /已复制\s*代码|Copied code/,
+  );
   assert.equal(await live.evaluate(() => window.COPIED_TEXT), 'let x = 1;\n');
   await live.locator('#share-btn').click();
   await expect(live.locator('.share-download')).toHaveAttribute('download', 'cloudink-share.png');

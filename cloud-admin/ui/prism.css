@@ -3,7 +3,7 @@
   --studio-sidebar-width: 220px;
   --studio-surface: var(--ci-surface);
   --studio-inset: var(--ci-container);
-  --studio-shadow: 0 4px 6px #5c3a2109, 0 12px 22px #5c3a2111;
+  --studio-shadow: var(--ci-shadow-soft);
 }
 html[data-cloudink-admin] {
   --ci-font-reading: var(--ci-font-ui);
@@ -137,7 +137,7 @@ html[data-cloudink-admin] {
   margin: 0;
   height: 80px;
   min-height: 80px;
-  padding: 0 24px 0 18px;
+  padding: 0 var(--ci-page-gutter);
   background: var(--ci-bg);
   border: 0;
   box-shadow: none;
@@ -212,7 +212,7 @@ html[data-cloudink-admin] {
 #app-view .workspace {
   width: auto;
   max-width: 1900px;
-  padding: 10px 24px 32px 16px;
+  padding: 10px var(--ci-page-gutter) 32px;
   margin: 0 auto;
   min-width: 0;
 }
@@ -220,7 +220,7 @@ html[data-cloudink-admin] {
   display: none;
 }
 .manage-intro {
-  margin: 0 3px 24px;
+  margin: 0 0 20px;
 }
 .manage-intro,
 .settings-intro {
@@ -290,8 +290,7 @@ html[data-cloudink-admin] {
 }
 #article-search-slot {
   flex: 1;
-  max-width: 370px;
-  min-width: 180px;
+  min-width: min(180px, 100%);
 }
 #app-view .article-browser {
   display: flex;
@@ -301,15 +300,15 @@ html[data-cloudink-admin] {
 }
 #app-view .article-browser .search {
   width: 100%;
+  max-width: none;
   min-width: 0;
   min-height: 44px;
   margin: 0;
-  border: 0;
-  border-radius: 18px;
+  border: 1px solid var(--ci-outline);
+  border-radius: var(--ci-radius-md);
   padding: 12px 15px;
   background: var(--ci-surface);
   font-size: 12px;
-  box-shadow: 0 3px 12px #5c3a2104;
 }
 .post-filters {
   display: flex;
@@ -338,8 +337,8 @@ html[data-cloudink-admin] {
   box-shadow: 0 2px 5px #5c3a2107;
 }
 .post-filters button span {
-  font-size: 10px;
-  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+  font-size: inherit;
 }
 .manage-caption,
 .article-card {
@@ -353,7 +352,10 @@ html[data-cloudink-admin] {
   background: var(--ci-surface);
   border-radius: 30px 30px 0 0;
   color: var(--ci-muted);
-  font-size: 10px;
+  font-size: 12px;
+}
+.manage-caption > :last-child {
+  text-align: center;
 }
 .article-grid {
   display: block;
@@ -405,7 +407,7 @@ html[data-cloudink-admin] {
   background: transparent;
   color: var(--ci-text);
   text-align: left;
-  font: 400 14px/1.7 var(--ci-font-ui);
+  font: 600 15px/1.6 var(--ci-font-ui);
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -414,7 +416,7 @@ html[data-cloudink-admin] {
   background: transparent;
 }
 .article-card p.article-address {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   margin: 7px 0 0;
   color: var(--ci-muted);
@@ -461,7 +463,8 @@ html[data-cloudink-admin] {
 .article-modified {
   grid-row: 1;
   grid-column: 3;
-  font-size: 10px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   line-height: 1.8;
   color: var(--ci-muted);
   white-space: normal;
@@ -662,15 +665,15 @@ html[data-cloudink-admin] {
 }
 .editor-document #description {
   width: 100%;
-  min-height: 40px;
-  height: 44px;
+  min-height: 3.5em;
+  height: auto;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 6px;
   resize: vertical;
   background: transparent;
-  font: 400 13px/1.9 var(--ci-font-ui);
+  font: 400 14px/1.75 var(--ci-font-ui);
   color: var(--ci-muted);
 }
 .editor-workspace {
@@ -917,12 +920,7 @@ html[data-cloudink-admin] {
 #app-view .settings-view > .workflow-heading,
 #app-view .images-view > .section-heading,
 #app-view .shorts-view > .section-heading {
-  margin: 0 4px 24px;
-}
-#app-view .settings-view h1,
-#app-view .images-view h1,
-#app-view .shorts-view h1 {
-  font-size: 25px;
+  margin: 0 0 20px;
 }
 #app-view .settings-view > .workflow-heading p,
 #app-view .images-view > .section-heading p,
@@ -932,9 +930,16 @@ html[data-cloudink-admin] {
 }
 #app-view .shorts-view {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  max-width: none;
+  padding: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   align-items: start;
+}
+@media (min-width: 1150px) {
+  #app-view .shorts-view:has(#short-editor:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 34%);
+  }
 }
 #app-view .shorts-view > .section-heading {
   grid-column: 1/-1;
@@ -955,6 +960,12 @@ html[data-cloudink-admin] {
 #short-empty,
 #short-more {
   grid-column: 1;
+}
+#short-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+  margin: 0;
 }
 #app-view .short-body {
   font-size: 14px;
@@ -1062,7 +1073,7 @@ html[data-cloudink-admin] {
     margin: 0;
     padding: 5px 7px;
     background: var(--ci-surface);
-    border: 2px solid #fff8;
+    border: 2px solid var(--ci-divider);
     border-radius: 40px;
     box-shadow: 0 5px 18px #5c3a211a;
     z-index: 50;
@@ -1096,7 +1107,7 @@ html[data-cloudink-admin] {
   .studio-masthead {
     height: 66px;
     min-height: 66px;
-    padding: 10px 14px;
+    padding: 10px var(--ci-page-gutter);
     gap: 10px;
   }
   #workspace-title {
@@ -1117,16 +1128,16 @@ html[data-cloudink-admin] {
     height: 15px;
   }
   .studio-masthead .workspace-actions > #studio-tools > .shell-icon {
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
-    min-width: 36px;
+    width: var(--ci-control-height);
+    height: var(--ci-control-height);
+    min-height: var(--ci-control-height);
+    min-width: var(--ci-control-height);
   }
   #app-view .workspace {
-    padding: 14px 18px 24px;
+    padding: 14px var(--ci-page-gutter) 24px;
   }
   .manage-intro {
-    margin: 0 3px 20px;
+    margin: 0 0 16px;
   }
   .manage-intro h2 {
     font-size: 21px;
@@ -1136,14 +1147,22 @@ html[data-cloudink-admin] {
   }
   .manage-toolbar {
     display: grid;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
   #article-search-slot {
     max-width: none;
     width: 100%;
   }
   .post-filters {
-    justify-self: start;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-self: stretch;
+  }
+  .post-filters button {
+    min-height: var(--ci-control-height);
+    font-size: 13px;
+    padding-inline: 4px;
   }
   .manage-caption {
     display: none;
@@ -1155,28 +1174,22 @@ html[data-cloudink-admin] {
   .article-card {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 13px 10px;
-    padding: 18px 4px;
+    padding: 16px 10px;
     min-height: 120px;
-  }
-  .article-card.selected {
-    padding: 18px 9px;
   }
   .article-card h3,
   .article-title-button {
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.7;
   }
   .article-card .badge {
-    font-size: 9px;
+    font-size: 11px;
     max-width: 110px;
-  }
-  .article-address {
-    font-size: 9px !important;
   }
   .article-modified {
     grid-row: 2;
     grid-column: 1;
-    font-size: 10px;
+    font-size: 12px;
   }
   .article-edit {
     grid-row: 2;
@@ -1233,10 +1246,6 @@ html[data-cloudink-admin] {
     font-size: 25px;
     line-height: 1.55;
   }
-  .editor-document #description {
-    font-size: 12px;
-    min-height: 38px;
-  }
   .editor-surface {
     border-radius: 28px;
   }
@@ -1286,11 +1295,6 @@ html[data-cloudink-admin] {
   }
   #app-view .editor-footer #writing-help {
     display: none;
-  }
-  #app-view .settings-view h1,
-  #app-view .images-view h1,
-  #app-view .shorts-view h1 {
-    font-size: 22px;
   }
   #app-view .settings-layout {
     display: block;
@@ -1373,12 +1377,6 @@ html[data-cloudink-admin] {
   }
 }
 @media (max-width: 359px) {
-  #app-view .workspace {
-    padding-inline: 12px;
-  }
-  .studio-masthead {
-    padding-inline: 12px;
-  }
   #workspace-title {
     font-size: 18px;
   }
@@ -1459,9 +1457,6 @@ html[data-cloudink-admin] {
   padding: 3px 8px;
 }
 
-:root[data-theme='dark'] {
-  --studio-shadow: 0 6px 18px #0002;
-}
 @media (max-width: 767px) {
   #app-view #search,
   #app-view #body,
@@ -1471,7 +1466,7 @@ html[data-cloudink-admin] {
   }
   #app-view #search::placeholder,
   #app-view #description::placeholder {
-    font-size: 12px;
+    font-size: 14px;
   }
 }
 
