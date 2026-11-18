@@ -94,7 +94,17 @@ fn navigation_state_is_present_in_ssr_on_every_page_kind() {
     assert!(home.contains("data-reader-nav=\"home\" aria-current=\"page\""));
     let article = render::render_post(&site, &post("safe", "Post", false), "test");
     assert!(article.contains("data-page=\"post\""));
-    assert!(article.contains("data-reader-nav=\"posts\" aria-current=\"page\""));
+    assert_eq!(
+        article
+            .matches(r#"data-reader-nav="posts" aria-current="location""#)
+            .count(),
+        2
+    );
+    let archive = render::render_archive(&site, &[], "test");
+    let (desktop, dock) = archive.split_once(r#"<nav class="reader-dock""#).unwrap();
+    assert!(desktop.contains(r#"data-reader-nav="archive" aria-current="page""#));
+    assert!(dock.contains(r#"data-reader-nav="posts" aria-current="location""#));
+    assert!(!dock.contains(r#"data-reader-nav="archive""#));
     let about = render::render_page(
         &site,
         &Page {

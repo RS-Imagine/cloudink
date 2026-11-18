@@ -242,7 +242,7 @@ fn home_context(config: &SiteConfig, shorts: &[Short]) -> String {
             date = escape_html(short.date()), slug = escape_html(short.slug()), text = escape_html(&excerpt), more = if text.chars().count() > 100 { "…" } else { "" })
     }).collect::<String>();
     format!(
-        r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link" href="/shorts/">更多 ↗</a></div>{}</section><section class="panel archive-card"><p class="note-kicker">文字，留在时间里</p><h2>旧文章，也值得再读一次。</h2><p>按时间翻翻以前写下的内容，也许能找到此刻需要的那一篇。</p><a class="plain-button" href="/archive/">{}浏览文章归档</a></section>"#,
+        r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>{}</section><a class="panel archive-shortcut" href="/archive/">{}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>"#,
         author_context(config),
         if entries.is_empty() {
             "<p class=\"muted\">还没有发布短记。</p>"
@@ -307,9 +307,11 @@ pub fn render_index_with_shorts(
                 .unwrap_or_default()
         );
         if featured {
-            cards.push_str(&format!(r#"<article class="post-card home-card home-feature panel featured-article{without_cover}"><div class="feature-copy"><div class="story-eyebrow">{document}<span>最近发布</span></div><h2><a href="/posts/{slug}/">{title}</a></h2>{meta}<p class="feature-summary">{description}</p><a class="plain-button primary feature-read" href="/posts/{slug}/">{document}阅读全文</a></div>{cover}</article>"#,
+            cards.push_str(&format!(r#"<article class="post-card home-card home-feature panel featured-article{without_cover}"><div class="feature-copy"><div class="story-eyebrow">{document}<span>最近发布</span></div><h2><a href="/posts/{slug}/">{title}</a></h2><p class="feature-summary">{description}</p>{meta}<a class="plain-button primary feature-read" href="/posts/{slug}/">阅读全文 <span aria-hidden="true">→</span></a></div>{cover}</article>"#,
                 without_cover = if cover.is_empty() { " without-cover" } else { "" }, document = icon("article"), slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
-            cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link" href="/archive/">浏览归档 ↗</a></div>"#);
+            if visible.len() > 1 {
+                cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link" href="/post/">全部文章 →</a></div>"#);
+            }
         } else {
             cards.push_str(&format!(r#"<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/{slug}/">{title}</a></h3><p>{description}</p>{meta}</div>{cover}</article>"#,
                 slug = escape_html(post.slug()), title = escape_html(post.title()), description = escape_html(post.description())));
@@ -317,8 +319,8 @@ pub fn render_index_with_shorts(
     }
     if visible.is_empty() {
         cards.push_str(&format!(r#"<section id="posts" class="panel home-empty"><h2>文字，即将生长。</h2><p>这里还没有发布的文章，欢迎稍后再来。</p>{}</section>"#, home_illustration(config)));
-    } else {
-        cards.push_str(r#"<div class="blog-feed-end"><span>慢慢写，认真记。</span><a class="blog-text-link" href="/post/">查看全部文章 →</a></div></section>"#);
+    } else if visible.len() > 1 {
+        cards.push_str("</section>");
     }
     let title = config
         .big_title
@@ -329,19 +331,20 @@ pub fn render_index_with_shorts(
         } else {
             &config.subtitle
         });
-    let welcome = if config
-        .big_title
-        .as_deref()
-        .is_some_and(|s| !s.trim().is_empty())
-    {
-        &config.subtitle
+    let subtitle = config.subtitle.trim();
+    let subtitle = if subtitle.is_empty() || subtitle == title.trim() {
+        String::new()
     } else {
-        "欢迎来到我的一小块写作空间。"
+        format!("<span>{}</span>", escape_html(subtitle))
+    };
+    let hidden = if title.trim() == config.title.trim() && subtitle.is_empty() {
+        " reader-sr-only"
+    } else {
+        ""
     };
     let body = format!(
-        r#"<div class="reader-welcome"><h1>{title}<span>{subtitle}</span></h1></div><div class="home-layout">{cards}</div>"#,
-        title = escape_html(title),
-        subtitle = escape_html(welcome)
+        r#"<div class="reader-welcome{hidden}"><h1>{title}</h1>{subtitle}</div><div class="home-layout">{cards}</div>"#,
+        title = escape_html(title)
     );
     page(
         &config.title,
@@ -745,28 +748,28 @@ fn page(
         .unwrap_or_else(|| format!("{} built this website using Rust.", config.author));
 
     let about_available = config.about.as_deref().is_none_or(|s| !s.trim().is_empty());
-    let navigation = [
+    let destinations = [
         ("home", "/", "首页"),
         ("posts", "/post/", "文章"),
         ("shorts", "/shorts/", "短记"),
         ("archive", "/archive/", "归档"),
         ("about", "/about/", "关于"),
-    ]
-    .into_iter()
-    .filter(|(key, _, _)| *key != "about" || about_available)
-    .map(|(key, href, label)| {
-        let active = if page_kind == "post" {
-            key == "posts"
-        } else {
-            key == page_kind
-        };
-        format!(
-            r#"<a href="{href}" data-reader-nav="{key}"{current}>{icon}<span>{label}</span></a>"#,
-            icon = icon(if key == "posts" { "article" } else { key }),
-            current = if active { " aria-current=\"page\"" } else { "" }
-        )
-    })
-    .collect::<String>();
+    ];
+    let navigation = |dock: bool| {
+        destinations.iter().copied()
+            .filter(|(key, _, _)| (*key != "about" || about_available) && (*key != "archive" || !dock))
+            .map(|(key, href, label)| {
+                let current = if key == page_kind {
+                    r#" aria-current="page""#
+                } else if key == "posts" && (page_kind == "post" || (dock && page_kind == "archive")) {
+                    r#" aria-current="location""#
+                } else {
+                    ""
+                };
+                format!(r#"<a href="{href}" title="{label}" data-reader-nav="{key}"{current}>{icon}<span>{label}</span></a>"#,
+                    icon = icon(if key == "posts" { "article" } else { key }))
+            }).collect::<String>()
+    };
 
     // ---- <body> -------------------------------------------------------------
     html.push_str(&format!(
@@ -774,7 +777,7 @@ fn page(
   <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
   <aside class="reader-sidebar" id="primary-nav" aria-label="站点导航">
     <a class="site-brand" href="/" title="{site_title}"><span class="site-mark"><img src="{icon_url}" width="24" height="24" alt=""></span><span class="site-title">{site_title}</span></a>
-    <nav class="reader-side-nav" aria-label="博客导航">{navigation}</nav>
+    <nav class="reader-side-nav" aria-label="博客导航">{side_navigation}</nav>
     <p class="reader-sidebar-note">{subtitle}</p>
   </aside>
   <div class="wrapper reader-layout">
@@ -783,9 +786,9 @@ fn page(
       <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>
     </main>
-    <footer class="site-footer"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" rel="noopener">CloudInk · 云砚</a></footer>
+    <footer class="site-footer"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" target="_blank" rel="noopener">CloudInk · 云砚</a></footer>
   </div>
-  <nav class="reader-dock" aria-label="手机博客导航">{navigation}</nav>
+  <nav class="reader-dock" aria-label="手机博客导航">{dock_navigation}</nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
       <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
@@ -802,11 +805,12 @@ fn page(
         palette = palette,
         site_title = escape_html(site_title),
         body = body,
-        navigation = navigation,
         subtitle = escape_html(&config.subtitle),
         context = context,
         page_kind = page_kind,
         footer = escape_html(&footer),
+        side_navigation = navigation(false),
+        dock_navigation = navigation(true),
         client_hash = crate::content_hash(client_script()),
     ));
 

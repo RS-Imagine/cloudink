@@ -125,6 +125,8 @@
   position: static;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 6.25em;
   gap: 5px;
   height: 26px;
   min-height: 26px;
@@ -192,14 +194,20 @@
   grid-column: 2;
   grid-row: 1;
   z-index: 4;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+}
+.reader-dialog-close,
+.search-close {
+  display: grid;
+  place-items: center;
+  width: var(--ci-control-height);
+  height: var(--ci-control-height);
+  min-height: var(--ci-control-height);
+  flex: none;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: var(--ci-surface);
+  background: var(--ci-container);
   color: var(--ci-text);
   font-size: 28px;
   line-height: 1;
@@ -257,15 +265,25 @@ dialog.search-modal::backdrop {
   font: 600 14px/20px var(--ci-font-ui);
   text-decoration: none !important;
   cursor: pointer;
-  transition: opacity var(--ci-motion-fast) var(--ci-ease);
+  transition: background-color var(--ci-motion-fast) var(--ci-ease);
 }
 .share-download {
-  color: var(--ci-on-primary);
   background: var(--ci-primary);
   border: 1px solid var(--ci-primary);
 }
-.share-download:hover {
-  opacity: 0.92;
+.reader-shell a.share-download {
+  color: var(--ci-on-primary);
+}
+.reader-shell a.share-download:hover {
+  background: var(--ci-primary-strong);
+}
+.share-download-status:not(:empty) {
+  color: var(--ci-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.share-download-status:empty {
+  position: absolute;
 }
 .share-native-btn {
   color: var(--ci-text);
@@ -307,10 +325,14 @@ dialog.search-modal[open] {
   transform-origin: top center;
 }
 dialog.search-modal .search-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   width: 100%;
   max-width: none;
   min-width: 0;
-  max-height: calc(100dvh - 48px);
+  max-height: inherit;
+  overflow: auto;
   padding: 24px;
   border: 0;
   border-radius: 0;
@@ -324,19 +346,12 @@ dialog.search-modal .search-content {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin: 0;
   flex: none;
 }
 .search-heading h2 {
   margin: 0;
   font-size: 20px;
-}
-.search-close {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  font-size: 26px;
-  color: var(--ci-text);
 }
 dialog.search-modal .search-input-wrapper {
   display: grid;
@@ -363,8 +378,8 @@ dialog.search-modal .search-input {
   outline-offset: 3px;
 }
 .search-status {
-  margin: 18px 0 8px;
-  font-size: 12px;
+  margin: 0;
+  font-size: 13px;
   color: var(--ci-muted);
   flex: none;
 }
@@ -396,11 +411,13 @@ dialog.search-modal .search-input {
   transition: background-color var(--ci-motion-fast) var(--ci-ease);
 }
 .search-results .search-result-item:hover,
-.search-results .search-result-item.selected,
-.search-results .search-result-item:focus-visible {
+.search-results .search-result-item.selected {
   background: var(--ci-container);
   text-decoration: none !important;
-  outline: none;
+}
+.search-results .search-result-item:focus-visible {
+  outline: 2px solid var(--ci-primary);
+  outline-offset: -2px;
 }
 .search-results .search-result-item * {
   text-decoration: none !important;
@@ -432,7 +449,7 @@ dialog.search-modal .search-input {
   justify-content: space-between;
   gap: 8px;
   padding-top: 14px;
-  margin: 12px 0 0;
+  margin: 0;
   border-top: 1px solid var(--ci-divider);
   font-size: 11px;
   color: var(--ci-muted);
@@ -575,11 +592,16 @@ dialog.search-modal .search-input {
     bottom: 100px;
   }
   dialog.search-modal {
-    top: 88px;
-    max-height: calc(100dvh - 110px);
+    top: clamp(12px, 6dvh, 48px);
+    max-height: calc(100dvh - clamp(12px, 6dvh, 48px) - 16px);
   }
   dialog.search-modal .search-content {
     padding: 20px 16px;
+  }
+}
+@media (hover: none) and (pointer: coarse) {
+  .search-hint {
+    display: none;
   }
 }
 

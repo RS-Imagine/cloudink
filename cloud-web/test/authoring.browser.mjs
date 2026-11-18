@@ -60,6 +60,21 @@ export async function verifyAuthoring(browser) {
       await page.locator('#login-form input[name=password]').fill(password);
       await page.locator('#login-submit').click();
       await expect(page.locator('#home-view')).toBeVisible();
+      if (width < 768) {
+        const list = await page.locator('#article-grid').boundingBox();
+        for (const selector of ['#search', '#post-filters']) {
+          const control = await page.locator(selector).boundingBox();
+          assert.ok(
+            Math.abs(control.x - list.x) <= 1 && Math.abs(control.width - list.width) <= 1,
+            selector + ' aligns with both edges of the list',
+          );
+        }
+      }
+      await page.setViewportSize({ width: 980, height: 900 });
+      await page.locator('#studio-tools summary').click();
+      await expect(page.locator('.studio-tools-panel #site-link span')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.setViewportSize({ width, height: 900 });
     }
     async function counts(published, privateCount) {
       const api = await (await f.request('/api/posts')).json();
@@ -102,6 +117,13 @@ export async function verifyAuthoring(browser) {
     }
     await navigateStudio(mobile, 'shorts');
     const target = mobile.locator('#short-publish-target-short');
+    await mobile
+      .locator('.short-admin-card')
+      .filter({ has: target })
+      .locator('.short-card-content')
+      .press('Space');
+    await expect(mobile.locator('#short-body')).toHaveValue('target-short original');
+    await mobile.locator('#short-cancel').click();
     const writes = [];
     mobile.on('request', (request) => {
       const url = new URL(request.url());
@@ -266,6 +288,14 @@ export async function verifyAuthoring(browser) {
       });
       assert.equal(titleBounds.top, 0, JSON.stringify(titleBounds));
       assert.equal(titleBounds.visible, true, JSON.stringify(titleBounds));
+      assert.ok(
+        await page
+          .locator('#description')
+          .evaluate(
+            (field) => field.clientHeight >= 2 * parseFloat(getComputedStyle(field).lineHeight) - 1,
+          ),
+        'The summary field must show two complete lines at the current text size',
+      );
       await page.screenshot({
         path: resolve('cloud-web/dist/authoring-title-' + (index ? 443 : 1920) + '.png'),
       });

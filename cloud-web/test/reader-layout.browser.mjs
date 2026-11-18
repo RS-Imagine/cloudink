@@ -23,6 +23,10 @@ export async function verifyReaderLayout(browser, origin, output, engine) {
       await page.goto(origin + path);
       for (const width of [320, 390, 980, 1440]) {
         await page.setViewportSize({ width, height: 844 });
+        if (width === 980)
+          await expect(
+            page.locator('.reader-side-nav').getByRole('link', { name: '文章', exact: true }),
+          ).toBeVisible();
         for (const theme of ['light', 'dark']) {
           await page.evaluate((value) => CloudInkTheme.setMode(value), theme);
           for (const effects of ['glass', 'solid']) {

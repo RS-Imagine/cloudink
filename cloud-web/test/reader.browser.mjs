@@ -81,6 +81,21 @@ export async function verifyMediaPanels(browser, origin, path, output) {
             (trigger === image ? 'lightbox-' : 'share-panel-') + width + '.png',
           ),
         });
+        if (trigger !== image) {
+          const link = dialog.getByRole('link', { name: /下载分享图片|Download image/ });
+          await link.hover();
+          assert.ok(
+            await link.evaluate(
+              (el) => getComputedStyle(el).color !== getComputedStyle(el).backgroundColor,
+            ),
+            'The download label remains visible on hover',
+          );
+          const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+          assert.equal(download.suggestedFilename(), 'cloudink-share.png');
+          await expect(dialog.getByRole('status')).toHaveText(
+            /已请求下载分享图片|Image download requested/,
+          );
+        }
         await dialog.locator('.reader-dialog-close').click();
         await expect(dialog).toHaveCount(0);
         await expect(trigger).toBeFocused();
