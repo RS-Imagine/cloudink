@@ -68,6 +68,13 @@ export async function verifyMobile(browser, origin, output, engine) {
     }
     node.append(overflow);
   });
+  await grip.press('End');
+  await settled(page);
+  await toc.evaluate((node) => (node.scrollTop = node.scrollHeight));
+  await expect(toc.getByText('Scrollable contents 29', { exact: true })).toBeInViewport();
+  await grip.press('Home');
+  await settled(page);
+  await toc.evaluate((node) => (node.scrollTop = 0));
   const position = await toc.evaluate((node) => node.style.translate);
   const articleY = await page.evaluate(() => scrollY);
   await toc.evaluate((node) => {

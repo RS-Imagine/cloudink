@@ -1387,6 +1387,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const tocLinks = Array.from(tocContainer.querySelectorAll('.toc-link'));
         tocDrawerOverlay.addEventListener('click', requestTocClose);
+        function revealFocusedTocLink() {
+          const link = document.activeElement;
+          if (!tocContainer.classList.contains('drawer-open') || !tocLinks.includes(link)) return;
+          // Native focus scroll may count the part of a peeked sheet below the screen.
+          const sheet = tocContainer.getBoundingClientRect();
+          const top = sheet.top + (tocSheet?.handle.offsetHeight || 0);
+          const bottom = Math.min(sheet.bottom, innerHeight);
+          if (bottom <= top) return;
+          const bounds = link.getBoundingClientRect();
+          if (bounds.top < top) tocContainer.scrollTop += bounds.top - top;
+          else if (bounds.bottom > bottom) tocContainer.scrollTop += bounds.bottom - bottom;
+        }
         const tocKeyboard = (e) => {
           if (e.isComposing) return;
           if (e.key === 'Tab' && tocContainer.classList.contains('drawer-open')) {
@@ -1396,11 +1408,12 @@ document.addEventListener('DOMContentLoaded', () => {
               last = tocLinks.at(-1);
             if (e.shiftKey && document.activeElement === first) {
               e.preventDefault();
-              last.focus();
+              last.focus({ preventScroll: true });
             } else if (!e.shiftKey && document.activeElement === last) {
               e.preventDefault();
-              first.focus();
+              first.focus({ preventScroll: true });
             }
+            requestAnimationFrame(revealFocusedTocLink);
           }
           if (e.key === 'Escape' && tocContainer.classList.contains('drawer-open')) {
             e.preventDefault();

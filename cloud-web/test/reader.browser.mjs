@@ -249,22 +249,21 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.keyboard.press('Shift+Tab');
   await expect(page.locator('.toc-container > .ci-sheet-grip')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.locator('.toc-link').last()).toBeFocused();
+  const isHittable = (link) => {
+    const box = link.getBoundingClientRect();
+    return link.contains(document.elementFromPoint(box.left + 10, box.top + box.height / 2));
+  };
+  const lastHeadingLink = page.locator('.toc-link').last();
+  await expect(lastHeadingLink).toBeFocused();
+  await expect.poll(() => lastHeadingLink.evaluate(isHittable)).toBe(true);
   await page.keyboard.press('Escape');
   await expect(page.locator('.mobile-toc-btn')).toBeFocused();
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await page.locator('.mobile-toc-btn').click();
   const firstHeadingLink = page.locator('.toc-link').first();
   await expect(firstHeadingLink).toBeFocused();
-  await expect
-    .poll(() =>
-      firstHeadingLink.evaluate((link) => {
-        const box = link.getBoundingClientRect();
-        return link.contains(document.elementFromPoint(box.left + 10, box.top + box.height / 2));
-      }),
-    )
-    .toBe(true);
-  await page.locator('.toc-link').last().click();
+  await expect.poll(() => firstHeadingLink.evaluate(isHittable)).toBe(true);
+  await lastHeadingLink.click();
   await expect(page.locator('.article-body h2').last()).toBeFocused();
   await expect(page.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');
   await page.locator('#swup').focus();
