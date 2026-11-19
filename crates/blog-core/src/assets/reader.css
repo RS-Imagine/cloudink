@@ -547,6 +547,13 @@
   }
 }
 @media (max-width: 767px) {
+  :root {
+    --reader-dock-clearance: calc(108px + env(safe-area-inset-bottom));
+    scroll-padding-block-end: var(--reader-dock-clearance);
+  }
+  .reader-layout {
+    padding-bottom: var(--reader-dock-clearance);
+  }
   .reader-shell .article-shell article {
     padding: 28px 22px;
   }

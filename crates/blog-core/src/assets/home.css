@@ -1042,13 +1042,11 @@
   margin-top: 28px;
   padding: 12px 56px 4px 0;
   border-top: 1px solid var(--line);
-  font-size: 12px;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 4px 16px;
-  color: var(--muted);
 }
 .reader-shell .site-footer p {
   max-width: 70ch;
@@ -1417,15 +1415,12 @@
 @media (max-width: 767px) {
   :root {
     --sidebar-width: 0px;
-    --reader-dock-clearance: calc(108px + env(safe-area-inset-bottom));
-    scroll-padding-block-end: var(--reader-dock-clearance);
   }
   .reader-sidebar {
     display: none;
   }
   .reader-layout {
     margin: 0;
-    padding-bottom: var(--reader-dock-clearance);
   }
   .reader-shell .site-header {
     height: 76px;
