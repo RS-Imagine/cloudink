@@ -913,26 +913,6 @@
   min-width: 0;
   overflow: hidden;
 }
-.reader-shell .plain-button {
-  min-height: var(--ci-control-height);
-  padding: 9px 16px;
-  border: 0;
-  border-radius: 20px;
-  background: var(--inset);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font: 500 12px/1.5 var(--ci-font-ui);
-  color: var(--ci-text);
-}
-.reader-shell .plain-button.primary {
-  background: var(--primary);
-  color: var(--ci-on-primary);
-}
-.reader-shell .plain-button:hover {
-  filter: brightness(0.97);
-}
 .reader-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -1062,13 +1042,11 @@
   margin-top: 28px;
   padding: 12px 56px 4px 0;
   border-top: 1px solid var(--line);
-  font-size: 12px;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 4px 16px;
-  color: var(--muted);
 }
 .reader-shell .site-footer p {
   max-width: 70ch;
@@ -1076,8 +1054,6 @@
   overflow-wrap: anywhere;
 }
 .site-footer a {
-  display: inline-block;
-  padding-block: 6px;
   white-space: nowrap;
 }
 .reader-dock {
@@ -1243,9 +1219,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-}
-.post-index-pagination .plain-button {
-  min-height: 44px;
 }
 .reader-shell .story-meta {
   gap: 4px 12px;
@@ -1448,7 +1421,6 @@
   }
   .reader-layout {
     margin: 0;
-    padding-bottom: calc(108px + env(safe-area-inset-bottom));
   }
   .reader-shell .site-header {
     height: 76px;

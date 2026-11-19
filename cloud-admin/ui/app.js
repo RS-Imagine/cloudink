@@ -41,11 +41,27 @@ function imageUploadForm(file, options) {
 }
 const fields = ['title', 'description', 'date', 'slug', 'body'];
 const titleField = $('title');
-function sizeTitle() {
-  if (!titleField.clientWidth) return;
-  titleField.style.height = 'auto';
-  titleField.style.height = titleField.scrollHeight + 'px';
-  titleField.scrollTop = titleField.scrollLeft = 0;
+const descriptionField = $('description');
+const descriptionOverflow = $('description-overflow');
+function sizeEditorField(field) {
+  if (!field.clientWidth) return;
+  const scroll = field.scrollTop;
+  field.style.overflowY = 'hidden';
+  field.style.height = 'auto';
+  field.style.height = field.scrollHeight + 'px';
+  field.style.overflowY = '';
+  if (field === titleField) {
+    field.scrollTop = field.scrollLeft = 0;
+  } else {
+    descriptionOverflow.hidden = field.scrollHeight <= field.clientHeight + 1;
+    if (descriptionOverflow.hidden) field.removeAttribute('aria-describedby');
+    else field.setAttribute('aria-describedby', descriptionOverflow.id);
+    field.scrollTop = scroll;
+  }
+}
+function sizeEditorFields() {
+  sizeEditorField(titleField);
+  sizeEditorField(descriptionField);
 }
 function normalizeTitle() {
   const value = titleField.value;
@@ -61,12 +77,13 @@ function normalizeTitle() {
 }
 titleField.addEventListener('input', (event) => {
   if (!event.isComposing) normalizeTitle();
-  sizeTitle();
+  sizeEditorField(titleField);
 });
 titleField.addEventListener('compositionend', () => {
   normalizeTitle();
-  sizeTitle();
+  sizeEditorField(titleField);
 });
+descriptionField.addEventListener('input', () => sizeEditorField(descriptionField));
 titleField.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) event.preventDefault();
 });
@@ -74,18 +91,18 @@ titleField.addEventListener('beforeinput', (event) => {
   if (!event.isComposing && ['insertParagraph', 'insertLineBreak'].includes(event.inputType))
     event.preventDefault();
 });
-let titleWidth = 0,
-  titleResizeFrame = 0;
-new ResizeObserver(() => {
-  if (titleWidth === titleField.clientWidth) return;
-  titleWidth = titleField.clientWidth;
-  if (!titleResizeFrame)
-    titleResizeFrame = requestAnimationFrame(() => {
-      titleResizeFrame = 0;
-      sizeTitle();
+let editorWidth = 0,
+  editorResizeFrame = 0;
+new ResizeObserver(([entry]) => {
+  if (editorWidth === entry.contentRect.width) return;
+  editorWidth = entry.contentRect.width;
+  if (!editorResizeFrame)
+    editorResizeFrame = requestAnimationFrame(() => {
+      editorResizeFrame = 0;
+      sizeEditorFields();
     });
-}).observe(titleField);
-void document.fonts.ready.then(sizeTitle);
+}).observe(titleField.closest('.editor-document'));
+void document.fonts.ready.then(sizeEditorFields);
 let csrf = '',
   posts = [],
   site = null,
@@ -630,7 +647,7 @@ function renderLists() {
     date.textContent = post.date;
     date.dateTime = post.date;
     const edit = document.createElement('button');
-    edit.className = 'article-edit';
+    edit.className = 'article-edit plain-button';
     edit.textContent = '编辑';
     edit.setAttribute('aria-label', '编辑：' + post.title);
     edit.addEventListener('click', open);
@@ -757,7 +774,7 @@ function currentDraft() {
       title: $('title').value,
       slug: $('slug').value,
       date: $('date').value,
-      description: $('description').value,
+      description: descriptionField.value,
       draft: true,
       ...(doc?.front_matter.updated ? { updated: doc.front_matter.updated } : {}),
       ...(doc?.front_matter.aliases?.length ? { aliases: doc.front_matter.aliases } : {}),
@@ -791,7 +808,8 @@ function fillEditor(draft, etag) {
   savedVersion = 0;
   conflict = false;
   $('title').value = draft.front_matter.title;
-  $('description').value = draft.front_matter.description;
+  descriptionField.value = draft.front_matter.description;
+  descriptionField.scrollTop = 0;
   $('date').value = draft.front_matter.date;
   $('slug').value = draft.front_matter.slug;
   $('slug').readOnly =
@@ -802,7 +820,7 @@ function fillEditor(draft, etag) {
   $('unpublish-post').hidden = !published;
   $('delete-post').hidden = published;
   view('editor');
-  sizeTitle();
+  sizeEditorFields();
   renderLists();
   wordCount();
   void preview();
@@ -890,8 +908,8 @@ $('open-draft-history')?.addEventListener('click', () => {
           $('body').value = snap.draft?.body_markdown || '';
           if (snap.draft?.front_matter?.title) $('title').value = snap.draft.front_matter.title;
           if (snap.draft?.front_matter?.description)
-            $('description').value = snap.draft.front_matter.description;
-          sizeTitle();
+            descriptionField.value = snap.draft.front_matter.description;
+          sizeEditorFields();
           changed();
           dialog.close();
           notice('已恢复本地快照内容。', 'success');

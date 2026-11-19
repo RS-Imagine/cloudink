@@ -96,10 +96,11 @@ try {
   await page.locator('#new-post').click();
   await page.locator('#show-split').click();
   await page.locator('#title').fill('Browser published mathematics');
+  await page.locator('#description').fill('A summary for the shared reading layout.');
   const codeExamples =
     '````markdown\n```\n$literal_fence$\n```\n````\n\n~~~~markdown\n```\n$literal_tilde$\n~~~\n~~~~\n\n    $literal_indent$\n\n``a ` $literal_inline$``';
   const body =
-    '## A heading\n\n## A heading\n\n| Column | Value |\n| --- | --- |\n| Example | Content |\n\n**Browser publication** $x^2$ and $ x^2 $ and $\\text{`hello`}$\n\n$$y^2$$\n\n$$\nz^2\n$$\n\n```rust\nlet x = 1;\n```\n\n' +
+    '## A heading\n\n## A heading\n\n### A subheading\n\n> A compact quotation.\n\n| 按键 | Value |\n| --- | --- |\n| Super + T | Content |\n\n**Browser publication** $x^2$ and $ x^2 $ and $\\text{`hello`}$\n\n$$y^2$$\n\n$$\nz^2\n$$\n\n```rust\nlet x = 1;\n```\n\n' +
     codeExamples +
     '\n\n<img src="x" onerror="window.BAD_SCRIPT=1">\n<script>window.BAD_SCRIPT=1</script>';
   await page.locator('#body').fill(body);
@@ -175,10 +176,19 @@ try {
     .locator('.article-body')
     .evaluate(() => innerWidth);
   await live.setViewportSize({ width: previewWidth, height: 1000 });
-  assert.deepEqual(
-    await live.locator('.article-body').evaluate(readingStyle),
-    await page.frameLocator('#preview-frame').locator('.article-body').evaluate(readingStyle),
-  );
+  for (const selector of [
+    '.article-body',
+    '.article-deck',
+    '.article-body h3',
+    'blockquote p',
+    'table kbd',
+  ]) {
+    assert.deepEqual(
+      await live.locator(selector).evaluate(readingStyle),
+      await page.frameLocator('#preview-frame').locator(selector).evaluate(readingStyle),
+      selector + ' uses the same typography in preview and on the site',
+    );
+  }
   await live.setViewportSize({ width: 1440, height: 1000 });
   await verifyMathExamples(live);
   await expect(live.locator('code.hljs')).toHaveCount(4);

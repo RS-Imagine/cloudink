@@ -910,12 +910,6 @@ button:active {
   border: 1px solid var(--line);
   border-radius: 12px;
 }
-.settings-nav a {
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--paper);
-  font-size: 12px;
-}
 .settings-card {
   scroll-margin-top: 90px;
 }
@@ -961,13 +955,6 @@ button:active {
   }
   .form-actions {
     flex-wrap: wrap;
-  }
-  .settings-nav {
-    gap: 4px;
-    padding: 8px;
-  }
-  .settings-nav a {
-    padding: 7px 8px;
   }
   .service-info > div {
     grid-template-columns: 1fr;
@@ -1060,7 +1047,7 @@ button:active {
   flex-wrap: wrap;
   margin-top: 16px;
 }
-.image-actions button {
+.image-actions button:not(.plain-button) {
   padding: 7px 10px;
   font-size: 12px;
 }

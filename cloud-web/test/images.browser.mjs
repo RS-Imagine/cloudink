@@ -72,12 +72,22 @@ try {
   const reusable = page.locator('.image-card').filter({ hasText: 'Reusable photo.png' });
   await expect(reusable.getByText('未发现引用', { exact: true })).toBeVisible();
   await expect(reusable.getByRole('button', { name: '插入当前文章' })).toBeDisabled();
-  await reusable.getByRole('button', { name: '预览 Reusable photo.png' }).click();
+  const thumbnail = reusable.getByRole('button', { name: '预览 Reusable photo.png' });
+  await thumbnail.click();
   await expect(page.locator('#image-preview-dialog')).toBeVisible();
   await expect
     .poll(() => page.locator('#image-preview-full').evaluate((image) => image.naturalWidth))
     .toBe(1);
   await page.locator('#image-preview-close').click();
+  await expect(thumbnail).toBeFocused();
+  await page.setViewportSize({ width: 443, height: 900 });
+  await thumbnail.click();
+  await expect(page.locator('#image-preview-close')).toBeHidden();
+  await expect(page.locator('#image-preview-dialog .ci-sheet-grip')).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#image-preview-dialog')).toBeHidden();
+  await expect(thumbnail).toBeFocused();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await reusable.getByRole('button', { name: '复制链接' }).click();
   await expect(page.locator('#notice')).toContainText('链接已复制');
   assert.ok(
@@ -182,6 +192,8 @@ try {
   assert.equal(await keepOriginal.isChecked(), !initial);
   await label.locator('span').click();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  const maintenance = page.locator('#image-maintenance > summary');
+  assert.ok((await maintenance.boundingBox()).height >= 44);
   await page.screenshot({ path: resolve('cloud-web/dist/images.browser.png'), fullPage: true });
   await verifyImagePerformance(browser, context, page, mf, origin);
   await verifyImageMaintenance(context, page, mf, origin);

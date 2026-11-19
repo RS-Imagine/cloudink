@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::markdown::{markdown_to_html, markdown_to_plain_text};
+use crate::markdown::{markdown_to_html, markdown_to_plain_text, page_markdown_to_html};
 use crate::models::{
     FrontMatter, Page, PageFrontMatter, Post, PostDraft, Short, ShortDraft, ShortFrontMatter,
     SiteConfig,
@@ -110,7 +110,7 @@ pub fn parse_page(raw: &str) -> Result<Page> {
     let (front_matter_src, body_markdown) = split_front_matter(raw)?;
     let front_matter: PageFrontMatter =
         toml::from_str(&front_matter_src).context("parse page front matter")?;
-    let body_html = markdown_to_html(&body_markdown);
+    let body_html = page_markdown_to_html(&body_markdown);
 
     Ok(Page {
         front_matter,

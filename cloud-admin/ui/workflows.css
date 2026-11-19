@@ -115,7 +115,7 @@ button[aria-busy='true']::before {
 .editor-image-actions button,
 .editor-view-switch button,
 .editor-danger-zone button,
-.image-actions button {
+.image-actions button:not(.plain-button) {
   min-width: 48px;
   min-height: 48px;
   padding: 8px 12px;
@@ -462,23 +462,6 @@ button[aria-busy='true']::before {
   border-radius: 16px;
   background: var(--ci-container);
 }
-.settings-nav a {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 8px 16px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--ci-muted);
-  font: 600 14px/20px var(--ci-font-ui);
-  white-space: nowrap;
-}
-.settings-nav a:hover,
-.settings-nav a:focus-visible {
-  color: var(--ci-primary);
-  background: var(--ci-surface);
-}
 .settings-sections {
   display: grid;
   gap: 24px;
@@ -693,10 +676,6 @@ button[aria-busy='true']::before {
   padding-top: 8px;
   font-size: 14px;
 }
-.settings-details summary {
-  min-height: 48px;
-  padding: 12px 0;
-}
 .settings-details[open] summary {
   margin-bottom: 16px;
 }
@@ -844,17 +823,6 @@ button[aria-busy='true']::before {
   }
   .settings-nav {
     position: static;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
-    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
-  }
-  .settings-nav a {
-    padding-inline: 12px;
-    font-size: 12px;
   }
   .settings-card {
     padding: 24px 16px;
@@ -988,12 +956,6 @@ button[aria-busy='true']::before {
   padding: 16px 0;
   border-color: var(--ci-divider);
   font-size: 14px;
-}
-#image-maintenance > summary {
-  min-height: 44px;
-  padding: 12px 0;
-  cursor: pointer;
-  color: var(--ci-primary);
 }
 #image-maintenance .toolbar-actions {
   display: flex;

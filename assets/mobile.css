@@ -10,7 +10,7 @@
   height: auto;
   max-height: calc(var(--ci-vp-height, 100dvh) - 12px) !important;
   margin: 0 auto !important;
-  padding: 0 20px calc(20px + env(safe-area-inset-bottom) + var(--ci-sheet-reserve, 0px)) !important;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom)) !important;
   box-sizing: border-box;
   border: 1px solid var(--ci-divider);
   border-bottom: 0;
@@ -29,6 +29,15 @@
 [data-ci-sheet-active][data-sheet='list'],
 [data-ci-sheet-active][data-sheet='full'] {
   height: calc(var(--ci-vp-height, 100dvh) * 0.86);
+}
+[data-ci-sheet-active][data-sheet='list'] {
+  padding-bottom: 0 !important;
+}
+/* Keep the part of a peeked list translated below the viewport in the scroll range. */
+[data-ci-sheet-active][data-sheet='list']::after {
+  content: '';
+  display: block;
+  height: calc(20px + env(safe-area-inset-bottom) + var(--ci-sheet-reserve, 0px));
 }
 [data-ci-sheet-active] > .ci-sheet-grip,
 [data-ci-sheet-active] > [data-sheet-header] > .ci-sheet-grip {
@@ -90,6 +99,11 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
   grid-column: 1 / -1;
   grid-row: 1;
 }
+.reader-dialog[data-ci-sheet-active] .reader-dialog-close,
+.image-preview-dialog[data-ci-sheet-active] #image-preview-close,
+.studio-sheet[data-ci-sheet-active] #studio-sheet-close {
+  display: none;
+}
 .reader-dialog[data-ci-sheet-active] img,
 .image-preview-dialog[data-ci-sheet-active] > img {
   max-width: 100%;
@@ -100,13 +114,6 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
 }
 .toc-container[data-ci-sheet-active] .toc-title {
   margin: 8px 0 12px;
-}
-.toc-container[data-ci-sheet-active] .toc-close {
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  margin-top: 16px;
-  z-index: 2;
 }
 .studio-sheet {
   width: min(600px, calc(100vw - 32px));
