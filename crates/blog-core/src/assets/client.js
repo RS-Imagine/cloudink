@@ -466,7 +466,8 @@ document.addEventListener('DOMContentLoaded', () => {
     cleanupFunctions = [];
 
     if (window.CloudInkReader) void window.CloudInkReader.activate();
-    else if (typeof hljs !== 'undefined') hljs.highlightAll();
+    else if (typeof hljs !== 'undefined' && document.querySelector('#swup pre code'))
+      hljs.highlightAll();
     const swupContainer = document.getElementById('swup');
     if (!swupContainer) return;
     syncReaderNavigation();
@@ -1209,16 +1210,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const article = document.querySelector('.article-shell article');
     if (article) {
       let progressBar = document.getElementById('reading-progress');
-      if (!progressBar) {
+      let createdProgressBar = false;
+      if (!progressBar && !article.closest('.reader-page')) {
         progressBar = document.createElement('div');
         progressBar.id = 'reading-progress';
         progressBar.className = 'reading-progress';
         progressBar.setAttribute('aria-hidden', 'true');
         document.body.prepend(progressBar);
+        createdProgressBar = true;
       }
-      cleanupFunctions.push(() => {
-        progressBar?.remove();
-      });
+      if (createdProgressBar) {
+        cleanupFunctions.push(() => {
+          progressBar?.remove();
+        });
+      }
       const updateReadingProgress = () => {
         const total = document.documentElement.scrollHeight - window.innerHeight;
         const current = window.scrollY;

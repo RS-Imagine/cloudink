@@ -26,7 +26,19 @@ await build({
   format: 'esm',
   target: 'es2022',
   minify: true,
-  external: ['/blog_wasm.js'],
+  external: ['/blog_wasm.js', '/preview-highlight.js'],
+});
+await build({
+  stdin: {
+    contents: "export { default } from 'highlight.js/lib/common';",
+    resolveDir: root.pathname,
+    sourcefile: 'preview-highlight.js',
+  },
+  outfile: new URL('ui/preview-highlight.generated.js', root).pathname,
+  bundle: true,
+  format: 'esm',
+  target: 'es2022',
+  minify: true,
 });
 await build({
   entryPoints: [new URL('ui/image.worker.js', root).pathname],
@@ -97,6 +109,7 @@ const paths = [
   ['/style.css', 'ui/style.css', 'text/css; charset=utf-8'],
   ['/app.js', 'ui/app.generated.js', 'text/javascript; charset=utf-8'],
   ['/preview.worker.js', 'ui/preview.worker.generated.js', 'text/javascript; charset=utf-8'],
+  ['/preview-highlight.js', 'ui/preview-highlight.generated.js', 'text/javascript; charset=utf-8'],
   ['/blog_wasm.js', 'ui/wasm/blog_wasm.js', 'text/javascript; charset=utf-8'],
   ['/blog_wasm_bg.wasm', 'ui/wasm/blog_wasm_bg.wasm', 'application/wasm'],
 ];

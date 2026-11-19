@@ -81,12 +81,23 @@ export async function readerHtml(
         if (!analytics) el.remove();
       },
     })
+    .on('script[src]', {
+      element(el) {
+        const src = el.getAttribute('src') || '';
+        if (
+          /^https:\/\/cdn\.jsdelivr\.net\/gh\/highlightjs\/cdn-release@[^/]+\/build\/highlight(?:\.min)?\.js(?:[?#]|$)/.test(
+            src,
+          )
+        )
+          el.remove();
+      },
+    })
     .on('.article-body .katex', {
       element() {
         hasMath = true;
       },
     })
-    .on('.article-body pre code', {
+    .on('.article-body pre code, #swup pre code', {
       element() {
         hasCode = true;
       },

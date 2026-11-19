@@ -556,12 +556,94 @@ summary {
 .preview-loading {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 34px 28px;
+  overflow: hidden;
   color: var(--muted);
   font-size: 12px;
   pointer-events: none;
-  background: var(--bg);
+  background: var(--paper);
+}
+.preview-loading[data-state='error'] {
+  justify-content: center;
+}
+.preview-loading[data-state='error'] .preview-skeleton {
+  display: none;
+}
+.preview-skeleton {
+  width: 100%;
+  max-width: 640px;
+  display: grid;
+  gap: 14px;
+}
+.preview-skeleton .sk-bar {
+  position: relative;
+  display: block;
+  height: 15px;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--ci-container, var(--pale));
+}
+.preview-skeleton .sk-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--paper) 60%, transparent),
+    transparent
+  );
+  animation: preview-sk-shimmer 1.6s ease-in-out infinite;
+}
+.preview-skeleton .sk-title {
+  height: 28px;
+  width: 84%;
+  border-radius: 8px;
+}
+.preview-skeleton .sk-short {
+  width: 56%;
+}
+.preview-skeleton .sk-mid {
+  width: 74%;
+}
+.preview-skeleton .sk-wide {
+  width: 94%;
+}
+.preview-skeleton .sk-meta {
+  height: 12px;
+  width: 38%;
+  margin-top: 4px;
+}
+.preview-skeleton .sk-rule {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--line);
+}
+.preview-skeleton .sk-block {
+  height: 112px;
+  border-radius: 14px;
+  margin: 6px 0;
+}
+.preview-loading-text {
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 12px;
+}
+@keyframes preview-sk-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preview-skeleton .sk-bar::after {
+    display: none;
+  }
 }
 .editor-footer {
   display: flex;

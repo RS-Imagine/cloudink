@@ -984,7 +984,21 @@
                     sandbox="allow-same-origin"
                   ></iframe>
                   <div id="preview-loading" class="preview-loading" role="status">
-                    正在加载 Rust 预览引擎…
+                    <div class="preview-skeleton" aria-hidden="true">
+                      <span class="sk-bar sk-title"></span>
+                      <span class="sk-bar sk-title sk-short"></span>
+                      <span class="sk-bar sk-meta"></span>
+                      <span class="sk-rule"></span>
+                      <span class="sk-bar"></span>
+                      <span class="sk-bar sk-wide"></span>
+                      <span class="sk-bar sk-mid"></span>
+                      <span class="sk-bar sk-block"></span>
+                      <span class="sk-bar sk-wide"></span>
+                      <span class="sk-bar sk-short"></span>
+                    </div>
+                    <span id="preview-loading-text" class="preview-loading-text"
+                      >正在加载 Rust 预览引擎…</span
+                    >
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 const frame = document.getElementById('preview-frame');
 const loading = document.getElementById('preview-loading');
+const loadingText = document.getElementById('preview-loading-text') || loading;
 function applyPreviewTheme(page) {
   if (!page?.documentElement) return;
   const dark = document.documentElement.dataset.theme === 'dark';
@@ -62,7 +63,8 @@ export function invalidatePreview(clear = false) {
     frame.onload = null;
     frame.srcdoc = '';
     loading.hidden = false;
-    loading.textContent = '正在准备预览…';
+    delete loading.dataset.state;
+    loadingText.textContent = '正在准备预览…';
   }
 }
 export function disposePreview() {
@@ -224,7 +226,8 @@ async function pump() {
   } catch (error) {
     if (job.version === generation) {
       loading.hidden = false;
-      loading.textContent = '预览未完成：' + error.message;
+      loading.dataset.state = 'error';
+      loadingText.textContent = '预览未完成：' + error.message;
     }
   } finally {
     running = false;

@@ -8,6 +8,7 @@ html {
   text-rendering: optimizeLegibility;
   scroll-behavior: auto;
   scroll-padding-top: 32px;
+  scrollbar-gutter: stable;
 }
 html, body { margin: 0; padding: 0; }
 body {

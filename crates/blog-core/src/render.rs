@@ -721,6 +721,29 @@ fn page(
         ""
     };
     let (icon_url, icon_type) = site_icon(config);
+    let has_math = body.contains("class=\"katex\"");
+    let has_code = body.contains("<pre><code");
+    let mut optional_head = String::new();
+    if has_math || has_code {
+        optional_head.push_str(r#"  <link rel="preconnect" href="https://cdn.jsdelivr.net">"#);
+        optional_head.push('\n');
+    }
+    if has_math {
+        optional_head.push_str(
+            r#"  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">"#,
+        );
+        optional_head.push('\n');
+    }
+    if has_code {
+        optional_head.push_str(
+            r#"  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="none" id="hljs-light">"#,
+        );
+        optional_head.push('\n');
+        optional_head.push_str(
+            r#"  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" media="none" id="hljs-dark">"#,
+        );
+        optional_head.push('\n');
+    }
 
     // ---- <head> -------------------------------------------------------------
     html.push_str(&format!(
@@ -738,16 +761,13 @@ fn page(
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
   <link rel="alternate" type="application/rss+xml" title="{site_title}" href="/feed.xml">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" media="none" id="hljs-light">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" media="none" id="hljs-dark">
-  {extra_head}
+{optional_head}  {extra_head}
   <script>{theme_bootstrap}</script>
 "##,
         palette = palette,
         reading_font = reading_font,
         reading_font_style = reading_font_style,
+        optional_head = optional_head,
         theme_bootstrap = include_str!("../../../assets/theme.js"),
         description = escape_html(description),
         author = escape_html(&config.author),
@@ -831,7 +851,6 @@ fn page(
       <p class="search-hint"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></p>
     </div>
   </dialog>
-  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
   <script src="https://unpkg.com/swup@4"></script>
   <script src="/client.js?v={client_hash}"></script>
 "##,

@@ -131,7 +131,7 @@
       void stylesheet('reading').catch(() => {});
     await Promise.all([
       ...(math ? [stylesheet('math')] : []),
-      ...(doc.querySelector('.article-body pre code') ? [stylesheet('code')] : []),
+      ...(doc.querySelector('#swup pre code, .article-body pre code') ? [stylesheet('code')] : []),
     ]);
     if (math && document.fonts) {
       let probe, timer;
@@ -167,11 +167,20 @@
       }
     }
   }
+  const codeBlockSelector = 'pre code:not(.hljs):not([data-highlighted])';
+  function unhighlightedCodeBlocks(root = document.getElementById('swup')) {
+    return [...(root?.querySelectorAll?.(codeBlockSelector) || [])];
+  }
+  function hasCodeBlocks(root = document.getElementById('swup')) {
+    return Boolean(root?.querySelector?.('pre code'));
+  }
   function loadHighlighter() {
     if (window.CloudInkHighlighter) return Promise.resolve(window.CloudInkHighlighter);
     if (highlighter) return highlighter;
     highlighter = new Promise((resolve, reject) => {
       const script = document.createElement('script');
+      script.async = true;
+      script.dataset.readerScript = 'highlight';
       script.src = path + 'highlight.js';
       const timer = setTimeout(() => fail(), 10000);
       const fail = () => {
@@ -192,27 +201,38 @@
     });
     return highlighter;
   }
+  function nextHighlightSlice() {
+    if (typeof globalThis.requestAnimationFrame === 'function')
+      return new Promise((resolve) => globalThis.requestAnimationFrame(() => resolve()));
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  async function highlightBlocks(root, codes, hljs) {
+    const CHUNK = 6;
+    for (let i = 0; i < codes.length; i++) {
+      if (root !== document.getElementById('swup')) return;
+      const code = codes[i];
+      if (!code.isConnected || code.dataset?.highlighted || code.classList?.contains('hljs'))
+        continue;
+      const match = code.className.match(/(?:^|\s)(?:language|lang)-([\w+-]+)/i);
+      if (match && typeof hljs.getLanguage === 'function' && !hljs.getLanguage(match[1])) {
+        code.dataset.highlighted = 'yes';
+        code.classList.add('hljs');
+      } else {
+        hljs.highlightElement(code);
+      }
+      if ((i + 1) % CHUNK === 0 && i + 1 < codes.length) await nextHighlightSlice();
+    }
+  }
   async function activate() {
     const root = document.getElementById('swup');
     try {
-      await prepare(document);
-      const codes = [
-        ...(root?.querySelectorAll('pre code:not(.hljs):not([data-highlighted])') || []),
-      ];
-      if (codes.length) {
-        const hljs = await loadHighlighter();
-        if (root !== document.getElementById('swup')) return;
-        for (const code of codes) {
-          if (!code.isConnected) continue;
-          const match = code.className.match(/(?:^|\s)(?:language|lang)-([\w+-]+)/i);
-          if (match && typeof hljs.getLanguage === 'function' && !hljs.getLanguage(match[1])) {
-            code.dataset.highlighted = 'yes';
-            code.classList.add('hljs');
-            continue;
-          }
-          hljs.highlightElement(code);
-        }
-      }
+      const codes = unhighlightedCodeBlocks(root);
+      const [, hljs] = await Promise.all([
+        prepare(document),
+        codes.length ? loadHighlighter() : Promise.resolve(null),
+      ]);
+      if (root !== document.getElementById('swup')) return;
+      if (codes.length && hljs) await highlightBlocks(root, codes, hljs);
       if (root === document.getElementById('swup')) hide('reader-resource-status');
     } catch (error) {
       if (root === document.getElementById('swup'))
@@ -329,18 +349,241 @@
     const target = path + url.search;
     return target === current.pathname + current.search ? null : target;
   }
+  function skeletonKind(target) {
+    if (!target) return 'article';
+    let pathname = String(target);
+    try {
+      pathname = new URL(pathname, globalThis.location?.origin || 'https://example.invalid')
+        .pathname;
+    } catch {}
+    if (pathname === '/' || pathname === '') return 'home';
+    if (pathname.startsWith('/shorts')) return 'shorts';
+    if (pathname.startsWith('/archive')) return 'archive';
+    if (pathname === '/post' || pathname === '/post/' || pathname.startsWith('/post/page/'))
+      return 'posts';
+    if (pathname.startsWith('/about')) return 'page';
+    return 'article';
+  }
+  function skeletonMarkup(kind) {
+    const authorPanel =
+      '<section class="panel author-card ci-sk-panel" aria-hidden="true">' +
+      '<div class="author-head"><span class="ci-sk ci-sk-avatar-lg"></span><div class="ci-sk-stack">' +
+      '<span class="ci-sk ci-sk-line ci-sk-w-72"></span><span class="ci-sk ci-sk-meta ci-sk-w-92"></span></div></div>' +
+      '<div class="ci-sk-para"><span class="ci-sk ci-sk-line"></span><span class="ci-sk ci-sk-line ci-sk-w-82"></span></div>' +
+      '<span class="ci-sk ci-sk-btn"></span></section>';
+    if (kind === 'shorts') {
+      const card =
+        '<article class="short-card ci-sk-short">' +
+        '<span class="ci-sk ci-sk-meta ci-sk-w-meta-md"></span>' +
+        '<div class="ci-sk-para"><span class="ci-sk ci-sk-line"></span><span class="ci-sk ci-sk-line ci-sk-w-92"></span><span class="ci-sk ci-sk-line ci-sk-w-64"></span></div>' +
+        '</article>';
+      return {
+        center:
+          '<div class="shorts-layout ci-sk-shell" aria-hidden="true">' +
+          '<span class="ci-sk ci-sk-page-title"></span>' +
+          '<div class="shorts-feed">' +
+          card +
+          card +
+          card +
+          '</div></div>',
+        context: authorPanel,
+      };
+    }
+    if (kind === 'posts') {
+      const row =
+        '<div class="blog-post ci-sk-list-row"><div class="post-copy">' +
+        '<span class="ci-sk ci-sk-h3 ci-sk-w-76"></span>' +
+        '<div class="ci-sk-meta-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-md"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span></div>' +
+        '</div></div>';
+      return {
+        center:
+          '<section class="panel blog-feed post-index ci-sk-shell" aria-hidden="true">' +
+          '<header class="blog-section-heading"><span class="ci-sk ci-sk-page-title"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span></header>' +
+          row +
+          row +
+          row +
+          row +
+          row +
+          '</section>',
+        context: authorPanel,
+      };
+    }
+    if (kind === 'archive') {
+      const item =
+        '<div class="ci-sk-archive-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-xs"></span><span class="ci-sk ci-sk-line ci-sk-w-72"></span></div>';
+      const group =
+        '<section class="archive-group"><span class="ci-sk ci-sk-h3 ci-sk-w-45"></span>' +
+        item +
+        item +
+        item +
+        '</section>';
+      return {
+        center:
+          '<div class="archive-layout ci-sk-shell" aria-hidden="true">' +
+          '<span class="ci-sk ci-sk-page-title"></span>' +
+          group +
+          group +
+          '</div>',
+        context: authorPanel,
+      };
+    }
+    if (kind === 'home') {
+      const row =
+        '<div class="blog-post ci-sk-list-row"><div class="post-copy">' +
+        '<span class="ci-sk ci-sk-h3 ci-sk-w-76"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-92"></span>' +
+        '<div class="ci-sk-meta-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-md"></span></div>' +
+        '</div></div>';
+      return {
+        center:
+          '<div class="home-layout ci-sk-shell" aria-hidden="true">' +
+          '<article class="panel featured-article ci-sk-feature"><div class="feature-copy ci-sk-stack">' +
+          '<span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span>' +
+          '<span class="ci-sk ci-sk-h1 ci-sk-w-88"></span><span class="ci-sk ci-sk-h1 ci-sk-w-64"></span>' +
+          '<span class="ci-sk ci-sk-line ci-sk-w-96"></span><span class="ci-sk ci-sk-line ci-sk-w-76"></span>' +
+          '<span class="ci-sk ci-sk-btn ci-sk-btn-inline"></span></div>' +
+          '<span class="ci-sk ci-sk-cover"></span></article>' +
+          '<section class="panel blog-feed">' +
+          row +
+          row +
+          '</section></div>',
+        context: authorPanel,
+      };
+    }
+    if (kind === 'page') {
+      return {
+        center:
+          '<section class="article-shell reader-article reader-page ci-sk-shell" aria-hidden="true">' +
+          '<article class="panel"><span class="ci-sk ci-sk-h1 ci-sk-w-45"></span>' +
+          '<div class="ci-sk-body">' +
+          '<div class="ci-sk-para"><span class="ci-sk ci-sk-line"></span><span class="ci-sk ci-sk-line ci-sk-w-96"></span><span class="ci-sk ci-sk-line ci-sk-w-76"></span></div>' +
+          '<div class="ci-sk-para"><span class="ci-sk ci-sk-line ci-sk-w-92"></span><span class="ci-sk ci-sk-line"></span><span class="ci-sk ci-sk-line ci-sk-w-64"></span></div>' +
+          '</div></article></section>',
+        context: authorPanel,
+      };
+    }
+    return {
+      center:
+        '<section class="article-shell reader-article ci-sk-shell" aria-hidden="true">' +
+        '<article class="panel article-reading"><div class="article-inner">' +
+        '<div class="article-back-row"><span class="ci-sk ci-sk-back"></span></div>' +
+        '<header class="article-headline">' +
+        '<span class="ci-sk ci-sk-h1 ci-sk-w-88"></span>' +
+        '<span class="ci-sk ci-sk-h1 ci-sk-w-60"></span>' +
+        '<div class="ci-sk-deck-group">' +
+        '<span class="ci-sk ci-sk-deck ci-sk-w-96"></span>' +
+        '<span class="ci-sk ci-sk-deck ci-sk-w-72"></span></div>' +
+        '<div class="article-metadata ci-sk-meta-row">' +
+        '<span class="ci-sk ci-sk-avatar"></span>' +
+        '<span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span>' +
+        '<span class="ci-sk ci-sk-meta ci-sk-w-meta-md"></span>' +
+        '<span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span>' +
+        '</div></header>' +
+        '<div class="article-body article-body-text ci-sk-body">' +
+        '<div class="ci-sk-para">' +
+        '<span class="ci-sk ci-sk-line"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-96"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-76"></span></div>' +
+        '<span class="ci-sk ci-sk-h2 ci-sk-w-45"></span>' +
+        '<div class="ci-sk-para">' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-96"></span>' +
+        '<span class="ci-sk ci-sk-line"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-82"></span></div>' +
+        '<span class="ci-sk ci-sk-block"></span>' +
+        '<div class="ci-sk-para">' +
+        '<span class="ci-sk ci-sk-line"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-92"></span>' +
+        '<span class="ci-sk ci-sk-line ci-sk-w-64"></span></div>' +
+        '</div></div></article></section>',
+      context:
+        '<section class="panel article-toc-panel ci-sk-panel" aria-hidden="true">' +
+        '<span class="ci-sk ci-sk-panel-title"></span>' +
+        '<div class="ci-sk-toc">' +
+        '<span class="ci-sk ci-sk-toc-line ci-sk-w-88"></span>' +
+        '<span class="ci-sk ci-sk-toc-line ci-sk-w-76"></span>' +
+        '<span class="ci-sk ci-sk-toc-line ci-sk-indent ci-sk-w-64"></span>' +
+        '<span class="ci-sk ci-sk-toc-line ci-sk-w-82"></span>' +
+        '<span class="ci-sk ci-sk-toc-line ci-sk-indent ci-sk-w-60"></span></div>' +
+        '<div class="reading-progress-widget">' +
+        '<div class="ci-sk-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-xs"></span></div>' +
+        '<div class="reading-progress-track"></div></div></section>' +
+        '<section class="panel article-info-panel ci-sk-panel" aria-hidden="true">' +
+        '<span class="ci-sk ci-sk-panel-title ci-sk-w-45"></span>' +
+        '<div class="ci-sk-dl">' +
+        '<div class="ci-sk-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-xs"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span></div>' +
+        '<div class="ci-sk-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-md"></span></div>' +
+        '<div class="ci-sk-row"><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span><span class="ci-sk ci-sk-meta ci-sk-w-meta-sm"></span></div></div>' +
+        '<span class="ci-sk ci-sk-btn"></span></section>',
+    };
+  }
   function attach(swup) {
     if (!swup) return;
     let controller = null,
       pending = null,
       delayed = 0,
+      skeletonTimer = 0,
+      revealTimer = 0,
+      skeletonActive = false,
       hoverTimer = 0,
       idleHandle = 0,
       activePrefetches = 0;
     const inflight = new Map();
     const MAX_PREFETCHES = 2;
-    const clear = () => {
+    const SKELETON_DELAY = 120;
+    const mountSkeletonLayer = (host, html, kind) => {
+      if (!host || typeof document.createElement !== 'function') return;
+      let layer = host.querySelector?.(':scope > .reader-skeleton-layer');
+      if (!layer) {
+        layer = document.createElement('div');
+        layer.className = 'reader-skeleton-layer';
+        layer.setAttribute('aria-hidden', 'true');
+        host.append(layer);
+      }
+      layer.dataset.skeletonKind = kind;
+      layer.innerHTML = html;
+      host.classList?.add('is-skeleton');
+    };
+    const showSkeleton = (targetUrl) => {
+      const center = document.getElementById?.('reader-center');
+      if (!center || typeof document.createElement !== 'function') return;
+      const kind = skeletonKind(targetUrl);
+      const markup = skeletonMarkup(kind);
+      mountSkeletonLayer(center, markup.center, kind);
+      const context = document.getElementById?.('reader-context');
+      if (context && markup.context) mountSkeletonLayer(context, markup.context, kind);
+      const shell = document.getElementById?.('swup');
+      if (shell?.dataset) shell.dataset.skeletonKind = kind;
+      skeletonActive = true;
+    };
+    const hideSkeleton = (reveal = false) => {
+      clearTimeout(skeletonTimer);
+      skeletonTimer = 0;
+      const wasActive = skeletonActive;
+      skeletonActive = false;
+      const shell = document.getElementById?.('swup');
+      if (shell?.dataset) delete shell.dataset.skeletonKind;
+      for (const id of ['reader-center', 'reader-context']) {
+        const host = document.getElementById?.(id);
+        if (!host) continue;
+        host.classList?.remove('is-skeleton');
+        host.querySelector?.(':scope > .reader-skeleton-layer')?.remove();
+      }
+      if (reveal && wasActive) {
+        clearTimeout(revealTimer);
+        const targets = ['reader-center-content', 'reader-context-content']
+          .map((id) => document.getElementById?.(id))
+          .filter(Boolean);
+        for (const node of targets) node.classList?.add('is-skeleton-reveal');
+        revealTimer = setTimeout(() => {
+          revealTimer = 0;
+          for (const node of targets) node.classList?.remove('is-skeleton-reveal');
+        }, 260);
+      }
+    };
+    const clear = (reveal = false) => {
       clearTimeout(delayed);
+      delayed = 0;
+      hideSkeleton(reveal);
       document.getElementById?.('swup')?.removeAttribute('aria-busy');
       hide('reader-navigation-status');
     };
@@ -484,6 +727,18 @@
       const current = controller;
       pending = visit;
       clear();
+      const cache = options.cache;
+      if (cache !== undefined) {
+        visit.cache.read = typeof cache === 'object' ? (cache.read ?? visit.cache.read) : !!cache;
+        visit.cache.write =
+          typeof cache === 'object' ? (cache.write ?? visit.cache.write) : !!cache;
+      }
+      let page = visit.cache.read ? swup.cache?.get?.(visit.to.url) : null;
+      if (!page) {
+        skeletonTimer = setTimeout(() => {
+          if (pending === visit) showSkeleton(visit.to.url);
+        }, SKELETON_DELAY);
+      }
       delayed = setTimeout(() => {
         if (pending === visit) show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
       }, 500);
@@ -496,13 +751,6 @@
         else location.assign(target);
       };
       try {
-        const cache = options.cache;
-        if (cache !== undefined) {
-          visit.cache.read = typeof cache === 'object' ? (cache.read ?? visit.cache.read) : !!cache;
-          visit.cache.write =
-            typeof cache === 'object' ? (cache.write ?? visit.cache.write) : !!cache;
-        }
-        let page = visit.cache.read ? swup.cache?.get?.(visit.to.url) : null;
         if (!page && visit.cache.read && inflight.has(visit.to.url)) {
           const shared = await untilAbort(inflight.get(visit.to.url).promise, current.signal);
           if (shared && shared.html) page = shared;
@@ -543,15 +791,23 @@
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
         if (visit.cache.write && page.url === visit.to.url) swup.cache?.set?.(page.url, page);
-        clear();
-        return perform(visit, {
+        clearTimeout(skeletonTimer);
+        skeletonTimer = 0;
+        clearTimeout(delayed);
+        delayed = 0;
+        hide('reader-navigation-status');
+        const hadSkeleton = skeletonActive;
+        const result = await perform(visit, {
           ...options,
           meta: {
             ...options.meta,
             readerPage: page,
             readerHead: pageMetadata(doc, page.url),
+            hadSkeleton,
           },
         });
+        if (skeletonActive) clear(true);
+        return result;
       } catch {
         if (pending !== visit) return;
         clear();
@@ -580,6 +836,7 @@
     );
     swup.hooks.on('page:view', (visit) => {
       if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
+      clear(Boolean(visit.meta?.hadSkeleton));
       scheduleIdleWarmup();
     });
     swup.hooks.on('visit:abort', (visit) => {
@@ -598,5 +855,14 @@
     });
     scheduleIdleWarmup();
   }
-  window.CloudInkReader = Object.freeze({ activate, attach, prefetchUrl, canPrefetch });
+  window.CloudInkReader = Object.freeze({
+    activate,
+    attach,
+    hasCodeBlocks,
+    unhighlightedCodeBlocks,
+    prefetchUrl,
+    canPrefetch,
+    skeletonKind,
+    skeletonMarkup,
+  });
 })();
