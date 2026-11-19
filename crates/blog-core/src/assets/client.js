@@ -196,6 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
             end = Math.min(post.body.length, match + query.length + 80);
           text =
             (start ? '…' : '') + post.body.slice(start, end) + (end < post.body.length ? '…' : '');
+        } else if (!text.trim() && post.body.trim()) {
+          const plain = post.body.trim();
+          text = plain.slice(0, 140) + (plain.length > 140 ? '…' : '');
         }
         // Author text always remains text, including HTML and punctuation.
         highlight(title, post.title, query);

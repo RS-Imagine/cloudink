@@ -232,6 +232,17 @@ fn icon(name: &str) -> String {
     )
 }
 
+fn author_avatar(config: &SiteConfig, size: u32) -> String {
+    if config.site_icon.is_some() {
+        format!(
+            r#"<img src="{}" width="{size}" height="{size}" alt="">"#,
+            escape_html(&site_icon(config).0)
+        )
+    } else {
+        escape_html(&config.author.chars().next().unwrap_or(' ').to_string())
+    }
+}
+
 fn author_context(config: &SiteConfig, show_about_link: bool) -> String {
     let about = if show_about_link && config.about.as_deref().is_none_or(|s| !s.trim().is_empty()) {
         format!(
@@ -241,14 +252,7 @@ fn author_context(config: &SiteConfig, show_about_link: bool) -> String {
     } else {
         String::new()
     };
-    let avatar = if config.site_icon.is_some() {
-        format!(
-            r#"<img src="{}" width="42" height="42" alt="">"#,
-            escape_html(&site_icon(config).0)
-        )
-    } else {
-        escape_html(&config.author.chars().next().unwrap_or(' ').to_string())
-    };
+    let avatar = author_avatar(config, 42);
     format!(
         r#"<section class="panel author-card"><div class="author-head"><span class="author-avatar" aria-hidden="true">{initial}</span><div><h2>你好，我是{author}。</h2><p class="author-sub">{subtitle}</p></div></div><p class="author-intro">{description}</p>{about}</section>"#,
         initial = avatar,
@@ -588,7 +592,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
         title = display_title(post.title()),
         description = escape_html(post.description()),
-        initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
+        initial = author_avatar(config, 26),
         author = escape_html(&config.author),
         date = escape_html(post.date()),
         link = icon("link"),
@@ -626,7 +630,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
 pub fn render_page(config: &SiteConfig, page_content: &Page, css_hash: &str) -> String {
     let body = format!(
         r#"<section class="article-shell reader-article reader-page">
-  <article>
+  <article class="panel">
   <h1>{title}</h1>
   <div class="article-body">{body}</div>
 </article><div class="reader-toc-slot"></div></section>"#,
@@ -663,11 +667,11 @@ pub fn render_404(config: &SiteConfig, css_hash: &str) -> String {
         &config.description,
         &config.title,
         &config.description,
-        r#"<article>
+        r#"<section class="article-shell reader-article reader-page"><article class="panel">
   <h1>404</h1>
   <p>The page you are looking for does not exist.</p>
   <a href="/">Go back home</a>
-</article>"#,
+</article></section>"#,
         "",
         css_hash,
         config,

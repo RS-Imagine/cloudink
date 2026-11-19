@@ -202,7 +202,16 @@
       if (codes.length) {
         const hljs = await loadHighlighter();
         if (root !== document.getElementById('swup')) return;
-        for (const code of codes) if (code.isConnected) hljs.highlightElement(code);
+        for (const code of codes) {
+          if (!code.isConnected) continue;
+          const match = code.className.match(/(?:^|\s)(?:language|lang)-([\w+-]+)/i);
+          if (match && typeof hljs.getLanguage === 'function' && !hljs.getLanguage(match[1])) {
+            code.dataset.highlighted = 'yes';
+            code.classList.add('hljs');
+            continue;
+          }
+          hljs.highlightElement(code);
+        }
       }
       if (root === document.getElementById('swup')) hide('reader-resource-status');
     } catch (error) {

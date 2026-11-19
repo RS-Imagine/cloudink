@@ -82,7 +82,8 @@
   --ci-shadow-floating: var(--ci-light-shadow-floating);
   --ci-shadow-overlay: var(--ci-light-shadow-overlay);
   --ci-font-ui:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
+    'Segoe UI', 'Microsoft YaHei', sans-serif;
   --ci-font-reading:
     'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', 'Noto Serif CJK SC', serif;
   --ci-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;

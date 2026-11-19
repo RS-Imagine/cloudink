@@ -27,10 +27,10 @@
   min-height: 72px;
   margin: 16px 32px 24px;
   padding: 12px 24px;
-  border: 1px solid rgba(92, 58, 33, 0.12);
+  border: 1px solid var(--ci-divider);
   border-radius: 24px;
   background: var(--ci-surface);
-  box-shadow: 0 4px 20px rgba(92, 58, 33, 0.05);
+  box-shadow: var(--ci-shadow-soft);
 }
 .studio-masthead .brand {
   display: inline-flex;
@@ -244,7 +244,7 @@
   max-width: 400px;
   min-height: 48px;
   padding: 8px 16px;
-  border: 1px solid var(--ci-divider);
+  border: 1px solid var(--ci-outline);
   border-radius: 12px;
   background: var(--ci-surface);
   font-size: 14px;
@@ -650,15 +650,18 @@
 #setup-view {
   grid-template-columns: minmax(0, 480px) minmax(0, 480px);
   justify-content: center;
+  align-items: stretch;
   gap: 64px;
   padding: 64px 48px;
 }
 .auth-cover {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 480px;
-  padding: 32px;
-  border: 0;
-  border-radius: 32px;
+  padding: 40px;
+  border: 1px solid var(--ci-divider);
+  border-radius: 24px;
   background: var(--ci-container);
 }
 .auth-cover > span {
@@ -679,7 +682,7 @@
   width: 160px;
   height: 192px;
   object-fit: contain;
-  margin: 24px 0 0 auto;
+  margin: auto 0 0 auto;
 }
 html:has(dialog[open]),
 body:has(dialog[open]) {
@@ -899,6 +902,7 @@ body:has(dialog[open]) {
   }
   .login-card,
   .setup-card {
+    order: -1;
     width: min(480px, 100%);
     padding: 24px;
   }

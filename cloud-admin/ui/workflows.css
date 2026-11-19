@@ -105,6 +105,14 @@ button[aria-busy='true']::before {
 #save-state[data-tone='error'] {
   color: var(--ci-error);
 }
+#open-draft-history {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 4px 10px;
+  margin-inline-start: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--ci-divider);
+}
 .toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -373,7 +381,7 @@ button[aria-busy='true']::before {
 .image-library-filters input[type='search'] {
   min-width: min(100%, 200px);
   min-height: 48px;
-  border-color: var(--ci-divider);
+  border-color: var(--ci-outline);
   border-radius: 12px;
   background: var(--ci-surface);
   font-size: 14px;
@@ -513,7 +521,7 @@ button[aria-busy='true']::before {
   min-height: 48px;
   margin-top: 8px;
   padding: 12px 16px;
-  border: 1px solid var(--ci-divider);
+  border: 1px solid var(--ci-outline);
   border-radius: 12px;
   background: var(--ci-bg);
   font: 16px/24px var(--ci-font-ui);
@@ -903,7 +911,7 @@ button[aria-busy='true']::before {
   gap: 12px;
 }
 .markdown-import-dialog::backdrop {
-  background: rgb(0 0 0 / 35%);
+  background: var(--ci-overlay);
 }
 .markdown-import-dialog h2 {
   margin: 0;

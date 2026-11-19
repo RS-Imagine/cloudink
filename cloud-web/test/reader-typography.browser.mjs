@@ -187,7 +187,8 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
               const body = parseFloat(style('.article-body').fontSize);
               return {
                 quote: parseFloat(style('blockquote p').fontSize) / body,
-                italic: style('blockquote p').fontStyle,
+                quoteStyle: style('blockquote p').fontStyle,
+                quoteEmStyle: style('blockquote em').fontStyle,
                 heading: parseFloat(style('.article-body h3').fontSize) / body,
                 table: parseFloat(style('table').fontSize) / body,
                 lead: parseFloat(style('.article-deck').fontSize) / body,
@@ -196,7 +197,8 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
             });
             assert.ok(
               Math.abs(ratios.quote - 0.9) < 0.01 &&
-                ratios.italic === 'italic' &&
+                ratios.quoteStyle === 'normal' &&
+                ratios.quoteEmStyle === 'italic' &&
                 ratios.heading >= 1.24 &&
                 ratios.table < 1 &&
                 ratios.lead >= 1.05 &&
