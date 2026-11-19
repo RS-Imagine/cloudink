@@ -716,7 +716,7 @@ fn page(
         "serif"
     };
     let reading_font_style = if reading_font == "serif" {
-        r#"<link id="reader-font-styles" rel="stylesheet" href="/reader-assets/editorial-font.css">"#
+        r#"<link id="reader-font-styles" rel="stylesheet" media="print" data-reader-async="style" href="/reader-assets/editorial-font.css">"#
     } else {
         ""
     };
@@ -851,8 +851,8 @@ fn page(
       <p class="search-hint"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></p>
     </div>
   </dialog>
-  <script src="https://unpkg.com/swup@4"></script>
-  <script src="/client.js?v={client_hash}"></script>
+  <script src="https://unpkg.com/swup@4" defer></script>
+  <script src="/client.js?v={client_hash}" defer></script>
 "##,
         palette = palette,
         site_title = escape_html(site_title),

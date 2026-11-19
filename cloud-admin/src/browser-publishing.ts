@@ -1,5 +1,6 @@
 export { sanitizePublicHtml } from './page-rendering';
 import { sanitizePublicHtml } from './page-rendering';
+import { sha256Hex } from './crypto';
 import { responsiveImages } from './image-variants';
 import { assertRenameUnchanged, finishRename, postRedirects } from './post-addresses';
 import type { CloudInkEnv } from './env';
@@ -132,10 +133,8 @@ export function publicType(path: string): string {
     )[ext || ''] || 'application/octet-stream'
   );
 }
-export async function contentDigest(text: string): Promise<string> {
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))]
-    .map((n) => n.toString(16).padStart(2, '0'))
-    .join('');
+export function contentDigest(text: string): Promise<string> {
+  return sha256Hex(text);
 }
 export interface PageManifest {
   sources: Record<string, string>;

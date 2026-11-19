@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 let busy = false;
 export async function maintainImages(
   operation,

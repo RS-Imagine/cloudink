@@ -1,3 +1,5 @@
+import { sha256Hex } from './dom.js';
+
 export async function publishInBrowser(
   result,
   { api, engineTask, showPublishing, refresh, notice },
@@ -24,13 +26,7 @@ export async function publishInBrowser(
           ),
       )) {
         if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
-        sources[path] = [
-          ...new Uint8Array(
-            await crypto.subtle.digest('SHA-256', new TextEncoder().encode(rendered[path])),
-          ),
-        ]
-          .map((n) => n.toString(16).padStart(2, '0'))
-          .join('');
+        sources[path] = await sha256Hex(rendered[path]);
       }
       files = (
         await api(`/api/publish/${result.release_id}/plan`, { method: 'POST', body: { sources } })

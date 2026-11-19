@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 
 export function configureHomeIllustration({ api, notice }) {
   const field = $('home-illustration-value');

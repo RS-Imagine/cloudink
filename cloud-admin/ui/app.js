@@ -1,19 +1,8 @@
-import { imageUploadForm as prepareImageUploadForm } from './image-upload.js';
+import { $ } from './dom.js';
 import '../../assets/motion.js';
 import '../../assets/mobile.js';
 import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
-import { configureImages } from './images.js';
-import { configureShorts } from './shorts.js';
-import { configureMarkdownImport } from './markdown-import.js';
-import {
-  engineTask,
-  renderPreview,
-  invalidatePreview,
-  disposePreview,
-  configurePreview,
-} from './preview.js';
-import { editorStore } from './store.js';
 
 const motion = window.CloudInkMotion;
 motion.mount();
@@ -25,7 +14,6 @@ let postFilter = 'all',
   listRevision = 0,
   searchTimer;
 
-const $ = (id) => document.getElementById(id);
 const keepOriginal = $('image-keep-original');
 try {
   keepOriginal.checked = localStorage.getItem('cloudink-keep-original') === 'true';
@@ -35,7 +23,13 @@ keepOriginal.addEventListener('change', () => {
     localStorage.setItem('cloudink-keep-original', String(keepOriginal.checked));
   } catch {}
 });
-function imageUploadForm(file, options) {
+let imageUploadLoader;
+async function imageUploadForm(file, options) {
+  imageUploadLoader ||= import('/image-upload.js').catch(() => {
+    imageUploadLoader = null;
+    throw new Error('图片上传模块暂时无法加载，请检查网络后重试。');
+  });
+  const { imageUploadForm: prepareImageUploadForm } = await imageUploadLoader;
   return prepareImageUploadForm(file, options || { compact: !keepOriginal.checked });
 }
 const fields = ['title', 'description', 'date', 'slug', 'body'];
@@ -148,7 +142,7 @@ async function startWorkspace({ focus = false } = {}) {
   showStartup();
   configReady = api('/api/config').then((config) => {
     appConfig = config;
-    configurePreview(config);
+    previewModule?.configurePreview(config);
     $('site-link').href = config.siteUrl;
     $('service-site-link').href = config.siteUrl;
     $('service-site-link').textContent = config.siteUrl;
@@ -172,6 +166,36 @@ async function startWorkspace({ focus = false } = {}) {
   } finally {
     booting = false;
   }
+}
+let previewModule = null,
+  previewLoader = null;
+function loadPreview() {
+  previewLoader ||= import('/preview.js')
+    .then(async (mod) => {
+      const config = appConfig || (await configReady);
+      if (config) mod.configurePreview(config);
+      previewModule = mod;
+      return mod;
+    })
+    .catch(() => {
+      previewLoader = null;
+      throw new Error('预览引擎暂时无法加载，请检查网络后重试。');
+    });
+  return previewLoader;
+}
+async function engineTask(type, payload = {}) {
+  return (await loadPreview()).engineTask(type, payload);
+}
+function renderPreview(draft, config) {
+  void loadPreview()
+    .then((mod) => mod.renderPreview(draft, config))
+    .catch((error) => notice(error.message, 'error'));
+}
+function invalidatePreview(clear = false) {
+  previewModule?.invalidatePreview(clear);
+}
+function disposePreview() {
+  previewModule?.disposePreview();
 }
 let illustrationPicker, illustrationLoader, iconPicker;
 function loadIllustrationPicker() {
@@ -480,9 +504,6 @@ async function signedIn(session, { focus = false, afterReady = null } = {}) {
   $('studio-skip').hidden = false;
   view('home', { focus: false });
   if (focus) $('workspace').focus({ preventScroll: true });
-  (window.requestIdleCallback || setTimeout)(() => {
-    void engineTask('warm').catch(() => {});
-  });
   return true;
 }
 $('login-form').addEventListener('submit', async (e) => {
@@ -675,8 +696,11 @@ function renderLists() {
         select();
       }
     });
-    card.addEventListener('pointerenter', () => prefetchArticle(post.slug));
-    card.addEventListener('focus', () => prefetchArticle(post.slug));
+    const warmArticle = () => prefetchArticle(post.slug);
+    card.addEventListener('pointerenter', warmArticle, { passive: true });
+    card.addEventListener('pointerdown', warmArticle, { passive: true });
+    card.addEventListener('touchstart', warmArticle, { passive: true });
+    card.addEventListener('focus', warmArticle, { passive: true });
     $('article-grid').append(card);
   }
   if (!shown) {
@@ -834,23 +858,8 @@ function fillEditor(draft, etag) {
   sizeEditorFields();
   renderLists();
   wordCount();
+  void loadEditorTools().catch(() => {});
   void preview();
-}
-function saveLocalSnapshot(slug, draft) {
-  if (!slug || !draft) return;
-  try {
-    const key = `cloudink-snapshots:${slug}`;
-    const raw = localStorage.getItem(key);
-    const list = raw ? JSON.parse(raw) : [];
-    const now = Date.now();
-    if (list.length > 0 && Math.abs(now - list[0].time) < 30000) {
-      list[0] = { time: now, title: draft.front_matter?.title || '', draft };
-    } else {
-      list.unshift({ time: now, title: draft.front_matter?.title || '', draft });
-      if (list.length > 20) list.pop();
-    }
-    localStorage.setItem(key, JSON.stringify(list));
-  } catch {}
 }
 function wordCount() {
   $('word-count').textContent =
@@ -860,13 +869,13 @@ function changed() {
   if (!doc) return;
   invalidatePreview();
   dirty++;
-  editorStore.update((s) => ({
-    ...s,
-    dirty,
-    slug: doc?.front_matter?.slug || '',
-    title: $('title')?.value || '',
-  }));
-  saveLocalSnapshot(doc.front_matter?.slug, currentDraft());
+  const slug = doc.front_matter?.slug;
+  const draft = currentDraft();
+  if (editorToolsModule) editorToolsModule.saveLocalSnapshot(slug, draft);
+  else
+    void loadEditorTools()
+      .then((mod) => mod.saveLocalSnapshot(slug, draft))
+      .catch(() => {});
   feedback('save-state', '有未保存的修改', 'pending');
   wordCount();
   clearTimeout(autosaveTimer);
@@ -877,63 +886,33 @@ function changed() {
 }
 fields.forEach((id) => $(id).addEventListener('input', changed));
 
+let editorToolsModule = null,
+  editorToolsLoader = null;
+const draftHistoryContext = {
+  getSlug: () => doc?.front_matter?.slug,
+  descriptionField,
+  sizeEditorFields,
+  changed,
+  notice,
+};
+function loadEditorTools() {
+  editorToolsLoader ||= import('/editor-tools.js')
+    .then((mod) => {
+      mod.configureEditorEnhancements({ changed, setZen, saveCurrent, notice });
+      mod.configureDraftHistory(draftHistoryContext);
+      editorToolsModule = mod;
+      return mod;
+    })
+    .catch(() => {
+      editorToolsLoader = null;
+      throw new Error('编辑器工具暂时无法加载，请检查网络后重试。');
+    });
+  return editorToolsLoader;
+}
 $('open-draft-history')?.addEventListener('click', () => {
-  const slug = doc?.front_matter?.slug;
-  if (!slug) {
-    notice('请先打开或新建一篇文章。', 'info');
-    return;
-  }
-  const dialog = $('draft-history-dialog');
-  const listEl = $('draft-history-list');
-  listEl.replaceChildren();
-  const key = `cloudink-snapshots:${slug}`;
-  let snapshots = [];
-  try {
-    snapshots = JSON.parse(localStorage.getItem(key) || '[]');
-  } catch {}
-  if (snapshots.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'muted';
-    empty.style.padding = '12px 0';
-    empty.textContent = '当前文章暂无历史快照。继续编辑将自动生成。';
-    listEl.append(empty);
-  } else {
-    for (const snap of snapshots) {
-      const row = document.createElement('div');
-      row.style.cssText =
-        'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);gap:12px;';
-      const info = document.createElement('div');
-      const timeStr = new Date(snap.time).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-      const chars = (snap.draft?.body_markdown || '').replace(/\s/g, '').length;
-      info.innerHTML = `<strong>${timeStr}</strong> <span class="muted" style="font-size:12px;margin-left:8px;">${chars} 字符</span>`;
-      const restoreBtn = document.createElement('button');
-      restoreBtn.textContent = '恢复此快照';
-      restoreBtn.className = 'quiet';
-      restoreBtn.style.fontSize = '12px';
-      restoreBtn.addEventListener('click', () => {
-        if (confirm('确定恢复到该历史快照吗？当前编辑框内容将被替换。')) {
-          $('body').value = snap.draft?.body_markdown || '';
-          if (snap.draft?.front_matter?.title) $('title').value = snap.draft.front_matter.title;
-          if (snap.draft?.front_matter?.description)
-            descriptionField.value = snap.draft.front_matter.description;
-          sizeEditorFields();
-          changed();
-          dialog.close();
-          notice('已恢复本地快照内容。', 'success');
-        }
-      });
-      row.append(info, restoreBtn);
-      listEl.append(row);
-    }
-  }
-  dialog.showModal();
-});
-$('draft-history-close')?.addEventListener('click', () => {
-  $('draft-history-dialog')?.close();
+  void loadEditorTools()
+    .then((mod) => mod.openDraftHistory(draftHistoryContext))
+    .catch((error) => notice(error.message, 'error'));
 });
 async function saveCurrent() {
   clearTimeout(autosaveTimer);
@@ -1009,6 +988,7 @@ async function openPost(slug) {
   navigationStatus('正在打开文章…');
   const cached = articleCache.get(slug);
   const request = cached ? Promise.resolve(cached) : fetchArticle(slug);
+  void loadEditorTools().catch(() => {});
   try {
     // Fetch the next document while saving the previous one; await both so a
     // rejected fetch is always handled and unsaved text is never discarded.
@@ -1366,45 +1346,83 @@ function insertImage(image) {
   textarea.focus();
   changed();
 }
-const imageTools = configureImages({
-  rebuild: () => startPublish({ rebuild: true }),
-  api,
-  flush,
-  notice,
-  action,
-  imageUploadForm,
-  confirmAction,
-  open: (back = false) => {
-    ++navigationVersion;
-    invalidatePreview();
-    view(back ? 'editor' : 'images');
-  },
-  insert: insertImage,
-  canInsert: () => !!doc && !editorLocked,
-  siteUrl: () => appConfig.siteUrl,
-  beginNavigation: () => {
-    const version = ++navigationVersion;
-    return () => version === navigationVersion;
-  },
-});
+let imageTools = null,
+  imageToolsLoader = null;
+function loadImageTools() {
+  imageToolsLoader ||= import('/images.js')
+    .then(({ configureImages }) => {
+      imageTools = configureImages({
+        rebuild: () => startPublish({ rebuild: true }),
+        api,
+        flush,
+        notice,
+        action,
+        imageUploadForm,
+        confirmAction,
+        open: (back = false) => {
+          ++navigationVersion;
+          invalidatePreview();
+          view(back ? 'editor' : 'images');
+        },
+        insert: insertImage,
+        canInsert: () => !!doc && !editorLocked,
+        siteUrl: () => appConfig.siteUrl,
+        beginNavigation: () => {
+          const version = ++navigationVersion;
+          return () => version === navigationVersion;
+        },
+      });
+      return imageTools;
+    })
+    .catch(() => {
+      imageToolsLoader = null;
+      throw new Error('图片库暂时无法加载，请检查网络后重试。');
+    });
+  return imageToolsLoader;
+}
 // Wire the sidebar button and the editor's image picker to the library.
 for (const id of ['images', 'choose-library-image'])
-  $(id).addEventListener('click', () => action(id, '正在打开…', () => imageTools.show()));
-const shortTools = configureShorts({
-  api,
-  notice,
-  action,
-  open: async () => {
-    if (editorLocked) return false;
-    const version = ++navigationVersion;
-    await flush();
-    if (version !== navigationVersion) return false;
-    invalidatePreview();
-    view('shorts');
-    return true;
-  },
-  startPublish,
-});
+  $(id).addEventListener('click', () =>
+    action(id, '正在打开…', async () => (await loadImageTools()).show()),
+  );
+let shortTools = null,
+  shortToolsLoader = null;
+function loadShortTools() {
+  shortToolsLoader ||= import('/shorts.js')
+    .then(({ configureShorts }) => {
+      shortTools = configureShorts({
+        api,
+        notice,
+        action,
+        open: async () => {
+          if (editorLocked) return false;
+          const version = ++navigationVersion;
+          await flush();
+          if (version !== navigationVersion) return false;
+          invalidatePreview();
+          view('shorts');
+          return true;
+        },
+        startPublish,
+      });
+      return shortTools;
+    })
+    .catch(() => {
+      shortToolsLoader = null;
+      throw new Error('短记模块暂时无法加载，请检查网络后重试。');
+    });
+  return shortToolsLoader;
+}
+const warmShortTools = () => {
+  if (!shortTools) void loadShortTools().catch(() => {});
+};
+$('shorts').addEventListener('pointerenter', warmShortTools, { passive: true });
+$('shorts').addEventListener('pointerdown', warmShortTools, { passive: true });
+$('shorts').addEventListener('touchstart', warmShortTools, { passive: true });
+$('shorts').addEventListener('focus', warmShortTools, { passive: true });
+$('shorts').addEventListener('click', () =>
+  action('shorts', '正在打开…', async () => (await loadShortTools()).show()),
+);
 $('upload-image').addEventListener('click', () => $('image-files').click());
 async function uploadFiles(files) {
   if (editorLocked || uploading) return;
@@ -1443,272 +1461,59 @@ $('body').addEventListener('drop', (e) => {
   void uploadFiles(images);
 });
 
-function setupEditorEnhancements() {
-  const textarea = $('body');
-  if (!textarea) return;
-
-  function applyFormat(type) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-    const selected = text.slice(start, end);
-    let replacement = '',
-      newCursor = start;
-
-    switch (type) {
-      case 'bold':
-      case 'italic': {
-        const tag = type === 'bold' ? '**' : '*';
-        replacement = selected ? `${tag}${selected}${tag}` : `${tag}${tag}`;
-        newCursor = selected ? end + tag.length * 2 : start + tag.length;
-        break;
-      }
-      case 'code':
-        if (selected.includes('\n')) {
-          replacement = `\`\`\`\n${selected || ''}\n\`\`\`\n`;
-          newCursor = selected ? end + 8 : start + 4;
-        } else {
-          replacement = selected ? `\`${selected}\`` : '``';
-          newCursor = selected ? end + 2 : start + 1;
-        }
-        break;
-      case 'quote':
-      case 'ul': {
-        const p = type === 'quote' ? '> ' : '- ';
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l) => p + l)
-              .join('\n')
-          : p;
-        newCursor = start + replacement.length;
-        break;
-      }
-      case 'ol':
-        replacement = selected
-          ? selected
-              .split('\n')
-              .map((l, i) => `${i + 1}. ${l}`)
-              .join('\n')
-          : '1. ';
-        newCursor = start + replacement.length;
-        break;
-      case 'heading': {
-        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = text.indexOf('\n', start);
-        const fullLineEnd = lineEnd === -1 ? text.length : lineEnd;
-        const currentLine = text.slice(lineStart, fullLineEnd);
-        let newLine = currentLine;
-        if (currentLine.startsWith('## ')) newLine = '### ' + currentLine.slice(3);
-        else if (currentLine.startsWith('### ')) newLine = '#### ' + currentLine.slice(4);
-        else if (currentLine.startsWith('#### ')) newLine = currentLine.slice(5);
-        else newLine = '## ' + currentLine;
-        textarea.setRangeText(newLine, lineStart, fullLineEnd, 'select');
-        changed();
-        textarea.focus();
-        return;
-      }
-      case 'link':
-        replacement = `[${selected || '链接文本'}](https://)`;
-        newCursor = selected ? end + 11 : start + 1;
-        break;
-      case 'zen':
-        setZen(!$('app-view').classList.contains('zen-mode'));
-        return;
-    }
-
-    if (replacement) {
-      textarea.setRangeText(replacement, start, end, 'end');
-      textarea.setSelectionRange(newCursor, newCursor);
-      textarea.focus();
-      changed();
-    }
-  }
-
-  document.querySelectorAll('.editor-format-actions [data-format]').forEach((btn) => {
-    btn.addEventListener('click', () => applyFormat(btn.dataset.format));
-  });
-
-  textarea.addEventListener('keydown', (e) => {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      if (start === end) {
-        textarea.setRangeText('  ', start, end, 'end');
-      } else {
-        const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-        const lineEnd = text.indexOf('\n', end);
-        const rangeEnd = lineEnd === -1 ? text.length : lineEnd;
-        const lines = text.slice(lineStart, rangeEnd).split('\n');
-        if (e.shiftKey) {
-          const unindented = lines
-            .map((l) => (l.startsWith('  ') ? l.slice(2) : l.startsWith(' ') ? l.slice(1) : l))
-            .join('\n');
-          textarea.setRangeText(unindented, lineStart, rangeEnd, 'select');
-        } else {
-          const indented = lines.map((l) => '  ' + l).join('\n');
-          textarea.setRangeText(indented, lineStart, rangeEnd, 'select');
-        }
-      }
-      changed();
-      return;
-    }
-
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      const currentLine = text.slice(lineStart, start);
-      const ulMatch = currentLine.match(/^(\s*)([-*+]\s+)/);
-      const olMatch = currentLine.match(/^(\s*)(\d+)\.\s+/);
-      if (ulMatch) {
-        if (currentLine.trim() === ulMatch[2].trim()) {
-          e.preventDefault();
-          textarea.setRangeText('', lineStart, start, 'end');
-          changed();
-          return;
-        }
-        e.preventDefault();
-        textarea.setRangeText('\n' + ulMatch[1] + ulMatch[2], start, end, 'end');
-        changed();
-        return;
-      } else if (olMatch) {
-        if (currentLine.trim() === olMatch[2] + '.') {
-          e.preventDefault();
-          textarea.setRangeText('', lineStart, start, 'end');
-          changed();
-          return;
-        }
-        e.preventDefault();
-        const nextNum = parseInt(olMatch[2], 10) + 1;
-        textarea.setRangeText('\n' + olMatch[1] + nextNum + '. ', start, end, 'end');
-        changed();
-        return;
-      }
-    }
-
-    const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'", '`': '`', '*': '*', _: '_' };
-    if (start !== end && pairs[e.key]) {
-      e.preventDefault();
-      const openChar = e.key;
-      const closeChar = pairs[openChar];
-      const selected = text.slice(start, end);
-      textarea.setRangeText(`${openChar}${selected}${closeChar}`, start, end, 'select');
-      changed();
-      return;
-    }
-
-    if (e.ctrlKey || e.metaKey) {
-      const k = e.key.toLowerCase();
-      if (k === 'b') {
-        e.preventDefault();
-        applyFormat('bold');
-      } else if (k === 'i') {
-        e.preventDefault();
-        applyFormat('italic');
-      } else if (k === 'k') {
-        e.preventDefault();
-        applyFormat('link');
-      } else if (k === 's') {
-        e.preventDefault();
-        saveCurrent()
-          .then(() => notice('草稿已保存。', 'success'))
-          .catch((err) => notice(err.message, 'error'));
-      }
-    }
-
-    if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) {
-      setZen(false);
-    }
-  });
-
-  let scrollSyncing = false;
-  textarea.addEventListener(
-    'scroll',
-    () => {
-      if (scrollSyncing) return;
-      const scrollable = textarea.scrollHeight - textarea.clientHeight;
-      if (scrollable <= 0) return;
-      const progress = textarea.scrollTop / scrollable;
-      const frameWin = $('preview-frame')?.contentWindow;
-      const frameDoc = $('preview-frame')?.contentDocument;
-      if (!frameWin || !frameDoc) return;
-      const frameScrollable = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
-      if (frameScrollable > 0) {
-        scrollSyncing = true;
-        frameWin.scrollTo({ top: progress * frameScrollable, behavior: 'auto' });
-        requestAnimationFrame(() => {
-          scrollSyncing = false;
-        });
-      }
-    },
-    { passive: true },
-  );
-
-  const splitter = $('editor-splitter');
-  const panes = $('editor-panes');
-  if (splitter && panes) {
-    const setSplit = (pct) => {
-      const p = parseFloat(pct);
-      panes.style.setProperty('--editor-split-left', `${p}%`);
-      panes.style.setProperty('--editor-split-right', `${100 - p}%`);
-      panes.style.setProperty('--editor-split-percent', `${p}%`);
-    };
-    try {
-      const savedPercent = localStorage.getItem('cloudink-split-percent');
-      if (savedPercent) setSplit(savedPercent);
-    } catch {}
-
-    let dragging = false;
-    splitter.addEventListener('pointerdown', (e) => {
-      dragging = true;
-      splitter.classList.add('is-dragging');
-      splitter.setPointerCapture(e.pointerId);
+let markdownImporter = null,
+  markdownImportLoader = null;
+const isMarkdownImportLocked = () =>
+  editorLocked || publishingBusy || publishRequest || !!uploading;
+function loadMarkdownImport() {
+  markdownImportLoader ||= import('/markdown-import.js')
+    .then(({ configureMarkdownImport }) => {
+      markdownImporter = configureMarkdownImport({
+        api,
+        engineTask,
+        flush,
+        locked: isMarkdownImportLocked,
+        lock: lockEditor,
+        saved: localSaved,
+        open: openPost,
+        notice,
+        closeMenu: () => shell.close(),
+      });
+      return markdownImporter;
+    })
+    .catch(() => {
+      markdownImportLoader = null;
+      throw new Error('Markdown 导入模块暂时无法加载，请检查网络后重试。');
     });
-    splitter.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const rect = panes.getBoundingClientRect();
-      const percent = Math.min(80, Math.max(20, ((e.clientX - rect.left) / rect.width) * 100));
-      setSplit(percent);
-    });
-    const stopDrag = () => {
-      if (dragging) {
-        dragging = false;
-        splitter.classList.remove('is-dragging');
-        try {
-          localStorage.setItem(
-            'cloudink-split-percent',
-            panes.style.getPropertyValue('--editor-split-percent'),
-          );
-        } catch {}
-      }
-    };
-    splitter.addEventListener('pointerup', stopDrag);
-    splitter.addEventListener('pointercancel', stopDrag);
-  }
+  return markdownImportLoader;
 }
-setupEditorEnhancements();
-configureMarkdownImport({
-  api,
-  engineTask,
-  flush,
-  locked: () => editorLocked || publishingBusy || publishRequest || !!uploading,
-  lock: lockEditor,
-  saved: localSaved,
-  open: openPost,
-  notice,
-  closeMenu: () => shell.close(),
+$('import-posts').addEventListener('click', () => {
+  if (markdownImporter?.isBusy() || isMarkdownImportLocked())
+    return notice('正在处理当前文章，请稍等。');
+  void loadMarkdownImport().catch(() => {});
+  $('import-files').click();
+});
+$('import-files').addEventListener('change', async (event) => {
+  const files = Array.from(event.currentTarget.files);
+  event.currentTarget.value = '';
+  if (!files.length) return;
+  try {
+    await (await loadMarkdownImport()).importFiles(files);
+  } catch (error) {
+    notice(error.message, 'error');
+  }
 });
 $('settings').addEventListener('click', async () => {
   if (editorLocked) return;
   const version = ++navigationVersion;
   navigationStatus('正在加载设置…');
   try {
-    await flush();
-    const data = await api('/api/settings');
-    if (version !== navigationVersion) return;
-    const [homePicker] = await Promise.all([loadIllustrationPicker(), loadBackup()]);
+    const [, data, homePicker] = await Promise.all([
+      flush(),
+      api('/api/settings'),
+      loadIllustrationPicker(),
+      loadBackup(),
+    ]);
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
     iconPicker?.load(data.site);
@@ -1800,12 +1605,12 @@ $('publish-settings').addEventListener('click', () =>
   }),
 );
 $('logout').addEventListener('click', async () => {
-  if (editorLocked || !(await shortTools.confirmDiscard())) return;
+  if (editorLocked || (shortTools && !(await shortTools.confirmDiscard()))) return;
   ++navigationVersion;
   try {
     await flush();
     await api('/api/logout', { method: 'POST', body: {} });
-    shortTools.reset();
+    shortTools?.reset();
     doc = null;
     dirty = 0;
     savedVersion = 0;

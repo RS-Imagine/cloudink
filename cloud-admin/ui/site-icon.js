@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 const ICO_COMPRESS_THRESHOLD = 16 * 1024;
 const iconURL = (key) =>
   /^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(key || '')

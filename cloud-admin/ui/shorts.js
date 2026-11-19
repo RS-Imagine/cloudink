@@ -1,6 +1,6 @@
 // Shorts ("短记") management: list, compose, save draft, publish, delete.
+import { $ } from './dom.js';
 import { confirmAction, feedback } from './workflows.js';
-const $ = (id) => document.getElementById(id);
 function nowMinute() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -12,7 +12,8 @@ function slugFor(date) {
 export function configureShorts({ api, notice, action, open, startPublish, onList }) {
   let shorts = [],
     cursor = null,
-    loadRevision = 0;
+    loadRevision = 0,
+    hasLoaded = false;
   const more = document.createElement('button');
   more.id = 'short-more';
   more.textContent = '加载更多短记';
@@ -195,6 +196,8 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       });
       const warm = () => prefetchShort(item);
       card.addEventListener('pointerenter', warm, { passive: true });
+      card.addEventListener('pointerdown', warm, { passive: true });
+      card.addEventListener('touchstart', warm, { passive: true });
       bodyWrapper.addEventListener('focus', warm, { passive: true });
       edit.addEventListener('focus', warm, { passive: true });
 
@@ -249,6 +252,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     if (revision !== loadRevision) return;
     if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
+    hasLoaded = true;
     cursor = data.cursor;
     for (const item of shorts) {
       const full = fullShortCache.get(item.slug);
@@ -286,6 +290,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     window.CloudInkMotion.enter($('short-editor'), { kind: 'content' });
     savedEditorValue = editorValue();
     updateWordCount();
+    if (waiting) status('正在加载短记正文…');
     if (item) {
       fetchShort(item.slug).then(
         (data) => {
@@ -409,15 +414,35 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     });
   });
   async function show() {
+    const hadData = hasLoaded && shorts.length > 0;
+    const list = $('short-list');
+    // Start fetching shorts in parallel with flushing/switching views so network I/O
+    // overlaps with saving any active article draft.
+    const fetchPromise = load();
+    fetchPromise.catch(() => {});
     if ((await open()) === false) return false;
-    await load();
+    if (hadData) {
+      // Stale-while-revalidate: keep previously rendered shorts interactive immediately
+      // while refreshing from the server in the background.
+      void fetchPromise.catch((error) => notice(error.message, 'error'));
+      return true;
+    }
+    if (!hasLoaded && !shorts.length && list) {
+      const loading = document.createElement('p');
+      loading.className = 'muted';
+      loading.textContent = '正在读取短记…';
+      list.replaceChildren(loading);
+    }
+    await fetchPromise;
     return true;
   }
-  $('shorts').addEventListener('click', () => action('shorts', '正在打开…', show));
   return {
     show,
     confirmDiscard,
     reset() {
+      hasLoaded = false;
+      shorts = [];
+      cursor = null;
       fullShortCache.clear();
       shortRequests.clear();
       closeEditor();

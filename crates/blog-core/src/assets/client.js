@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+const bootCloudInkClient = () => {
   const isZh = (document.documentElement.lang || 'zh').toLowerCase().startsWith('zh');
   const t = (zh, en) => (isZh ? zh : en);
   const motion = window.CloudInkMotion;
@@ -461,17 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function initPageFeatures(visit) {
-    cleanupFunctions.forEach((fn) => fn());
-    cleanupFunctions = [];
-
-    if (window.CloudInkReader) void window.CloudInkReader.activate();
-    else if (typeof hljs !== 'undefined' && document.querySelector('#swup pre code'))
-      hljs.highlightAll();
-    const swupContainer = document.getElementById('swup');
-    if (!swupContainer) return;
-    syncReaderNavigation();
-    mountPostList();
+  function syncSiteAppearance(swupContainer) {
     window.CloudInkTheme?.setPalette(
       swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink',
     );
@@ -489,7 +479,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .querySelectorAll('.site-mark img')
         .forEach((image) => image.setAttribute('src', iconURL));
     }
+  }
 
+  function mountHomeCards(swupContainer) {
     for (const card of swupContainer.querySelectorAll('.home-card')) {
       const onCardClick = (event) => {
         if (event.target.closest('a')) return;
@@ -518,13 +510,14 @@ document.addEventListener('DOMContentLoaded', () => {
         motion.cancelWithin(swupContainer);
       });
     }
+  }
 
-    const images = document.querySelectorAll('.article-body img');
+  function createPageDialogManager() {
     const dialogs = new Set();
     cleanupFunctions.push(() => {
       for (const dialog of dialogs) if (dialog.open) dialog.close();
     });
-    const showDialog = (content, label, trigger, dispose = () => {}) => {
+    return (content, label, trigger, dispose = () => {}) => {
       const dialog = document.createElement('dialog');
       dialog.className = 'reader-dialog';
       dialog.dataset.sheet = 'compact';
@@ -564,7 +557,10 @@ document.addEventListener('DOMContentLoaded', () => {
       dialogs.add(dialog);
       return dialog;
     };
-    images.forEach((img) => {
+  }
+
+  function mountImageLightbox(showDialog) {
+    document.querySelectorAll('.article-body img').forEach((img) => {
       // Linked images retain their author's link action.
       if (img.closest('a,button')) return;
       img.tabIndex = 0;
@@ -707,6 +703,9 @@ document.addEventListener('DOMContentLoaded', () => {
         img.removeEventListener('keydown', keydown);
       });
     });
+  }
+
+  function mountCodeBlocksAndTables() {
     const scrollCues = [];
     function addScrollCue(scroller, label) {
       let frame = scroller.parentElement;
@@ -858,11 +857,12 @@ document.addEventListener('DOMContentLoaded', () => {
       window.addEventListener('resize', refresh, options);
       document.fonts?.addEventListener('loadingdone', refresh, options);
       document.fonts?.ready.then(refresh);
+      const initialRefreshFrame = requestAnimationFrame(refresh);
       cleanupFunctions.push(() => {
+        cancelAnimationFrame(initialRefreshFrame);
         controller.abort();
         resize?.disconnect();
       });
-      refresh();
     }
     document.querySelectorAll('.article-body .katex-display').forEach((formula) => {
       formula.tabIndex = 0;
@@ -872,295 +872,45 @@ document.addEventListener('DOMContentLoaded', () => {
         t('公式，可横向滚动', 'Math formula, scroll horizontally'),
       );
     });
+  }
+
+  let shareCardLoader = null;
+  function mountShareCard(showDialog) {
     const shareBtn = document.getElementById('share-btn');
     if (shareBtn) {
       shareBtn.addEventListener('click', async () => {
-        if (document.fonts?.ready) {
-          try {
-            await document.fonts.ready;
-          } catch (_) {}
-        }
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const palette = getComputedStyle(document.documentElement);
-        const readingFont =
-          palette.getPropertyValue('--reader-font-family').trim() ||
-          palette.getPropertyValue('--ci-font-reading').trim() ||
-          "'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', serif";
-        const uiFont =
-          palette.getPropertyValue('--ci-font-ui').trim() ||
-          "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif";
-
-        const surfaceColor = palette.getPropertyValue('--ci-surface').trim() || '#fbf8f2';
-        const primaryColor = palette.getPropertyValue('--ci-primary').trim() || '#784d2b';
-        const textColor = palette.getPropertyValue('--ci-text').trim() || '#2c2520';
-        const mutedColor = palette.getPropertyValue('--ci-muted').trim() || '#786e65';
-        const dividerColor = palette.getPropertyValue('--ci-divider').trim() || '#e8e0d5';
-
-        const nonLeading = /^[，。？！、；：”’）》\?!,.:;]+$/;
-        const singleHan = (line) => /^\p{Script=Han}$/u.test(line.replace(/[\p{P}\s]/gu, ''));
-        const language = document.documentElement.lang || 'zh-CN';
-        const wordSegmenter =
-          globalThis.Intl?.Segmenter && new Intl.Segmenter(language, { granularity: 'word' });
-        const graphemeSegmenter =
-          globalThis.Intl?.Segmenter && new Intl.Segmenter(language, { granularity: 'grapheme' });
-        function segment(text, segmenter, fallback) {
-          return segmenter
-            ? Array.from(segmenter.segment(text), (part) => part.segment)
-            : fallback(text);
-        }
-        const wordsOf = (text) => segment(text, wordSegmenter, (value) => value.split(/(\s+)/));
-        const glyphsOf = (text) => segment(text, graphemeSegmenter, Array.from);
-        function getLines(text, font, maxWidth, phrases) {
-          ctx.font = font;
-          const fits = (line) => ctx.measureText(line).width <= maxWidth;
-          const words = phrases
-            ? phrases.flatMap((phrase) =>
-                fits(phrase)
-                  ? [phrase]
-                  : wordsOf(phrase).flatMap((word) => (fits(word) ? [word] : glyphsOf(word))),
-              )
-            : wordsOf(text);
-          const lines = [];
-          let currentLine = '';
-          for (const word of words) {
-            const testLine = currentLine + word;
-            if (!fits(testLine) && currentLine.trim()) {
-              if (!phrases && nonLeading.test(word)) {
-                currentLine = testLine;
-              } else {
-                const tail =
-                  phrases && nonLeading.test(word) ? glyphsOf(currentLine.trimEnd()).at(-1) : '';
-                if (tail && currentLine.trimEnd().length > tail.length && fits(tail + word)) {
-                  lines.push(currentLine.trimEnd().slice(0, -tail.length));
-                  currentLine = tail + word;
-                } else {
-                  lines.push(currentLine.trimEnd());
-                  currentLine = word.trimStart();
-                }
-              }
-            } else {
-              currentLine = testLine;
-            }
-          }
-          if (currentLine.trim()) lines.push(currentLine.trimEnd());
-          if (phrases) {
-            for (let i = 1; i < lines.length; i++) {
-              if (!singleHan(lines[i])) continue;
-              const before = wordsOf(lines[i - 1]);
-              let tail = '';
-              while (before.length && (!tail.trim() || nonLeading.test(tail)))
-                tail = before.pop() + tail;
-              const remainder = before.join('').trimEnd();
-              if (remainder && !singleHan(remainder) && fits(tail + lines[i])) {
-                lines[i - 1] = remainder;
-                lines[i] = tail + lines[i];
-              }
-            }
-          }
-          return lines;
-        }
-
-        const headline =
-          document.getElementById('article-title') || document.querySelector('article h1');
-        const title = (headline?.textContent || document.title).trim();
-        // Match the Rust renderer's phrase breaks, including spaces outside each span.
-        const titlePhrases = [''];
-        for (const node of headline?.childNodes || []) {
-          if (node.nodeName === 'WBR') titlePhrases.push('');
-          else titlePhrases[titlePhrases.length - 1] += node.textContent;
-        }
-        const desc = (
-          document.querySelector('article p.article-description, article p.meta')?.innerText ||
-          document.querySelector('meta[name="description"]')?.content ||
-          ''
-        ).trim();
-        const paragraphs = Array.from(
-          document.querySelectorAll('article .article-body p:not(.meta)'),
-        );
-        let bodyText = paragraphs
-          .map((p) => p.innerText)
-          .join(' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (bodyText.length > 130) bodyText = bodyText.substring(0, 130) + '……';
-
-        const date = (document.querySelector('.article-details time')?.innerText || '').trim();
-        const readTime = (document.querySelector('.article-details span')?.innerText || '').trim();
-        const siteName = (
-          document.querySelector('.site-brand .site-title')?.innerText || document.title
-        ).trim();
-        const author = (document.querySelector('.article-author-name')?.innerText || '').trim();
-        const domain = window.location.host + window.location.pathname;
-
-        const titleFont = `600 46px ${readingFont}`;
-        const titleLines = getLines(
-          title,
-          titleFont,
-          630,
-          titlePhrases.length > 1 ? titlePhrases : [title],
-        );
-
-        const descFont = `500 24px ${readingFont}`;
-        const descLines = desc ? getLines(desc, descFont, 630) : [];
-
-        const bodyFont = `400 22px ${readingFont}`;
-        const bodyLines =
-          !desc && bodyText
-            ? getLines(bodyText, bodyFont, 630)
-            : bodyText
-              ? getLines(bodyText, bodyFont, 630).slice(0, 4)
-              : [];
-
-        let contentHeight = 160;
-        contentHeight += titleLines.length * 64;
-        if (descLines.length > 0) contentHeight += 24 + descLines.length * 38;
-        if (bodyLines.length > 0) contentHeight += 24 + bodyLines.length * 36;
-        contentHeight += 120;
-
-        const width = 800;
-        const height = Math.max(480, contentHeight);
-
-        canvas.width = width * 2;
-        canvas.height = height * 2;
-        canvas.style.width = width + 'px';
-        canvas.style.height = height + 'px';
-        ctx.scale(2, 2);
-
-        ctx.fillStyle = surfaceColor;
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(0, 0, width, height, 24);
-          ctx.fill();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = dividerColor;
-          ctx.stroke();
-        } else {
-          ctx.fillRect(0, 0, width, height);
-        }
-
-        ctx.font = `600 20px ${uiFont}`;
-        ctx.fillStyle = textColor;
-        ctx.fillText(siteName, 64, 68);
-
-        if (date || readTime) {
-          const metaInfo = [date, readTime].filter(Boolean).join(' · ');
-          ctx.font = `500 15px ${uiFont}`;
-          ctx.fillStyle = mutedColor;
-          const metaWidth = ctx.measureText(metaInfo).width;
-          ctx.fillText(metaInfo, width - 64 - metaWidth, 68);
-        }
-
-        ctx.fillStyle = dividerColor;
-        ctx.fillRect(64, 96, width - 128, 1);
-
-        let drawY = 155;
-        const accentStartY = drawY - 36;
-        const accentHeight =
-          titleLines.length * 64 + (descLines.length ? descLines.length * 38 + 20 : 0);
-        ctx.fillStyle = primaryColor;
-        if (ctx.roundRect) {
-          ctx.beginPath();
-          ctx.roundRect(64, accentStartY, 4, accentHeight, 2);
-          ctx.fill();
-        } else {
-          ctx.fillRect(64, accentStartY, 4, accentHeight);
-        }
-
-        ctx.fillStyle = textColor;
-        ctx.font = titleFont;
-        for (const line of titleLines) {
-          ctx.fillText(line, 84, drawY);
-          drawY += 64;
-        }
-
-        if (descLines.length > 0) {
-          drawY += 16;
-          ctx.fillStyle = primaryColor;
-          ctx.font = descFont;
-          for (const line of descLines) {
-            ctx.fillText(line, 84, drawY);
-            drawY += 38;
-          }
-        }
-
-        if (bodyLines.length > 0) {
-          drawY += 20;
-          ctx.fillStyle = mutedColor;
-          ctx.font = bodyFont;
-          for (const line of bodyLines) {
-            ctx.fillText(line, 84, drawY);
-            drawY += 36;
-          }
-        }
-
-        const footerY = height - 90;
-        ctx.fillStyle = dividerColor;
-        ctx.fillRect(64, footerY, width - 128, 1);
-
-        const authorText = author ? author + ' · ' + siteName : siteName;
-        ctx.font = `600 16px ${uiFont}`;
-        ctx.fillStyle = textColor;
-        ctx.fillText(authorText, 64, footerY + 45);
-
-        ctx.font = `500 14px ${uiFont}`;
-        ctx.fillStyle = mutedColor;
-        const domainWidth = ctx.measureText(domain).width;
-        ctx.fillText(domain, width - 64 - domainWidth, footerY + 45);
-
-        const dataUrl = canvas.toDataURL('image/png');
-
-        const content = document.createElement('div');
-        content.className = 'share-dialog-content';
-        const imgElement = document.createElement('img');
-        imgElement.src = dataUrl;
-        imgElement.alt = title + ' — 分享卡片';
-
-        const actions = document.createElement('div');
-        actions.className = 'share-actions-row';
-
-        const download = document.createElement('a');
-        download.href = dataUrl;
-        download.download = 'cloudink-share.png';
-        download.className = 'share-download';
-        download.textContent = t('下载分享图片', 'Download image');
-        const downloadStatus = document.createElement('p');
-        downloadStatus.className = 'share-download-status';
-        downloadStatus.setAttribute('role', 'status');
-        download.addEventListener('click', () => {
-          downloadStatus.textContent = t('已请求下载分享图片。', 'Image download requested.');
-        });
-        actions.append(download);
-
-        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-          const nativeBtn = document.createElement('button');
-          nativeBtn.type = 'button';
-          nativeBtn.className = 'share-native-btn';
-          nativeBtn.textContent = t('系统分享', 'Share via system');
-          nativeBtn.addEventListener('click', async () => {
-            try {
-              await navigator.share({
-                title: title,
-                text: desc || title,
-                url: window.location.href,
-              });
-            } catch (err) {
-              if (err && err.name !== 'AbortError') console.error(err);
-            }
+        if (shareBtn.dataset.loading === '1') return;
+        shareBtn.dataset.loading = '1';
+        const status = document.getElementById('share-status');
+        try {
+          shareCardLoader ||= import('/reader-assets/share-card.js').catch((err) => {
+            shareCardLoader = null;
+            throw err;
           });
-          actions.append(nativeBtn);
+          const { openShareCard } = await shareCardLoader;
+          await openShareCard({ showDialog, shareBtn, t });
+        } catch {
+          if (status)
+            status.textContent = t(
+              '分享卡片组件加载失败，请重试。',
+              'Could not load share card. Try again.',
+            );
+        } finally {
+          delete shareBtn.dataset.loading;
         }
-
-        content.append(imgElement, actions, downloadStatus);
-        showDialog(content, t('分享卡片', 'Share card'), shareBtn);
       });
     }
+  }
 
+  function mountRelatedStories() {
     const related = document.getElementById('related-stories');
-    if (related)
+    if (!related) return;
+    let cancelled = false;
+    const loadStories = () => {
+      if (cancelled || !related.isConnected) return;
       void loadPublicIndex()
         .then((posts) => {
-          if (!related.isConnected || !posts) return;
+          if (cancelled || !related.isConnected || !posts) return;
           const fragment = document.createDocumentFragment();
           const stories = posts
             .filter(
@@ -1187,6 +937,23 @@ document.addEventListener('DOMContentLoaded', () => {
           related.replaceChildren(fragment);
         })
         .catch(() => {});
+    };
+    if (typeof requestIdleCallback === 'function') {
+      const handle = requestIdleCallback(loadStories, { timeout: 1200 });
+      cleanupFunctions.push(() => {
+        cancelled = true;
+        cancelIdleCallback(handle);
+      });
+    } else {
+      const timer = setTimeout(loadStories, 0);
+      cleanupFunctions.push(() => {
+        cancelled = true;
+        clearTimeout(timer);
+      });
+    }
+  }
+
+  function mountCopyLinkButtons() {
     for (const button of document.querySelectorAll('.copy-article-link')) {
       const copy = async () => {
         const label = button.textContent;
@@ -1207,6 +974,9 @@ document.addEventListener('DOMContentLoaded', () => {
       button.addEventListener('click', copy);
       cleanupFunctions.push(() => button.removeEventListener('click', copy));
     }
+  }
+
+  function mountArticleReadingTools(visit) {
     const article = document.querySelector('.article-shell article');
     if (article) {
       let progressBar = document.getElementById('reading-progress');
@@ -1520,7 +1290,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     }
-  } // end initPageFeatures
+  }
+
+  function initPageFeatures(visit) {
+    cleanupFunctions.forEach((fn) => fn());
+    cleanupFunctions = [];
+
+    if (window.CloudInkReader) void window.CloudInkReader.activate();
+    else if (typeof hljs !== 'undefined' && document.querySelector('#swup pre code'))
+      hljs.highlightAll();
+    const swupContainer = document.getElementById('swup');
+    if (!swupContainer) return;
+
+    syncReaderNavigation();
+    mountPostList();
+    syncSiteAppearance(swupContainer);
+    mountHomeCards(swupContainer);
+
+    const showDialog = createPageDialogManager();
+    mountImageLightbox(showDialog);
+    mountCodeBlocksAndTables();
+    mountShareCard(showDialog);
+    mountRelatedStories();
+    mountCopyLinkButtons();
+    mountArticleReadingTools(visit);
+  }
 
   function shortFragmentTarget() {
     if (!location.hash) return null;
@@ -1636,8 +1430,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('pageshow', managedRestoration);
   }
   if ('serviceWorker' in navigator && !location.pathname.startsWith('/admin')) {
-    window.addEventListener('load', () => {
+    const registerServiceWorker = () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
+    };
+    if (document.readyState === 'complete') registerServiceWorker();
+    else window.addEventListener('load', registerServiceWorker, { once: true });
   }
-});
+};
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootCloudInkClient, { once: true });
+} else {
+  bootCloudInkClient();
+}

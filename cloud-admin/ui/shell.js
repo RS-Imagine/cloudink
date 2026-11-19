@@ -1,6 +1,7 @@
 // Responsive presentation only; data navigation still uses the guarded app handlers.
+import { $ } from './dom.js';
+
 export function mountStudioShell() {
-  const $ = (id) => document.getElementById(id);
   const motion = window.CloudInkMotion;
   const tools = $('studio-tools');
   const toolsToggle = tools.querySelector('summary');

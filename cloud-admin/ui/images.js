@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $, formatBytes as size } from './dom.js';
 const kinds = {
   published: '已发布',
   draft: '草稿',
@@ -6,11 +6,6 @@ const kinds = {
   pending: '正在发布',
   backup: '备份任务',
 };
-function size(bytes) {
-  return bytes < 1024 * 1024
-    ? `${(bytes / 1024).toFixed(1)} KB`
-    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 export function configureImages({
   imageUploadForm,
   confirmAction,

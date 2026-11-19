@@ -705,3 +705,312 @@ test('render.rs, reader.ts, and admin preview.worker.js keep Highlight.js strict
     /if \(!\/<pre><code class="language-\[\^"\]\+">\/\.test\(html\)\) return html;/,
   );
 });
+
+test('shared admin UI dom.js helpers format bytes and compute SHA-256 hex consistently', async () => {
+  const { createHash } = await import('node:crypto');
+  const { formatBytes, sha256Hex } = await import('../../cloud-admin/ui/dom.js');
+  const expected = createHash('sha256').update('cloudink').digest('hex');
+  assert.equal(formatBytes(512), '0.5 KB');
+  assert.equal(formatBytes(2048), '2.0 KB');
+  assert.equal(formatBytes(2.5 * 1024 * 1024), '2.5 MB');
+  assert.equal(await sha256Hex('cloudink'), expected);
+  assert.equal(await sha256Hex(new TextEncoder().encode('cloudink')), expected);
+});
+
+test('frontend code splitting defers non-core admin modules and reader share card via dynamic imports', async () => {
+  const appJs = await readFile('cloud-admin/ui/app.js', 'utf8');
+  const buildUi = await readFile('cloud-admin/build-ui.mjs', 'utf8');
+  const workerIndex = await readFile('cloud-web/src/index.ts', 'utf8');
+  const devServer = await readFile('scripts/dev-server.mjs', 'utf8');
+  const clientJs = await readFile('crates/blog-core/src/assets/client.js', 'utf8');
+  const webAssets = await readFile('scripts/web-assets.mjs', 'utf8');
+
+  const lazyAdminChunks = [
+    '/shorts.js',
+    '/images.js',
+    '/editor-tools.js',
+    '/markdown-import.js',
+    '/preview.js',
+    '/image-upload.js',
+  ];
+  for (const chunk of lazyAdminChunks) {
+    assert.ok(appJs.includes(`import('${chunk}')`), `app.js must dynamically import ${chunk}`);
+    assert.ok(buildUi.includes(`'${chunk}'`), `build-ui.mjs must bundle and register ${chunk}`);
+    assert.ok(workerIndex.includes(`'${chunk}'`), `cloud-web/src/index.ts must route ${chunk}`);
+    assert.ok(devServer.includes(`'${chunk}'`), `dev-server.mjs must serve ${chunk}`);
+  }
+  for (const eagerModule of [
+    './images.js',
+    './shorts.js',
+    './markdown-import.js',
+    './editor-enhancements.js',
+    './draft-history.js',
+    './preview.js',
+    './image-upload.js',
+  ]) {
+    assert.equal(
+      appJs.includes(`from '${eagerModule}'`),
+      false,
+      `app.js must not statically import ${eagerModule}`,
+    );
+  }
+
+  assert.ok(
+    clientJs.includes("import('/reader-assets/share-card.js')"),
+    'client.js must dynamically import /reader-assets/share-card.js on demand',
+  );
+  assert.equal(
+    clientJs.includes("canvas.toDataURL('image/png')"),
+    false,
+    'client.js must not inline share card canvas rendering',
+  );
+  assert.ok(
+    webAssets.includes('assets/reader-share-card.js'),
+    'web-assets.mjs must build share-card.js',
+  );
+  assert.ok(
+    workerIndex.includes('share-card\\.js'),
+    'cloud-web/src/index.ts must serve /reader-assets/share-card.js',
+  );
+  assert.ok(
+    devServer.includes("'/reader-assets/share-card.js'"),
+    'dev-server.mjs must serve /reader-assets/share-card.js',
+  );
+
+  const shareCardModule = await import('../../assets/reader-share-card.js');
+  assert.equal(typeof shareCardModule.openShareCard, 'function');
+});
+
+test('reader-runtime promotes async stylesheets via CSP-safe listeners and does not block SPA swap on code.css or unrelated fonts', async () => {
+  const source = await readFile('assets/reader-runtime.js', 'utf8');
+  const appendedHead = [];
+  const makeLink = (attrs = {}) => {
+    const listeners = new Map();
+    return {
+      tagName: 'LINK',
+      rel: 'stylesheet',
+      media: attrs.media || 'all',
+      href: attrs.href || '',
+      dataset: { ...(attrs.dataset || {}) },
+      sheet: attrs.sheet || null,
+      addEventListener(type, fn) {
+        listeners.set(type, fn);
+      },
+      removeEventListener(type) {
+        listeners.delete(type);
+      },
+      dispatch(type) {
+        listeners.get(type)?.();
+      },
+      setAttribute(name, value) {
+        this[name] = value;
+      },
+    };
+  };
+
+  const pendingEditorialLink = makeLink({
+    media: 'print',
+    href: '/reader-assets/editorial-font.css',
+    dataset: { readerAsync: 'style' },
+  });
+  const loadedCodeLink = makeLink({
+    media: 'print',
+    href: '/reader-assets/code.css',
+    dataset: { readerAsync: 'style', readerStyle: 'code' },
+    sheet: {},
+  });
+
+  // Track an unrelated slow Chinese font that never resolves in document.fonts.ready,
+  // alongside a fast KaTeX font that resolves immediately.
+  let katexFontResolved = false;
+  const katexFont = {
+    family: 'KaTeX_Main',
+    status: 'loading',
+    loaded: Promise.resolve().then(() => {
+      katexFontResolved = true;
+    }),
+  };
+  const slowEditorialFont = {
+    family: 'Noto Serif SC',
+    status: 'loading',
+    loaded: new Promise(() => {}),
+  };
+
+  const window = { addEventListener() {} };
+  const document = {
+    documentElement: { dataset: {} },
+    body: { append() {} },
+    head: {
+      append(node) {
+        appendedHead.push(node);
+      },
+    },
+    fonts: {
+      ready: new Promise(() => {}), // Never resolves to prove math prepare doesn't wait on slow CJK fonts
+      [Symbol.iterator]: function* () {
+        yield slowEditorialFont;
+        yield katexFont;
+      },
+    },
+    querySelector(sel) {
+      if (sel.includes('data-reader-style="code"')) {
+        return (
+          appendedHead.find((n) => n.tagName === 'LINK' && n.dataset.readerStyle === 'code') || null
+        );
+      }
+      if (sel.includes('data-reader-style="math"')) {
+        return (
+          appendedHead.find((n) => n.tagName === 'LINK' && n.dataset.readerStyle === 'math') || null
+        );
+      }
+      return null;
+    },
+    querySelectorAll(sel) {
+      if (sel.includes('data-reader-async="style"')) {
+        return [pendingEditorialLink, loadedCodeLink].filter(
+          (link) => link.media === 'print' && link.dataset.readerAsync === 'style',
+        );
+      }
+      return [];
+    },
+    createElement(tag) {
+      if (tag === 'link') return makeLink();
+      return {
+        tagName: tag.toUpperCase(),
+        dataset: {},
+        async: false,
+        style: { cssText: '' },
+        setAttribute() {},
+        append() {},
+        getBoundingClientRect() {},
+        remove() {},
+      };
+    },
+  };
+
+  runInNewContext(source, {
+    window,
+    document,
+    navigator: { onLine: true, connection: { saveData: false, effectiveType: '4g' } },
+    location: { href: 'https://forimagine.eu.org/', origin: 'https://forimagine.eu.org' },
+    setTimeout,
+    clearTimeout,
+    URL,
+    Promise,
+    Map,
+    Set,
+  });
+
+  // On boot, already-loaded async link is promoted immediately; pending link flips on load.
+  assert.equal(loadedCodeLink.media, 'all');
+  assert.equal(pendingEditorialLink.media, 'print');
+  pendingEditorialLink.dispatch('load');
+  assert.equal(pendingEditorialLink.media, 'all');
+
+  // SPA navigation to a code-only article must NOT block on code.css or highlight.js
+  const codeDoc = {
+    documentElement: { dataset: {} },
+    querySelector(sel) {
+      if (sel.includes('pre code')) return {};
+      return null;
+    },
+  };
+  await window.CloudInkReader.prepare(codeDoc, true);
+  const codeLink = appendedHead.find(
+    (n) => n.tagName === 'LINK' && n.dataset.readerStyle === 'code',
+  );
+  assert.ok(codeLink, 'SPA prepare still kicks off code.css asynchronously');
+  assert.ok(
+    appendedHead.some((n) => n.tagName === 'SCRIPT' && n.src === '/reader-assets/highlight.js'),
+    'SPA prepare still kicks off highlight.js asynchronously',
+  );
+  codeLink.sheet = {};
+  codeLink.dispatch('load');
+
+  // SPA navigation to a math article awaits katex.css + KaTeX fonts, NOT slow unrelated CJK fonts
+  const mathDoc = {
+    documentElement: { dataset: {} },
+    querySelector(sel) {
+      if (sel.includes('.katex')) return { cloneNode: () => ({}) };
+      return null;
+    },
+    querySelectorAll(sel) {
+      if (sel.includes('.katex')) return [{ cloneNode: () => ({}) }];
+      return [];
+    },
+  };
+  const mathPrepare = window.CloudInkReader.prepare(mathDoc, true);
+  const mathLink = appendedHead.find(
+    (n) => n.tagName === 'LINK' && n.dataset.readerStyle === 'math',
+  );
+  assert.ok(mathLink, 'math article requests katex.css');
+  mathLink.sheet = {};
+  mathLink.dispatch('load');
+  await mathPrepare;
+  assert.equal(katexFontResolved, true);
+});
+
+test('public rendering pipeline uses non-blocking async styles, deferred scripts, and rAF/idle hydration', async () => {
+  const [pageRendering, renderRs, readerTs, devServer, clientJs, readerRuntime] = await Promise.all(
+    [
+      readFile('cloud-admin/src/page-rendering.ts', 'utf8'),
+      readFile('crates/blog-core/src/render.rs', 'utf8'),
+      readFile('cloud-web/src/reader.ts', 'utf8'),
+      readFile('scripts/dev-server.mjs', 'utf8'),
+      readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+      readFile('assets/reader-runtime.js', 'utf8'),
+    ],
+  );
+
+  assert.match(pageRendering, /<script src="\/client\.js" defer><\/script>/);
+  assert.match(renderRs, /<script src="https:\/\/unpkg\.com\/swup@4" defer><\/script>/);
+  assert.match(renderRs, /<script src="\/client\.js\?v=\{client_hash\}" defer><\/script>/);
+  assert.match(renderRs, /media="print" data-reader-async="style"/);
+  assert.match(readerTs, /el\.setAttribute\('media', 'print'\)/);
+  assert.match(readerTs, /el\.setAttribute\('data-reader-async', 'style'\)/);
+  assert.match(readerTs, /media="print" data-reader-style="code" data-reader-async="style"/);
+  assert.equal(
+    readerTs.includes('onload='),
+    false,
+    'reader.ts must never inject inline onload handlers under strict CSP',
+  );
+  assert.match(devServer, /<script src="\/client\.js" defer><\/script>/);
+  assert.match(devServer, /media="print" data-reader-async="style"/);
+
+  // client.js defer-safe boot, rAF scroll cue measurement, idle related-stories fetch
+  assert.match(clientJs, /if \(document\.readyState === 'loading'\)/);
+  assert.match(clientJs, /const initialRefreshFrame = requestAnimationFrame\(refresh\);/);
+  assert.match(clientJs, /requestIdleCallback\(loadStories, \{ timeout: 1200 \}\)/);
+
+  // reader-runtime parallel idle warmup includes homepage shorts links
+  assert.match(readerRuntime, /\.blog-note a\[href\^="\/shorts\/"\]/);
+  assert.match(readerRuntime, /Promise\.all\(batch\.map/);
+});
+
+test('admin articles and shorts loading eliminates waterfalls with parallel fetches, SWR, and intent prefetching', async () => {
+  const [shortsJs, appJs] = await Promise.all([
+    readFile('cloud-admin/ui/shorts.js', 'utf8'),
+    readFile('cloud-admin/ui/app.js', 'utf8'),
+  ]);
+
+  // Shorts: parallel load + SWR + editor loading feedback + pointerdown/touchstart prefetch
+  assert.match(shortsJs, /const hadData = hasLoaded && shorts\.length > 0;/);
+  assert.match(shortsJs, /const fetchPromise = load\(\);/);
+  assert.match(shortsJs, /正在读取短记…/);
+  assert.match(shortsJs, /if \(waiting\) status\('正在加载短记正文…'\);/);
+  assert.match(shortsJs, /card\.addEventListener\('pointerdown', warm, \{ passive: true \}\);/);
+  assert.match(shortsJs, /card\.addEventListener\('touchstart', warm, \{ passive: true \}\);/);
+
+  // Articles & Admin nav: parallel editor-tools, parallel settings, pointerdown/touchstart prefetch
+  assert.match(
+    appJs,
+    /void loadEditorTools\(\)\.catch\(\(\) => \{\}\);\s*try \{\s*[\s\S]*?Promise\.all\(\[flush\(\), request\]\)/,
+  );
+  assert.match(appJs, /card\.addEventListener\('pointerdown', warmArticle, \{ passive: true \}\);/);
+  assert.match(appJs, /card\.addEventListener\('touchstart', warmArticle, \{ passive: true \}\);/);
+  assert.match(appJs, /\$\('shorts'\)\.addEventListener\('pointerdown', warmShortTools/);
+  assert.match(
+    appJs,
+    /Promise\.all\(\[\s*flush\(\),\s*api\('\/api\/settings'\),\s*loadIllustrationPicker\(\),\s*loadBackup\(\)/,
+  );
+});

@@ -1,8 +1,9 @@
 import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
+import { sha256Hex } from '../../cloud-admin/src/crypto';
 import { legacyImagePath } from '../../cloud-admin/src/media';
 export async function readerEtag(etag: string, url: URL): Promise<string> {
-  const input = new TextEncoder().encode(
+  const hash = await sha256Hex(
     'reader-v4:' +
       PUBLIC_RESPONSE_VERSION +
       ':' +
@@ -12,8 +13,7 @@ export async function readerEtag(etag: string, url: URL): Promise<string> {
       url.pathname +
       etag,
   );
-  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
-  return '"' + [...hash].map((byte) => byte.toString(16).padStart(2, '0')).join('') + '"';
+  return '"' + hash + '"';
 }
 
 // Response metadata uses the serving origin, so forks need no domain configuration.
@@ -107,6 +107,15 @@ export async function readerHtml(
         const href = el.getAttribute('href') || '';
         const id = el.getAttribute('id');
         if (
+          id === 'reader-font-styles' &&
+          href === '/reader-assets/editorial-font.css' &&
+          el.getAttribute('rel') === 'stylesheet'
+        ) {
+          el.setAttribute('media', 'print');
+          el.setAttribute('data-reader-async', 'style');
+          return;
+        }
+        if (
           el.hasAttribute('data-reader-style') ||
           id === 'hljs-light' ||
           id === 'hljs-dark' ||
@@ -177,7 +186,9 @@ export async function readerHtml(
       ? ['<link rel="stylesheet" data-reader-style="math" href="/reader-assets/katex.css">']
       : []),
     ...(hasCode
-      ? ['<link rel="stylesheet" data-reader-style="code" href="/reader-assets/code.css">']
+      ? [
+          '<link rel="stylesheet" media="print" data-reader-style="code" data-reader-async="style" href="/reader-assets/code.css">',
+        ]
       : []),
     `<link rel="canonical" href="${escape(canonical.href)}">`,
     `<meta property="og:url" content="${escape(canonical.href)}">`,

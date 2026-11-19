@@ -18,7 +18,7 @@ export async function sanitizePublicHtml(html: string): Promise<string> {
     })
     .on('body', {
       element(element) {
-        element.append('<script src="/client.js"></script>', { html: true });
+        element.append('<script src="/client.js" defer></script>', { html: true });
       },
     })
     .on('body', {

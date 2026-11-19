@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 
 export function configureMarkdownImport({
   api,
@@ -11,8 +11,7 @@ export function configureMarkdownImport({
   notice,
   closeMenu,
 }) {
-  const input = $('import-files'),
-    button = $('import-posts');
+  const button = $('import-posts');
   const dialog = $('markdown-import-dialog'),
     list = $('markdown-import-results');
   const status = $('markdown-import-status'),
@@ -51,13 +50,7 @@ export function configureMarkdownImport({
     if (trigger?.isConnected && !trigger.closest('[hidden]'))
       trigger.focus({ preventScroll: true });
   });
-  button.addEventListener('click', () => {
-    if (busy || locked()) return notice('正在处理当前文章，请稍等。');
-    input.click();
-  });
-  input.addEventListener('change', async () => {
-    const files = Array.from(input.files);
-    input.value = '';
+  async function importFiles(files) {
     if (!files.length) return;
     if (busy || locked()) return notice('正在处理当前文章，请稍等。');
     if (files.length > 100) return notice('一次最多导入 100 个文件，请分批选择。', 'error');
@@ -187,5 +180,9 @@ export function configureMarkdownImport({
       }
       notice('已导入 1 篇原稿，已保存为新草稿。检查后可手动发布。', 'success');
     } else close.focus({ preventScroll: true });
-  });
+  }
+  return {
+    importFiles,
+    isBusy: () => busy,
+  };
 }

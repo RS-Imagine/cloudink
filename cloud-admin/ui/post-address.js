@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 
 function source(draft) {
   const f = draft.front_matter;

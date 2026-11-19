@@ -57,6 +57,16 @@
     const node = document.getElementById(id);
     if (node) node.hidden = true;
   }
+  function promoteAsyncStyles(root = document) {
+    for (const link of root.querySelectorAll?.('link[data-reader-async="style"]') || []) {
+      const activateMedia = () => {
+        if (link.media === 'print') link.media = 'all';
+      };
+      if (link.sheet) activateMedia();
+      else link.addEventListener('load', activateMedia, { once: true });
+    }
+  }
+  if (typeof document !== 'undefined') promoteAsyncStyles(document);
   function stylesheet(kind) {
     if (styles.has(kind)) return styles.get(kind);
     const promise = new Promise((resolve, reject) => {
@@ -66,6 +76,7 @@
           : 'link[data-reader-style="' + kind + '"]',
       );
       if (link?.sheet) {
+        if (link.media === 'print') link.media = 'all';
         resolve();
         return;
       }
@@ -84,7 +95,10 @@
         if (error) {
           link.remove();
           reject(error);
-        } else resolve();
+        } else {
+          if (link.media === 'print') link.media = 'all';
+          resolve();
+        }
       };
       const loaded = () => done();
       const failed = () => done(new Error('阅读样式暂时无法加载。'));
@@ -122,6 +136,7 @@
   }
   async function prepare(doc, warm = false) {
     const math = doc.querySelector('.article-body .katex');
+    const hasCode = Boolean(doc.querySelector('#swup pre code, .article-body pre code'));
     if (math && retryMathFonts) {
       await retryMathStyles();
       retryMathFonts = false;
@@ -129,10 +144,19 @@
     // Reading font faces have system fallbacks; a font failure must not block navigation.
     if (doc.documentElement.dataset.readingFont === 'serif')
       void stylesheet('reading').catch(() => {});
-    await Promise.all([
-      ...(math ? [stylesheet('math')] : []),
-      ...(doc.querySelector('#swup pre code, .article-body pre code') ? [stylesheet('code')] : []),
-    ]);
+    // Code blocks render immediately as readable monospace text while syntax styles and
+    // Highlight.js load asynchronously; never block SPA DOM swap on code.css.
+    if (hasCode) {
+      if (warm) {
+        void stylesheet('code').catch(() => {});
+        void loadHighlighter().catch(() => {});
+      } else {
+        await Promise.all([...(math ? [stylesheet('math')] : []), stylesheet('code')]);
+      }
+    } else if (math) {
+      await stylesheet('math');
+    }
+    if (math && warm && hasCode) await stylesheet('math');
     if (math && document.fonts) {
       let probe, timer;
       try {
@@ -145,11 +169,17 @@
           for (const formula of [...doc.querySelectorAll('.article-body .katex')].slice(0, 30))
             probe.append(formula.cloneNode(true));
           document.body.append(probe);
-          // Give the browser one layout before awaiting its newly used font faces.
+          // Give the browser one layout before awaiting KaTeX font faces.
           probe.getBoundingClientRect();
         }
+        const katexFonts = [...document.fonts].filter(
+          (font) => font.family.includes('KaTeX_') && font.status === 'loading',
+        );
+        const fontWait = katexFonts.length
+          ? Promise.allSettled(katexFonts.map((font) => font.loaded))
+          : document.fonts.ready;
         await Promise.race([
-          document.fonts.ready,
+          fontWait,
           new Promise((_, reject) => {
             timer = setTimeout(() => reject(new Error('公式字体加载超时。')), 10000);
           }),
@@ -660,7 +690,9 @@
           if (url && !candidates.includes(url) && !swup.cache?.get?.(url)) candidates.push(url);
         };
         document
-          .querySelectorAll('[data-reader-nav="shorts"],[data-reader-nav="posts"]')
+          .querySelectorAll(
+            '[data-reader-nav="shorts"],[data-reader-nav="posts"],.blog-note a[href^="/shorts/"]',
+          )
           .forEach(add);
         let posts = 0;
         for (const el of document.querySelectorAll(
@@ -671,16 +703,17 @@
           add(el);
           if (candidates.length > before) posts++;
         }
-        for (const url of candidates) {
+        // Fetch up to MAX_PREFETCHES routes in parallel instead of serializing with artificial delays.
+        for (let i = 0; i < candidates.length; i += MAX_PREFETCHES) {
           if (!canPrefetch() || document.hidden || pending) break;
-          await prefetch(url, { warmCode: false });
-          await new Promise((resolve) => setTimeout(resolve, 120));
+          const batch = candidates.slice(i, i + MAX_PREFETCHES);
+          await Promise.all(batch.map((url) => prefetch(url, { warmCode: false })));
         }
       };
       idleHandle =
         typeof globalThis.requestIdleCallback === 'function'
           ? globalThis.requestIdleCallback(() => void run(), { timeout: 1500 })
-          : setTimeout(() => void run(), 450);
+          : setTimeout(() => void run(), 300);
     }
     if (typeof document.addEventListener === 'function') {
       const scheduleIntent = (event, delay) => {
@@ -858,6 +891,8 @@
   window.CloudInkReader = Object.freeze({
     activate,
     attach,
+    prepare,
+    promoteAsyncStyles,
     hasCodeBlocks,
     unhighlightedCodeBlocks,
     prefetchUrl,

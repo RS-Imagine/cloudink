@@ -1,4 +1,5 @@
 import { backupSource, legacyHistoryKey } from './backup-contract';
+import { sameSha256 } from './crypto';
 import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey, contentImageKey } from './image-variants';
 import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
@@ -280,10 +281,7 @@ export async function backupRoute(
     if (existing) {
       if (
         existing.size !== content.byteLength ||
-        !crypto.subtle.timingSafeEqual(
-          await crypto.subtle.digest('SHA-256', content),
-          await crypto.subtle.digest('SHA-256', await existing.arrayBuffer()),
-        )
+        !(await sameSha256(content, await existing.arrayBuffer()))
       )
         throw new HttpError(409, '已有同名的不同图片，恢复不会覆盖它。');
       return json({ ok: true });
@@ -298,10 +296,7 @@ export async function backupRoute(
       if (
         !old ||
         old.size !== content.byteLength ||
-        !crypto.subtle.timingSafeEqual(
-          await crypto.subtle.digest('SHA-256', content),
-          await crypto.subtle.digest('SHA-256', await old.arrayBuffer()),
-        )
+        !(await sameSha256(content, await old.arrayBuffer()))
       )
         throw new HttpError(409, '已有同名的不同图片，恢复不会覆盖它。');
     }

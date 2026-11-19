@@ -1,4 +1,5 @@
 import { withContentMutation } from './storage-mutations';
+import { sha256Hex } from './crypto';
 import { HttpError, json, limitedBody } from './models';
 import { MAX_IMAGE, imageType, validImageKey } from './media';
 import { imageInfo } from './image-info';
@@ -77,10 +78,7 @@ async function prepareVariants(
 }
 
 export async function contentImageKey(bytes: Uint8Array, ext: string): Promise<string> {
-  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-    .map((n) => n.toString(16).padStart(2, '0'))
-    .join('');
-  return 'uploads/sha256/' + hash + '.' + ext;
+  return 'uploads/sha256/' + (await sha256Hex(bytes)) + '.' + ext;
 }
 export async function uploadImage(request: Request, storage: R2Bucket): Promise<Response> {
   const body = await limitedBody(request, MAX_IMAGE + 6_000_000 + 64 * 1024);

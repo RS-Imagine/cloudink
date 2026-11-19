@@ -88,6 +88,14 @@ if (process.argv[2] === 'seed') {
     target: 'es2022',
     minify: true,
   });
+  await build({
+    entryPoints: [resolve(root, 'assets/reader-share-card.js')],
+    outfile: resolve(vendor, 'share-card.js'),
+    bundle: true,
+    format: 'esm',
+    target: 'es2022',
+    minify: true,
+  });
   // Ship only WOFF2 Unicode slices; readers never contact a font CDN.
   const fontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif-sc');
   let fontCSS = '';

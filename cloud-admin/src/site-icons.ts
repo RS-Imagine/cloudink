@@ -1,5 +1,6 @@
 import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
 import { SaxesParser } from 'saxes';
+import { sha256Hex } from './crypto';
 import { HttpError, json, limitedBody, validSiteIconKey, type SiteConfig } from './models';
 
 export const MAX_SITE_ICON = 256 * 1024;
@@ -545,9 +546,7 @@ export async function inspectSiteIcon(input: Uint8Array) {
   const ico = input[0] === 0 && input[1] === 0 && input[2] === 1 && input[3] === 0;
   const bytes = ico ? input : await sanitizeSvg(input);
   if (ico) await validateIco(bytes);
-  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-    .map((v) => v.toString(16).padStart(2, '0'))
-    .join('');
+  const hash = await sha256Hex(bytes);
   const ext = ico ? 'ico' : 'svg';
   return {
     bytes,

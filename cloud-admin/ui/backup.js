@@ -1,16 +1,11 @@
 import { backupEntry, backupSource, legacyHistoryKey } from '../src/backup-contract.ts';
 import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
+import { $, sha256Hex as checksum } from './dom.js';
 
 const MAX_ARCHIVE = 100 * 1024 * 1024;
-const $ = (id) => document.getElementById(id);
 function status(text) {
   $('backup-status').textContent = text;
   $('backup-status').dataset.tone = 'pending';
-}
-async function checksum(bytes) {
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
-    .map((x) => x.toString(16).padStart(2, '0'))
-    .join('');
 }
 export function configureBackup({
   api,

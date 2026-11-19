@@ -17,6 +17,12 @@ await build({
     '/post-address.js',
     '/publication.js',
     '/backup.js',
+    '/shorts.js',
+    '/images.js',
+    '/editor-tools.js',
+    '/markdown-import.js',
+    '/preview.js',
+    '/image-upload.js',
   ],
 });
 await build({
@@ -88,6 +94,24 @@ await build({
   target: 'es2022',
   minify: true,
 });
+for (const [entry, out, external = []] of [
+  ['ui/shorts.js', 'ui/shorts.generated.js'],
+  ['ui/images.js', 'ui/images.generated.js', ['/image-maintenance.js']],
+  ['ui/editor-tools.js', 'ui/editor-tools.generated.js'],
+  ['ui/markdown-import.js', 'ui/markdown-import.generated.js'],
+  ['ui/preview.js', 'ui/preview.generated.js'],
+  ['ui/image-upload.js', 'ui/image-upload.generated.js'],
+]) {
+  await build({
+    entryPoints: [new URL(entry, root).pathname],
+    outfile: new URL(out, root).pathname,
+    bundle: true,
+    format: 'esm',
+    target: 'es2022',
+    minify: true,
+    external,
+  });
+}
 const paths = [
   ['/writing-illustration.svg', '../assets/writing-illustration.svg', 'image/svg+xml'],
   ['/backup.js', 'ui/backup.generated.js', 'text/javascript; charset=utf-8'],
@@ -108,6 +132,12 @@ const paths = [
   ],
   ['/style.css', 'ui/style.css', 'text/css; charset=utf-8'],
   ['/app.js', 'ui/app.generated.js', 'text/javascript; charset=utf-8'],
+  ['/shorts.js', 'ui/shorts.generated.js', 'text/javascript; charset=utf-8'],
+  ['/images.js', 'ui/images.generated.js', 'text/javascript; charset=utf-8'],
+  ['/editor-tools.js', 'ui/editor-tools.generated.js', 'text/javascript; charset=utf-8'],
+  ['/markdown-import.js', 'ui/markdown-import.generated.js', 'text/javascript; charset=utf-8'],
+  ['/preview.js', 'ui/preview.generated.js', 'text/javascript; charset=utf-8'],
+  ['/image-upload.js', 'ui/image-upload.generated.js', 'text/javascript; charset=utf-8'],
   ['/preview.worker.js', 'ui/preview.worker.generated.js', 'text/javascript; charset=utf-8'],
   ['/preview-highlight.js', 'ui/preview-highlight.generated.js', 'text/javascript; charset=utf-8'],
   ['/blog_wasm.js', 'ui/wasm/blog_wasm.js', 'text/javascript; charset=utf-8'],

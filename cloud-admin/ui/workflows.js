@@ -1,5 +1,5 @@
 // View and feedback helpers only. Saving, publishing and storage stay in their existing handlers.
-const $ = (id) => document.getElementById(id);
+import { $ } from './dom.js';
 export function feedback(id, message, tone = 'neutral') {
   if (!id) return;
   const node = $(id);

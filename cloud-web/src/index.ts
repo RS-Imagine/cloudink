@@ -21,8 +21,15 @@ const editorAssets = new Set([
   '/image-maintenance.js',
   '/admin-theme.js',
   '/app.js',
+  '/shorts.js',
+  '/images.js',
+  '/editor-tools.js',
+  '/markdown-import.js',
+  '/preview.js',
+  '/image-upload.js',
   '/style.css',
   '/preview.worker.js',
+  '/preview-highlight.js',
   '/blog_wasm.js',
   '/blog_wasm_bg.wasm',
 ]);
@@ -135,7 +142,7 @@ const web = {
         );
       if (
         compiledAssets.has(path) ||
-        /^\/reader-assets\/(?:highlight\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif-sc-[a-z0-9-]+)\.woff2)$/.test(
+        /^\/reader-assets\/(?:highlight\.js|share-card\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif-sc-[a-z0-9-]+)\.woff2)$/.test(
           path,
         )
       ) {

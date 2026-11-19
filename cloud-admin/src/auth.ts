@@ -1,5 +1,6 @@
 import type { CloudInkEnv } from './env';
 import { initializeBrowserContent } from './browser-publishing';
+import { bytesToHex, sameSha256, sha256Hex } from './crypto';
 import { HttpError, json, jsonInput, readJson, validateSite, type SiteConfig } from './models';
 
 interface Account {
@@ -18,20 +19,13 @@ export interface Session {
 const COOKIE = '__Host-cloudink_session';
 const encoder = new TextEncoder();
 export function randomToken(): string {
-  return hex(crypto.getRandomValues(new Uint8Array(32)));
+  return bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
 }
-function hex(bytes: Uint8Array): string {
-  return [...bytes].map((x) => x.toString(16).padStart(2, '0')).join('');
+export function digest(input: string): Promise<string> {
+  return sha256Hex(input);
 }
-export async function digest(input: string): Promise<string> {
-  return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(input))));
-}
-export async function sameSecret(a: string, b: string): Promise<boolean> {
-  const [x, y] = await Promise.all([
-    crypto.subtle.digest('SHA-256', encoder.encode(a)),
-    crypto.subtle.digest('SHA-256', encoder.encode(b)),
-  ]);
-  return crypto.subtle.timingSafeEqual(x, y);
+export function sameSecret(a: string, b: string): Promise<boolean> {
+  return sameSha256(a, b);
 }
 export function sameOrigin(request: Request): void {
   if (request.headers.get('Origin') !== new URL(request.url).origin)
@@ -41,7 +35,7 @@ async function passwordHash(password: string, salt: string): Promise<string> {
   const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, [
     'deriveBits',
   ]);
-  return hex(
+  return bytesToHex(
     new Uint8Array(
       await crypto.subtle.deriveBits(
         { name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations: 100_000 },

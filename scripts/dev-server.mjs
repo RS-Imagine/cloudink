@@ -60,8 +60,20 @@ const ADMIN_BUNDLES = {
       '/post-address.js',
       '/publication.js',
       '/backup.js',
+      '/shorts.js',
+      '/images.js',
+      '/editor-tools.js',
+      '/markdown-import.js',
+      '/preview.js',
+      '/image-upload.js',
     ],
   },
+  '/shorts.js': { entry: 'cloud-admin/ui/shorts.js', external: [] },
+  '/images.js': { entry: 'cloud-admin/ui/images.js', external: ['/image-maintenance.js'] },
+  '/editor-tools.js': { entry: 'cloud-admin/ui/editor-tools.js', external: [] },
+  '/markdown-import.js': { entry: 'cloud-admin/ui/markdown-import.js', external: [] },
+  '/preview.js': { entry: 'cloud-admin/ui/preview.js', external: [] },
+  '/image-upload.js': { entry: 'cloud-admin/ui/image-upload.js', external: [] },
   '/home-illustration.js': { entry: 'cloud-admin/ui/home-illustration.js', external: [] },
   '/post-address.js': { entry: 'cloud-admin/ui/post-address.js', external: [] },
   '/publication.js': { entry: 'cloud-admin/ui/publication.js', external: [] },
@@ -327,7 +339,7 @@ function renderShell(pageKind, title, body, context) {
   const palette = SITE.themePalette || 'brown';
   const readingFont = SITE.readingFont || 'serif';
   const codeStyle = body.includes('<pre><code')
-    ? '\n  <link rel="stylesheet" data-reader-style="code" href="/reader-assets/code.css">'
+    ? '\n  <link rel="stylesheet" media="print" data-reader-style="code" data-reader-async="style" href="/reader-assets/code.css">'
     : '';
   return `<!doctype html>
 <html lang="zh-CN" data-palette="${palette}" data-reading-font="${readingFont}">
@@ -337,7 +349,7 @@ function renderShell(pageKind, title, body, context) {
   <meta name="description" content="${escapeHtml(SITE.description)}">
   <title>${escapeHtml(title)}</title>
   <link rel="stylesheet" href="/styles.css">
-  <link id="reader-font-styles" rel="stylesheet" href="/reader-assets/editorial-font.css">${codeStyle}
+  <link id="reader-font-styles" rel="stylesheet" media="print" data-reader-async="style" href="/reader-assets/editorial-font.css">${codeStyle}
   <link rel="icon" type="${iconType}" href="${iconUrl}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
@@ -374,7 +386,7 @@ function renderShell(pageKind, title, body, context) {
       <p class="search-hint"><span>↑ ↓ 选择 · Enter 打开</span><span>Esc 关闭</span></p>
     </div>
   </dialog>
-  <script src="/client.js"></script>
+  <script src="/client.js" defer></script>
 </body>
 </html>`;
 }
@@ -896,6 +908,13 @@ const server = http.createServer(async (req, res) => {
         ':root:not([data-theme="dark"]) .hljs-keyword{color:#cf222e}:root:not([data-theme="dark"]) .hljs-title{color:#8250df}:root:not([data-theme="dark"]) .hljs-type{color:#0550ae}:root:not([data-theme="dark"]) .hljs-string{color:#0a3069}:root:not([data-theme="dark"]) .hljs-number{color:#0550ae}:root:not([data-theme="dark"]) .hljs-comment{color:#6e7781}' +
           ':root[data-theme="dark"] .hljs-keyword{color:#ff7b72}:root[data-theme="dark"] .hljs-title{color:#d2a8ff}:root[data-theme="dark"] .hljs-type{color:#79c0ff}:root[data-theme="dark"] .hljs-string{color:#a5d6ff}:root[data-theme="dark"] .hljs-number{color:#79c0ff}:root[data-theme="dark"] .hljs-comment{color:#8b949e}',
       );
+    }
+    if (reqPath === '/reader-assets/share-card.js') {
+      res.writeHead(200, {
+        'content-type': 'text/javascript; charset=utf-8',
+        'cache-control': 'no-store',
+      });
+      return res.end(readText('assets/reader-share-card.js'));
     }
     if (reqPath === '/reader-assets/highlight.js') {
       res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
