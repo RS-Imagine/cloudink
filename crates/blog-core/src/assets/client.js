@@ -520,10 +520,18 @@ const bootCloudInkClient = () => {
       disposed = false,
       automatic = true,
       refreshRequired = false,
-      autoReady = window.scrollY > 0;
+      autoArmed = false,
+      armAnchorY = window.scrollY,
+      lastScrollY = window.scrollY,
+      peekStartedBelow = false,
+      peekWasVisibleSinceDisarm = false,
+      peekExitedSinceDisarm = false,
+      wheelDownAccum = 0,
+      suppressScrollUntil = 0;
     let request = null,
       observer = null,
-      observeFrame = 0;
+      observeFrame = 0,
+      autoTimer = 0;
 
     const stripPeekAttrs = (card) => {
       card.classList.remove('shorts-peek', 'shorts-expanding');
@@ -555,6 +563,25 @@ const bootCloudInkClient = () => {
       for (const entry of [...activeSprings]) entry.finish();
     };
 
+    const cancelPendingAuto = () => {
+      if (!autoTimer) return;
+      clearTimeout(autoTimer);
+      autoTimer = 0;
+    };
+
+    const disarmAuto = () => {
+      cancelPendingAuto();
+      autoArmed = false;
+      armAnchorY = window.scrollY;
+      lastScrollY = window.scrollY;
+      wheelDownAccum = 0;
+      const peek = getPeekCard();
+      peekStartedBelow = Boolean(peek && peek.getBoundingClientRect().top >= window.innerHeight);
+      peekWasVisibleSinceDisarm = false;
+      peekExitedSinceDisarm = false;
+      observer?.disconnect();
+    };
+
     const saveState = () => {
       const fullCount = getFullCount();
       const end = Math.min(total, start - 1 + fullCount);
@@ -583,12 +610,15 @@ const bootCloudInkClient = () => {
         if (remaining || refreshRequired) {
           expandWrap.hidden = false;
           expandBtn.setAttribute('aria-expanded', 'false');
-          expandBtn.disabled = loading;
+          expandBtn.disabled = false;
+          if (loading) expandBtn.setAttribute('aria-disabled', 'true');
+          else expandBtn.removeAttribute('aria-disabled');
           if (!loading && !refreshRequired && automatic) expandBtn.textContent = '展开更多';
         } else {
           expandWrap.hidden = true;
           expandBtn.setAttribute('aria-expanded', 'true');
           expandBtn.disabled = false;
+          expandBtn.removeAttribute('aria-disabled');
         }
       }
       if (nextLink) {
@@ -794,7 +824,38 @@ const bootCloudInkClient = () => {
     const isPeekWithinTriggerZone = (peek) => {
       if (!peek || !peek.isConnected) return false;
       const rect = peek.getBoundingClientRect();
-      return rect.top <= window.innerHeight + 200 && rect.bottom >= -200;
+      if (reader?.isShortPeekInTriggerZone) {
+        return reader.isShortPeekInTriggerZone({
+          peekTop: rect.top,
+          peekBottom: rect.bottom,
+          viewportHeight: window.innerHeight,
+        });
+      }
+      const triggerLine = Math.round(window.innerHeight * 0.95);
+      return rect.bottom > 0 && rect.top <= triggerLine;
+    };
+
+    const scheduleAutoExpand = () => {
+      if (
+        autoTimer ||
+        !autoArmed ||
+        !automatic ||
+        loading ||
+        disposed ||
+        refreshRequired ||
+        !host.isConnected
+      ) {
+        return;
+      }
+      autoTimer = setTimeout(() => {
+        autoTimer = 0;
+        if (!autoArmed || !automatic || loading || disposed || refreshRequired || !host.isConnected)
+          return;
+        const peek = getPeekCard();
+        if (!peek || !isPeekWithinTriggerZone(peek)) return;
+        disarmAuto();
+        void expand({ manual: false });
+      }, 260);
     };
 
     const observePeek = () => {
@@ -805,17 +866,24 @@ const bootCloudInkClient = () => {
       if (!peek) return;
       observer = new IntersectionObserver(
         (entries) => {
+          const entry = entries[entries.length - 1];
+          if (!entry) return;
+          const rect = entry.boundingClientRect;
+          const visible = rect.top < window.innerHeight && rect.bottom > 0;
+          if (visible) peekWasVisibleSinceDisarm = true;
+          else if (peekWasVisibleSinceDisarm) peekExitedSinceDisarm = true;
           if (
-            autoReady &&
+            autoArmed &&
             automatic &&
             !loading &&
             !refreshRequired &&
-            entries.some((entry) => entry.isIntersecting)
+            entry.isIntersecting &&
+            isPeekWithinTriggerZone(peek)
           ) {
-            void expand({ manual: false });
+            scheduleAutoExpand();
           }
         },
-        { rootMargin: '200px 0px' },
+        { rootMargin: '0px 0px -5% 0px', threshold: [0, 0.1, 0.25, 0.5, 1] },
       );
       observer.observe(peek);
     };
@@ -828,7 +896,27 @@ const bootCloudInkClient = () => {
       });
     };
 
-    async function expand({ manual = false, instant = false } = {}) {
+    const captureViewportAnchor = () => {
+      const cards = getCards().filter((card) => !card.classList.contains('shorts-peek'));
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect();
+        if (rect.bottom > 8) return { el: card, top: rect.top };
+      }
+      return null;
+    };
+
+    const restoreViewportAnchor = (anchor) => {
+      if (!anchor || !anchor.el.isConnected) return;
+      const delta = anchor.el.getBoundingClientRect().top - anchor.top;
+      if (Math.abs(delta) > 0.5) {
+        suppressScrollUntil = performance.now() + 120;
+        window.scrollBy(0, delta);
+        armAnchorY = window.scrollY;
+        lastScrollY = window.scrollY;
+      }
+    };
+
+    async function expand({ manual = false, instant = false, allowChain = false } = {}) {
       if (refreshRequired) {
         if (manual) location.reload();
         return false;
@@ -859,15 +947,18 @@ const bootCloudInkClient = () => {
             ),
           };
 
+      cancelPendingAuto();
+      if (!allowChain) disarmAuto();
       loading = true;
       automatic = true;
       observer?.disconnect();
       expandBtn?.setAttribute('aria-busy', 'true');
-      if (expandBtn) expandBtn.disabled = true;
+      expandBtn?.setAttribute('aria-disabled', 'true');
       if (status) status.textContent = '正在加载更多短记…';
 
       let changed = false;
       let animPromise = Promise.resolve();
+      const anchor = instant || allowChain ? null : captureViewportAnchor();
       const neededNewCards =
         typeof plan.neededNewCards === 'number'
           ? plan.neededNewCards
@@ -909,11 +1000,13 @@ const bootCloudInkClient = () => {
         animPromise = peek ? unpeekCard(peek, instant) : Promise.resolve();
         if (fragment.childNodes.length) feed.append(fragment);
         if (nextPeek) await ensurePeekFit();
+        restoreViewportAnchor(anchor);
         if (addedFull.some((card) => card.querySelector('pre code'))) {
           void reader?.activate?.();
         }
         changed = Boolean(peek || addedFull.length || nextPeek);
         await animPromise;
+        restoreViewportAnchor(anchor);
       } catch {
         if (!disposed && host.isConnected) {
           automatic = false;
@@ -924,10 +1017,12 @@ const bootCloudInkClient = () => {
       } finally {
         loading = false;
         expandBtn?.removeAttribute('aria-busy');
+        expandBtn?.removeAttribute('aria-disabled');
         if (!disposed && host.isConnected) {
+          if (!allowChain) disarmAuto();
           syncControls();
           if (changed) snapshotToCache();
-          if (!refreshRequired && getPeekCard()) scheduleObservePeek();
+          if (!allowChain && !refreshRequired && getPeekCard()) scheduleObservePeek();
         }
       }
       return changed;
@@ -959,11 +1054,15 @@ const bootCloudInkClient = () => {
       ) {
         if (start - 1 + getFullCount() >= total && !getPeekCard()) break;
         guard++;
-        const ok = await expand({ manual: false, instant: true });
+        const ok = await expand({ manual: false, instant: true, allowChain: true });
         if (!ok) break;
         found = findTarget();
       }
-      if (!found || disposed || !host.isConnected) return;
+      if (!found || disposed || !host.isConnected) {
+        disarmAuto();
+        if (!refreshRequired && getPeekCard()) scheduleObservePeek();
+        return;
+      }
       if (found.legacy) {
         const canonical = new URL(location.href);
         canonical.hash = found.el.id;
@@ -971,8 +1070,11 @@ const bootCloudInkClient = () => {
       }
       requestAnimationFrame(() => {
         if (disposed || !found.el.isConnected) return;
+        suppressScrollUntil = performance.now() + 120;
         found.el.scrollIntoView({ behavior: 'instant', block: 'start' });
         found.el.focus({ preventScroll: true });
+        disarmAuto();
+        if (!refreshRequired && getPeekCard()) scheduleObservePeek();
       });
     };
 
@@ -995,20 +1097,33 @@ const bootCloudInkClient = () => {
         guard < Math.ceil(total / batchSize) + 2
       ) {
         guard++;
-        const ok = await expand({ manual: false, instant: true });
+        const ok = await expand({ manual: false, instant: true, allowChain: true });
         if (!ok) break;
       }
       if (!visit && Number.isFinite(saved.scrollY) && saved.scrollY > 0) {
         requestAnimationFrame(() => {
-          if (!disposed) window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+          if (disposed) return;
+          suppressScrollUntil = performance.now() + 120;
+          window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+          disarmAuto();
+          if (!refreshRequired && getPeekCard()) scheduleObservePeek();
         });
+      } else {
+        disarmAuto();
       }
+    };
+
+    const onManualIntent = () => {
+      cancelPendingAuto();
+      warmNextBatch();
     };
 
     const onExpandClick = (event) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return;
       event.preventDefault();
+      if (loading) return;
+      disarmAuto();
       void expand({ manual: true });
     };
 
@@ -1016,33 +1131,74 @@ const bootCloudInkClient = () => {
       const peek = event.target.closest?.('.short-card.shorts-peek');
       if (!peek || !feed.contains(peek)) return;
       event.preventDefault();
+      if (loading) return;
+      disarmAuto();
       void expand({ manual: true });
     };
 
     const onFeedWarm = (event) => {
-      if (event.target.closest?.('.short-card.shorts-peek')) warmNextBatch();
-    };
-
-    const armAutoExpand = () => {
-      if (disposed || !host.isConnected) return;
-      const wasReady = autoReady;
-      autoReady = true;
-      if (!wasReady && automatic && !loading && !refreshRequired) {
-        const peek = getPeekCard();
-        if (peek && isPeekWithinTriggerZone(peek)) {
-          void expand({ manual: false });
-        }
-      }
+      if (event.target.closest?.('.short-card.shorts-peek')) onManualIntent();
     };
 
     const onScroll = () => {
       if (disposed || !host.isConnected) return;
-      if (window.scrollY > 0) armAutoExpand();
+      const currentY = window.scrollY;
+      const scrolledDown = currentY > lastScrollY + 0.5;
+      lastScrollY = currentY;
       saveState();
+      if (performance.now() < suppressScrollUntil) {
+        armAnchorY = currentY;
+        return;
+      }
+      if (loading || refreshRequired) return;
+      const peek = getPeekCard();
+      if (peek) {
+        const rect = peek.getBoundingClientRect();
+        const visible = rect.top < window.innerHeight && rect.bottom > 0;
+        if (visible) peekWasVisibleSinceDisarm = true;
+        else if (peekWasVisibleSinceDisarm) peekExitedSinceDisarm = true;
+      }
+      if (!scrolledDown) return;
+      if (!autoArmed) {
+        const peekEnteredFromBelow = Boolean(
+          peekStartedBelow && peek && peek.getBoundingClientRect().top < window.innerHeight,
+        );
+        const canRearm = reader?.shouldRearmShortAuto
+          ? reader.shouldRearmShortAuto({
+              scrollY: currentY,
+              armAnchorY,
+              viewportHeight: window.innerHeight,
+              peekExited: peekExitedSinceDisarm,
+              peekEnteredFromBelow,
+            })
+          : currentY - armAnchorY >= Math.max(160, Math.round(window.innerHeight * 0.45));
+        if (canRearm) {
+          autoArmed = true;
+        }
+      }
+      if (autoArmed && automatic && peek && isPeekWithinTriggerZone(peek)) {
+        scheduleAutoExpand();
+      }
     };
 
     const onWheel = (event) => {
-      if (event.deltaY > 0) armAutoExpand();
+      if (disposed || !host.isConnected || loading || refreshRequired || !automatic) return;
+      if (event.deltaY <= 0) {
+        wheelDownAccum = 0;
+        return;
+      }
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      if (window.scrollY < maxScrollY - 12) {
+        wheelDownAccum = 0;
+        return;
+      }
+      const peek = getPeekCard();
+      if (!peek || !isPeekWithinTriggerZone(peek)) return;
+      wheelDownAccum += event.deltaY;
+      if (wheelDownAccum >= 120) {
+        disarmAuto();
+        void expand({ manual: false });
+      }
     };
 
     const onKeyDown = (event) => {
@@ -1051,16 +1207,23 @@ const bootCloudInkClient = () => {
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
+        loading ||
+        refreshRequired ||
+        !automatic ||
         event.target?.closest?.('input,textarea,select,[contenteditable],dialog[open]')
       )
         return;
       if (
         event.key === 'PageDown' ||
-        event.key === 'ArrowDown' ||
         event.key === 'End' ||
         (event.key === ' ' && !event.shiftKey)
       ) {
-        armAutoExpand();
+        const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const peek = getPeekCard();
+        if (window.scrollY >= maxScrollY - 12 && peek && isPeekWithinTriggerZone(peek)) {
+          disarmAuto();
+          void expand({ manual: false });
+        }
       }
     };
 
@@ -1076,14 +1239,15 @@ const bootCloudInkClient = () => {
 
     const onVisitStart = () => {
       if (disposed || !host.isConnected) return;
+      cancelPendingAuto();
       settleSprings();
       snapshotToCache();
     };
 
     expandBtn?.addEventListener('click', onExpandClick);
-    expandBtn?.addEventListener('pointerenter', warmNextBatch, { passive: true });
-    expandBtn?.addEventListener('pointerdown', warmNextBatch, { passive: true });
-    expandBtn?.addEventListener('touchstart', warmNextBatch, { passive: true });
+    expandBtn?.addEventListener('pointerenter', onManualIntent, { passive: true });
+    expandBtn?.addEventListener('pointerdown', onManualIntent, { passive: true });
+    expandBtn?.addEventListener('touchstart', onManualIntent, { passive: true });
     feed.addEventListener('click', onFeedClick);
     feed.addEventListener('pointerenter', onFeedWarm, { passive: true, capture: true });
     feed.addEventListener('pointerdown', onFeedWarm, { passive: true, capture: true });
@@ -1106,20 +1270,22 @@ const bootCloudInkClient = () => {
         await restoreSavedBatches();
       }
       if (!disposed && host.isConnected && getPeekCard()) {
+        disarmAuto();
         scheduleObservePeek();
       }
     })();
 
     cleanupFunctions.push(() => {
       disposed = true;
+      cancelPendingAuto();
       cancelAnimationFrame(observeFrame);
       settleSprings();
       request?.abort();
       observer?.disconnect();
       expandBtn?.removeEventListener('click', onExpandClick);
-      expandBtn?.removeEventListener('pointerenter', warmNextBatch);
-      expandBtn?.removeEventListener('pointerdown', warmNextBatch);
-      expandBtn?.removeEventListener('touchstart', warmNextBatch);
+      expandBtn?.removeEventListener('pointerenter', onManualIntent);
+      expandBtn?.removeEventListener('pointerdown', onManualIntent);
+      expandBtn?.removeEventListener('touchstart', onManualIntent);
       feed.removeEventListener('click', onFeedClick);
       feed.removeEventListener('pointerenter', onFeedWarm, true);
       feed.removeEventListener('pointerdown', onFeedWarm, true);
@@ -1247,12 +1413,8 @@ const bootCloudInkClient = () => {
       if (!media.parentElement.classList.contains('reader-zoom-frame')) {
         const frame = document.createElement('span');
         frame.className = 'reader-zoom-frame';
-        const badge = document.createElement('span');
-        badge.className = 'reader-zoom-badge';
-        badge.setAttribute('aria-hidden', 'true');
-        badge.dataset.label = t('放大', 'Enlarge');
         media.before(frame);
-        frame.append(media, badge);
+        frame.append(media);
       }
       const open = () => {
         const content = document.createElement('figure');

@@ -211,6 +211,8 @@ const POSTS = [
       '> 优秀的中文排版应当让人忘记排版的存在，引用文字保持端正清晰，仅在行内保留语义强调。\n\n## 1. 滚动平铺式工作流\n\n探讨滚动平铺式窗口管理器的日常配置、KDL 语法结构，以及面向中文长文阅读的精细排版实践。',
     bodyHtml: `
 <blockquote><p>优秀的中文排版应当让人忘记排版的存在，引用文字保持端正清晰，仅在行内保留语义强调。<em>—— 中文排版需求（W3C CLREQ）</em></p></blockquote>
+<p>配图点击可直接弹出大图灯箱预览，默认画面保持干净，不再额外叠加角标：</p>
+<p><img src="/editorial-botanical.webp" alt="编辑部植物线稿插画" width="150" height="174"></p>
 <p>以下是一段带有 <code>language-kdl</code> 标记的配置示例，用于验证未内置语言不会触发控制台警告，且行号列与代码行严格对齐：</p>
 <pre><code class="language-kdl">layout {\n${SAMPLE_KDL_CODE}\n}</code></pre>
 ${LONG_HEADINGS}`,
@@ -267,6 +269,7 @@ const SHORTS = [
     changed: false,
     etag: 'short-etag-1',
     text: '秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。顺便记下一条体会：柔和的对比度比纯粹的黑白更耐看，长时间阅读不容易视觉疲劳。',
+    html: '<p>秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。顺便记下一条体会：柔和的对比度比纯粹的黑白更耐看，长时间阅读不容易视觉疲劳。</p><p>在手机端小屏阅读时，段落与段间距的呼吸感尤其重要。每张短记卡片都像一张独立的手账便签，不需要塞满整屏，但要有足够的留白让视线自然停顿。</p>',
   },
   {
     slug: '2026-10-15-morning',
@@ -275,6 +278,7 @@ const SHORTS = [
     changed: false,
     etag: 'short-etag-2',
     text: '好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。',
+    html: '<p>好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。</p><p>把复杂留在后台构建与边缘缓存里，把克制留给前台读者：无多余角标、无突兀跳动，翻页与展开都跟着手势的节奏慢慢发生。</p>',
   },
   {
     slug: '2026-10-12-afternoon',
@@ -283,6 +287,7 @@ const SHORTS = [
     changed: false,
     etag: 'short-etag-3',
     text: '下午把站点的静态资源链路完整梳理了一遍。去掉冗余的同步脚本阻塞之后，文章首屏和短记切换都轻快了许多，连带着翻看旧笔记的心情也变得松弛下来。',
+    html: '<p>下午把站点的静态资源链路完整梳理了一遍。去掉冗余的同步脚本阻塞之后，文章首屏和短记切换都轻快了许多，连带着翻看旧笔记的心情也变得松弛下来。</p><p>等这一批细节验证完毕，再继续补齐几篇关于边缘缓存和字体子集化的长文记录。</p>',
   },
   {
     slug: '2026-10-08-night',
@@ -417,7 +422,7 @@ function homeContext() {
   return `${authorContext(true)}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link plain-button" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>${entries}</section><a class="panel archive-shortcut" href="/archive/">${ICONS.archive}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>`;
 }
 
-function renderShell(pageKind, title, body, context) {
+function renderShell(pageKind, title, body, context, extraHead = '') {
   const themeBootstrap = readText('assets/theme.js');
   const iconUrl = activeSiteIconUrl();
   const iconType = iconUrl.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
@@ -426,6 +431,7 @@ function renderShell(pageKind, title, body, context) {
   const codeStyle = body.includes('<pre><code')
     ? '\n  <link rel="stylesheet" media="print" data-reader-style="code" data-reader-async="style" href="/reader-assets/code.css">'
     : '';
+  const extraHeadLine = extraHead ? `\n  ${extraHead}` : '';
   return `<!doctype html>
 <html lang="zh-CN" data-palette="${palette}" data-reading-font="${readingFont}">
 <head>
@@ -434,7 +440,7 @@ function renderShell(pageKind, title, body, context) {
   <meta name="description" content="${escapeHtml(SITE.description)}">
   <title>${escapeHtml(title)}</title>
   <link rel="stylesheet" href="/styles.css">
-  <link id="reader-font-styles" rel="stylesheet" media="print" data-reader-async="style" href="/reader-assets/editorial-font.css">${codeStyle}
+  <link id="reader-font-styles" rel="stylesheet" media="print" data-reader-async="style" href="/reader-assets/editorial-font.css">${codeStyle}${extraHeadLine}
   <link rel="icon" type="${iconType}" href="${iconUrl}">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
@@ -451,8 +457,8 @@ function renderShell(pageKind, title, body, context) {
     <header class="site-header reader-header">
       <p class="reader-site-heading" title="${escapeHtml(SITE.title)}">${escapeHtml(SITE.title)}</p>
       <div class="reader-tools">
-        <button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-        <button id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button>
+        <button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
+        <button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button>
       </div>
     </header>
     <main id="swup" class="blog-layout" data-palette="${palette}" data-site-icon="${iconUrl}" data-page="${pageKind}" tabindex="-1">
@@ -537,12 +543,13 @@ function renderShortsPage(pageNumber = 1) {
     const peek = visible[fullEnd];
     items += `<article class="short-card shorts-peek" id="note:${peek.slug}" tabindex="-1" data-shorts-peek="true" aria-hidden="true"><time class="short-time" datetime="${peek.date}">${peek.date}</time><div class="short-body" inert>${cardBody(peek)}</div></article>`;
   }
+  const prevHref = page === 2 ? '/shorts/' : `/shorts/page/${page - 1}/`;
   const previous =
     page > 1
-      ? `<a class="plain-button shorts-page-link" href="${page === 2 ? '/shorts/' : `/shorts/page/${page - 1}/`}">← 上一页</a>`
+      ? `<a class="plain-button shorts-page-link" href="${prevHref}" rel="prev">← 上一页</a>`
       : '';
   const next = hasPeek
-    ? `<a class="plain-button shorts-page-link" id="shorts-list-next" data-shorts-next-link="true" href="/shorts/page/${page + 1}/" data-no-swup>下一页 →</a>`
+    ? `<a class="plain-button shorts-page-link" id="shorts-list-next" data-shorts-next-link="true" href="/shorts/page/${page + 1}/" rel="next" data-no-swup>下一页 →</a>`
     : '';
   const expandWrap = hasPeek
     ? `<div class="shorts-expand-wrap" hidden><button type="button" class="plain-button shorts-expand-btn" id="shorts-expand-btn" aria-expanded="false" aria-controls="shorts-feed">展开更多</button></div>`
@@ -555,9 +562,15 @@ function renderShortsPage(pageNumber = 1) {
     total === 0
       ? `<div class="shorts-feed" id="shorts-feed"><p class="shorts-empty">还没有短记，去写第一条吧。</p></div>`
       : `<div class="shorts-feed" id="shorts-feed">${items}</div>${expandWrap}${pagination}`;
+  const headLinks = [
+    page > 1 ? `<link rel="prev" href="${prevHref}">` : '',
+    hasPeek ? `<link rel="next" href="/shorts/page/${page + 1}/">` : '',
+  ]
+    .filter(Boolean)
+    .join('');
   const countMarkup = total > 0 ? `<p class="shorts-count">共 ${total} 条</p>` : '';
   const body = `<div class="shorts-layout" data-shorts-revision="${revision}" data-shorts-start="${total > 0 ? start + 1 : 0}" data-shorts-end="${fullEnd}" data-shorts-total="${total}" data-shorts-batch="${SHORTS_PER_PAGE}"><header class="blog-section-heading shorts-heading"><h1 id="shorts-title">短记</h1>${countMarkup}</header>${contents}</div>`;
-  return renderShell('shorts', `短记 · ${SITE.title}`, body, authorContext(true));
+  return renderShell('shorts', `短记 · ${SITE.title}`, body, authorContext(true), headLinks);
 }
 
 function renderArchivePage() {
@@ -1091,11 +1104,18 @@ const server = http.createServer(async (req, res) => {
       return res.end(renderShortsPage(1));
     }
     const shortsPageMatch = reqPath.match(/^\/shorts\/page\/([1-9]\d*)(?:\/|\/index\.html)?$/);
-    if (shortsPageMatch && Number(shortsPageMatch[1]) >= 2) {
-      const html = renderShortsPage(Number(shortsPageMatch[1]));
-      if (html) {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-        return res.end(html);
+    if (shortsPageMatch) {
+      const pageNum = Number(shortsPageMatch[1]);
+      if (pageNum === 1) {
+        res.writeHead(301, { location: '/shorts/' });
+        return res.end();
+      }
+      if (pageNum >= 2) {
+        const html = renderShortsPage(pageNum);
+        if (html) {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+          return res.end(html);
+        }
       }
     }
     if (reqPath === '/archive' || reqPath === '/archive/') {

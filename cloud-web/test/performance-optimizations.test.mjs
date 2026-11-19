@@ -1158,22 +1158,98 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
     needsFetch: true,
     complete: false,
   });
+
+  // S1/S2: one-shot re-arming requires ~half-screen downward scroll or peek exit/re-entry
+  const { shouldRearmShortAuto, isShortPeekInTriggerZone } = window.CloudInkReader;
+  assert.equal(shouldRearmShortAuto({ scrollY: 192, armAnchorY: 0, viewportHeight: 844 }), false);
+  assert.equal(shouldRearmShortAuto({ scrollY: 320, armAnchorY: 0, viewportHeight: 998 }), false);
+  assert.equal(shouldRearmShortAuto({ scrollY: 380, armAnchorY: 0, viewportHeight: 844 }), true);
+  assert.equal(shouldRearmShortAuto({ scrollY: 450, armAnchorY: 0, viewportHeight: 998 }), true);
+  assert.equal(shouldRearmShortAuto({ scrollY: 400, armAnchorY: 500, viewportHeight: 844 }), false);
+  assert.equal(
+    shouldRearmShortAuto({
+      scrollY: 224,
+      armAnchorY: 200,
+      viewportHeight: 844,
+      peekExited: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRearmShortAuto({
+      scrollY: 210,
+      armAnchorY: 200,
+      viewportHeight: 844,
+      peekExited: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldRearmShortAuto({
+      scrollY: 160,
+      armAnchorY: 0,
+      viewportHeight: 844,
+      peekEnteredFromBelow: true,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldRearmShortAuto({
+      scrollY: 120,
+      armAnchorY: 0,
+      viewportHeight: 844,
+      peekEnteredFromBelow: true,
+    }),
+    false,
+  );
+
+  // S2: peek trigger zone locked on peek card top crossing 95% of viewport height
+  assert.equal(
+    isShortPeekInTriggerZone({ peekTop: 955, peekBottom: 1075, viewportHeight: 998 }),
+    false,
+  );
+  assert.equal(
+    isShortPeekInTriggerZone({ peekTop: 948, peekBottom: 1068, viewportHeight: 998 }),
+    true,
+  );
+  assert.equal(
+    isShortPeekInTriggerZone({ peekTop: 810, peekBottom: 925, viewportHeight: 844 }),
+    false,
+  );
+  assert.equal(
+    isShortPeekInTriggerZone({ peekTop: 802, peekBottom: 917, viewportHeight: 844 }),
+    true,
+  );
+  assert.equal(
+    isShortPeekInTriggerZone({ peekTop: -200, peekBottom: -80, viewportHeight: 844 }),
+    false,
+  );
 });
 
-test('shorts incremental pagination contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
-  const [renderRs, libRs, bundleRs, publishingTs, workerIndex, workerReader, homeCss, clientJs] =
-    await Promise.all([
-      readFile('crates/blog-core/src/render.rs', 'utf8'),
-      readFile('crates/blog-core/src/lib.rs', 'utf8'),
-      readFile('crates/blog-core/src/bundle.rs', 'utf8'),
-      readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
-      readFile('cloud-web/src/index.ts', 'utf8'),
-      readFile('cloud-web/src/reader.ts', 'utf8'),
-      readFile('crates/blog-core/src/assets/home.css', 'utf8'),
-      readFile('crates/blog-core/src/assets/client.js', 'utf8'),
-    ]);
+test('shorts incremental pagination and lightbox badge removal contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
+  const [
+    renderRs,
+    libRs,
+    bundleRs,
+    publishingTs,
+    workerIndex,
+    workerReader,
+    homeCss,
+    readerToolsCss,
+    clientJs,
+  ] = await Promise.all([
+    readFile('crates/blog-core/src/render.rs', 'utf8'),
+    readFile('crates/blog-core/src/lib.rs', 'utf8'),
+    readFile('crates/blog-core/src/bundle.rs', 'utf8'),
+    readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
+    readFile('cloud-web/src/index.ts', 'utf8'),
+    readFile('cloud-web/src/reader.ts', 'utf8'),
+    readFile('crates/blog-core/src/assets/home.css', 'utf8'),
+    readFile('crates/blog-core/src/assets/reader-tools.css', 'utf8'),
+    readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+  ]);
 
-  // Rust rendering & static page generation
+  // Rust rendering & static page generation (including S3 rel=prev/next & head links)
   assert.match(renderRs, /pub const SHORTS_PER_PAGE: usize = 3;/);
   assert.match(renderRs, /pub fn render_shorts_page\(/);
   assert.match(renderRs, /class="short-card shorts-peek"/);
@@ -1184,29 +1260,45 @@ test('shorts incremental pagination contracts stay aligned across Rust, Worker, 
   );
   assert.match(
     renderRs,
-    /id="shorts-list-next" href="\/shorts\/page\/\{\}\/" data-shorts-next-link="true" data-no-swup/,
+    /id="shorts-list-next" href="\/shorts\/page\/\{\}\/" rel="next" data-shorts-next-link="true" data-no-swup/,
   );
+  assert.match(renderRs, /rel="prev">← 上一页<\/a>/);
+  assert.match(renderRs, /<link rel="next" href="\/shorts\/page\/\{\}\/">/);
+  assert.match(renderRs, /<link rel="prev" href="\{prev_href\}">/);
   assert.match(libRs, /render::SHORTS_PER_PAGE/);
   assert.match(libRs, /shorts_dir\.join\("page"\)/);
   assert.match(bundleRs, /render::SHORTS_PER_PAGE/);
   assert.match(bundleRs, /shorts\/page\/\{page\}\/index\.html/);
 
-  // Browser publishing & Worker routing/sitemap
+  // Browser publishing & Worker routing/sitemap (including S3 /shorts/page/1/ -> /shorts/ 301)
   assert.match(publishingTs, /shorts\/page\/\$\{i \+ 2\}\/index\.html/);
-  assert.match(workerIndex, /shorts\/page\/\(\[1-9\]\\d\*\)/);
+  assert.ok(workerIndex.includes('shorts\\/page\\/([1-9]\\d*)'));
+  assert.ok(workerIndex.includes('/^\\/shorts\\/page\\/1(?:\\/|\\/index\\.html)?$/'));
+  assert.match(workerIndex, /Response\.redirect\(canonical\.toString\(\), 301\)/);
   assert.match(workerReader, /\(\?:post\|shorts\)\\\/page\\\/\[1-9\]\\d\*\\\/index\\\.html/);
 
-  // Scoped shorts- CSS & reduced-motion support
+  // Scoped shorts- CSS, strict <=120px peek cap, overflow-anchor, & reduced-motion support
   assert.match(homeCss, /\.short-card\.shorts-peek\s*\{/);
-  assert.match(homeCss, /max-height:\s*var\(--shorts-peek-height,\s*120px\)/);
+  assert.match(homeCss, /box-sizing:\s*border-box/);
+  assert.match(homeCss, /max-height:\s*min\(var\(--shorts-peek-height,\s*120px\),\s*120px\)/);
   assert.match(homeCss, /pointer-events:\s*none/);
   assert.match(homeCss, /var\(--surface\)/);
   assert.match(homeCss, /prefers-reduced-motion:\s*reduce/);
 
-  // Client unified expand, deep link auto-expansion, and /shorts/ scroll restoration
+  // S1/S2: Client one-shot arming, peek-card 95% rootMargin, anchor pinning, deep-link chaining isolation
   assert.match(clientJs, /function mountShortsFeed\(visit\)/);
   assert.match(clientJs, /mountShortsFeed\(visit\);/);
-  assert.match(clientJs, /rootMargin:\s*'200px 0px'/);
+  assert.match(clientJs, /rootMargin:\s*'0px 0px -5% 0px'/);
+  assert.doesNotMatch(clientJs, /rootMargin:\s*'200px 0px'/);
+  assert.match(clientJs, /const disarmAuto = \(\) =>/);
+  assert.match(clientJs, /allowChain = false/);
+  assert.match(clientJs, /captureViewportAnchor/);
   assert.match(clientJs, /resolveShortDeepLink/);
   assert.match(clientJs, /\^\\\/shorts\\\/\(\?:page\\\/\[1-9\]\\d\*\\\/\)\?\$/);
+
+  // S5: Article image corner badge removed while .reader-zoom-frame and lightbox remain intact
+  assert.doesNotMatch(clientJs, /reader-zoom-badge/);
+  assert.doesNotMatch(readerToolsCss, /\.reader-zoom-badge/);
+  assert.match(clientJs, /frame\.className = 'reader-zoom-frame'/);
+  assert.match(readerToolsCss, /\.reader-zoom-frame\s*\{/);
 });

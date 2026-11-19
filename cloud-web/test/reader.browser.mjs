@@ -32,7 +32,8 @@ export async function verifyMediaPanels(browser, origin, path, output) {
       await page.goto(origin + path);
       const image = page.locator('.article-body img').first();
       await expect(image).toHaveAttribute('role', 'button');
-      await expect(page.locator('.reader-zoom-badge').first()).toBeVisible();
+      await expect(page.locator('.reader-zoom-frame').first()).toBeVisible();
+      await expect(page.locator('.reader-zoom-badge')).toHaveCount(0);
       await image.evaluate((img, url) => {
         img
           .closest('picture')

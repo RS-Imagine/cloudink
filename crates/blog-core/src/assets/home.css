@@ -1407,8 +1407,10 @@
 }
 .reader-shell .short-card.shorts-peek {
   position: relative;
+  box-sizing: border-box;
   overflow: hidden;
-  max-height: var(--shorts-peek-height, 120px);
+  overflow-anchor: none;
+  max-height: min(var(--shorts-peek-height, 120px), 120px);
   cursor: pointer;
   border-bottom-color: transparent;
 }
@@ -1438,7 +1440,9 @@
 }
 .reader-shell .short-card.shorts-expanding {
   position: relative;
+  box-sizing: border-box;
   overflow: hidden;
+  overflow-anchor: none;
 }
 .reader-shell .short-card.shorts-expanding::after {
   opacity: 0;
@@ -1455,6 +1459,10 @@
 .reader-shell .shorts-expand-btn {
   min-width: 124px;
   cursor: pointer;
+}
+.reader-shell .shorts-expand-btn[aria-disabled='true'] {
+  opacity: 0.72;
+  cursor: progress;
 }
 .reader-shell .shorts-pagination {
   padding: 16px 0 8px;

@@ -891,6 +891,9 @@
   const SHORTS_BATCH_SIZE = 3;
   const SHORTS_PEEK_MAX_HEIGHT = 120;
   const SHORTS_PEEK_MIN_HIDDEN = 56;
+  const SHORTS_AUTO_REARM_RATIO = 0.45;
+  const SHORTS_AUTO_REARM_MIN_PX = 160;
+  const SHORTS_PEEK_TRIGGER_RATIO = 0.95;
 
   function computeShortPeek(
     naturalHeight,
@@ -906,6 +909,45 @@
       return { shouldPeek: false, height: natural };
     }
     return { shouldPeek: true, height: exposed };
+  }
+
+  function shouldRearmShortAuto({
+    scrollY,
+    armAnchorY,
+    viewportHeight,
+    peekExited = false,
+    peekEnteredFromBelow = false,
+  }) {
+    if (
+      !Number.isFinite(scrollY) ||
+      !Number.isFinite(armAnchorY) ||
+      !Number.isFinite(viewportHeight) ||
+      viewportHeight <= 0
+    ) {
+      return false;
+    }
+    const delta = scrollY - armAnchorY;
+    if (delta <= 0) return false;
+    if (peekExited) return delta >= 24;
+    if (peekEnteredFromBelow) return delta >= SHORTS_AUTO_REARM_MIN_PX;
+    const threshold = Math.max(
+      SHORTS_AUTO_REARM_MIN_PX,
+      Math.round(viewportHeight * SHORTS_AUTO_REARM_RATIO),
+    );
+    return delta >= threshold;
+  }
+
+  function isShortPeekInTriggerZone({ peekTop, peekBottom, viewportHeight }) {
+    if (
+      !Number.isFinite(peekTop) ||
+      !Number.isFinite(peekBottom) ||
+      !Number.isFinite(viewportHeight) ||
+      viewportHeight <= 0
+    ) {
+      return false;
+    }
+    const triggerLine = Math.round(viewportHeight * SHORTS_PEEK_TRIGGER_RATIO);
+    return peekBottom > 0 && peekTop <= triggerLine;
   }
 
   function planShortsPage(total, pageNumber = 1, batchSize = SHORTS_BATCH_SIZE) {
@@ -965,6 +1007,8 @@
     SHORTS_BATCH_SIZE,
     SHORTS_PEEK_MAX_HEIGHT,
     computeShortPeek,
+    shouldRearmShortAuto,
+    isShortPeekInTriggerZone,
     planShortsPage,
     planShortsExpand,
   });

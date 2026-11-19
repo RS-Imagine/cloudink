@@ -596,7 +596,7 @@ pub fn render_shorts_page(
     } else {
         let previous = if page_number > 1 {
             format!(
-                r#"<a class="plain-button shorts-page-link" href="{}">← 上一页</a>"#,
+                r#"<a class="plain-button shorts-page-link" href="{}" rel="prev">← 上一页</a>"#,
                 if page_number == 2 {
                     "/shorts/".into()
                 } else {
@@ -608,7 +608,7 @@ pub fn render_shorts_page(
         };
         let next = if has_peek {
             format!(
-                r#"<a class="plain-button shorts-page-link" id="shorts-list-next" href="/shorts/page/{}/" data-shorts-next-link="true" data-no-swup>下一页 →</a>"#,
+                r#"<a class="plain-button shorts-page-link" id="shorts-list-next" href="/shorts/page/{}/" rel="next" data-shorts-next-link="true" data-no-swup>下一页 →</a>"#,
                 page_number + 1
             )
         } else {
@@ -631,6 +631,21 @@ pub fn render_shorts_page(
             r#"<div class="shorts-feed" id="shorts-feed">{items}</div>{expand_wrap}{pagination}"#,
         )
     };
+    let mut extra_head = String::new();
+    if page_number > 1 {
+        let prev_href = if page_number == 2 {
+            "/shorts/".to_string()
+        } else {
+            format!("/shorts/page/{}/", page_number - 1)
+        };
+        extra_head.push_str(&format!(r#"<link rel="prev" href="{prev_href}">"#));
+    }
+    if has_peek {
+        extra_head.push_str(&format!(
+            r#"<link rel="next" href="/shorts/page/{}/">"#,
+            page_number + 1
+        ));
+    }
     let count_markup = if total > 0 {
         format!(r#"<p class="shorts-count">共 {total} 条</p>"#)
     } else {
@@ -647,7 +662,7 @@ pub fn render_shorts_page(
         &config.title,
         &config.description,
         &body,
-        "",
+        &extra_head,
         css_hash,
         config,
         "shorts",
@@ -915,7 +930,7 @@ fn page(
     <p class="reader-sidebar-note">{subtitle}</p>
   </aside>
   <div class="wrapper reader-layout">
-    <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button></div></header>
+    <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button></div></header>
     <main id="swup" class="blog-layout" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
       <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>

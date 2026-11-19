@@ -106,8 +106,11 @@ function publicPath(path: string): string | null {
   if (/^\/archive(?:\/|\/index.html)?$/.test(path)) return 'archive/index.html';
   if (/^\/shorts(?:\/|\/index.html)?$/.test(path)) return 'shorts/index.html';
   const shortsListPage = path.match(/^\/shorts\/page\/([1-9]\d*)(?:\/|\/index.html)?$/);
-  if (shortsListPage && Number(shortsListPage[1]) >= 2)
-    return `shorts/page/${shortsListPage[1]}/index.html`;
+  if (shortsListPage) {
+    const pageNum = Number(shortsListPage[1]);
+    if (pageNum === 1) return 'shorts/index.html';
+    if (pageNum >= 2) return `shorts/page/${pageNum}/index.html`;
+  }
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
   if (post) return `posts/${post[1]}/index.html`;
   return null;
@@ -155,6 +158,11 @@ const web = {
             ? REVALIDATE_CACHE_CONTROL
             : ASSET_CACHE_CONTROL;
         return staticAsset(request, env, path, 200, false, policy);
+      }
+      if (/^\/shorts\/page\/1(?:\/|\/index\.html)?$/.test(path)) {
+        const canonical = new URL(url);
+        canonical.pathname = '/shorts/';
+        return protect(Response.redirect(canonical.toString(), 301));
       }
       const key = publicPath(path);
       const pointerKey = cacheKey(request, 'pointer');
