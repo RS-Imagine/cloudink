@@ -254,6 +254,16 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.mobile-toc-btn')).toBeFocused();
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
   await page.locator('.mobile-toc-btn').click();
+  const firstHeadingLink = page.locator('.toc-link').first();
+  await expect(firstHeadingLink).toBeFocused();
+  await expect
+    .poll(() =>
+      firstHeadingLink.evaluate((link) => {
+        const box = link.getBoundingClientRect();
+        return link.contains(document.elementFromPoint(box.left + 10, box.top + box.height / 2));
+      }),
+    )
+    .toBe(true);
   await page.locator('.toc-link').last().click();
   await expect(page.locator('.article-body h2').last()).toBeFocused();
   await expect(page.locator('.mobile-toc-btn')).toHaveAttribute('aria-expanded', 'false');

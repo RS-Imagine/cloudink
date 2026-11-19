@@ -1380,6 +1380,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileTocBtn.setAttribute('aria-expanded', 'true');
             tocDrawerOverlay.classList.add('active');
             tocSheet?.open();
+            tocContainer.scrollTop = 0;
             tocContainer.querySelector('a')?.focus({ preventScroll: true });
           }
         });
