@@ -53,6 +53,34 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     }
   });
   const contentCache = new Map();
+  const fullShortCache = new Map();
+  const shortRequests = new Map();
+  function cacheFullShort(slug, data) {
+    fullShortCache.delete(slug);
+    fullShortCache.set(slug, { draft: structuredClone(data.draft), etag: data.etag || null });
+    if (fullShortCache.size > 50) fullShortCache.delete(fullShortCache.keys().next().value);
+    if (typeof data.draft?.body_markdown === 'string')
+      contentCache.set(slug, data.draft.body_markdown);
+  }
+  function fetchShort(slug) {
+    if (!shortRequests.has(slug))
+      shortRequests.set(
+        slug,
+        api(`/api/shorts/${encodeURIComponent(slug)}`)
+          .then((data) => {
+            cacheFullShort(slug, data);
+            return data;
+          })
+          .finally(() => shortRequests.delete(slug)),
+      );
+    return shortRequests.get(slug);
+  }
+  function prefetchShort(item) {
+    if (!item?.slug) return;
+    const cached = fullShortCache.get(item.slug);
+    if (cached && (!item.etag || cached.etag === item.etag)) return;
+    void fetchShort(item.slug).catch(() => {});
+  }
   function status(message, tone = '') {
     const el = $('short-status');
     el.textContent = message;
@@ -145,6 +173,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
             body: { etag: item.etag || '' },
           });
           contentCache.delete(item.slug);
+          fullShortCache.delete(item.slug);
           notice('短记已删除。', 'success');
           await load();
         });
@@ -164,6 +193,10 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
           openEditor(item);
         }
       });
+      const warm = () => prefetchShort(item);
+      card.addEventListener('pointerenter', warm, { passive: true });
+      bodyWrapper.addEventListener('focus', warm, { passive: true });
+      edit.addEventListener('focus', warm, { passive: true });
 
       const preview = document.createElement('p');
       preview.className = 'short-card-preview';
@@ -217,43 +250,62 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
     cursor = data.cursor;
-    for (const item of shorts) contentCache.set(item.slug, item.snippet || '');
+    for (const item of shorts) {
+      const full = fullShortCache.get(item.slug);
+      if (full && item.etag && full.etag && full.etag !== item.etag)
+        fullShortCache.delete(item.slug);
+      const validFull = fullShortCache.get(item.slug);
+      contentCache.set(
+        item.slug,
+        validFull ? validFull.draft.body_markdown || '' : item.snippet || '',
+      );
+    }
     render();
     more.hidden = !cursor;
   }
   async function openEditor(item = null) {
     if (!(await confirmDiscard())) return;
-    ++editorRevision;
-    editing = item ? { slug: item.slug, etag: item.etag || null } : null;
+    const revision = ++editorRevision;
+    const cached = item ? fullShortCache.get(item.slug) : null;
+    const cacheFresh = Boolean(cached && (!item.etag || !cached.etag || cached.etag === item.etag));
+    editing = item
+      ? { slug: item.slug, etag: (cacheFresh ? cached.etag : item.etag) || null }
+      : null;
     const target = editing;
-    $('short-date').value = item ? item.date : nowMinute();
-    // List snippets are truncated. Do not let them overwrite the full source or
-    // replace text the author starts typing while the read is still in flight.
-    $('short-body').value = '';
-    $('short-body').readOnly = $('short-date').readOnly = !!item;
-    $('short-save').disabled = $('short-publish').disabled = !!item;
+    $('short-date').value = cacheFresh
+      ? cached.draft.front_matter.date
+      : item
+        ? item.date
+        : nowMinute();
+    // List snippets are truncated. Only fill immediately when a verified full draft is cached.
+    $('short-body').value = cacheFresh ? cached.draft.body_markdown || '' : '';
+    const waiting = Boolean(item && !cacheFresh);
+    $('short-body').readOnly = $('short-date').readOnly = waiting;
+    $('short-save').disabled = $('short-publish').disabled = waiting;
     $('short-editor').hidden = false;
     window.CloudInkMotion.enter($('short-editor'), { kind: 'content' });
     savedEditorValue = editorValue();
     updateWordCount();
     if (item) {
-      api(`/api/shorts/${encodeURIComponent(item.slug)}`).then(
+      fetchShort(item.slug).then(
         (data) => {
           const body = data.draft.body_markdown || '';
-          contentCache.set(item.slug, body);
-          if (editing === target) {
-            $('short-date').value = data.draft.front_matter.date;
-            $('short-body').value = body;
-            editing.etag = data.etag;
-            savedEditorValue = editorValue();
-            $('short-body').readOnly = $('short-date').readOnly = false;
-            $('short-save').disabled = $('short-publish').disabled = false;
-            updateWordCount();
+          if (editing === target && revision === editorRevision) {
+            const changed = !cacheFresh || data.etag !== editing.etag;
+            if (changed && (waiting || !hasUnsavedChanges())) {
+              $('short-date').value = data.draft.front_matter.date;
+              $('short-body').value = body;
+              editing.etag = data.etag;
+              savedEditorValue = editorValue();
+              $('short-body').readOnly = $('short-date').readOnly = false;
+              $('short-save').disabled = $('short-publish').disabled = false;
+              updateWordCount();
+            }
           }
           render();
         },
         (error) => {
-          if (editing === target) status(error.message, 'error');
+          if (editing === target && waiting) status(error.message, 'error');
         },
       );
     }
@@ -313,6 +365,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         savedEditorValue = editorValue(draft);
         status('草稿已保存。', 'success');
       }
+      cacheFullShort(slug, { draft, etag: result.etag });
       await load();
     }),
   );
@@ -338,6 +391,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         method: 'PUT',
         body: { ...draft, etag: target?.etag || null },
       });
+      cacheFullShort(slug, { draft, etag: saved.etag });
       if (revision === editorRevision) {
         editing = { slug, etag: saved.etag };
         savedEditorValue = editorValue(draft);
@@ -360,5 +414,13 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     return true;
   }
   $('shorts').addEventListener('click', () => action('shorts', '正在打开…', show));
-  return { show, confirmDiscard, reset: closeEditor };
+  return {
+    show,
+    confirmDiscard,
+    reset() {
+      fullShortCache.clear();
+      shortRequests.clear();
+      closeEditor();
+    },
+  };
 }

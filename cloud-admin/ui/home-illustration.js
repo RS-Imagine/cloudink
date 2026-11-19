@@ -118,3 +118,5 @@ export function configureHomeIllustration({ api, notice }) {
     },
   };
 }
+
+export { configureSiteIcon, packPngIco } from './site-icon.js';

@@ -5,7 +5,6 @@ import { mountStudioShell } from './shell.js';
 import { feedback, confirmAction, mountEditorPanes } from './workflows.js';
 import { configureImages } from './images.js';
 import { configureShorts } from './shorts.js';
-import { configureSiteIcon } from './site-icon.js';
 import { configureMarkdownImport } from './markdown-import.js';
 import {
   engineTask,
@@ -174,11 +173,12 @@ async function startWorkspace({ focus = false } = {}) {
     booting = false;
   }
 }
-let illustrationPicker, illustrationLoader;
+let illustrationPicker, illustrationLoader, iconPicker;
 function loadIllustrationPicker() {
   illustrationLoader ||= import('/home-illustration.js')
     .then((module) => {
       illustrationPicker = module.configureHomeIllustration({ api, notice });
+      iconPicker = module.configureSiteIcon({ api, notice });
       return illustrationPicker;
     })
     .catch(() => {
@@ -187,11 +187,22 @@ function loadIllustrationPicker() {
     });
   return illustrationLoader;
 }
-const iconPicker = configureSiteIcon({ api, notice });
+function applySiteIcon(config) {
+  const key = config?.siteIcon || '';
+  const url = /^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(key)
+    ? '/site-icon/' + key.slice('uploads/icons/'.length)
+    : '/favicon.svg';
+  document.querySelectorAll('#app-view .brand-mark img, .studio-intro-mark').forEach((image) => {
+    image.src = url;
+  });
+  const favicon = document.querySelector('link[rel="icon"]');
+  favicon.href = url;
+  favicon.type = url.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
+}
 function applySiteAppearance(config) {
   const palette = config?.themePalette || 'ink';
   window.CloudInkTheme?.setPalette(palette);
-  iconPicker.apply(config);
+  applySiteIcon(config);
   if (site) {
     site.themePalette = palette;
     site.readingFont = config?.readingFont || 'serif';
@@ -1700,7 +1711,7 @@ $('settings').addEventListener('click', async () => {
     const [homePicker] = await Promise.all([loadIllustrationPicker(), loadBackup()]);
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
-    iconPicker.load(data.site);
+    iconPicker?.load(data.site);
     homePicker.load(data.site);
     $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
     $('site-form').elements.readingFont.value = data.site.readingFont || 'serif';
@@ -1762,7 +1773,7 @@ $('site-form').addEventListener('submit', (event) => {
     '正在保存…',
     async () => {
       await illustrationPicker?.ready();
-      await iconPicker.ready();
+      await iconPicker?.ready();
       const values = Object.fromEntries(new FormData(form));
       const data = await api('/api/settings', {
         method: 'PUT',
@@ -1777,7 +1788,7 @@ $('site-form').addEventListener('submit', (event) => {
 $('publish-settings').addEventListener('click', () =>
   action('publish-settings', '正在提交发布…', async () => {
     await illustrationPicker?.ready();
-    await iconPicker.ready();
+    await iconPicker?.ready();
     const values = Object.fromEntries(new FormData($('site-form')));
     const saved = await api('/api/settings', {
       method: 'PUT',
@@ -1798,9 +1809,9 @@ $('logout').addEventListener('click', async () => {
     doc = null;
     dirty = 0;
     savedVersion = 0;
-    iconPicker.load(null);
+    iconPicker?.load(null);
     illustrationPicker?.load(null);
-    iconPicker.apply(null);
+    applySiteIcon(null);
     showLogin({ focus: true });
   } catch (error) {
     notice(error.message);
@@ -1852,7 +1863,7 @@ function loadBackup() {
             input.value = '';
           $('site-form').elements.themePalette.value = result.site.themePalette || 'ink';
           $('site-form').elements.readingFont.value = result.site.readingFont || 'serif';
-          iconPicker.load(result.site);
+          iconPicker?.load(result.site);
           illustrationPicker?.load(result.site);
           applySiteAppearance(result.site);
           for (const [key, value] of Object.entries(result.site))

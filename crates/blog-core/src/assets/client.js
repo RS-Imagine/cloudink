@@ -264,6 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (searchModal.classList.contains('active')) renderSearch();
       }
     };
+    const warmSearch = () => {
+      if (!searchIndex && !searchLoading && !navigator.connection?.saveData) void loadSearch();
+    };
+    searchBtn.addEventListener('pointerenter', warmSearch, { passive: true });
+    searchBtn.addEventListener('focus', warmSearch, { passive: true });
     searchBtn.addEventListener('click', openSearch);
     searchInput.addEventListener('input', renderSearch);
     searchResults.addEventListener('click', (event) => {

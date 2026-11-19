@@ -34,7 +34,18 @@ const compiledAssets = new Set([
   '/manifest.webmanifest',
   '/sw.js',
 ]);
-function protect(response: Response, analytics = false): Response {
+const POINTER_TTL = 180;
+const PAGE_TTL = 604800;
+const DISCOVERY_TTL = 3600;
+const HTML_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=86400';
+const ASSET_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const REVALIDATE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
+function protect(
+  response: Response,
+  analytics = false,
+  cacheControl = REVALIDATE_CACHE_CONTROL,
+): Response {
   const headers = new Headers(response.headers);
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('Referrer-Policy', 'same-origin');
@@ -47,7 +58,7 @@ function protect(response: Response, analytics = false): Response {
     'Content-Security-Policy',
     `default-src 'self'; script-src 'self'${analyticsScripts}; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self'${analyticsConnections}; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
   );
-  headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  headers.set('Cache-Control', cacheControl);
   return new Response(response.body, { status: response.status, headers });
 }
 async function staticAsset(
@@ -56,6 +67,7 @@ async function staticAsset(
   path: string,
   status = 200,
   analytics = false,
+  cacheControl = REVALIDATE_CACHE_CONTROL,
 ): Promise<Response> {
   const url = new URL(request.url);
   url.pathname = path;
@@ -70,7 +82,11 @@ async function staticAsset(
     });
   } else if (status !== 200)
     response = new Response(response.body, { status, headers: response.headers });
-  return protect(await readerHtml(response, new URL(request.url)), analytics);
+  return protect(
+    await readerHtml(response, new URL(request.url)),
+    analytics,
+    status === 200 ? cacheControl : REVALIDATE_CACHE_CONTROL,
+  );
 }
 function publicPath(path: string): string | null {
   if (path === '/' || path === '/index.html') return 'index.html';
@@ -122,8 +138,14 @@ const web = {
         /^\/reader-assets\/(?:highlight\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif-sc-[a-z0-9-]+)\.woff2)$/.test(
           path,
         )
-      )
-        return staticAsset(request, env, path);
+      ) {
+        const policy = /^\/reader-assets\/fonts\/.+\.woff2$/.test(path)
+          ? IMMUTABLE_CACHE_CONTROL
+          : path === '/sw.js'
+            ? REVALIDATE_CACHE_CONTROL
+            : ASSET_CACHE_CONTROL;
+        return staticAsset(request, env, path, 200, false, policy);
+      }
       const key = publicPath(path);
       const pointerKey = cacheKey(request, 'pointer');
       const cachedPointer = await cacheRead(pointerKey);
@@ -136,7 +158,8 @@ const web = {
             pages?: Record<string, string>;
           }>()
         : null;
-      if (!cachedPointer && published) cacheWrite(ctx, pointerKey, Response.json(published), 30);
+      if (!cachedPointer && published)
+        cacheWrite(ctx, pointerKey, Response.json(published), POINTER_TTL);
       const id = published?.id || null;
       const pageVersion =
         key && published?.pages?.[key]
@@ -144,11 +167,14 @@ const web = {
           : id || 'initial';
       const pageKey = cacheKey(request, 'page', pageVersion);
       const cached = await cacheRead(pageKey);
-      if (cached)
+      if (cached) {
+        const client = clientResponse(cached, request, true);
         return protect(
-          clientResponse(cached, request, true),
+          client,
           /^[A-Za-z0-9]{1,64}$/.test(published?.clarityId || ''),
+          client.headers.get('Cache-Control') || HTML_CACHE_CONTROL,
         );
+      }
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
       if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
@@ -158,7 +184,7 @@ const web = {
           id,
           published?.pages,
         );
-        cacheWrite(ctx, pageKey, response, 300);
+        cacheWrite(ctx, pageKey, response, DISCOVERY_TTL);
         return clientResponse(response, request);
       }
       if (path === '/analytics.js') {
@@ -170,6 +196,7 @@ const web = {
             headers: { 'Content-Type': 'text/javascript; charset=utf-8' },
           }),
           analytics,
+          ASSET_CACHE_CONTROL,
         );
       }
       if (key && id) {
@@ -211,8 +238,9 @@ const web = {
               analytics,
             ),
             analytics,
+            key === '404.html' ? REVALIDATE_CACHE_CONTROL : HTML_CACHE_CONTROL,
           );
-          if (request.method === 'GET') cacheWrite(ctx, pageKey, response, 300);
+          if (request.method === 'GET') cacheWrite(ctx, pageKey, response, PAGE_TTL);
           return clientResponse(response, request);
         }
         // Initial login seeds private content but doesn't publish any pages.
@@ -245,11 +273,16 @@ const web = {
             headers: { 'Content-Type': 'application/json' },
           }),
         );
-      if (key === 'index.html') return staticAsset(request, env, '/');
-      if (key === 'about/index.html') return staticAsset(request, env, '/about/');
-      if (key === 'post/index.html') return staticAsset(request, env, '/post/');
-      if (key === 'shorts/index.html') return staticAsset(request, env, '/shorts/');
-      if (key === 'search_index.json') return staticAsset(request, env, '/search_index.json');
+      if (key === 'index.html')
+        return staticAsset(request, env, '/', 200, false, HTML_CACHE_CONTROL);
+      if (key === 'about/index.html')
+        return staticAsset(request, env, '/about/', 200, false, HTML_CACHE_CONTROL);
+      if (key === 'post/index.html')
+        return staticAsset(request, env, '/post/', 200, false, HTML_CACHE_CONTROL);
+      if (key === 'shorts/index.html')
+        return staticAsset(request, env, '/shorts/', 200, false, HTML_CACHE_CONTROL);
+      if (key === 'search_index.json')
+        return staticAsset(request, env, '/search_index.json', 200, false, HTML_CACHE_CONTROL);
       return staticAsset(request, env, '/404.html', 404, analytics);
     } catch (error) {
       console.error(

@@ -110,6 +110,6 @@ export async function publicImage(
     return new Response(null, { status: 304, headers });
   }
   const response = new Response(body?.body || null, { headers });
-  if (ctx && request.method === 'GET') cacheWrite(ctx, keyRequest, response, 3600);
+  if (ctx && request.method === 'GET') cacheWrite(ctx, keyRequest, response, 86400);
   return response;
 }

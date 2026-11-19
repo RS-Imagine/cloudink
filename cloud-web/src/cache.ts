@@ -63,6 +63,6 @@ export async function invalidatePointer(request: Request): Promise<void> {
   try {
     await caches.default.delete(cacheKey(request, 'pointer'));
   } catch {
-    /* TTL bounds other data centers to 30 seconds. */
+    /* TTL bounds other data centers to 3 minutes. */
   }
 }

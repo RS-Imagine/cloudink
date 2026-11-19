@@ -1,6 +1,6 @@
-// Public reading cache: current content online, previously read content offline.
+// Public reading cache: instant repeat reads via stale-while-revalidate, fresh on reload, offline-ready.
 const CACHE_PREFIX = 'cloudink-reader-';
-const CACHE_NAME = CACHE_PREFIX + 'v2';
+const CACHE_NAME = CACHE_PREFIX + 'v3';
 const STATIC_ASSETS = [
   '/',
   '/client.js',
@@ -35,35 +35,58 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim()),
   );
 });
-async function storeResponse(request, response) {
-  if (!response.ok) return;
+function cacheKeyFor(request) {
+  const url = new URL(request.url);
+  url.hash = '';
+  return url.href;
+}
+async function storeResponse(key, response) {
+  if (!response || !response.ok) return;
+  if (response.type && response.type !== 'basic' && response.type !== 'default') return;
   try {
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(request, response.clone());
+    await cache.put(key, response.clone());
   } catch {
     // Cache quota or unavailable storage must not break an online response.
   }
 }
-async function cachedResponse(request) {
+async function cachedResponse(key) {
   try {
     const cache = await caches.open(CACHE_NAME);
-    return await cache.match(request);
+    return await cache.match(key);
   } catch {
     return undefined;
   }
 }
-async function networkFirst(request) {
+async function networkFirst(request, key, forceRevalidate = true) {
   try {
-    const response = await fetch(request, { cache: 'no-cache' });
-    await storeResponse(request, response);
+    const response = forceRevalidate
+      ? await fetch(request, { cache: 'no-cache' })
+      : await fetch(request);
+    await storeResponse(key, response);
     return response;
   } catch {
-    return (await cachedResponse(request)) || Response.error();
+    return (await cachedResponse(key)) || Response.error();
   }
 }
-async function cacheFirst(request) {
-  const cached = await cachedResponse(request);
-  return cached || networkFirst(request);
+async function cacheFirst(request, key) {
+  const cached = await cachedResponse(key);
+  return cached || networkFirst(request, key, false);
+}
+async function staleWhileRevalidate(event, request, key) {
+  if (request.cache === 'reload') return networkFirst(request, key, true);
+  const cached = await cachedResponse(key);
+  const refresh = (cached ? fetch(key, { cache: 'no-cache' }) : fetch(request))
+    .then(async (response) => {
+      await storeResponse(key, response);
+      return response;
+    })
+    .catch(() => cached || Response.error());
+  if (cached) {
+    event.waitUntil(refresh.catch(() => {}));
+    return cached;
+  }
+  return refresh;
 }
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -73,10 +96,12 @@ self.addEventListener('fetch', (event) => {
     url.origin !== self.location.origin ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/admin') ||
-    url.pathname === '/sw.js'
+    url.pathname === '/sw.js' ||
+    url.pathname === '/_release.json'
   )
     return;
 
+  const key = cacheKeyFor(request);
   const publicAsset =
     STATIC_ASSETS.includes(url.pathname) ||
     url.pathname === '/search_index.json' ||
@@ -84,13 +109,15 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/images/') ||
     url.pathname.startsWith('/site-icon/');
   if (publicAsset) {
-    // Fonts and content-addressed media are immutable; scripts/styles must update.
+    // Fonts and content-addressed media are immutable; compiled styles/scripts refresh in background.
     const immutable =
       /\.(?:woff2?|png|jpe?g|webp|gif|avif|svg|ico)$/.test(url.pathname) &&
       (url.pathname.startsWith('/reader-assets/') ||
         url.pathname.startsWith('/images/') ||
         url.pathname.startsWith('/site-icon/'));
-    event.respondWith(immutable ? cacheFirst(request) : networkFirst(request));
+    event.respondWith(
+      immutable ? cacheFirst(request, key) : staleWhileRevalidate(event, request, key),
+    );
     return;
   }
   if (
@@ -99,5 +126,5 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('.html')
   )
-    event.respondWith(networkFirst(request));
+    event.respondWith(staleWhileRevalidate(event, request, key));
 });

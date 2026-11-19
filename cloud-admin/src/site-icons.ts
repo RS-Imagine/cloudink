@@ -622,6 +622,6 @@ export async function publicSiteIcon(
     return new Response(null, { status: 304, headers });
   }
   const response = new Response(body?.body || null, { headers });
-  if (ctx && request.method === 'GET') cacheWrite(ctx, cache, response, 3600);
+  if (ctx && request.method === 'GET') cacheWrite(ctx, cache, response, 604800);
   return response;
 }

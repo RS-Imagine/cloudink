@@ -286,20 +286,199 @@
     document.head.querySelectorAll(metadataSelector).forEach((node) => node.remove());
     document.head.append(...metadata.nodes);
   }
+  function canPrefetch() {
+    const nav = globalThis.navigator;
+    if (nav?.onLine === false) return false;
+    const connection = nav?.connection;
+    if (connection?.saveData) return false;
+    if (/^(?:slow-2g|2g)$/.test(connection?.effectiveType || '')) return false;
+    return true;
+  }
+  function prefetchUrl(link, baseHref = globalThis.location?.href) {
+    if (!link || !baseHref) return null;
+    if (typeof link !== 'string') {
+      if (
+        link.hasAttribute?.('download') ||
+        link.hasAttribute?.('data-no-swup') ||
+        (link.target && link.target !== '_self')
+      )
+        return null;
+      link = link.getAttribute?.('href') || '';
+    }
+    if (!link || link.startsWith('#')) return null;
+    let url, current;
+    try {
+      current = new URL(baseHref);
+      url = new URL(link, current);
+    } catch {
+      return null;
+    }
+    if (url.origin !== current.origin || !/^https?:$/.test(url.protocol)) return null;
+    const path = url.pathname;
+    if (
+      path === '/admin' ||
+      path.startsWith('/admin/') ||
+      path.startsWith('/api/') ||
+      path.startsWith('/images/') ||
+      path.startsWith('/site-icon/') ||
+      path.startsWith('/reader-assets/') ||
+      ['/feed.xml', '/sitemap.xml', '/robots.txt', '/_release.json', '/sw.js'].includes(path)
+    )
+      return null;
+    if (/\.[a-z0-9]{1,8}$/i.test(path) && !/\.html?$/i.test(path)) return null;
+    const target = path + url.search;
+    return target === current.pathname + current.search ? null : target;
+  }
   function attach(swup) {
     if (!swup) return;
     let controller = null,
       pending = null,
-      delayed = 0;
+      delayed = 0,
+      hoverTimer = 0,
+      idleHandle = 0,
+      activePrefetches = 0;
+    const inflight = new Map();
+    const MAX_PREFETCHES = 2;
     const clear = () => {
       clearTimeout(delayed);
-      document.getElementById('swup')?.removeAttribute('aria-busy');
+      document.getElementById?.('swup')?.removeAttribute('aria-busy');
       hide('reader-navigation-status');
     };
+    const cancelHover = () => {
+      clearTimeout(hoverTimer);
+      hoverTimer = 0;
+    };
+    const cancelIdle = () => {
+      if (!idleHandle) return;
+      if (typeof globalThis.cancelIdleCallback === 'function')
+        globalThis.cancelIdleCallback(idleHandle);
+      else clearTimeout(idleHandle);
+      idleHandle = 0;
+    };
+    function prefetch(targetUrl, { warmCode = false } = {}) {
+      if (
+        !targetUrl ||
+        !canPrefetch() ||
+        activePrefetches >= MAX_PREFETCHES ||
+        swup.cache?.get?.(targetUrl) ||
+        inflight.has(targetUrl) ||
+        typeof globalThis.fetch !== 'function'
+      )
+        return null;
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), 8000);
+      activePrefetches++;
+      const promise = (async () => {
+        try {
+          const response = await fetch(targetUrl, {
+            method: 'GET',
+            headers: { ...(swup.options?.requestHeaders || {}), Purpose: 'prefetch' },
+            signal: abort.signal,
+            priority: 'low',
+          });
+          if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html')) {
+            await response.body?.cancel?.();
+            return null;
+          }
+          const finalUrl = new URL(response.url, location.href);
+          if (finalUrl.origin !== location.origin) return null;
+          const html = await response.text();
+          if (!html.includes('id="swup"')) return null;
+          const resolved = finalUrl.pathname + finalUrl.search;
+          const page = { url: resolved, html };
+          if (resolved === targetUrl) swup.cache?.set?.(resolved, page);
+          if (
+            warmCode &&
+            (html.includes('data-reader-style="code"') || /<pre[^>]*>\s*<code/i.test(html))
+          )
+            void stylesheet('code').catch(() => {});
+          return page;
+        } catch {
+          return null;
+        } finally {
+          clearTimeout(timer);
+          activePrefetches--;
+          if (inflight.get(targetUrl)?.promise === promise) inflight.delete(targetUrl);
+        }
+      })();
+      inflight.set(targetUrl, { promise, abort });
+      return promise;
+    }
+    function scheduleIdleWarmup() {
+      if (typeof document.querySelectorAll !== 'function' || !canPrefetch()) return;
+      cancelIdle();
+      const run = async () => {
+        idleHandle = 0;
+        if (!canPrefetch() || document.hidden || pending) return;
+        const candidates = [];
+        const add = (el) => {
+          if (!el || el.id?.startsWith('reader-link-')) return;
+          const url = prefetchUrl(el);
+          if (url && !candidates.includes(url) && !swup.cache?.get?.(url)) candidates.push(url);
+        };
+        document
+          .querySelectorAll('[data-reader-nav="shorts"],[data-reader-nav="posts"]')
+          .forEach(add);
+        let posts = 0;
+        for (const el of document.querySelectorAll(
+          '.home-card h2 a[href^="/posts/"],.home-card h3 a[href^="/posts/"],.post-index-list a[href^="/posts/"]',
+        )) {
+          if (posts >= 3) break;
+          const before = candidates.length;
+          add(el);
+          if (candidates.length > before) posts++;
+        }
+        for (const url of candidates) {
+          if (!canPrefetch() || document.hidden || pending) break;
+          await prefetch(url, { warmCode: false });
+          await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+      };
+      idleHandle =
+        typeof globalThis.requestIdleCallback === 'function'
+          ? globalThis.requestIdleCallback(() => void run(), { timeout: 1500 })
+          : setTimeout(() => void run(), 450);
+    }
+    if (typeof document.addEventListener === 'function') {
+      const scheduleIntent = (event, delay) => {
+        const anchor = event.target?.closest?.('a[href]');
+        const url = prefetchUrl(anchor);
+        if (!url) return;
+        cancelHover();
+        if (delay <= 0) {
+          void prefetch(url, { warmCode: true });
+          return;
+        }
+        hoverTimer = setTimeout(() => {
+          hoverTimer = 0;
+          void prefetch(url, { warmCode: true });
+        }, delay);
+      };
+      document.addEventListener(
+        'pointerover',
+        (event) => {
+          if (event.pointerType !== 'touch') scheduleIntent(event, 65);
+        },
+        { passive: true },
+      );
+      document.addEventListener(
+        'pointerout',
+        (event) => {
+          if (event.target?.closest?.('a[href]')) cancelHover();
+        },
+        { passive: true },
+      );
+      document.addEventListener('touchstart', (event) => scheduleIntent(event, 0), {
+        passive: true,
+      });
+      document.addEventListener('focusin', (event) => scheduleIntent(event, 65), { passive: true });
+    }
     // Swup 4.10.0 catches errors from ordinary hooks. Prepare before its
     // navigation pipeline so failures cannot create an incomplete history entry.
     const perform = swup.performNavigation.bind(swup);
     swup.performNavigation = async (visit, options = {}) => {
+      cancelHover();
+      cancelIdle();
       controller?.abort();
       controller = new AbortController();
       const current = controller;
@@ -308,7 +487,7 @@
       delayed = setTimeout(() => {
         if (pending === visit) show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
       }, 500);
-      document.getElementById('swup')?.setAttribute('aria-busy', 'true');
+      document.getElementById?.('swup')?.setAttribute('aria-busy', 'true');
       const timeout = setTimeout(() => current.abort(), 12000);
       const target = visit.to.url + (visit.to.hash || '');
       const native = () => {
@@ -323,7 +502,11 @@
           visit.cache.write =
             typeof cache === 'object' ? (cache.write ?? visit.cache.write) : !!cache;
         }
-        let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
+        let page = visit.cache.read ? swup.cache?.get?.(visit.to.url) : null;
+        if (!page && visit.cache.read && inflight.has(visit.to.url)) {
+          const shared = await untilAbort(inflight.get(visit.to.url).promise, current.signal);
+          if (shared && shared.html) page = shared;
+        }
         if (!page) {
           const response = await fetch(visit.to.url, {
             method: options.method || 'GET',
@@ -359,7 +542,7 @@
         }
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
-        if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
+        if (visit.cache.write && page.url === visit.to.url) swup.cache?.set?.(page.url, page);
         clear();
         return perform(visit, {
           ...options,
@@ -388,6 +571,7 @@
         visit.trigger.el?.focus({ preventScroll: true });
       } finally {
         clearTimeout(timeout);
+        if (pending === visit) pending = null;
       }
     };
     swup.hooks.replace(
@@ -396,6 +580,7 @@
     );
     swup.hooks.on('page:view', (visit) => {
       if (swup.visit.id === visit.id && visit.meta.readerHead) applyMetadata(visit.meta.readerHead);
+      scheduleIdleWarmup();
     });
     swup.hooks.on('visit:abort', (visit) => {
       if (pending === visit) {
@@ -406,11 +591,12 @@
     swup.hooks.on('visit:end', () => {
       if (!swup.navigating || pending === swup.visit) clear();
     });
-    window.addEventListener('online', () => {
-      const node = document.getElementById('reader-navigation-status');
+    window.addEventListener?.('online', () => {
+      const node = document.getElementById?.('reader-navigation-status');
       if (node && !node.hidden && node.querySelector('button'))
         node.firstChild.textContent = '网络已恢复，可以重试打开文章。';
     });
+    scheduleIdleWarmup();
   }
-  window.CloudInkReader = Object.freeze({ activate, attach });
+  window.CloudInkReader = Object.freeze({ activate, attach, prefetchUrl, canPrefetch });
 })();

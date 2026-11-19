@@ -208,10 +208,16 @@ export async function readerHtml(
   // Published HTML uses an origin/path/version-aware validator from the router.
   headers.delete('Content-Length');
   if (response.status !== 200) headers.set('X-Robots-Tag', 'noindex');
+  const injected = tags.join('\n');
+  const headClosings = html.match(/<\/head\s*>/gi);
+  if (headClosings && headClosings.length === 1) {
+    const output = html.replace(/<\/head\s*>/i, (closing) => injected + closing);
+    return new Response(output, { status: response.status, headers });
+  }
   return new HTMLRewriter()
     .on('head', {
       element(el) {
-        el.append(tags.join('\n'), { html: true });
+        el.append(injected, { html: true });
       },
     })
     .transform(new Response(html, { status: response.status, headers }));
