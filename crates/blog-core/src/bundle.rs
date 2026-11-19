@@ -59,7 +59,13 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
                         .and_then(|s| s.strip_suffix("/index.html"))
                         .and_then(|s| s.parse::<usize>().ok())
                         .is_some_and(|page| page >= 2
-                            && path.as_str() == format!("post/page/{page}/index.html")),
+                            && path.as_str() == format!("post/page/{page}/index.html"))
+                    || path
+                        .strip_prefix("shorts/page/")
+                        .and_then(|s| s.strip_suffix("/index.html"))
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .is_some_and(|page| page >= 2
+                            && path.as_str() == format!("shorts/page/{page}/index.html")),
                 "Unknown render path"
             );
         }
@@ -135,6 +141,18 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
         }
     }
     shorts.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    let short_pages = shorts.len().div_ceil(render::SHORTS_PER_PAGE).max(1);
+    if let Some(paths) = &paths {
+        for path in paths.iter().filter(|p| p.starts_with("shorts/page/")) {
+            let number = path
+                .strip_prefix("shorts/page/")
+                .unwrap()
+                .strip_suffix("/index.html")
+                .unwrap()
+                .parse::<usize>()?;
+            ensure!(number <= short_pages, "Unknown shorts list page");
+        }
+    }
 
     if wants("index.html") {
         files.insert(
@@ -190,6 +208,15 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
             "shorts/index.html".into(),
             render::render_shorts(&release.site, &shorts, &css_hash),
         );
+    }
+    for number in 2..=short_pages {
+        let path = format!("shorts/page/{number}/index.html");
+        if wants(&path) {
+            files.insert(
+                path,
+                render::render_shorts_page(&release.site, &shorts, &css_hash, number),
+            );
+        }
     }
     let index: Vec<_> = posts.iter().map(|post| serde_json::json!({"title":post.title(),"slug":post.slug(),"description":post.description(),"date":post.date(),"updated":post.updated(),"body":post.body_plain_text})).collect();
     if wants("search_index.json") {

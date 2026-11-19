@@ -888,6 +888,69 @@
     });
     scheduleIdleWarmup();
   }
+  const SHORTS_BATCH_SIZE = 3;
+  const SHORTS_PEEK_MAX_HEIGHT = 120;
+  const SHORTS_PEEK_MIN_HIDDEN = 56;
+
+  function computeShortPeek(
+    naturalHeight,
+    maxPeek = SHORTS_PEEK_MAX_HEIGHT,
+    minHidden = SHORTS_PEEK_MIN_HIDDEN,
+  ) {
+    if (!Number.isFinite(naturalHeight) || naturalHeight <= 0) {
+      return { shouldPeek: false, height: 0 };
+    }
+    const natural = Math.round(naturalHeight);
+    const exposed = Math.min(Math.round(natural * 0.5), maxPeek);
+    if (natural <= exposed || natural - exposed < minHidden) {
+      return { shouldPeek: false, height: natural };
+    }
+    return { shouldPeek: true, height: exposed };
+  }
+
+  function planShortsPage(total, pageNumber = 1, batchSize = SHORTS_BATCH_SIZE) {
+    const safeTotal = Math.max(0, Math.floor(Number(total) || 0));
+    const safeBatch = Math.max(1, Math.floor(Number(batchSize) || SHORTS_BATCH_SIZE));
+    const safePage = Math.max(1, Math.floor(Number(pageNumber) || 1));
+    const totalPages = Math.max(1, Math.ceil(safeTotal / safeBatch));
+    const start = Math.min((safePage - 1) * safeBatch, safeTotal);
+    const fullEnd = Math.min(start + safeBatch, safeTotal);
+    const hasPeek = fullEnd < safeTotal;
+    const renderEnd = hasPeek ? fullEnd + 1 : fullEnd;
+    return {
+      pageNumber: safePage,
+      total: safeTotal,
+      totalPages,
+      start,
+      fullEnd,
+      hasPeek,
+      renderEnd,
+      prevPage: safePage > 1 ? safePage - 1 : null,
+      nextPage: hasPeek ? safePage + 1 : null,
+    };
+  }
+
+  function planShortsExpand({ fullCount, renderedCount, total, batchSize = SHORTS_BATCH_SIZE }) {
+    const safeTotal = Math.max(0, Math.floor(Number(total) || 0));
+    const safeFull = Math.max(0, Math.min(safeTotal, Math.floor(Number(fullCount) || 0)));
+    const safeRendered = Math.max(
+      safeFull,
+      Math.min(safeTotal, Math.floor(Number(renderedCount) || 0)),
+    );
+    const safeBatch = Math.max(1, Math.floor(Number(batchSize) || SHORTS_BATCH_SIZE));
+    const targetFull = Math.min(safeFull + safeBatch, safeTotal);
+    const hasNextPeek = targetFull < safeTotal;
+    const targetRendered = hasNextPeek ? Math.min(targetFull + 1, safeTotal) : targetFull;
+    return {
+      targetFull,
+      targetRendered,
+      hasNextPeek,
+      neededNewCards: Math.max(0, targetRendered - safeRendered),
+      needsFetch: safeRendered < targetRendered,
+      complete: targetFull >= safeTotal,
+    };
+  }
+
   window.CloudInkReader = Object.freeze({
     activate,
     attach,
@@ -899,5 +962,10 @@
     canPrefetch,
     skeletonKind,
     skeletonMarkup,
+    SHORTS_BATCH_SIZE,
+    SHORTS_PEEK_MAX_HEIGHT,
+    computeShortPeek,
+    planShortsPage,
+    planShortsExpand,
   });
 })();

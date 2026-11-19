@@ -368,7 +368,7 @@ export async function discovery(
         )
           paths.push('/' + path.replace('index.html', ''));
         const post = path.match(/^posts\/([A-Za-z0-9_-]{1,100})\/index\.html$/);
-        if (/^post\/page\/[1-9]\d*\/index\.html$/.test(path))
+        if (/^(?:post|shorts)\/page\/[1-9]\d*\/index\.html$/.test(path))
           paths.push('/' + path.replace('index.html', ''));
         if (post) paths.push('/posts/' + post[1] + '/');
       }

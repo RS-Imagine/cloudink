@@ -266,7 +266,7 @@ const SHORTS = [
     published: true,
     changed: false,
     etag: 'short-etag-1',
-    text: '秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。',
+    text: '秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。顺便记下一条体会：柔和的对比度比纯粹的黑白更耐看，长时间阅读不容易视觉疲劳。',
   },
   {
     slug: '2026-10-15-morning',
@@ -274,7 +274,90 @@ const SHORTS = [
     published: true,
     changed: false,
     etag: 'short-etag-2',
-    text: '好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。',
+    text: '好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。',
+  },
+  {
+    slug: '2026-10-12-afternoon',
+    date: '2026-10-12 15:40',
+    published: true,
+    changed: false,
+    etag: 'short-etag-3',
+    text: '下午把站点的静态资源链路完整梳理了一遍。去掉冗余的同步脚本阻塞之后，文章首屏和短记切换都轻快了许多，连带着翻看旧笔记的心情也变得松弛下来。',
+  },
+  {
+    slug: '2026-10-08-night',
+    date: '2026-10-08 22:18',
+    published: true,
+    changed: false,
+    etag: 'short-etag-4',
+    text: '重读了一遍自己去年写的排版笔记，发现在高分屏上把行高定在 1.9 左右、字号保持 16px，中英混排时节奏最舒服。之前整理的那篇关于 Niri 窗口管理器的文章也沿用了这套基线，今天顺手核对了移动端 390px 下的折行效果，确认标点不会把行宽撑爆。',
+    html: '<p>重读了一遍自己去年写的排版笔记，发现在高分屏上把行高定在 1.9 左右、字号保持 16px，中英混排时节奏最舒服。之前整理的那篇 <a href="/posts/niri-editorial-workflow/">Niri 排版工作流</a> 也沿用了这套基线，今天顺手核对了移动端 390px 下的折行效果，确认标点不会把行宽撑爆。</p>',
+  },
+  {
+    slug: '2026-10-04-noon',
+    date: '2026-10-04 12:05',
+    published: true,
+    changed: false,
+    etag: 'short-etag-5',
+    text: '第五条短记正文：中午在窗边泡了一壶乌龙茶，翻看 Cloudflare Workers 的边缘缓存文档。把不可变静态资产和 HTML 条件请求彻底分开之后，回源延迟几乎消失，整个站点像本地文件一样干脆。',
+  },
+  {
+    slug: '2026-09-29-brief',
+    date: '2026-09-29 19:00',
+    published: true,
+    changed: false,
+    etag: 'short-etag-6',
+    text: '晚风起，雨停了。',
+  },
+  {
+    slug: '2026-09-25-late',
+    date: '2026-09-25 23:14',
+    published: true,
+    changed: false,
+    etag: 'short-etag-7',
+    text: '写短记和写长文章其实是两种完全不同的呼吸频率：长文章需要起承转合、提前搭好提纲，而短记更像在纸边随手记下的几句眉批，不求完备，只求当下真诚。关于边缘部署的细节写在了另一篇长文里。',
+    html: '<p>写短记和写长文章其实是两种完全不同的呼吸频率：长文章需要起承转合、提前搭好提纲，而短记更像在纸边随手记下的几句眉批，不求完备，只求当下真诚。关于边缘部署的细节写在了 <a href="/posts/cloudflare-workers-edge/">Cloudflare Workers 与 R2 静态博客架构实践</a> 里。</p>',
+  },
+  {
+    slug: '2026-09-20-sketch',
+    date: '2026-09-20 16:22',
+    published: true,
+    changed: false,
+    etag: 'short-etag-8',
+    text: '第八条短记含插图：整理旧素材目录时翻到这张植物线稿，作为首页和笔记里的纸面装饰非常克制，不会喧宾夺主。',
+    html: '<p>第八条短记含插图：整理旧素材目录时翻到这张植物线稿，作为首页和笔记里的纸面装饰非常克制，不会喧宾夺主。</p><p><img src="/editorial-botanical.webp" alt="手绘植物插画" width="150" height="174" loading="lazy"></p>',
+  },
+  {
+    slug: '2026-09-15-reading',
+    date: '2026-09-15 20:45',
+    published: true,
+    changed: false,
+    etag: 'short-etag-9',
+    text: '晚上重读了一章关于书籍装帧的随笔。里面提到纸书的页边距并不是浪费，而是给手指和眼睛留出的缓冲带；数字阅读页面同理，把主栏控制在舒适的字数宽度，阅读体验立刻就不一样了。',
+  },
+  {
+    slug: '2026-09-10-tenth',
+    date: '2026-09-10 11:30',
+    published: true,
+    changed: false,
+    etag: 'short-etag-10',
+    text: '第十条短记深链测试锚点：今天把归档页按月份重新分组，又检查了键盘 Tab 顺序与深色模式下的焦点环对比度。细节往往藏在平时不太会注意的角落，但一旦做扎实了，整个站点就有了长久陪伴的底气。',
+  },
+  {
+    slug: '2026-09-04-coffee',
+    date: '2026-09-04 08:50',
+    published: true,
+    changed: false,
+    etag: 'short-etag-11',
+    text: '早起手冲了一杯浅烘耶加雪菲，趁着房间还安静，把本周积累的零散草稿归类整理了一下。保留有价值的问题，删掉重复的表达，笔记本瞬间清爽了一半。',
+  },
+  {
+    slug: '2026-08-28-first',
+    date: '2026-08-28 18:10',
+    published: true,
+    changed: false,
+    etag: 'short-etag-12',
+    text: '第十二条（最早一条短记）：这是短记流的第一块基石。希望以后无论过了多久，翻回最底部时依然能清晰地看到最初动笔时的心境与天气。',
   },
 ];
 
@@ -325,10 +408,12 @@ function authorContext(showAboutLink = true) {
 }
 
 function homeContext() {
-  const entries = SHORTS.map(
-    (short) =>
-      `<article class="blog-note"><time datetime="${short.date}">${short.date}</time><p><a href="/shorts/#note:${short.slug}">${escapeHtml(short.text)}</a></p></article>`,
-  ).join('');
+  const entries = SHORTS.slice(0, 2)
+    .map(
+      (short) =>
+        `<article class="blog-note"><time datetime="${short.date}">${short.date}</time><p><a href="/shorts/#note:${short.slug}">${escapeHtml(short.text.slice(0, 100))}${short.text.length > 100 ? '…' : ''}</a></p></article>`,
+    )
+    .join('');
   return `${authorContext(true)}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link plain-button" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>${entries}</section><a class="panel archive-shortcut" href="/archive/">${ICONS.archive}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>`;
 }
 
@@ -428,12 +513,50 @@ function renderPostPage(post) {
   return renderShell('post', `${post.title} · ${SITE.title}`, body, context);
 }
 
-function renderShortsPage() {
-  const items = SHORTS.map(
-    (s) =>
-      `<article class="short-card" id="note:${s.slug}" tabindex="-1"><time class="short-time" datetime="${s.date}">${s.date}</time><div class="short-body"><p>${escapeHtml(s.text)}</p></div></article>`,
-  ).join('');
-  const body = `<div class="shorts-layout"><h1 id="shorts-title">短记</h1><div class="shorts-feed">${items}</div></div>`;
+const SHORTS_PER_PAGE = 3;
+
+function renderShortsPage(pageNumber = 1) {
+  const visible = SHORTS.filter((s) => s.published !== false);
+  const total = visible.length;
+  const page = Math.max(1, pageNumber);
+  const totalPages = Math.max(1, Math.ceil(total / SHORTS_PER_PAGE));
+  if (page > totalPages) return null;
+  const start = Math.min((page - 1) * SHORTS_PER_PAGE, total);
+  const fullEnd = Math.min(start + SHORTS_PER_PAGE, total);
+  const hasPeek = fullEnd < total;
+  const revision = 'dev-shorts-' + total + '-' + (visible[0]?.etag || 'empty');
+  const cardBody = (s) => s.html || `<p>${escapeHtml(s.text)}</p>`;
+  let items = visible
+    .slice(start, fullEnd)
+    .map(
+      (s) =>
+        `<article class="short-card" id="note:${s.slug}" tabindex="-1"><time class="short-time" datetime="${s.date}">${s.date}</time><div class="short-body">${cardBody(s)}</div></article>`,
+    )
+    .join('');
+  if (hasPeek) {
+    const peek = visible[fullEnd];
+    items += `<article class="short-card shorts-peek" id="note:${peek.slug}" tabindex="-1" data-shorts-peek="true" aria-hidden="true"><time class="short-time" datetime="${peek.date}">${peek.date}</time><div class="short-body" inert>${cardBody(peek)}</div></article>`;
+  }
+  const previous =
+    page > 1
+      ? `<a class="plain-button shorts-page-link" href="${page === 2 ? '/shorts/' : `/shorts/page/${page - 1}/`}">← 上一页</a>`
+      : '';
+  const next = hasPeek
+    ? `<a class="plain-button shorts-page-link" id="shorts-list-next" data-shorts-next-link="true" href="/shorts/page/${page + 1}/" data-no-swup>下一页 →</a>`
+    : '';
+  const expandWrap = hasPeek
+    ? `<div class="shorts-expand-wrap" hidden><button type="button" class="plain-button shorts-expand-btn" id="shorts-expand-btn" aria-expanded="false" aria-controls="shorts-feed">展开更多</button></div>`
+    : '';
+  const pagination =
+    page > 1 || hasPeek
+      ? `<nav class="shorts-pagination" aria-label="短记分页"><p id="shorts-list-status" class="shorts-status" role="status" aria-live="polite">已显示第 ${start + 1}–${fullEnd} 条，共 ${total} 条。</p><div class="shorts-pagination-links">${previous}${next}</div></nav>`
+      : '';
+  const contents =
+    total === 0
+      ? `<div class="shorts-feed" id="shorts-feed"><p class="shorts-empty">还没有短记，去写第一条吧。</p></div>`
+      : `<div class="shorts-feed" id="shorts-feed">${items}</div>${expandWrap}${pagination}`;
+  const countMarkup = total > 0 ? `<p class="shorts-count">共 ${total} 条</p>` : '';
+  const body = `<div class="shorts-layout" data-shorts-revision="${revision}" data-shorts-start="${total > 0 ? start + 1 : 0}" data-shorts-end="${fullEnd}" data-shorts-total="${total}" data-shorts-batch="${SHORTS_PER_PAGE}"><header class="blog-section-heading shorts-heading"><h1 id="shorts-title">短记</h1>${countMarkup}</header>${contents}</div>`;
   return renderShell('shorts', `短记 · ${SITE.title}`, body, authorContext(true));
 }
 
@@ -965,7 +1088,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (reqPath === '/shorts' || reqPath === '/shorts/') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      return res.end(renderShortsPage());
+      return res.end(renderShortsPage(1));
+    }
+    const shortsPageMatch = reqPath.match(/^\/shorts\/page\/([1-9]\d*)(?:\/|\/index\.html)?$/);
+    if (shortsPageMatch && Number(shortsPageMatch[1]) >= 2) {
+      const html = renderShortsPage(Number(shortsPageMatch[1]));
+      if (html) {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        return res.end(html);
+      }
     }
     if (reqPath === '/archive' || reqPath === '/archive/') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });

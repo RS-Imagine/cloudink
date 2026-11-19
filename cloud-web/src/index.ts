@@ -105,6 +105,9 @@ function publicPath(path: string): string | null {
     return `post/page/${postListPage[1]}/index.html`;
   if (/^\/archive(?:\/|\/index.html)?$/.test(path)) return 'archive/index.html';
   if (/^\/shorts(?:\/|\/index.html)?$/.test(path)) return 'shorts/index.html';
+  const shortsListPage = path.match(/^\/shorts\/page\/([1-9]\d*)(?:\/|\/index.html)?$/);
+  if (shortsListPage && Number(shortsListPage[1]) >= 2)
+    return `shorts/page/${shortsListPage[1]}/index.html`;
   const post = path.match(/^\/posts\/([A-Za-z0-9_-]{1,100})(?:\/|\/index.html)?$/);
   if (post) return `posts/${post[1]}/index.html`;
   return null;
@@ -288,6 +291,15 @@ const web = {
         return staticAsset(request, env, '/post/', 200, false, HTML_CACHE_CONTROL);
       if (key === 'shorts/index.html')
         return staticAsset(request, env, '/shorts/', 200, false, HTML_CACHE_CONTROL);
+      if (key && /^shorts\/page\/[1-9]\d*\/index\.html$/.test(key))
+        return staticAsset(
+          request,
+          env,
+          '/' + key.replace(/index\.html$/, ''),
+          200,
+          false,
+          HTML_CACHE_CONTROL,
+        );
       if (key === 'search_index.json')
         return staticAsset(request, env, '/search_index.json', 200, false, HTML_CACHE_CONTROL);
       return staticAsset(request, env, '/404.html', 404, analytics);

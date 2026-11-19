@@ -1014,3 +1014,199 @@ test('admin articles and shorts loading eliminates waterfalls with parallel fetc
     /Promise\.all\(\[\s*flush\(\),\s*api\('\/api\/settings'\),\s*loadIllustrationPicker\(\),\s*loadBackup\(\)/,
   );
 });
+
+test('reader-runtime shorts peek and batch planning helpers handle boundaries accurately', async () => {
+  const source = await readFile('assets/reader-runtime.js', 'utf8');
+  const window = { addEventListener() {} };
+  runInNewContext(source, {
+    window,
+    document: {},
+    navigator: { onLine: true },
+    location: { href: 'https://forimagine.eu.org/shorts/', origin: 'https://forimagine.eu.org' },
+    URL,
+  });
+  const {
+    SHORTS_BATCH_SIZE,
+    SHORTS_PEEK_MAX_HEIGHT,
+    computeShortPeek,
+    planShortsPage,
+    planShortsExpand,
+  } = window.CloudInkReader;
+
+  assert.equal(SHORTS_BATCH_SIZE, 3);
+  assert.equal(SHORTS_PEEK_MAX_HEIGHT, 120);
+
+  const plain = (value) => ({ ...value });
+
+  // computeShortPeek: min(50% naturalHeight, 120px) and short-card promotion
+  assert.deepEqual(plain(computeShortPeek(0)), { shouldPeek: false, height: 0 });
+  assert.deepEqual(plain(computeShortPeek(-20)), { shouldPeek: false, height: 0 });
+  assert.deepEqual(plain(computeShortPeek(84)), { shouldPeek: false, height: 84 });
+  assert.deepEqual(plain(computeShortPeek(110)), { shouldPeek: false, height: 110 });
+  assert.deepEqual(plain(computeShortPeek(112)), { shouldPeek: true, height: 56 });
+  assert.deepEqual(plain(computeShortPeek(194)), { shouldPeek: true, height: 97 });
+  assert.deepEqual(plain(computeShortPeek(240)), { shouldPeek: true, height: 120 });
+  assert.deepEqual(plain(computeShortPeek(420)), { shouldPeek: true, height: 120 });
+
+  // planShortsPage: initial HTML contains 3 full + 1 peek when N > 3, and <= 3 when N <= 3
+  assert.deepEqual(plain(planShortsPage(0, 1)), {
+    pageNumber: 1,
+    total: 0,
+    totalPages: 1,
+    start: 0,
+    fullEnd: 0,
+    hasPeek: false,
+    renderEnd: 0,
+    prevPage: null,
+    nextPage: null,
+  });
+  assert.deepEqual(plain(planShortsPage(3, 1)), {
+    pageNumber: 1,
+    total: 3,
+    totalPages: 1,
+    start: 0,
+    fullEnd: 3,
+    hasPeek: false,
+    renderEnd: 3,
+    prevPage: null,
+    nextPage: null,
+  });
+  assert.deepEqual(plain(planShortsPage(4, 1)), {
+    pageNumber: 1,
+    total: 4,
+    totalPages: 2,
+    start: 0,
+    fullEnd: 3,
+    hasPeek: true,
+    renderEnd: 4,
+    prevPage: null,
+    nextPage: 2,
+  });
+  assert.deepEqual(plain(planShortsPage(4, 2)), {
+    pageNumber: 2,
+    total: 4,
+    totalPages: 2,
+    start: 3,
+    fullEnd: 4,
+    hasPeek: false,
+    renderEnd: 4,
+    prevPage: 1,
+    nextPage: null,
+  });
+  assert.deepEqual(plain(planShortsPage(12, 1)), {
+    pageNumber: 1,
+    total: 12,
+    totalPages: 4,
+    start: 0,
+    fullEnd: 3,
+    hasPeek: true,
+    renderEnd: 4,
+    prevPage: null,
+    nextPage: 2,
+  });
+  assert.deepEqual(plain(planShortsPage(12, 4)), {
+    pageNumber: 4,
+    total: 12,
+    totalPages: 4,
+    start: 9,
+    fullEnd: 12,
+    hasPeek: false,
+    renderEnd: 12,
+    prevPage: 3,
+    nextPage: null,
+  });
+
+  // planShortsExpand: N=4 needs 0 new cards; N=12 steps 3 -> 6 -> 9 -> 12
+  assert.deepEqual(plain(planShortsExpand({ fullCount: 3, renderedCount: 4, total: 4 })), {
+    targetFull: 4,
+    targetRendered: 4,
+    hasNextPeek: false,
+    neededNewCards: 0,
+    needsFetch: false,
+    complete: true,
+  });
+  assert.deepEqual(plain(planShortsExpand({ fullCount: 3, renderedCount: 4, total: 12 })), {
+    targetFull: 6,
+    targetRendered: 7,
+    hasNextPeek: true,
+    neededNewCards: 3,
+    needsFetch: true,
+    complete: false,
+  });
+  assert.deepEqual(plain(planShortsExpand({ fullCount: 6, renderedCount: 7, total: 12 })), {
+    targetFull: 9,
+    targetRendered: 10,
+    hasNextPeek: true,
+    neededNewCards: 3,
+    needsFetch: true,
+    complete: false,
+  });
+  assert.deepEqual(plain(planShortsExpand({ fullCount: 9, renderedCount: 10, total: 12 })), {
+    targetFull: 12,
+    targetRendered: 12,
+    hasNextPeek: false,
+    neededNewCards: 2,
+    needsFetch: true,
+    complete: true,
+  });
+  // After short-height promotion (fullCount=4, renderedCount=5), next expand advances by +3 to 7 + peek 8
+  assert.deepEqual(plain(planShortsExpand({ fullCount: 4, renderedCount: 5, total: 12 })), {
+    targetFull: 7,
+    targetRendered: 8,
+    hasNextPeek: true,
+    neededNewCards: 3,
+    needsFetch: true,
+    complete: false,
+  });
+});
+
+test('shorts incremental pagination contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
+  const [renderRs, libRs, bundleRs, publishingTs, workerIndex, workerReader, homeCss, clientJs] =
+    await Promise.all([
+      readFile('crates/blog-core/src/render.rs', 'utf8'),
+      readFile('crates/blog-core/src/lib.rs', 'utf8'),
+      readFile('crates/blog-core/src/bundle.rs', 'utf8'),
+      readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
+      readFile('cloud-web/src/index.ts', 'utf8'),
+      readFile('cloud-web/src/reader.ts', 'utf8'),
+      readFile('crates/blog-core/src/assets/home.css', 'utf8'),
+      readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+    ]);
+
+  // Rust rendering & static page generation
+  assert.match(renderRs, /pub const SHORTS_PER_PAGE: usize = 3;/);
+  assert.match(renderRs, /pub fn render_shorts_page\(/);
+  assert.match(renderRs, /class="short-card shorts-peek"/);
+  assert.match(renderRs, /<div class="short-body" inert>/);
+  assert.match(
+    renderRs,
+    /id="shorts-expand-btn" aria-expanded="false" aria-controls="shorts-feed"/,
+  );
+  assert.match(
+    renderRs,
+    /id="shorts-list-next" href="\/shorts\/page\/\{\}\/" data-shorts-next-link="true" data-no-swup/,
+  );
+  assert.match(libRs, /render::SHORTS_PER_PAGE/);
+  assert.match(libRs, /shorts_dir\.join\("page"\)/);
+  assert.match(bundleRs, /render::SHORTS_PER_PAGE/);
+  assert.match(bundleRs, /shorts\/page\/\{page\}\/index\.html/);
+
+  // Browser publishing & Worker routing/sitemap
+  assert.match(publishingTs, /shorts\/page\/\$\{i \+ 2\}\/index\.html/);
+  assert.match(workerIndex, /shorts\/page\/\(\[1-9\]\\d\*\)/);
+  assert.match(workerReader, /\(\?:post\|shorts\)\\\/page\\\/\[1-9\]\\d\*\\\/index\\\.html/);
+
+  // Scoped shorts- CSS & reduced-motion support
+  assert.match(homeCss, /\.short-card\.shorts-peek\s*\{/);
+  assert.match(homeCss, /max-height:\s*var\(--shorts-peek-height,\s*120px\)/);
+  assert.match(homeCss, /pointer-events:\s*none/);
+  assert.match(homeCss, /var\(--surface\)/);
+  assert.match(homeCss, /prefers-reduced-motion:\s*reduce/);
+
+  // Client unified expand, deep link auto-expansion, and /shorts/ scroll restoration
+  assert.match(clientJs, /function mountShortsFeed\(visit\)/);
+  assert.match(clientJs, /mountShortsFeed\(visit\);/);
+  assert.match(clientJs, /rootMargin:\s*'200px 0px'/);
+  assert.match(clientJs, /resolveShortDeepLink/);
+  assert.match(clientJs, /\^\\\/shorts\\\/\(\?:page\\\/\[1-9\]\\d\*\\\/\)\?\$/);
+});

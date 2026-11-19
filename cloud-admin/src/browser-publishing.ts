@@ -63,15 +63,21 @@ export function requiredPages(release: Release): string[] {
     if (post.front_matter.slug !== slug) throw new HttpError(400, '文章地址与原稿不一致。');
     if (!post.front_matter.draft) slugs.add(slug);
   }
+  const shortSlugs = new Set<string>();
   for (const [slug, source] of Object.entries(release.markdown_shorts || {})) {
     const short = parseShortSource(source);
     if (short.front_matter.slug !== slug) throw new HttpError(400, '短记地址与原稿不一致。');
+    if (!short.front_matter.draft) shortSlugs.add(slug);
   }
   return [
     ...coreFiles,
     ...Array.from(
       { length: Math.max(0, Math.ceil(slugs.size / 10) - 1) },
       (_, i) => `post/page/${i + 2}/index.html`,
+    ),
+    ...Array.from(
+      { length: Math.max(0, Math.ceil(shortSlugs.size / 3) - 1) },
+      (_, i) => `shorts/page/${i + 2}/index.html`,
     ),
     ...(release.about_markdown ? ['about/index.html'] : []),
     ...[...slugs].sort().map((slug) => `posts/${slug}/index.html`),
@@ -104,7 +110,7 @@ export function aboutSource(markdown: string): string {
 export function publicType(path: string): string {
   if (
     ['post/index.html', 'archive/index.html', 'shorts/index.html'].includes(path) ||
-    /^post\/page\/[1-9]\d*\/index\.html$/.test(path)
+    /^(?:post|shorts)\/page\/[1-9]\d*\/index\.html$/.test(path)
   )
     return 'text/html; charset=utf-8';
   if (/^(?:index|404|about\/index|posts\/[A-Za-z0-9_-]{1,100}\/index)\.html$/.test(path))
@@ -188,6 +194,8 @@ export async function selectRenderFiles(
   ) {
     changed.add('index.html');
     changed.add('shorts/index.html');
+    for (const path of generatedFiles(state))
+      if (path.startsWith('shorts/page/')) changed.add(path);
   }
   for (const path of generatedFiles(state))
     if (

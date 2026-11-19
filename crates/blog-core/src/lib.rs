@@ -87,6 +87,30 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
         shorts_dir.join("index.html"),
         render::render_shorts(&config, &shorts, &css_hash),
     )?;
+    let short_pages = shorts.len().div_ceil(render::SHORTS_PER_PAGE).max(1);
+    let shorts_page_root = shorts_dir.join("page");
+    if shorts_page_root.exists() {
+        for entry in fs::read_dir(&shorts_page_root)? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir()
+                && entry
+                    .file_name()
+                    .to_str()
+                    .and_then(|s| s.parse::<usize>().ok())
+                    .is_some_and(|page| page > short_pages)
+            {
+                fs::remove_dir_all(entry.path())?;
+            }
+        }
+    }
+    for number in 2..=short_pages {
+        let dir = shorts_page_root.join(number.to_string());
+        fs::create_dir_all(&dir)?;
+        write_if_changed(
+            dir.join("index.html"),
+            render::render_shorts_page(&config, &shorts, &css_hash, number),
+        )?;
+    }
 
     // Index page.
     write_if_changed(

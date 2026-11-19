@@ -461,6 +461,680 @@ const bootCloudInkClient = () => {
     });
   }
 
+  function mountShortsFeed(visit) {
+    const host = document.querySelector('.shorts-layout');
+    const feed = host?.querySelector('#shorts-feed');
+    if (!host || !feed) return;
+    const expandWrap = host.querySelector('.shorts-expand-wrap');
+    const expandBtn = host.querySelector('#shorts-expand-btn');
+    const nextLink = host.querySelector('#shorts-list-next');
+    const pagination = host.querySelector('.shorts-pagination');
+    const status = host.querySelector('#shorts-list-status');
+    const reader = window.CloudInkReader;
+    const total = Number(host.dataset.shortsTotal || 0);
+    const start = Math.max(1, Number(host.dataset.shortsStart || 1));
+    const batchSize = Math.max(
+      1,
+      Number(host.dataset.shortsBatch || reader?.SHORTS_BATCH_SIZE || 3),
+    );
+    const revision = host.dataset.shortsRevision || '';
+    const listUrl = location.pathname + location.search;
+    const storageKey = 'cloudink:shorts-state:' + location.pathname;
+
+    host.classList.add('shorts-enhanced');
+
+    const normalizePath = (href) => {
+      if (!href) return '';
+      try {
+        const target = new URL(href, location.href);
+        if (target.origin !== location.origin) return '';
+        if (!/^\/shorts\/page\/[1-9]\d*\/$/.test(target.pathname)) return '';
+        return target.pathname;
+      } catch {
+        return '';
+      }
+    };
+
+    const getCards = () => [...feed.querySelectorAll(':scope > .short-card')];
+    const getPeekCard = () => feed.querySelector(':scope > .short-card.shorts-peek');
+    const getFullCount = () => {
+      const cards = getCards();
+      return cards.length - (getPeekCard() ? 1 : 0);
+    };
+
+    const nextPageForRendered = () => {
+      const absoluteRendered = start - 1 + getCards().length;
+      if (absoluteRendered >= total) return '';
+      const pageNum = Math.floor(absoluteRendered / batchSize) + 1;
+      return pageNum > 1 ? '/shorts/page/' + pageNum + '/' : '';
+    };
+
+    let nextUrl =
+      host.dataset.shortsNextUrl !== undefined
+        ? normalizePath(nextPageForRendered())
+        : normalizePath(nextLink?.getAttribute('href') || nextPageForRendered());
+    const bufferedCards = [];
+    const prefetchedHtml = new Map();
+    const activeSprings = new Set();
+    let loading = false,
+      disposed = false,
+      automatic = true,
+      refreshRequired = false,
+      autoReady = window.scrollY > 0;
+    let request = null,
+      observer = null,
+      observeFrame = 0;
+
+    const stripPeekAttrs = (card) => {
+      card.classList.remove('shorts-peek', 'shorts-expanding');
+      card.removeAttribute('data-shorts-peek');
+      card.removeAttribute('aria-hidden');
+      card.style.removeProperty('--shorts-peek-height');
+      card.style.height = '';
+      card.style.maxHeight = '';
+      card.style.overflow = '';
+      const body = card.querySelector('.short-body');
+      if (body) {
+        body.inert = false;
+        body.removeAttribute('inert');
+      }
+    };
+
+    const markAsPeek = (card) => {
+      card.classList.add('shorts-peek');
+      card.dataset.shortsPeek = 'true';
+      card.setAttribute('aria-hidden', 'true');
+      const body = card.querySelector('.short-body');
+      if (body) {
+        body.inert = true;
+        body.setAttribute('inert', '');
+      }
+    };
+
+    const settleSprings = () => {
+      for (const entry of [...activeSprings]) entry.finish();
+    };
+
+    const saveState = () => {
+      const fullCount = getFullCount();
+      const end = Math.min(total, start - 1 + fullCount);
+      host.dataset.shortsEnd = String(end);
+      host.dataset.shortsNextUrl = nextUrl || '';
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({ revision, end, scrollY: window.scrollY }),
+        );
+      } catch {}
+    };
+
+    const snapshotToCache = () => {
+      if (disposed || !host.isConnected || loading || activeSprings.size) return;
+      saveState();
+      swup?.cache.update(listUrl, { html: document.documentElement.outerHTML });
+    };
+
+    const syncControls = () => {
+      const fullCount = getFullCount();
+      const end = Math.min(total, start - 1 + fullCount);
+      const remaining = end < total || Boolean(getPeekCard());
+      saveState();
+      if (expandWrap && expandBtn) {
+        if (remaining || refreshRequired) {
+          expandWrap.hidden = false;
+          expandBtn.setAttribute('aria-expanded', 'false');
+          expandBtn.disabled = loading;
+          if (!loading && !refreshRequired && automatic) expandBtn.textContent = '展开更多';
+        } else {
+          expandWrap.hidden = true;
+          expandBtn.setAttribute('aria-expanded', 'true');
+          expandBtn.disabled = false;
+        }
+      }
+      if (nextLink) {
+        if (nextUrl) nextLink.setAttribute('href', nextUrl);
+        else nextLink.hidden = true;
+      }
+      if (status && !loading && !refreshRequired && automatic) {
+        status.textContent =
+          !remaining && start === 1
+            ? '已显示全部 ' + total + ' 条短记。'
+            : '已显示第 ' + start + '–' + end + ' 条，共 ' + total + ' 条。';
+      }
+      if (pagination) {
+        const hasPrev = Boolean(pagination.querySelector('a:not([data-shorts-next-link])'));
+        pagination.hidden = !remaining && !hasPrev && !refreshRequired;
+      }
+    };
+
+    const measureNaturalHeight = (card) => {
+      const prevMax = card.style.maxHeight;
+      const prevHeight = card.style.height;
+      card.style.maxHeight = 'none';
+      card.style.height = 'auto';
+      const height = Math.round(card.getBoundingClientRect().height);
+      card.style.maxHeight = prevMax;
+      card.style.height = prevHeight;
+      return height;
+    };
+
+    const computePeekMetrics = (naturalHeight) =>
+      reader?.computeShortPeek
+        ? reader.computeShortPeek(naturalHeight)
+        : {
+            shouldPeek: naturalHeight > 112,
+            height: Math.min(Math.round(naturalHeight * 0.5), 120),
+          };
+
+    const unpeekCard = (card, instant = false) => {
+      if (!card) return Promise.resolve();
+      const fromHeight = Math.round(card.getBoundingClientRect().height);
+      stripPeekAttrs(card);
+      if (instant || reducedMotion.matches || !motion) return Promise.resolve();
+      const toHeight = Math.round(card.getBoundingClientRect().height);
+      if (toHeight <= fromHeight + 1) return Promise.resolve();
+      card.style.height = fromHeight + 'px';
+      card.style.maxHeight = 'none';
+      card.style.overflow = 'hidden';
+      card.classList.add('shorts-expanding');
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          activeSprings.delete(entry);
+          springHandle.stop();
+          card.style.height = '';
+          card.style.maxHeight = '';
+          card.style.overflow = '';
+          card.classList.remove('shorts-expanding');
+          resolve();
+        };
+        const springHandle = motion.spring({
+          from: fromHeight,
+          stiffness: 360,
+          dampingRatio: 0.92,
+          onUpdate(value) {
+            if (Math.abs(value - toHeight) < 0.5) {
+              finish();
+              return;
+            }
+            card.style.height = Math.max(fromHeight, value).toFixed(2) + 'px';
+          },
+          onComplete: finish,
+        });
+        const entry = { finish };
+        activeSprings.add(entry);
+        springHandle.to(toHeight);
+      });
+    };
+
+    const warmNextBatch = () => {
+      if (
+        !nextUrl ||
+        prefetchedHtml.has(nextUrl) ||
+        loading ||
+        disposed ||
+        refreshRequired ||
+        (reader?.canPrefetch && !reader.canPrefetch())
+      )
+        return;
+      const targetPath = nextUrl;
+      const pending = fetch(targetPath, { headers: { Accept: 'text/html' } })
+        .then(async (response) => {
+          if (!response.ok || new URL(response.url).origin !== location.origin) {
+            await response.body?.cancel();
+            throw new Error('Prefetch failed');
+          }
+          return response.text();
+        })
+        .catch(() => {
+          prefetchedHtml.delete(targetPath);
+          return null;
+        });
+      prefetchedHtml.set(targetPath, pending);
+    };
+
+    const fetchNextBatch = async () => {
+      const targetPath = normalizePath(nextUrl);
+      if (!targetPath) return false;
+      let html = null;
+      if (prefetchedHtml.has(targetPath)) {
+        const cached = prefetchedHtml.get(targetPath);
+        prefetchedHtml.delete(targetPath);
+        html = await cached;
+      }
+      if (disposed || !host.isConnected) return false;
+      if (html === null) {
+        request = new AbortController();
+        const timeout = setTimeout(() => request?.abort(), 12000);
+        try {
+          const response = await fetch(targetPath, {
+            headers: { Accept: 'text/html' },
+            signal: request.signal,
+          });
+          if (!response.ok || new URL(response.url).origin !== location.origin) {
+            await response.body?.cancel();
+            throw new Error('Shorts batch unavailable');
+          }
+          html = await response.text();
+        } finally {
+          clearTimeout(timeout);
+          request = null;
+        }
+      }
+      if (disposed || !host.isConnected) return false;
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const batch = doc.querySelector('.shorts-layout');
+      const incoming = [...(batch?.querySelectorAll('#shorts-feed > .short-card') || [])];
+      if (!batch || !incoming.length) throw new Error('Invalid shorts batch');
+      if (revision && batch.dataset.shortsRevision !== revision) {
+        automatic = false;
+        refreshRequired = true;
+        if (status) status.textContent = '短记列表已更新，请刷新后继续浏览。';
+        if (expandBtn) expandBtn.textContent = '刷新短记列表';
+        return false;
+      }
+      const seen = new Set([
+        ...getCards().map((card) => card.id),
+        ...bufferedCards.map((card) => card.id),
+      ]);
+      for (const card of incoming) {
+        if (!card.id || seen.has(card.id)) continue;
+        seen.add(card.id);
+        stripPeekAttrs(card);
+        bufferedCards.push(card);
+      }
+      const following = batch.querySelector('#shorts-list-next')?.getAttribute('href') || '';
+      nextUrl = normalizePath(following);
+      return true;
+    };
+
+    const ensurePeekFit = async () => {
+      let guard = 0;
+      while (!disposed && host.isConnected && guard < total + 2) {
+        guard++;
+        const peek = getPeekCard();
+        if (!peek) return;
+        const naturalHeight = measureNaturalHeight(peek);
+        const metrics = computePeekMetrics(naturalHeight);
+        if (metrics.shouldPeek) {
+          peek.style.setProperty('--shorts-peek-height', metrics.height + 'px');
+          for (const image of peek.querySelectorAll('img')) {
+            if (!image.complete) {
+              image.addEventListener(
+                'load',
+                () => {
+                  if (!disposed && peek.isConnected && peek.classList.contains('shorts-peek')) {
+                    void ensurePeekFit();
+                  }
+                },
+                { once: true },
+              );
+            }
+          }
+          return;
+        }
+        // Short card is too brief to clip meaningfully: promote it to full and shift peek forward.
+        stripPeekAttrs(peek);
+        const absoluteFull = start - 1 + getFullCount();
+        if (absoluteFull >= total) return;
+        if (!bufferedCards.length && nextUrl) {
+          const ok = await fetchNextBatch();
+          if (!ok || disposed || !host.isConnected) return;
+        }
+        const nextCardNode = bufferedCards.shift();
+        if (!nextCardNode) return;
+        const imported = document.importNode(nextCardNode, true);
+        markAsPeek(imported);
+        feed.append(imported);
+      }
+    };
+
+    const isPeekWithinTriggerZone = (peek) => {
+      if (!peek || !peek.isConnected) return false;
+      const rect = peek.getBoundingClientRect();
+      return rect.top <= window.innerHeight + 200 && rect.bottom >= -200;
+    };
+
+    const observePeek = () => {
+      observer?.disconnect();
+      if (disposed || !host.isConnected || refreshRequired || !('IntersectionObserver' in window))
+        return;
+      const peek = getPeekCard();
+      if (!peek) return;
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (
+            autoReady &&
+            automatic &&
+            !loading &&
+            !refreshRequired &&
+            entries.some((entry) => entry.isIntersecting)
+          ) {
+            void expand({ manual: false });
+          }
+        },
+        { rootMargin: '200px 0px' },
+      );
+      observer.observe(peek);
+    };
+
+    const scheduleObservePeek = () => {
+      cancelAnimationFrame(observeFrame);
+      observeFrame = requestAnimationFrame(() => {
+        observeFrame = 0;
+        observePeek();
+      });
+    };
+
+    async function expand({ manual = false, instant = false } = {}) {
+      if (refreshRequired) {
+        if (manual) location.reload();
+        return false;
+      }
+      if (loading || disposed || !host.isConnected) return false;
+      const fullCount = getFullCount();
+      const renderedCount = getCards().length;
+      const absoluteFull = start - 1 + fullCount;
+      const absoluteRendered = start - 1 + renderedCount;
+      if (absoluteFull >= total && !getPeekCard()) {
+        syncControls();
+        return false;
+      }
+      const plan = reader?.planShortsExpand
+        ? reader.planShortsExpand({
+            fullCount: absoluteFull,
+            renderedCount: absoluteRendered,
+            total,
+            batchSize,
+          })
+        : {
+            targetFull: Math.min(total, absoluteFull + batchSize),
+            targetRendered: Math.min(total, absoluteFull + batchSize + 1),
+            hasNextPeek: Math.min(total, absoluteFull + batchSize) < total,
+            neededNewCards: Math.max(
+              0,
+              Math.min(total, absoluteFull + batchSize + 1) - absoluteRendered,
+            ),
+          };
+
+      loading = true;
+      automatic = true;
+      observer?.disconnect();
+      expandBtn?.setAttribute('aria-busy', 'true');
+      if (expandBtn) expandBtn.disabled = true;
+      if (status) status.textContent = '正在加载更多短记…';
+
+      let changed = false;
+      let animPromise = Promise.resolve();
+      const neededNewCards =
+        typeof plan.neededNewCards === 'number'
+          ? plan.neededNewCards
+          : Math.max(0, plan.targetRendered - absoluteRendered);
+      try {
+        while (bufferedCards.length < neededNewCards && nextUrl) {
+          const ok = await fetchNextBatch();
+          if (!ok) {
+            if (refreshRequired) {
+              syncControls();
+              return false;
+            }
+            break;
+          }
+        }
+        if (disposed || !host.isConnected) return false;
+
+        const peek = getPeekCard();
+        const targetLocalFull = Math.min(total - (start - 1), plan.targetFull - (start - 1));
+        const currentFullAfterPeek = fullCount + (peek ? 1 : 0);
+        const additionalFullCount = Math.max(0, targetLocalFull - currentFullAfterPeek);
+
+        const fragment = document.createDocumentFragment();
+        const addedFull = [];
+        for (let i = 0; i < additionalFullCount && bufferedCards.length; i++) {
+          const imported = document.importNode(bufferedCards.shift(), true);
+          stripPeekAttrs(imported);
+          addedFull.push(imported);
+          fragment.append(imported);
+        }
+
+        let nextPeek = null;
+        if (plan.hasNextPeek && bufferedCards.length) {
+          nextPeek = document.importNode(bufferedCards.shift(), true);
+          markAsPeek(nextPeek);
+          fragment.append(nextPeek);
+        }
+
+        animPromise = peek ? unpeekCard(peek, instant) : Promise.resolve();
+        if (fragment.childNodes.length) feed.append(fragment);
+        if (nextPeek) await ensurePeekFit();
+        if (addedFull.some((card) => card.querySelector('pre code'))) {
+          void reader?.activate?.();
+        }
+        changed = Boolean(peek || addedFull.length || nextPeek);
+        await animPromise;
+      } catch {
+        if (!disposed && host.isConnected) {
+          automatic = false;
+          if (status) status.textContent = '加载暂时没有完成，当前短记仍可浏览。请点击重试。';
+          if (expandBtn) expandBtn.textContent = '重试加载';
+        }
+        return false;
+      } finally {
+        loading = false;
+        expandBtn?.removeAttribute('aria-busy');
+        if (!disposed && host.isConnected) {
+          syncControls();
+          if (changed) snapshotToCache();
+          if (!refreshRequired && getPeekCard()) scheduleObservePeek();
+        }
+      }
+      return changed;
+    }
+
+    const resolveShortDeepLink = async () => {
+      if (!location.hash || disposed || !host.isConnected) return;
+      let rawId;
+      try {
+        rawId = decodeURIComponent(location.hash.slice(1));
+      } catch {
+        return;
+      }
+      if (!rawId) return;
+      const findTarget = () => {
+        const direct = document.getElementById(rawId);
+        if (direct?.classList.contains('short-card')) return { el: direct, legacy: false };
+        const legacy = document.getElementById('note:' + rawId);
+        if (legacy?.classList.contains('short-card')) return { el: legacy, legacy: true };
+        return null;
+      };
+      let found = findTarget();
+      let guard = 0;
+      while (
+        !disposed &&
+        host.isConnected &&
+        guard < Math.ceil(total / batchSize) + 2 &&
+        (!found || found.el.classList.contains('shorts-peek'))
+      ) {
+        if (start - 1 + getFullCount() >= total && !getPeekCard()) break;
+        guard++;
+        const ok = await expand({ manual: false, instant: true });
+        if (!ok) break;
+        found = findTarget();
+      }
+      if (!found || disposed || !host.isConnected) return;
+      if (found.legacy) {
+        const canonical = new URL(location.href);
+        canonical.hash = found.el.id;
+        history.replaceState(history.state, '', canonical);
+      }
+      requestAnimationFrame(() => {
+        if (disposed || !found.el.isConnected) return;
+        found.el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        found.el.focus({ preventScroll: true });
+      });
+    };
+
+    const restoreSavedBatches = async () => {
+      if (location.hash) return;
+      const navEntry = performance.getEntriesByType?.('navigation')?.[0];
+      const isBackForward = visit?.history?.popstate || navEntry?.type === 'back_forward';
+      if (!isBackForward) return;
+      let saved = null;
+      try {
+        saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
+      } catch {}
+      if (!saved || saved.revision !== revision) return;
+      const targetEnd = Math.min(total, Number(saved.end) || 0);
+      let guard = 0;
+      while (
+        !disposed &&
+        host.isConnected &&
+        start - 1 + getFullCount() < targetEnd &&
+        guard < Math.ceil(total / batchSize) + 2
+      ) {
+        guard++;
+        const ok = await expand({ manual: false, instant: true });
+        if (!ok) break;
+      }
+      if (!visit && Number.isFinite(saved.scrollY) && saved.scrollY > 0) {
+        requestAnimationFrame(() => {
+          if (!disposed) window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
+        });
+      }
+    };
+
+    const onExpandClick = (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      event.preventDefault();
+      void expand({ manual: true });
+    };
+
+    const onFeedClick = (event) => {
+      const peek = event.target.closest?.('.short-card.shorts-peek');
+      if (!peek || !feed.contains(peek)) return;
+      event.preventDefault();
+      void expand({ manual: true });
+    };
+
+    const onFeedWarm = (event) => {
+      if (event.target.closest?.('.short-card.shorts-peek')) warmNextBatch();
+    };
+
+    const armAutoExpand = () => {
+      if (disposed || !host.isConnected) return;
+      const wasReady = autoReady;
+      autoReady = true;
+      if (!wasReady && automatic && !loading && !refreshRequired) {
+        const peek = getPeekCard();
+        if (peek && isPeekWithinTriggerZone(peek)) {
+          void expand({ manual: false });
+        }
+      }
+    };
+
+    const onScroll = () => {
+      if (disposed || !host.isConnected) return;
+      if (window.scrollY > 0) armAutoExpand();
+      saveState();
+    };
+
+    const onWheel = (event) => {
+      if (event.deltaY > 0) armAutoExpand();
+    };
+
+    const onKeyDown = (event) => {
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.target?.closest?.('input,textarea,select,[contenteditable],dialog[open]')
+      )
+        return;
+      if (
+        event.key === 'PageDown' ||
+        event.key === 'ArrowDown' ||
+        event.key === 'End' ||
+        (event.key === ' ' && !event.shiftKey)
+      ) {
+        armAutoExpand();
+      }
+    };
+
+    const onResize = () => {
+      if (!disposed && host.isConnected && getPeekCard()) {
+        void ensurePeekFit();
+      }
+    };
+
+    const onHashChange = () => {
+      void resolveShortDeepLink();
+    };
+
+    const onVisitStart = () => {
+      if (disposed || !host.isConnected) return;
+      settleSprings();
+      snapshotToCache();
+    };
+
+    expandBtn?.addEventListener('click', onExpandClick);
+    expandBtn?.addEventListener('pointerenter', warmNextBatch, { passive: true });
+    expandBtn?.addEventListener('pointerdown', warmNextBatch, { passive: true });
+    expandBtn?.addEventListener('touchstart', warmNextBatch, { passive: true });
+    feed.addEventListener('click', onFeedClick);
+    feed.addEventListener('pointerenter', onFeedWarm, { passive: true, capture: true });
+    feed.addEventListener('pointerdown', onFeedWarm, { passive: true, capture: true });
+    feed.addEventListener('touchstart', onFeedWarm, { passive: true, capture: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('keydown', onKeyDown, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
+    window.addEventListener('hashchange', onHashChange);
+    const removeVisitStart = swup?.hooks.on('visit:start', onVisitStart);
+
+    // Measure initial peek (and promote if ultra-short), then sync controls & arm observer.
+    void (async () => {
+      if (getPeekCard()) await ensurePeekFit();
+      if (disposed || !host.isConnected) return;
+      syncControls();
+      if (location.hash) {
+        await resolveShortDeepLink();
+      } else {
+        await restoreSavedBatches();
+      }
+      if (!disposed && host.isConnected && getPeekCard()) {
+        scheduleObservePeek();
+      }
+    })();
+
+    cleanupFunctions.push(() => {
+      disposed = true;
+      cancelAnimationFrame(observeFrame);
+      settleSprings();
+      request?.abort();
+      observer?.disconnect();
+      expandBtn?.removeEventListener('click', onExpandClick);
+      expandBtn?.removeEventListener('pointerenter', warmNextBatch);
+      expandBtn?.removeEventListener('pointerdown', warmNextBatch);
+      expandBtn?.removeEventListener('touchstart', warmNextBatch);
+      feed.removeEventListener('click', onFeedClick);
+      feed.removeEventListener('pointerenter', onFeedWarm, true);
+      feed.removeEventListener('pointerdown', onFeedWarm, true);
+      feed.removeEventListener('touchstart', onFeedWarm, true);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('hashchange', onHashChange);
+      if (typeof removeVisitStart === 'function') removeVisitStart();
+      else if (typeof removeVisitStart?.off === 'function') removeVisitStart.off();
+      else swup?.hooks.off?.('visit:start', onVisitStart);
+    });
+  }
+
   function syncSiteAppearance(swupContainer) {
     window.CloudInkTheme?.setPalette(
       swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink',
@@ -1304,6 +1978,7 @@ const bootCloudInkClient = () => {
 
     syncReaderNavigation();
     mountPostList();
+    mountShortsFeed(visit);
     syncSiteAppearance(swupContainer);
     mountHomeCards(swupContainer);
 
@@ -1325,10 +2000,12 @@ const bootCloudInkClient = () => {
       return null;
     }
     const target = document.getElementById(id);
-    if (target?.classList.contains('short-card')) return target;
+    if (target?.classList.contains('short-card') && !target.classList.contains('shorts-peek'))
+      return target;
     // Links in earlier publications used the bare slug.
     const legacy = document.getElementById('note:' + id);
-    if (!legacy?.classList.contains('short-card')) return null;
+    if (!legacy?.classList.contains('short-card') || legacy.classList.contains('shorts-peek'))
+      return null;
     const canonical = new URL(location.href);
     canonical.hash = legacy.id;
     history.replaceState(history.state, '', canonical);
@@ -1395,9 +2072,11 @@ const bootCloudInkClient = () => {
       if (visit.history.popstate) {
         position = positions.get(currentIndex) || pathPositions.get(location.pathname);
       } else if (
-        location.pathname === '/' ||
-        location.pathname === '' ||
-        /^\/post\/(?:page\/[1-9]\d*\/)?$/.test(location.pathname)
+        !location.hash &&
+        (location.pathname === '/' ||
+          location.pathname === '' ||
+          /^\/post\/(?:page\/[1-9]\d*\/)?$/.test(location.pathname) ||
+          /^\/shorts\/(?:page\/[1-9]\d*\/)?$/.test(location.pathname))
       ) {
         position = pathPositions.get(location.pathname || '/');
       }

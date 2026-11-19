@@ -1392,6 +1392,108 @@
   max-width: 100%;
   height: auto;
 }
+.reader-shell .shorts-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reader-shell .shorts-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin: 0;
+}
+.reader-shell .short-card.shorts-peek {
+  position: relative;
+  overflow: hidden;
+  max-height: var(--shorts-peek-height, 120px);
+  cursor: pointer;
+  border-bottom-color: transparent;
+}
+.reader-shell .short-card.shorts-peek:hover .short-time {
+  color: var(--ci-primary);
+}
+.reader-shell .short-card.shorts-peek .short-body {
+  pointer-events: none;
+  user-select: none;
+}
+.reader-shell .short-card.shorts-peek::after,
+.reader-shell .short-card.shorts-expanding::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(36%, 48px);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--surface) 42%, transparent) 55%,
+    var(--surface) 100%
+  );
+  pointer-events: none;
+  transition: opacity var(--ci-motion-fast) var(--ci-ease);
+}
+.reader-shell .short-card.shorts-expanding {
+  position: relative;
+  overflow: hidden;
+}
+.reader-shell .short-card.shorts-expanding::after {
+  opacity: 0;
+}
+.reader-shell .shorts-expand-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 6px;
+  overflow-anchor: none;
+}
+.reader-shell .shorts-expand-wrap[hidden] {
+  display: none;
+}
+.reader-shell .shorts-expand-btn {
+  min-width: 124px;
+  cursor: pointer;
+}
+.reader-shell .shorts-pagination {
+  padding: 16px 0 8px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+  overflow-anchor: none;
+}
+.reader-shell .shorts-pagination[hidden] {
+  display: none;
+}
+.reader-shell .shorts-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+.reader-shell .shorts-pagination-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.reader-shell .shorts-layout.shorts-enhanced .shorts-pagination-links [data-shorts-next-link] {
+  display: none;
+}
+.reader-shell
+  .shorts-layout.shorts-enhanced
+  .shorts-pagination-links:not(:has(a:not([data-shorts-next-link]))) {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-shell .short-card.shorts-peek::after,
+  .reader-shell .short-card.shorts-expanding::after {
+    transition: none;
+  }
+}
 @media (min-width: 768px) and (max-width: 1279px) {
   :root {
     --sidebar-width: 76px;

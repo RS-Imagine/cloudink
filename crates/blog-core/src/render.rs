@@ -541,11 +541,40 @@ pub fn render_archive(config: &SiteConfig, posts: &[Post], css_hash: &str) -> St
 /// Renders the shorts feed ("短记"): lightweight timestamped notes in a
 /// reverse-chronological stream, newest first. No titles, no excerpts —
 /// each card shows the minute-precision timestamp and the rendered body.
+pub const SHORTS_PER_PAGE: usize = 3;
+
+/// The first shorts batch (3 full + 1 peek when more exist); subsequent batches
+/// also work as ordinary HTML pages for search engines and JS-disabled browsers.
 pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> String {
+    render_shorts_page(config, shorts, css_hash, 1)
+}
+
+pub fn render_shorts_page(
+    config: &SiteConfig,
+    shorts: &[Short],
+    css_hash: &str,
+    page_number: usize,
+) -> String {
     let mut visible: Vec<&Short> = shorts.iter().filter(|short| !short.draft()).collect();
-    visible.sort_by(|a, b| b.date().cmp(a.date()));
+    visible.sort_by(|a, b| b.date().cmp(a.date()).then_with(|| b.slug().cmp(a.slug())));
+    let revision = crate::content_hash(
+        &serde_json::to_string(
+            &visible
+                .iter()
+                .map(|short| (short.slug(), short.date()))
+                .collect::<Vec<_>>(),
+        )
+        .expect("short metadata is serializable"),
+    );
+    let page_number = page_number.max(1);
+    let total = visible.len();
+    let start = (page_number - 1)
+        .saturating_mul(SHORTS_PER_PAGE)
+        .min(total);
+    let full_end = start.saturating_add(SHORTS_PER_PAGE).min(total);
+    let has_peek = full_end < total;
     let mut items = String::new();
-    for short in visible {
+    for short in &visible[start..full_end] {
         items.push_str(&format!(
             r#"<article class="short-card" id="{anchor}" tabindex="-1"><time class="short-time" datetime="{date}">{date}</time><div class="short-body">{body}</div></article>"#,
             anchor = short_anchor_id(short),
@@ -553,12 +582,64 @@ pub fn render_shorts(config: &SiteConfig, shorts: &[Short], css_hash: &str) -> S
             body = short.body_html,
         ));
     }
-    if items.is_empty() {
-        items.push_str("<p class=\"shorts-empty\">还没有短记，去写第一条吧。</p>");
+    if has_peek {
+        let peek = visible[full_end];
+        items.push_str(&format!(
+            r#"<article class="short-card shorts-peek" id="{anchor}" tabindex="-1" data-shorts-peek="true" aria-hidden="true"><time class="short-time" datetime="{date}">{date}</time><div class="short-body" inert>{body}</div></article>"#,
+            anchor = short_anchor_id(peek),
+            date = escape_html(peek.date()),
+            body = peek.body_html,
+        ));
     }
+    let contents = if visible.is_empty() {
+        String::from("<div class=\"shorts-feed\" id=\"shorts-feed\"><p class=\"shorts-empty\">还没有短记，去写第一条吧。</p></div>")
+    } else {
+        let previous = if page_number > 1 {
+            format!(
+                r#"<a class="plain-button shorts-page-link" href="{}">← 上一页</a>"#,
+                if page_number == 2 {
+                    "/shorts/".into()
+                } else {
+                    format!("/shorts/page/{}/", page_number - 1)
+                }
+            )
+        } else {
+            String::new()
+        };
+        let next = if has_peek {
+            format!(
+                r#"<a class="plain-button shorts-page-link" id="shorts-list-next" href="/shorts/page/{}/" data-shorts-next-link="true" data-no-swup>下一页 →</a>"#,
+                page_number + 1
+            )
+        } else {
+            String::new()
+        };
+        let expand_wrap = if has_peek {
+            r#"<div class="shorts-expand-wrap" hidden><button type="button" class="plain-button shorts-expand-btn" id="shorts-expand-btn" aria-expanded="false" aria-controls="shorts-feed">展开更多</button></div>"#
+        } else {
+            ""
+        };
+        let pagination = if page_number > 1 || has_peek {
+            format!(
+                r#"<nav class="shorts-pagination" aria-label="短记分页"><p id="shorts-list-status" class="shorts-status" role="status" aria-live="polite">已显示第 {first}–{full_end} 条，共 {total} 条。</p><div class="shorts-pagination-links">{previous}{next}</div></nav>"#,
+                first = start + 1,
+            )
+        } else {
+            String::new()
+        };
+        format!(
+            r#"<div class="shorts-feed" id="shorts-feed">{items}</div>{expand_wrap}{pagination}"#,
+        )
+    };
+    let count_markup = if total > 0 {
+        format!(r#"<p class="shorts-count">共 {total} 条</p>"#)
+    } else {
+        String::new()
+    };
     let body = format!(
-        "<div class=\"shorts-layout\"><h1 id=\"shorts-title\">短记</h1><div class=\"shorts-feed\">{items}</div></div>",
-        items = items,
+        r#"<div class="shorts-layout" data-shorts-revision="{revision}" data-shorts-start="{first}" data-shorts-end="{full_end}" data-shorts-total="{total}" data-shorts-batch="{batch}"><header class="blog-section-heading shorts-heading"><h1 id="shorts-title">短记</h1>{count_markup}</header>{contents}</div>"#,
+        first = if total > 0 { start + 1 } else { 0 },
+        batch = SHORTS_PER_PAGE,
     );
     page(
         "短记",
