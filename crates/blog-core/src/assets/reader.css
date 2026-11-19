@@ -9,17 +9,6 @@
 .article-back-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  font-size: 10px;
-  color: var(--muted);
-}
-.article-back-row button {
-  border: 0;
-  background: transparent;
-  padding: 4px 0;
-  cursor: pointer;
-  font-size: 12px;
 }
 .article-headline {
   padding: 28px 0 26px;
@@ -32,12 +21,6 @@
   letter-spacing: -0.7px;
   overflow-wrap: anywhere;
   outline: none;
-}
-.article-deck {
-  font-size: 15px;
-  line-height: 1.9;
-  color: var(--muted);
-  margin: 17px 0 23px;
 }
 .article-metadata {
   display: flex;
@@ -55,17 +38,6 @@
 .article-body-text p {
   margin: 23px 0;
 }
-.article-body-text h2 {
-  font-size: 24px;
-  margin: 40px 0 20px;
-  line-height: 1.65;
-  letter-spacing: -0.3px;
-}
-.article-body-text h3 {
-  font-size: 20px;
-  margin: 32px 0 17px;
-  line-height: 1.65;
-}
 .article-body-text [data-reading-heading] {
   scroll-margin-top: 24px;
   outline: none;
@@ -77,14 +49,6 @@
 .article-body-text li {
   padding-left: 3px;
   margin: 8px 0;
-}
-.article-body-text blockquote {
-  padding: 19px 22px;
-  border-left: 3px solid var(--primary);
-  background: var(--inset);
-  border-radius: 0 16px 16px 0;
-  margin: 28px 0;
-  color: var(--muted);
 }
 .article-body-text pre {
   font:
@@ -105,14 +69,6 @@
   background: var(--inset);
   font-size: 0.87em;
 }
-.article-end {
-  padding-top: 28px;
-  margin-top: 36px;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
-  color: var(--muted);
-}
-
 .article-toc-panel,
 .article-info-panel,
 .related-panel {
@@ -199,7 +155,7 @@
   text-wrap: balance;
 }
 .reader-shell .article-shell .article-deck {
-  font: 400 15px/1.9 var(--ci-font-ui);
+  font: 400 calc(var(--ci-article-body-size) * 1.06) / 1.7 var(--reader-font-family);
   color: var(--muted);
   margin: 17px 0 23px;
   padding: 0;
@@ -207,42 +163,91 @@
 }
 .reader-shell .article-body {
   text-align: left;
-  font: 400 17px/1.95 var(--ci-font-ui);
+  font: 400 var(--ci-article-body-size) / 1.95 var(--reader-font-family);
 }
-.reader-shell :is(.article-body, .short-body) a[href] {
+.reader-shell :is(.article-body, .short-body) a:is([href], [data-preview-link]) {
   color: var(--ci-primary);
   text-decoration: underline;
   text-underline-offset: 0.2em;
 }
-.reader-shell .article-body h2 {
-  font: 700 24px/1.65 var(--ci-font-ui);
+.reader-shell :is(.article-body, .short-body) h1 {
+  font-size: 1.6em;
+}
+.reader-shell :is(.article-body, .short-body) h2 {
+  font-size: 1.4em;
   margin: 40px 0 20px;
 }
-.reader-shell .article-body h3 {
-  font: 700 20px/1.65 var(--ci-font-ui);
+.reader-shell :is(.article-body, .short-body) h3 {
+  font-size: 1.25em;
   margin: 32px 0 17px;
+}
+.reader-shell :is(.article-body, .short-body) :is(h1, h2, h3) {
+  font-weight: 700;
+  line-height: 1.6;
 }
 .reader-shell .article-body p {
   margin: 23px 0;
 }
-.reader-shell .article-body li + li {
+.reader-shell :is(.article-body, .short-body) p {
+  text-wrap: pretty;
+}
+.reader-shell :is(.article-body, .short-body) blockquote p,
+.reader-shell .reader-page .article-body p {
+  text-wrap: balance;
+}
+.reader-shell :is(.article-body, .short-body) :is(ul, ol) {
+  padding-inline-start: 24px;
+}
+.reader-shell :is(.article-body, .short-body) li + li {
   margin-top: 8px;
+}
+.reader-shell :is(.article-body, .short-body) blockquote {
+  margin: 24px 0;
+  padding: 12px 16px;
+  border-inline-start: 3px solid var(--ci-primary);
+  border-radius: 0 12px 12px 0;
+  background: var(--ci-container);
+  color: var(--ci-muted);
+  font-size: 0.9em;
+  font-style: italic;
+  line-height: 1.75;
+}
+.reader-shell :is(.article-body, .short-body) blockquote > :first-child {
+  margin-block-start: 0;
+}
+.reader-shell :is(.article-body, .short-body) blockquote > :last-child {
+  margin-block-end: 0;
+}
+.reader-shell :is(.article-body, .short-body) figcaption {
+  color: var(--ci-muted);
+  font-size: 0.8em;
+  font-style: italic;
+  line-height: 1.6;
+}
+.reader-shell :is(.article-body, .short-body) hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-block-start: 1px solid var(--ci-divider);
 }
 .reader-shell .article-body img {
   border-radius: 18px;
   max-width: 100%;
   height: auto;
 }
-.reader-shell .article-body pre {
+.reader-shell :is(.article-body, .short-body) pre {
   font-size: 13px;
+  font-family: var(--ci-font-mono);
   line-height: 1.85;
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
   padding: 20px 24px;
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--inset);
   text-align: left;
 }
-.reader-shell .article-body pre code {
+.reader-shell :is(.article-body, .short-body) pre code {
   padding: 0;
   background: transparent;
 }
@@ -275,11 +280,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  padding: 28px 0 0;
-  margin-top: 36px;
+  padding: 0;
+  margin-top: 28px;
+  border: 0;
 }
-.reader-shell .article-end p {
-  width: 100%;
+.article-end #share-status {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+.article-end #share-status:empty {
+  position: absolute;
 }
 .reader-shell:has([data-page='post']) #reader-context {
   padding-top: 0;
@@ -362,8 +372,7 @@
     overflow: visible;
   }
 }
-.reader-shell .toc-container .toc-title,
-.reader-shell .toc-container .toc-close {
+.reader-shell .toc-container .toc-title {
   display: none;
 }
 .reader-shell .toc-link {
@@ -529,15 +538,6 @@
     font-weight: 600;
     margin-bottom: 12px;
   }
-  .reader-shell > .toc-container .toc-close {
-    display: block;
-    min-height: 44px;
-    background: var(--inset);
-    color: var(--primary);
-    border: 0;
-    border-radius: 16px;
-    margin-top: 12px;
-  }
   .reader-shell .toc-link {
     font-size: 14px;
     padding: 12px 15px;
@@ -556,30 +556,18 @@
     letter-spacing: -0.7px;
   }
   .reader-shell .article-shell .article-deck {
-    font-size: 13px;
     margin: 17px 0 20px;
   }
   .reader-shell .article-shell .article-headline {
     padding: 25px 0 22px;
     margin-bottom: 22px;
   }
-  .reader-shell .article-body {
-    font-size: 17px;
-    line-height: 1.95;
-  }
   .reader-shell .article-body h2 {
-    font-size: 21px;
     margin-top: 34px;
-  }
-  .reader-shell .article-body h3 {
-    font-size: 18px;
   }
   .reader-shell .article-metadata,
   .reader-shell .article-details {
     gap: 8px;
-    font-size: 12px;
-  }
-  .reader-shell .article-end {
     font-size: 12px;
   }
   .reader-shell .to-top {
@@ -599,6 +587,7 @@
 /* Author-configurable reading family. Legacy settings keep the master serif font. */
 :root {
   --reader-font-family: var(--ci-font-reading);
+  --ci-article-body-size: 17px;
 }
 :root[data-reading-font='sans'] {
   --reader-font-family: var(--ci-font-ui);

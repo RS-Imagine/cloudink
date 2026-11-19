@@ -20,7 +20,10 @@
   function viewportHeight() {
     return env.visualViewport?.height || env.innerHeight || 1;
   }
-  function attach(surface, { media = '(max-width:759px)', onDismiss = () => {} } = {}) {
+  function attach(
+    surface,
+    { media = '(max-width:759px)', onDismiss = () => {}, dismissOnActivate = false } = {},
+  ) {
     if (records.has(surface)) return records.get(surface);
     const motion = env.CloudInkMotion,
       narrow = env.matchMedia(media);
@@ -47,8 +50,9 @@
     const native = typeof surface.showModal === 'function';
     function label() {
       const expanded = target === 0;
-      handle.setAttribute('aria-label', peek ? (expanded ? '收起面板' : '展开面板') : '关闭面板');
-      if (peek) handle.setAttribute('aria-expanded', String(expanded));
+      const toggle = peek && !dismissOnActivate;
+      handle.setAttribute('aria-label', toggle ? (expanded ? '收起面板' : '展开面板') : '关闭面板');
+      if (toggle) handle.setAttribute('aria-expanded', String(expanded));
       else handle.removeAttribute('aria-expanded');
       surface.dataset.sheetSnap = phase === 'closing' ? 'closing' : expanded ? 'expanded' : 'peek';
     }
@@ -301,7 +305,7 @@
         event.preventDefault();
         if (event.detail && performance.now() < suppressUntil) return;
         if (!active.has(record)) return;
-        if (!peek) dismiss();
+        if (!peek || dismissOnActivate) dismiss();
         else moveTo(target === 0 ? peek : 0);
       },
       { signal },
@@ -393,7 +397,12 @@
     cancelAll,
     openDialog(surface) {
       if (!surface.hasAttribute('data-sheet')) return false;
-      return attach(surface).open();
+      const sheet = attach(surface);
+      if (!sheet.open()) return false;
+      const focused = doc.activeElement;
+      if (focused === surface || !surface.contains(focused) || !focused.getClientRects().length)
+        sheet.handle.focus({ preventScroll: true });
+      return true;
     },
     closeDialog(surface, done) {
       return records.get(surface)?.close(done) || false;

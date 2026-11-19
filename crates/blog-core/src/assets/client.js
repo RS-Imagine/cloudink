@@ -58,10 +58,21 @@ document.addEventListener('DOMContentLoaded', () => {
     '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 11 6-6 6 6M12 5v14"/></svg>';
   toTop.hidden = true;
   document.body.append(toTop);
+  const narrowReader = matchMedia('(max-width: 767px)');
+  const footer = document.querySelector('.site-footer');
+  let footerVisible = false;
   const updateToTop = () => {
-    const hidden = window.scrollY < 600;
+    const hidden = window.scrollY < 600 || (narrowReader.matches && footerVisible);
+    if (hidden && document.activeElement === toTop)
+      document.getElementById('swup')?.focus({ preventScroll: true });
     if (toTop.hidden !== hidden) toTop.hidden = hidden;
   };
+  if (footer && typeof IntersectionObserver === 'function')
+    new IntersectionObserver(([entry]) => {
+      footerVisible = entry.isIntersecting;
+      updateToTop();
+    }).observe(footer);
+  narrowReader.addEventListener('change', updateToTop);
   window.addEventListener('scroll', updateToTop, { passive: true });
   updateToTop();
   toTop.addEventListener('click', () => {
@@ -540,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.style.overflow = 'hidden';
       if (motion) motion.openDialog(dialog);
       else dialog.showModal();
-      close.focus({ preventScroll: true });
+      if (!dialog.hasAttribute('data-ci-sheet-active')) close.focus({ preventScroll: true });
       dialogs.add(dialog);
       return dialog;
     };
@@ -553,6 +564,17 @@ document.addEventListener('DOMContentLoaded', () => {
         'aria-label',
         t('放大图片', 'Enlarge image') + (img.alt ? ': ' + img.alt : ''),
       );
+      const media = img.closest('picture') || img;
+      if (!media.parentElement.classList.contains('reader-zoom-frame')) {
+        const frame = document.createElement('span');
+        frame.className = 'reader-zoom-frame';
+        const badge = document.createElement('span');
+        badge.className = 'reader-zoom-badge';
+        badge.setAttribute('aria-hidden', 'true');
+        badge.dataset.label = t('放大', 'Enlarge');
+        media.before(frame);
+        frame.append(media, badge);
+      }
       const open = () => {
         const content = document.createElement('figure');
         content.className = 'image-lightbox';
@@ -664,18 +686,36 @@ document.addEventListener('DOMContentLoaded', () => {
         } else load();
       };
       img.addEventListener('click', open);
-      img.addEventListener('keydown', (e) => {
+      const keydown = (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           open();
         }
+      };
+      img.addEventListener('keydown', keydown);
+      cleanupFunctions.push(() => {
+        img.removeEventListener('click', open);
+        img.removeEventListener('keydown', keydown);
       });
-      cleanupFunctions.push(() => img.removeEventListener('click', open));
     });
-    document.querySelectorAll('.article-body pre').forEach((pre) => {
+    const scrollCues = [];
+    function addScrollCue(scroller, label) {
+      let frame = scroller.parentElement;
+      if (!frame.classList.contains('scroll-cue')) {
+        frame = document.createElement('div');
+        frame.className = 'scroll-cue';
+        scroller.before(frame);
+        frame.append(scroller);
+      }
+      scrollCues.push({ scroller, frame, label });
+    }
+    document.querySelectorAll(':is(.article-body, .short-body) pre').forEach((pre) => {
       pre.tabIndex = 0;
-      pre.setAttribute('aria-label', t('代码块，可横向滚动', 'Code block, scroll horizontally'));
-      if (pre.parentElement.classList.contains('code-block')) return;
+      const scrollLabel = t('代码块', 'Code block');
+      if (pre.closest('.code-block')) {
+        addScrollCue(pre, scrollLabel);
+        return;
+      }
       const wrapper = document.createElement('div');
       wrapper.className = 'code-block';
       pre.before(wrapper);
@@ -747,6 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gutter.textContent = Array.from({ length: lineCount }, (_, index) => index + 1).join('\n');
         pre.before(gutter);
       }
+      addScrollCue(pre, scrollLabel);
 
       let resetTimer = null;
       button.addEventListener('click', async () => {
@@ -772,16 +813,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
       });
     });
-    document.querySelectorAll('.article-body table').forEach((table) => {
-      if (table.parentElement.classList.contains('table-scroll')) return;
-      const scroller = document.createElement('div');
-      scroller.className = 'table-scroll';
+    document.querySelectorAll(':is(.article-body, .short-body) table').forEach((table) => {
+      let scroller = table.parentElement;
+      if (!scroller.classList.contains('table-scroll')) {
+        scroller = document.createElement('div');
+        scroller.className = 'table-scroll';
+        table.before(scroller);
+        scroller.append(table);
+      }
       scroller.tabIndex = 0;
       scroller.setAttribute('role', 'region');
-      scroller.setAttribute('aria-label', t('表格，可横向滚动', 'Table, scroll horizontally'));
-      table.before(scroller);
-      scroller.append(table);
+      addScrollCue(scroller, t('表格', 'Table'));
     });
+    if (scrollCues.length) {
+      const controller = new AbortController();
+      const options = { passive: true, signal: controller.signal };
+      const update = ({ scroller, frame, label }) => {
+        const overflow = scroller.scrollWidth - scroller.clientWidth;
+        const name = label + (overflow > 1 ? t('，可横向滚动', ', scroll horizontally') : '');
+        if (scroller.getAttribute('aria-label') !== name) scroller.setAttribute('aria-label', name);
+        frame.toggleAttribute(
+          'data-scroll-more',
+          scroller.clientHeight > 0 && overflow - scroller.scrollLeft > 1,
+        );
+      };
+      const refresh = () => {
+        if (!controller.signal.aborted) scrollCues.forEach(update);
+      };
+      const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(refresh) : null;
+      for (const entry of scrollCues) {
+        entry.scroller.addEventListener('scroll', () => update(entry), options);
+        resize?.observe(entry.scroller);
+        if (entry.scroller.firstElementChild) resize?.observe(entry.scroller.firstElementChild);
+      }
+      window.addEventListener('resize', refresh, options);
+      document.fonts?.addEventListener('loadingdone', refresh, options);
+      document.fonts?.ready.then(refresh);
+      cleanupFunctions.push(() => {
+        controller.abort();
+        resize?.disconnect();
+      });
+      refresh();
+    }
     document.querySelectorAll('.article-body .katex-display').forEach((formula) => {
       formula.tabIndex = 0;
       formula.setAttribute('role', 'region');
@@ -816,38 +889,78 @@ document.addEventListener('DOMContentLoaded', () => {
         const dividerColor = palette.getPropertyValue('--ci-divider').trim() || '#e8e0d5';
 
         const nonLeading = /^[，。？！、；：”’）》\?!,.:;]+$/;
-        function getLines(text, font, maxWidth) {
+        const singleHan = (line) => /^\p{Script=Han}$/u.test(line.replace(/[\p{P}\s]/gu, ''));
+        const language = document.documentElement.lang || 'zh-CN';
+        const wordSegmenter =
+          globalThis.Intl?.Segmenter && new Intl.Segmenter(language, { granularity: 'word' });
+        const graphemeSegmenter =
+          globalThis.Intl?.Segmenter && new Intl.Segmenter(language, { granularity: 'grapheme' });
+        function segment(text, segmenter, fallback) {
+          return segmenter
+            ? Array.from(segmenter.segment(text), (part) => part.segment)
+            : fallback(text);
+        }
+        const wordsOf = (text) => segment(text, wordSegmenter, (value) => value.split(/(\s+)/));
+        const glyphsOf = (text) => segment(text, graphemeSegmenter, Array.from);
+        function getLines(text, font, maxWidth, phrases) {
           ctx.font = font;
-          let words = [];
-          if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-            const segmenter = new Intl.Segmenter(navigator.language || 'zh-CN', {
-              granularity: 'word',
-            });
-            words = Array.from(segmenter.segment(text)).map((s) => s.segment);
-          } else {
-            words = text.split(/(\s+)/);
-          }
-          let lines = [];
+          const fits = (line) => ctx.measureText(line).width <= maxWidth;
+          const words = phrases
+            ? phrases.flatMap((phrase) =>
+                fits(phrase)
+                  ? [phrase]
+                  : wordsOf(phrase).flatMap((word) => (fits(word) ? [word] : glyphsOf(word))),
+              )
+            : wordsOf(text);
+          const lines = [];
           let currentLine = '';
-          for (let n = 0; n < words.length; n++) {
-            const word = words[n];
+          for (const word of words) {
             const testLine = currentLine + word;
-            if (ctx.measureText(testLine).width > maxWidth && currentLine.length > 0) {
-              if (nonLeading.test(word)) {
+            if (!fits(testLine) && currentLine.trim()) {
+              if (!phrases && nonLeading.test(word)) {
                 currentLine = testLine;
               } else {
-                lines.push(currentLine);
-                currentLine = word;
+                const tail =
+                  phrases && nonLeading.test(word) ? glyphsOf(currentLine.trimEnd()).at(-1) : '';
+                if (tail && currentLine.trimEnd().length > tail.length && fits(tail + word)) {
+                  lines.push(currentLine.trimEnd().slice(0, -tail.length));
+                  currentLine = tail + word;
+                } else {
+                  lines.push(currentLine.trimEnd());
+                  currentLine = word.trimStart();
+                }
               }
             } else {
               currentLine = testLine;
             }
           }
-          if (currentLine) lines.push(currentLine);
+          if (currentLine.trim()) lines.push(currentLine.trimEnd());
+          if (phrases) {
+            for (let i = 1; i < lines.length; i++) {
+              if (!singleHan(lines[i])) continue;
+              const before = wordsOf(lines[i - 1]);
+              let tail = '';
+              while (before.length && (!tail.trim() || nonLeading.test(tail)))
+                tail = before.pop() + tail;
+              const remainder = before.join('').trimEnd();
+              if (remainder && !singleHan(remainder) && fits(tail + lines[i])) {
+                lines[i - 1] = remainder;
+                lines[i] = tail + lines[i];
+              }
+            }
+          }
           return lines;
         }
 
-        const title = (document.querySelector('article h1')?.innerText || document.title).trim();
+        const headline =
+          document.getElementById('article-title') || document.querySelector('article h1');
+        const title = (headline?.textContent || document.title).trim();
+        // Match the Rust renderer's phrase breaks, including spaces outside each span.
+        const titlePhrases = [''];
+        for (const node of headline?.childNodes || []) {
+          if (node.nodeName === 'WBR') titlePhrases.push('');
+          else titlePhrases[titlePhrases.length - 1] += node.textContent;
+        }
         const desc = (
           document.querySelector('article p.article-description, article p.meta')?.innerText ||
           document.querySelector('meta[name="description"]')?.content ||
@@ -872,7 +985,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const domain = window.location.host + window.location.pathname;
 
         const titleFont = `600 46px ${readingFont}`;
-        const titleLines = getLines(title, titleFont, 630);
+        const titleLines = getLines(
+          title,
+          titleFont,
+          630,
+          titlePhrases.length > 1 ? titlePhrases : [title],
+        );
 
         const descFont = `500 24px ${readingFont}`;
         const descLines = desc ? getLines(desc, descFont, 630) : [];
@@ -1180,10 +1298,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let tocOverflow = null;
         let tocBackground = [];
         let tocDisposed = false;
-        const tocClose = document.createElement('button');
-        tocClose.className = 'toc-close';
-        tocClose.textContent = t('关闭目录', 'Close');
-        tocContainer.append(tocClose);
         const syncToc = () => {
           if (tocDisposed) return;
           // Fixed drawers must live outside Swup's transformed content container.
@@ -1214,6 +1328,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tocContainer.dataset.sheet = 'list';
         const tocSheet = window.CloudInkMobile?.attach(tocContainer, {
           media: '(max-width:1023px)',
+          dismissOnActivate: true,
           onDismiss: () => {
             closeTocDrawer();
             mobileTocBtn.focus({ preventScroll: true });
@@ -1226,7 +1341,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileTocBtn.focus({ preventScroll: true });
           }
         };
-        tocClose.addEventListener('click', requestTocClose);
         function closeTocDrawer() {
           tocContainer.style.transition = 'none';
           tocContainer.classList.remove('drawer-open');
@@ -1249,11 +1363,13 @@ document.addEventListener('DOMContentLoaded', () => {
           } else {
             tocOverflow = document.body.style.overflow;
             tocBackground = [
-              article,
+              document.getElementById('swup'),
               document.querySelector('.site-header'),
               document.querySelector('.site-footer'),
               document.getElementById('primary-nav'),
               document.querySelector('.reader-dock'),
+              document.querySelector('.reader-skip'),
+              toTop,
             ]
               .filter(Boolean)
               .map((node) => [node, node.inert]);
@@ -1268,14 +1384,15 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
 
+        const tocLinks = Array.from(tocContainer.querySelectorAll('.toc-link'));
         tocDrawerOverlay.addEventListener('click', requestTocClose);
         const tocKeyboard = (e) => {
           if (e.isComposing) return;
           if (e.key === 'Tab' && tocContainer.classList.contains('drawer-open')) {
             const first = tocContainer.hasAttribute('data-ci-sheet-active')
                 ? tocSheet.handle
-                : tocContainer.querySelector('a'),
-              last = tocClose;
+                : tocLinks[0],
+              last = tocLinks.at(-1);
             if (e.shiftKey && document.activeElement === first) {
               e.preventDefault();
               last.focus();
@@ -1293,7 +1410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cleanupFunctions.push(() => document.removeEventListener('keydown', tocKeyboard));
 
         // Cache heading positions when layout changes; scroll frames only search the cache.
-        const tocLinks = Array.from(tocContainer.querySelectorAll('.toc-link'));
         const headingEls = Array.from(headings);
         let activeIndex = -1,
           tocFrame = 0,

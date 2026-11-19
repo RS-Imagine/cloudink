@@ -90,6 +90,11 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
   grid-column: 1 / -1;
   grid-row: 1;
 }
+.reader-dialog[data-ci-sheet-active] .reader-dialog-close,
+.image-preview-dialog[data-ci-sheet-active] #image-preview-close,
+.studio-sheet[data-ci-sheet-active] #studio-sheet-close {
+  display: none;
+}
 .reader-dialog[data-ci-sheet-active] img,
 .image-preview-dialog[data-ci-sheet-active] > img {
   max-width: 100%;
@@ -100,13 +105,6 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
 }
 .toc-container[data-ci-sheet-active] .toc-title {
   margin: 8px 0 12px;
-}
-.toc-container[data-ci-sheet-active] .toc-close {
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  margin-top: 16px;
-  z-index: 2;
 }
 .studio-sheet {
   width: min(600px, calc(100vw - 32px));

@@ -246,6 +246,7 @@ export async function verifyAuthoring(browser) {
         }),
       );
       await navigateStudio(page, 'articles-nav');
+      await expect(page.locator('.article-card .article-edit').first()).toHaveClass(/plain-button/);
       await page.locator('#new-post').click();
       await page.locator('#title').fill(title);
       await expect(page.locator('#title')).toHaveJSProperty('tagName', 'TEXTAREA');
@@ -288,14 +289,32 @@ export async function verifyAuthoring(browser) {
       });
       assert.equal(titleBounds.top, 0, JSON.stringify(titleBounds));
       assert.equal(titleBounds.visible, true, JSON.stringify(titleBounds));
-      assert.ok(
-        await page
-          .locator('#description')
-          .evaluate(
-            (field) => field.clientHeight >= 2 * parseFloat(getComputedStyle(field).lineHeight) - 1,
-          ),
-        'The summary field must show two complete lines at the current text size',
+      const description = page.locator('#description');
+      const overflowHint = page.locator('#description-overflow');
+      await description.fill('短摘要。');
+      const shortHeight = await description.evaluate((field) => field.clientHeight);
+      await description.fill('第一行\n第二行\n末句可见。');
+      await expect
+        .poll(() => description.evaluate((field) => field.clientHeight))
+        .toBeGreaterThan(shortHeight);
+      assert.equal(
+        await description.evaluate((field) => field.scrollHeight > field.clientHeight),
+        false,
       );
+      await expect(overflowHint).toBeHidden();
+      await description.fill('更久的阅读线索。\n'.repeat(10));
+      await expect(overflowHint).toBeVisible();
+      await expect(description).toHaveAttribute('aria-describedby', 'description-overflow');
+      const position = await description.evaluate((field) => {
+        field.scrollTop = field.scrollHeight;
+        return field.scrollTop;
+      });
+      assert.ok(position > 0, 'a capped summary can scroll internally');
+      await description.fill('短摘要。');
+      await expect(overflowHint).toBeHidden();
+      await expect
+        .poll(() => description.evaluate((field) => field.clientHeight))
+        .toBe(shortHeight);
       await page.screenshot({
         path: resolve('cloud-web/dist/authoring-title-' + (index ? 443 : 1920) + '.png'),
       });
@@ -319,7 +338,7 @@ export async function verifyAuthoring(browser) {
             for (const line of range.getClientRects()) edges.push([line.left, line.right]);
           }
         }
-        const table = shell.querySelector('table'),
+        const table = shell.querySelector('.table-scroll'),
           pre = shell.querySelector('pre');
         return {
           width: innerWidth,
@@ -338,6 +357,7 @@ export async function verifyAuthoring(browser) {
         metrics.table[1] > metrics.table[0] && metrics.code[1] > metrics.code[0],
         'wide content retains local scrolling',
       );
+      await expect(frame.locator('kbd')).toHaveText('Mod+Return');
       assert.equal(
         await page.locator('#preview-frame').evaluate((el) => el.sandbox.contains('allow-scripts')),
         false,

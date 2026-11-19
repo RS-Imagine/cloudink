@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { expect } from '../../cloud-admin/node_modules/@playwright/test/index.mjs';
 
 export async function verifyMediaPanels(browser, origin, path, output) {
-  for (const width of [1920, 443, 390]) {
+  for (const width of [1919, 443, 390]) {
     const mobile = width < 768;
     const context = await browser.newContext({
       viewport: { width, height: 900 },
@@ -32,6 +32,7 @@ export async function verifyMediaPanels(browser, origin, path, output) {
       await page.goto(origin + path);
       const image = page.locator('.article-body img').first();
       await expect(image).toHaveAttribute('role', 'button');
+      await expect(page.locator('.reader-zoom-badge').first()).toBeVisible();
       await image.evaluate((img, url) => {
         img
           .closest('picture')
@@ -44,9 +45,10 @@ export async function verifyMediaPanels(browser, origin, path, output) {
       }, src);
       await expect.poll(() => image.evaluate((img) => img.naturalWidth)).toBe(1600);
       const dialog = page.locator('dialog.reader-dialog');
+      const close = dialog.locator(mobile ? '.ci-sheet-grip' : '.reader-dialog-close');
       async function checkPanel() {
         await expect(dialog).toBeVisible();
-        const close = dialog.getByRole('button', { name: /^(关闭|Close)$/ });
+        if (mobile) await expect(dialog.locator('.reader-dialog-close')).toBeHidden();
         await expect(close).toBeVisible();
         await expect(close).toBeFocused();
         await expect
@@ -100,7 +102,7 @@ export async function verifyMediaPanels(browser, origin, path, output) {
             /已请求下载分享图片|Image download requested/,
           );
         }
-        await dialog.locator('.reader-dialog-close').click();
+        await close.click();
         await expect(dialog).toHaveCount(0);
         await expect(trigger).toBeFocused();
         await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');
@@ -230,6 +232,9 @@ export async function verifyReader(browser, origin, output, engine) {
   await page.evaluate(() =>
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
   );
+  await expect(toTop).toBeHidden();
+  await expect(page.locator('.site-footer a')).toBeInViewport();
+  await page.evaluate(() => window.scrollTo({ top: 650, behavior: 'instant' }));
   await expect(toTop).toBeVisible();
   const topBounds = await toTop.boundingBox();
   const contentsBounds = await page.locator('.mobile-toc-btn').boundingBox();
@@ -240,10 +245,11 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
   await page.locator('.mobile-toc-btn').click();
   await expect(page.locator('.toc-link').first()).toBeFocused();
+  await expect(page.locator('.toc-close')).toHaveCount(0);
   await page.keyboard.press('Shift+Tab');
   await expect(page.locator('.toc-container > .ci-sheet-grip')).toBeFocused();
   await page.keyboard.press('Shift+Tab');
-  await expect(page.locator('.toc-close')).toBeFocused();
+  await expect(page.locator('.toc-link').last()).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('.mobile-toc-btn')).toBeFocused();
   await expect(page.locator('body')).not.toHaveCSS('overflow', 'hidden');

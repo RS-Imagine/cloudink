@@ -2,12 +2,23 @@
 export function mountStudioShell() {
   const $ = (id) => document.getElementById(id);
   const motion = window.CloudInkMotion;
-  const disclosures = ['studio-tools'].map($);
+  const tools = $('studio-tools');
+  const toolsToggle = tools.querySelector('summary');
   const dialog = $('studio-sheet');
+  const categoryLinks = Array.from(document.querySelectorAll('.settings-nav a'));
+  function markSettingsSection() {
+    const current = categoryLinks.find((link) => link.hash === location.hash) || categoryLinks[0];
+    for (const link of categoryLinks) {
+      if (link === current) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    }
+  }
+  window.addEventListener('hashchange', markSettingsSection);
+  markSettingsSection();
   const narrow = matchMedia('(max-width:767px)');
   const collapsedSidebar = matchMedia('(max-width:1279px)');
   const siteLink = $('site-link');
-  const toolsPanel = $('studio-tools').querySelector('.studio-tools-panel');
+  const toolsPanel = tools.querySelector('.studio-tools-panel');
   const siteHome = document.createComment('public site link');
   siteLink.before(siteHome);
   function placeSiteLink() {
@@ -48,40 +59,31 @@ export function mountStudioShell() {
     if (metadataDialog.open) metadataDialog.close();
     restoreMetadata();
   });
-  let presented = null;
+  let panelHome = null;
   function restore(focus = true) {
-    const current = presented;
-    if (!current) return;
-    presented = null;
-    current.panelAnchor.replaceWith(current.panel);
-    if (current.node) current.node.open = false;
-    if (focus && current.trigger.isConnected && !current.trigger.closest('[hidden]'))
-      current.trigger.focus({ preventScroll: true });
+    if (!panelHome) return;
+    panelHome.replaceWith(toolsPanel);
+    panelHome = null;
+    tools.open = false;
+    if (focus) toolsToggle.focus({ preventScroll: true });
   }
   const close = (restoreFocus = false) => {
     if (metadataDialog.open) metadataDialog.close();
-    const opened = disclosures.filter((node) => node.open);
+    const opened = tools.open;
     if (dialog.open) dialog.close();
     restore(restoreFocus);
-    for (const node of opened) node.open = false;
-    if (restoreFocus && !dialog.open)
-      opened.at(-1)?.querySelector('summary').focus({ preventScroll: true });
+    tools.open = false;
+    if (restoreFocus && opened) toolsToggle.focus({ preventScroll: true });
   };
-  function present(node) {
-    if (!narrow.matches || typeof dialog.showModal !== 'function' || presented?.node === node)
-      return;
+  function present() {
+    if (!narrow.matches || typeof dialog.showModal !== 'function' || panelHome) return;
     close();
-    node.open = true;
-    const panel = node.querySelector('.studio-tools-panel');
-    const panelAnchor = document.createComment('panel position');
-    const trigger = node.querySelector('summary');
-    panel.before(panelAnchor);
-    presented = { node, panel, panelAnchor, trigger };
-    $('studio-sheet-title').textContent = '更多操作';
-    dialog.dataset.sheet = 'compact';
-    $('studio-sheet-content').append(panel);
+    tools.open = true;
+    panelHome = document.createComment('panel position');
+    toolsPanel.before(panelHome);
+    $('studio-sheet-content').append(toolsPanel);
     motion.openDialog(dialog);
-    (panel.querySelector('button:not(:disabled)') || $('studio-sheet-close')).focus({
+    toolsPanel.querySelector('button:not(:disabled), a[href]')?.focus({
       preventScroll: true,
     });
   }
@@ -94,26 +96,16 @@ export function mountStudioShell() {
   });
   narrow.addEventListener('change', () => close());
   collapsedSidebar.addEventListener('change', placeSiteLink);
-  for (const node of disclosures) {
-    node.addEventListener('toggle', () => {
-      if (node.open) {
-        for (const other of disclosures) if (other !== node) other.open = false;
-        present(node);
-      }
-    });
-    node.addEventListener('focusout', (event) => {
-      if (presented?.node === node) return;
-      if (event.relatedTarget && !node.contains(event.relatedTarget)) node.open = false;
-    });
-  }
+  tools.addEventListener('toggle', () => {
+    if (tools.open) present();
+  });
+  tools.addEventListener('focusout', (event) => {
+    if (!panelHome && event.relatedTarget && !tools.contains(event.relatedTarget))
+      tools.open = false;
+  });
   document.addEventListener('click', (event) => {
-    for (const node of disclosures)
-      if (
-        node.open &&
-        !node.contains(event.target) &&
-        !(presented?.node === node && dialog.contains(event.target))
-      )
-        node.open = false;
+    if (tools.open && !tools.contains(event.target) && !dialog.contains(event.target))
+      tools.open = false;
     const target = event.target.closest('[data-studio-shortcut]');
     if (target) $(target.dataset.studioShortcut)?.click();
     if (event.target.closest('.studio-tools-panel button')) close();
@@ -121,7 +113,7 @@ export function mountStudioShell() {
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || event.isComposing || event.defaultPrevented || dialog.open)
       return;
-    if (disclosures.some((node) => node.open)) {
+    if (tools.open) {
       event.preventDefault();
       close(true);
     }

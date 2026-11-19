@@ -101,6 +101,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       const actions = document.createElement('div');
       actions.className = 'image-actions';
       const edit = document.createElement('button');
+      edit.className = 'plain-button';
       edit.textContent = '编辑';
       edit.addEventListener('click', () => openEditor(item));
       const pub = document.createElement('button');

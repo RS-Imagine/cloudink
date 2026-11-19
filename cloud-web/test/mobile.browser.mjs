@@ -42,6 +42,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   await page.locator('.mobile-toc-btn').click();
   const toc = page.locator('.toc-container'),
     grip = toc.locator('.ci-sheet-grip');
+  await expect(toc.locator('.toc-close')).toHaveCount(0);
   await settled(page);
   await expect(toc).toHaveAttribute('data-sheet-snap', 'peek');
   await expect(grip).toHaveCSS('touch-action', 'none');
@@ -146,7 +147,7 @@ export async function verifyMobile(browser, origin, output, engine) {
   await page.locator('.article-body img').first().click();
   await settled(page);
   await expect(page.locator('.reader-dialog')).toHaveAttribute('data-ci-sheet-active', '');
-  await page.locator('.reader-dialog > .ci-sheet-grip').click();
+  await page.locator('.reader-dialog .ci-sheet-grip').click();
   await expect(page.locator('.reader-dialog')).toHaveCount(0);
   await settled(page);
   assert.equal(await page.evaluate(() => CloudInkMobile.stats().active), 0);

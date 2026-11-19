@@ -270,7 +270,7 @@ fn home_context(config: &SiteConfig, shorts: &[Short]) -> String {
             date = escape_html(short.date()), anchor = short_anchor_id(short), text = escape_html(&excerpt), more = if text.chars().count() > 100 { "…" } else { "" })
     }).collect::<String>();
     format!(
-        r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>{}</section><a class="panel archive-shortcut" href="/archive/">{}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>"#,
+        r#"{}<section class="panel blog-notes"><div class="blog-section-heading"><h2>短记</h2><a class="blog-text-link plain-button" href="/shorts/" aria-label="查看全部短记">全部短记 →</a></div>{}</section><a class="panel archive-shortcut" href="/archive/">{}<span>按月份浏览归档</span><span aria-hidden="true">→</span></a>"#,
         author_context(config, true),
         if entries.is_empty() {
             "<p class=\"muted\">还没有发布短记。</p>"
@@ -338,7 +338,7 @@ pub fn render_index_with_shorts(
             cards.push_str(&format!(r#"<article class="post-card home-card home-feature panel featured-article{without_cover}"><div class="feature-copy"><div class="story-eyebrow">{document}<span>最近发布</span></div><h2><a href="/posts/{slug}/">{title}</a></h2><p class="feature-summary">{description}</p>{meta}<a class="plain-button primary feature-read" href="/posts/{slug}/">阅读全文 <span aria-hidden="true">→</span></a></div>{cover}</article>"#,
                 without_cover = if cover.is_empty() { " without-cover" } else { "" }, document = icon("article"), slug = escape_html(post.slug()), title = display_title(post.title()), description = escape_html(post.description())));
             if visible.len() > 1 {
-                cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link" href="/post/">全部文章 →</a></div>"#);
+                cards.push_str(r#"<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link plain-button" href="/post/">全部文章 →</a></div>"#);
             }
         } else {
             cards.push_str(&format!(r#"<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/{slug}/">{title}</a></h3><p>{description}</p>{meta}</div>{cover}</article>"#,
@@ -437,7 +437,7 @@ pub fn render_posts_page(
     } else {
         let previous = if page_number > 1 {
             format!(
-                r#"<a class="blog-text-link" href="{}">← 上一页</a>"#,
+                r#"<a class="plain-button" href="{}">← 上一页</a>"#,
                 if page_number == 2 {
                     "/post/".into()
                 } else {
@@ -456,7 +456,7 @@ pub fn render_posts_page(
             String::new()
         };
         format!(
-            r#"<ol class="post-index-list" id="post-index-list" start="{first}">{items}</ol><nav class="post-index-pagination" aria-label="文章分页"><p id="post-list-status" role="status" aria-live="polite">已显示第 {first}–{end} 篇，共 {total} 篇。</p><div>{previous}{next}<a class="blog-text-link" href="/archive/">按时间归档 →</a></div></nav>"#,
+            r#"<ol class="post-index-list" id="post-index-list" start="{first}">{items}</ol><nav class="post-index-pagination" aria-label="文章分页"><p id="post-list-status" role="status" aria-live="polite">已显示第 {first}–{end} 篇，共 {total} 篇。</p><div>{previous}{next}<a class="plain-button" href="/archive/">按时间归档 →</a></div></nav>"#,
             first = start + 1,
             total = visible.len(),
         )
@@ -585,7 +585,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         })
         .unwrap_or_default();
     let body = format!(
-        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="back-link article-back" href="/post/">← 返回列表</a><span>文章阅读</span></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><p>感谢阅读。</p><a class="back-link" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
+        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
         title = display_title(post.title()),
         description = escape_html(post.description()),
         initial = escape_html(&config.author.chars().next().unwrap_or(' ').to_string()),
@@ -815,7 +815,7 @@ fn page(
       <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>
     </main>
-    <footer class="site-footer"><p>{footer}</p><a href="https://github.com/RS-Imagine/cloudink" target="_blank" rel="noopener">CloudInk · 云砚</a></footer>
+    <footer class="site-footer"><p>{footer}</p><a class="plain-button" href="https://github.com/RS-Imagine/cloudink" target="_blank" rel="noopener">CloudInk · 云砚</a></footer>
   </div>
   <nav class="reader-dock" aria-label="手机博客导航">{dock_navigation}</nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>

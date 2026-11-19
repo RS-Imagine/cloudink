@@ -179,8 +179,9 @@ async function pump() {
         image.removeAttribute('srcset');
       } else if (src.startsWith('/')) image.src = url.href;
     });
-    page.querySelectorAll('a').forEach((a) => {
+    page.querySelectorAll('a[href]').forEach((a) => {
       a.removeAttribute('href');
+      a.setAttribute('data-preview-link', '');
       a.style.cursor = 'default';
     });
     // Scripts stay disabled by the sandbox. Same-origin lets the parent insert

@@ -25,6 +25,7 @@ export function configureImages({
   beginNavigation,
   rebuild,
 }) {
+  const previewDialog = $('image-preview-dialog');
   let images = [],
     cursor = null,
     requestVersion = 0,
@@ -110,9 +111,10 @@ export function configureImages({
       if (thumbnail.complete && thumbnail.naturalWidth) thumbnail.classList.add('is-ready');
       preview.append(thumbnail);
       preview.addEventListener('click', () => {
+        preview.focus({ preventScroll: true });
         $('image-preview-title').textContent = image.name;
         $('image-preview-full').src = '/images/' + encodeURI(image.key);
-        window.CloudInkMotion.openDialog($('image-preview-dialog'));
+        window.CloudInkMotion.openDialog(previewDialog);
       });
       const body = document.createElement('div');
       body.className = 'image-card-body';
@@ -140,6 +142,7 @@ export function configureImages({
       if (image.references.length) {
         const details = document.createElement('details');
         const summary = document.createElement('summary');
+        summary.className = 'plain-button';
         summary.textContent = `查看 ${image.references.length} 处引用`;
         const list = document.createElement('ul');
         for (const ref of image.references) {
@@ -342,11 +345,13 @@ export function configureImages({
   $('image-library-search').addEventListener('input', render);
   $('image-library-unused').addEventListener('change', render);
   $('image-library-back').addEventListener('click', () => open(true));
-  $('image-preview-close').addEventListener('click', () =>
-    window.CloudInkMotion.closeDialog($('image-preview-dialog')),
-  );
-  $('image-preview-dialog').addEventListener('close', () => {
-    if (!$('image-preview-dialog').open) $('image-preview-full').removeAttribute('src');
+  const closePreview = () => window.CloudInkMotion.closeDialog(previewDialog);
+  $('image-preview-close').addEventListener('click', closePreview);
+  previewDialog.addEventListener('click', (event) => {
+    if (event.target === previewDialog) closePreview();
+  });
+  previewDialog.addEventListener('close', () => {
+    if (!previewDialog.open) $('image-preview-full').removeAttribute('src');
   });
   $('image-library-upload').addEventListener('click', () => $('image-library-files').click());
   $('image-library-files').addEventListener('change', async (event) => {

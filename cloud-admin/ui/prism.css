@@ -473,13 +473,6 @@ html[data-cloudink-admin] {
 .article-edit {
   grid-row: 1;
   grid-column: 4;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: var(--ci-primary);
-  font-size: 11px;
-  min-height: 40px;
-  padding: 8px;
 }
 .manage-footer {
   display: flex;
@@ -665,16 +658,28 @@ html[data-cloudink-admin] {
 }
 .editor-document #description {
   width: 100%;
-  min-height: 3.5em;
+  min-height: var(--ci-control-height);
+  max-height: calc(6lh + 12px);
   height: auto;
   margin: 0;
-  padding: 0;
+  padding: 6px 0;
+  box-sizing: border-box;
   border: 0;
   border-radius: 6px;
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
   background: transparent;
   font: 400 14px/1.75 var(--ci-font-ui);
   color: var(--ci-muted);
+}
+#description-overflow {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.studio-dialog-close {
+  width: var(--ci-control-height);
+  padding: 0;
+  font-size: 24px;
 }
 .editor-workspace {
   display: grid;
@@ -1194,8 +1199,6 @@ html[data-cloudink-admin] {
   .article-edit {
     grid-row: 2;
     grid-column: 2;
-    min-height: 40px;
-    font-size: 11px;
     justify-self: end;
   }
   .manage-footer {
@@ -1301,17 +1304,8 @@ html[data-cloudink-admin] {
   }
   #app-view .settings-nav {
     position: static;
-    display: flex;
     gap: 6px;
-    overflow: auto;
     margin: 0 0 18px;
-    padding: 0;
-    white-space: nowrap;
-  }
-  #app-view .settings-nav a {
-    padding: 9px 13px;
-    min-height: 40px;
-    font-size: 11px;
   }
   #app-view .settings-card {
     padding: 22px;

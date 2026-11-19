@@ -45,6 +45,51 @@ button:disabled {
 button[aria-busy='true'] {
   cursor: progress;
 }
+.plain-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--ci-control-height);
+  padding: 9px 16px;
+  border: 0;
+  border-radius: var(--ci-radius-pill);
+  background: var(--ci-container);
+  color: var(--ci-text);
+  font: 500 12px/1.5 var(--ci-font-ui);
+  text-decoration: none;
+}
+.plain-button:is(:hover, :focus-visible) {
+  background: var(--ci-state-hover);
+  color: var(--ci-primary);
+}
+.plain-button.primary,
+.plain-button[aria-current] {
+  background: var(--ci-primary);
+  color: var(--ci-on-primary);
+}
+.plain-button.primary:is(:hover, :focus-visible),
+.plain-button[aria-current]:is(:hover, :focus-visible) {
+  background: var(--ci-primary-strong);
+  color: var(--ci-on-primary);
+}
+summary.plain-button {
+  list-style: none;
+}
+summary.plain-button::-webkit-details-marker {
+  display: none;
+}
+summary.plain-button::after {
+  content: '';
+  width: 0.4em;
+  height: 0.4em;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+details[open] > summary.plain-button::after {
+  transform: rotate(225deg);
+}
 input:not([type='checkbox']):not([type='radio']),
 textarea,
 select {

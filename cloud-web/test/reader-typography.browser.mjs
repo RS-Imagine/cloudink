@@ -12,6 +12,15 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
   });
   const prose =
     '# 内容一级\n\n## 内容二级\n\n### 内容三级\n\n#### 内容四级\n\n##### 内容五级\n\n###### 内容六级\n\n中英文阅读 Typography，包含 **强调**、*斜体* 和 `inline_code`。\n\n```rust\nlet text = "Cloudink";\n```';
+  const posterTitle = '一个傍晚，旧书店门口听雷雨的人';
+  const typography =
+    prose +
+    '\n\n> 一段引用。*署名保留强调。*\n\n| 按键 | 动作 |\n| --- | --- |\n| Super + T | ' +
+    'VeryLongValue'.repeat(16) +
+    ' |\n\n| 名称 | 值 |\n| --- | --- |\n| 小表 | 正常 |\n\n' +
+    '```text\n' +
+    'long-command'.repeat(17) +
+    '\n```';
   const pages = {
     '/': '.featured-article h2,.feature-summary,.blog-post h3,.blog-post .post-copy > p,.reader-welcome h1,.blog-note p,.author-intro,.author-sub',
     '/post/': '.post-index h2',
@@ -39,12 +48,12 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
           markdown_posts: Object.fromEntries(
             ['primary', 'second'].map((slug) => [
               'font-' + slug,
-              '+++\ntitle = "中英文 Typography ' +
-                slug +
+              '+++\ntitle = "' +
+                (slug === 'primary' ? posterTitle : '中英文 Typography') +
                 '"\nslug = "font-' +
                 slug +
                 '"\ndate = "2026-11-01"\ndescription = "摘要也遵循配置字体。"\n+++\n\n' +
-                prose,
+                typography,
             ]),
           ),
           markdown_shorts: {
@@ -52,7 +61,10 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
               '+++\nslug = "note"\ndate = "2026-11-01 12:00"\n+++\n\n' + (prose + '\n\n').repeat(3),
             swup: '+++\nslug = "swup"\ndate = "2026-10-30 12:00"\n+++\n\n一条有独立地址的短记。',
           },
-          about_markdown: '+++\ntitle = "关于 Cloudink"\n+++\n\n' + prose,
+          about_markdown:
+            '+++\ntitle = "关于 Cloudink"\n+++\n\n' +
+            prose +
+            '\n\n写信到 hello@example.org，联系作者。',
         }),
       ),
     );
@@ -80,7 +92,7 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
-      for (const width of [390, 1440]) {
+      for (const width of font === 'default' ? [390, 443, 1919] : [390, 1440]) {
         await page.setViewportSize({ width, height: 900 });
         for (const [path, selector] of Object.entries(pages)) {
           await page.goto(origin + path);
@@ -126,8 +138,13 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
             { selector, sans: font === 'sans' },
           );
           assert.deepEqual(mismatch, [], engine + '/' + font + '/' + width + path);
-          if (path === '/about/')
+          if (path === '/about/') {
             await expect(page.locator('.author-card a[href="/about/"]')).toHaveCount(0);
+            await expect(page.getByRole('link', { name: 'hello@example.org' })).toHaveAttribute(
+              'href',
+              'mailto:hello@example.org',
+            );
+          }
           if (path === '/') {
             await page.locator('#site-search-btn').click();
             await page.locator('#search-input').fill('Typography');
@@ -151,12 +168,74 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
             ),
             false,
           );
-          if (width === 390 && path === '/posts/font-primary/') {
+          if (font === 'default' && path === '/posts/font-primary/') {
+            const article = page.locator('.reader-article article');
+            await expect(article.locator('.article-back-row')).not.toContainText('文章阅读');
+            await expect(article.locator('.article-end')).not.toContainText('感谢阅读');
+            const controls = await article
+              .locator('.article-back, .article-end .plain-button')
+              .evaluateAll((buttons) =>
+                buttons.map((button) => button.getBoundingClientRect().height),
+              );
+            assert.equal(controls.length, 3);
+            assert.ok(
+              controls.every((height) => height >= 44),
+              JSON.stringify(controls),
+            );
+            const ratios = await article.evaluate((el) => {
+              const style = (selector) => getComputedStyle(el.querySelector(selector));
+              const body = parseFloat(style('.article-body').fontSize);
+              return {
+                quote: parseFloat(style('blockquote p').fontSize) / body,
+                italic: style('blockquote p').fontStyle,
+                heading: parseFloat(style('.article-body h3').fontSize) / body,
+                table: parseFloat(style('table').fontSize) / body,
+                lead: parseFloat(style('.article-deck').fontSize) / body,
+                key: style('kbd').fontFamily,
+              };
+            });
+            assert.ok(
+              Math.abs(ratios.quote - 0.9) < 0.01 &&
+                ratios.italic === 'italic' &&
+                ratios.heading >= 1.24 &&
+                ratios.table < 1 &&
+                ratios.lead >= 1.05 &&
+                ratios.key.includes('monospace'),
+              JSON.stringify(ratios),
+            );
+            const wideCode = article.locator('.code-block pre').last();
+            await expect(wideCode).toHaveCSS('white-space', 'pre');
+            for (const scroll of [wideCode, article.locator('.table-scroll').first()]) {
+              const frame = scroll.locator('..');
+              const more = () =>
+                frame.evaluate((el) => getComputedStyle(el, '::after').content !== 'none');
+              await expect.poll(more).toBe(width < 768);
+              const end = await scroll.evaluate((el) => {
+                el.scrollLeft = el.scrollWidth;
+                return [el.scrollWidth - el.clientWidth, el.scrollLeft];
+              });
+              assert.ok(end[0] > 0 && Math.abs(end[0] - end[1]) < 2, JSON.stringify(end));
+              await expect.poll(more).toBe(false);
+              await scroll.evaluate((el) => (el.scrollLeft = 0));
+              await expect.poll(more).toBe(width < 768);
+            }
+            assert.equal(
+              await article
+                .locator('.table-scroll')
+                .last()
+                .locator('..')
+                .getAttribute('data-scroll-more'),
+              null,
+            );
+          }
+          if ((width === 390 || font === 'default') && path === '/posts/font-primary/') {
             await page.evaluate(() => {
               window.posterFonts = [];
+              window.posterTitleLines = [];
               const fillText = CanvasRenderingContext2D.prototype.fillText;
               CanvasRenderingContext2D.prototype.fillText = function (...args) {
                 window.posterFonts.push(this.font);
+                if (this.font.includes('46px')) window.posterTitleLines.push(args[0]);
                 return fillText.apply(this, args);
               };
             });
@@ -172,6 +251,13 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
               }),
               'The share card must use the configured reading font',
             );
+            const lines = await page.evaluate(() => window.posterTitleLines);
+            assert.equal(lines.join(''), posterTitle);
+            assert.ok(
+              lines.every((line) => Array.from(line.matchAll(/\p{Script=Han}/gu)).length >= 2),
+              lines,
+            );
+            if (lines.length > 1) assert.equal(lines[0], '一个傍晚，');
             await page.keyboard.press('Escape');
           }
           if (font !== 'sans' && ['/archive/', '/shorts/'].includes(path))

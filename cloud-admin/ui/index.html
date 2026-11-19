@@ -566,7 +566,7 @@
           </div>
 
           <details id="image-maintenance" class="settings-card">
-            <summary>优化已有图片</summary>
+            <summary class="plain-button">优化已有图片</summary>
             <p class="muted">
               保留原图和现有链接，为 JPEG、PNG、WebP
               生成更小版本。请保持后台页面打开；可暂停，重新运行会跳过已完成的图片。
@@ -661,8 +661,9 @@
               placeholder="用一两句话，留下一点阅读的线索。"
               aria-label="文章摘要"
               maxlength="2000"
-              rows="2"
+              rows="1"
             ></textarea>
+            <p id="description-overflow" class="muted" hidden>摘要较长，可在框内向下滚动。</p>
             <div class="editor-save-status">
               <span class="status-dot" aria-hidden="true"></span
               ><span id="save-state" class="muted" role="status" data-tone="neutral">尚未保存</span>
@@ -1056,8 +1057,10 @@
           </div>
           <div class="settings-layout">
             <nav class="settings-nav" aria-label="设置分类">
-              <a href="#site-form">网站与外观</a><a href="#account-form">账号</a
-              ><a href="#backup-card">备份与恢复</a><a href="#service-card">运行信息</a>
+              <a class="plain-button" href="#site-form" aria-current="location">网站与外观</a>
+              <a class="plain-button" href="#account-form">账号</a>
+              <a class="plain-button" href="#backup-card">备份与恢复</a>
+              <a class="plain-button" href="#service-card">运行信息</a>
             </nav>
             <div class="settings-sections">
               <form id="site-form" class="settings-card" aria-labelledby="site-form-title">
@@ -1264,7 +1267,7 @@
                   </p>
                 </fieldset>
                 <details class="settings-details">
-                  <summary>外观与关于页面</summary>
+                  <summary class="plain-button">外观与关于页面</summary>
                   <label
                     >页脚文字<input
                       name="footer"
@@ -1280,7 +1283,7 @@
                   </label>
                 </details>
                 <details class="settings-details">
-                  <summary>访问统计（可选）</summary>
+                  <summary class="plain-button">访问统计（可选）</summary>
                   <p class="muted">
                     默认关闭。填写 Microsoft Clarity 项目 ID 后，发布网站信息以启用统计。
                   </p>
@@ -1412,6 +1415,7 @@
                   Cloudflare Builds 管理，网站设置会保留。
                 </p>
                 <a
+                  class="plain-button"
                   href="https://github.com/RS-Imagine/cloudink/blob/master/docs/DEPLOYMENT.md"
                   target="_blank"
                   rel="noopener"
@@ -1438,7 +1442,14 @@
     >
       <div class="dialog-heading">
         <h3 id="image-preview-title">图片预览</h3>
-        <button id="image-preview-close">关闭</button>
+        <button
+          id="image-preview-close"
+          class="studio-dialog-close plain-button"
+          type="button"
+          aria-label="关闭图片预览"
+        >
+          ×
+        </button>
       </div>
       <img id="image-preview-full" alt="完整图片预览" />
     </dialog>
@@ -1450,7 +1461,14 @@
     >
       <div class="studio-sheet-heading">
         <h2 id="studio-sheet-title">更多操作</h2>
-        <button id="studio-sheet-close" type="button" aria-label="关闭菜单">关闭</button>
+        <button
+          id="studio-sheet-close"
+          class="studio-dialog-close plain-button"
+          type="button"
+          aria-label="关闭菜单"
+        >
+          ×
+        </button>
       </div>
       <div id="studio-sheet-content"></div>
     </dialog>
