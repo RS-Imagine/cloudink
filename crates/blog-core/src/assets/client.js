@@ -516,22 +516,25 @@ const bootCloudInkClient = () => {
     const bufferedCards = [];
     const prefetchedHtml = new Map();
     const activeSprings = new Set();
+    const hasIntersectionObserver = 'IntersectionObserver' in window;
     let loading = false,
       disposed = false,
       automatic = true,
       refreshRequired = false,
-      autoArmed = false,
-      armAnchorY = window.scrollY,
-      lastScrollY = window.scrollY,
-      peekStartedBelow = false,
-      peekWasVisibleSinceDisarm = false,
-      peekExitedSinceDisarm = false,
+      lastExpandScrollY = window.scrollY,
+      lastObservedScrollY = window.scrollY,
+      scrolledAfterExpand = false,
+      peekIntersecting = false,
+      peekIntersectionRatio = 0,
+      peekSeenLocked = false,
+      peekSeenScrollY = null,
+      peekSeenAt = 0,
       wheelDownAccum = 0,
+      touchStartY = null,
       suppressScrollUntil = 0;
     let request = null,
       observer = null,
-      observeFrame = 0,
-      autoTimer = 0;
+      observeFrame = 0;
 
     const stripPeekAttrs = (card) => {
       card.classList.remove('shorts-peek', 'shorts-expanding');
@@ -559,26 +562,35 @@ const bootCloudInkClient = () => {
       }
     };
 
+    const preserveCardImageRatios = (card) => {
+      for (const img of card.querySelectorAll('img')) {
+        const w = Number(img.getAttribute('width'));
+        const h = Number(img.getAttribute('height'));
+        if (w > 0 && h > 0 && !img.style.aspectRatio) {
+          img.style.aspectRatio = w + ' / ' + h;
+        }
+      }
+    };
+
     const settleSprings = () => {
       for (const entry of [...activeSprings]) entry.finish();
     };
 
-    const cancelPendingAuto = () => {
-      if (!autoTimer) return;
-      clearTimeout(autoTimer);
-      autoTimer = 0;
+    const resetPeekSeen = () => {
+      peekSeenLocked = false;
+      peekSeenScrollY = null;
+      peekSeenAt = 0;
     };
 
     const disarmAuto = () => {
-      cancelPendingAuto();
-      autoArmed = false;
-      armAnchorY = window.scrollY;
-      lastScrollY = window.scrollY;
+      lastExpandScrollY = window.scrollY;
+      lastObservedScrollY = window.scrollY;
+      scrolledAfterExpand = false;
+      peekIntersecting = false;
+      peekIntersectionRatio = 0;
+      resetPeekSeen();
       wheelDownAccum = 0;
-      const peek = getPeekCard();
-      peekStartedBelow = Boolean(peek && peek.getBoundingClientRect().top >= window.innerHeight);
-      peekWasVisibleSinceDisarm = false;
-      peekExitedSinceDisarm = false;
+      touchStartY = null;
       observer?.disconnect();
     };
 
@@ -652,18 +664,18 @@ const bootCloudInkClient = () => {
       reader?.computeShortPeek
         ? reader.computeShortPeek(naturalHeight)
         : {
-            shouldPeek: naturalHeight > 112,
+            shouldPeek: naturalHeight >= 64,
             height: Math.min(Math.round(naturalHeight * 0.5), 120),
           };
 
     const unpeekCard = (card, instant = false) => {
       if (!card) return Promise.resolve();
-      const fromHeight = Math.round(card.getBoundingClientRect().height);
+      const fromHeight = card.getBoundingClientRect().height;
       stripPeekAttrs(card);
       if (instant || reducedMotion.matches || !motion) return Promise.resolve();
-      const toHeight = Math.round(card.getBoundingClientRect().height);
-      if (toHeight <= fromHeight + 1) return Promise.resolve();
-      card.style.height = fromHeight + 'px';
+      const toHeight = card.getBoundingClientRect().height;
+      if (toHeight <= fromHeight + 0.5) return Promise.resolve();
+      card.style.height = fromHeight.toFixed(2) + 'px';
       card.style.maxHeight = 'none';
       card.style.overflow = 'hidden';
       card.classList.add('shorts-expanding');
@@ -682,8 +694,8 @@ const bootCloudInkClient = () => {
         };
         const springHandle = motion.spring({
           from: fromHeight,
-          stiffness: 360,
-          dampingRatio: 0.92,
+          stiffness: 420,
+          dampingRatio: 0.96,
           onUpdate(value) {
             if (Math.abs(value - toHeight) < 0.5) {
               finish();
@@ -816,74 +828,104 @@ const bootCloudInkClient = () => {
         const nextCardNode = bufferedCards.shift();
         if (!nextCardNode) return;
         const imported = document.importNode(nextCardNode, true);
+        preserveCardImageRatios(imported);
         markAsPeek(imported);
         feed.append(imported);
       }
     };
 
-    const isPeekWithinTriggerZone = (peek) => {
+    const isPeekAtBottom = (peek, rect = null, observedRatio = null) => {
       if (!peek || !peek.isConnected) return false;
-      const rect = peek.getBoundingClientRect();
-      if (reader?.isShortPeekInTriggerZone) {
-        return reader.isShortPeekInTriggerZone({
-          peekTop: rect.top,
-          peekBottom: rect.bottom,
+      if (hasIntersectionObserver && (!peekIntersecting || peekIntersectionRatio < 0.9)) {
+        return false;
+      }
+      const box = rect || peek.getBoundingClientRect();
+      const ratio =
+        observedRatio !== null
+          ? observedRatio
+          : hasIntersectionObserver
+            ? peekIntersectionRatio
+            : null;
+      if (reader?.isShortPeekAtBottom) {
+        return reader.isShortPeekAtBottom({
+          scrollY: window.scrollY,
           viewportHeight: window.innerHeight,
+          peekTop: box.top,
+          peekBottom: box.bottom,
+          observedRatio: ratio,
         });
       }
-      const triggerLine = Math.round(window.innerHeight * 0.95);
-      return rect.bottom > 0 && rect.top <= triggerLine;
+      const height = box.bottom - box.top;
+      if (height <= 0 || window.scrollY + window.innerHeight < window.scrollY + box.bottom - 8) {
+        return false;
+      }
+      const visible = Math.max(0, Math.min(window.innerHeight, box.bottom) - Math.max(0, box.top));
+      const effectiveRatio = Number.isFinite(ratio)
+        ? Math.min(ratio, visible / height)
+        : visible / height;
+      return effectiveRatio >= 0.9;
     };
 
-    const scheduleAutoExpand = () => {
-      if (
-        autoTimer ||
-        !autoArmed ||
-        !automatic ||
-        loading ||
-        disposed ||
-        refreshRequired ||
-        !host.isConnected
-      ) {
-        return;
+    const canTriggerAutoExpand = (peek, observedRatio = null) => {
+      const peekAtBottom = isPeekAtBottom(peek, null, observedRatio);
+      if (!peekAtBottom) {
+        resetPeekSeen();
+        return false;
       }
-      autoTimer = setTimeout(() => {
-        autoTimer = 0;
-        if (!autoArmed || !automatic || loading || disposed || refreshRequired || !host.isConnected)
-          return;
-        const peek = getPeekCard();
-        if (!peek || !isPeekWithinTriggerZone(peek)) return;
-        disarmAuto();
-        void expand({ manual: false });
-      }, 260);
+      const currentY = window.scrollY;
+      if (!peekSeenLocked) {
+        peekSeenLocked = true;
+        peekSeenScrollY = currentY;
+        peekSeenAt = performance.now();
+        return false;
+      }
+      return reader?.canAutoExpandShorts
+        ? reader.canAutoExpandShorts({
+            scrolledAfterExpand,
+            scrollY: currentY,
+            lastExpandScrollY,
+            peekSeenLocked,
+            peekSeenScrollY,
+            peekAtBottom,
+          })
+        : scrolledAfterExpand &&
+            currentY - lastExpandScrollY >= 40 &&
+            peekSeenLocked &&
+            Number.isFinite(peekSeenScrollY) &&
+            currentY - peekSeenScrollY >= 40 &&
+            peekAtBottom;
+    };
+
+    const evaluateAutoExpand = (peek, observedRatio = null) => {
+      if (disposed || !host.isConnected || loading || refreshRequired || !automatic || !peek) return;
+      if (!canTriggerAutoExpand(peek, observedRatio)) return;
+      disarmAuto();
+      void expand({ manual: false });
     };
 
     const observePeek = () => {
       observer?.disconnect();
-      if (disposed || !host.isConnected || refreshRequired || !('IntersectionObserver' in window))
-        return;
+      peekIntersecting = false;
+      peekIntersectionRatio = 0;
+      if (disposed || !host.isConnected || refreshRequired || !hasIntersectionObserver) return;
       const peek = getPeekCard();
       if (!peek) return;
       observer = new IntersectionObserver(
         (entries) => {
+          if (disposed || !host.isConnected || loading || refreshRequired || !automatic) return;
           const entry = entries[entries.length - 1];
           if (!entry) return;
-          const rect = entry.boundingClientRect;
-          const visible = rect.top < window.innerHeight && rect.bottom > 0;
-          if (visible) peekWasVisibleSinceDisarm = true;
-          else if (peekWasVisibleSinceDisarm) peekExitedSinceDisarm = true;
-          if (
-            autoArmed &&
-            automatic &&
-            !loading &&
-            !refreshRequired &&
-            entry.isIntersecting &&
-            isPeekWithinTriggerZone(peek)
-          ) {
-            scheduleAutoExpand();
+          const activePeek = getPeekCard();
+          if (!activePeek || entry.target !== activePeek) return;
+          peekIntersecting = Boolean(entry.isIntersecting);
+          peekIntersectionRatio = entry.isIntersecting ? entry.intersectionRatio : 0;
+          if (!peekIntersecting || peekIntersectionRatio < 0.9) {
+            resetPeekSeen();
+            return;
           }
+          evaluateAutoExpand(activePeek, peekIntersectionRatio);
         },
-        { rootMargin: '0px 0px -5% 0px', threshold: [0, 0.1, 0.25, 0.5, 1] },
+        { rootMargin: '0px', threshold: [0.9, 1] },
       );
       observer.observe(peek);
     };
@@ -909,10 +951,10 @@ const bootCloudInkClient = () => {
       if (!anchor || !anchor.el.isConnected) return;
       const delta = anchor.el.getBoundingClientRect().top - anchor.top;
       if (Math.abs(delta) > 0.5) {
-        suppressScrollUntil = performance.now() + 120;
+        suppressScrollUntil = performance.now() + 140;
         window.scrollBy(0, delta);
-        armAnchorY = window.scrollY;
-        lastScrollY = window.scrollY;
+        lastObservedScrollY = window.scrollY;
+        if (!scrolledAfterExpand) lastExpandScrollY = window.scrollY;
       }
     };
 
@@ -947,18 +989,17 @@ const bootCloudInkClient = () => {
             ),
           };
 
-      cancelPendingAuto();
       if (!allowChain) disarmAuto();
       loading = true;
       automatic = true;
       observer?.disconnect();
       expandBtn?.setAttribute('aria-busy', 'true');
       expandBtn?.setAttribute('aria-disabled', 'true');
+      if (expandBtn && !refreshRequired) expandBtn.textContent = '正在加载…';
       if (status) status.textContent = '正在加载更多短记…';
 
       let changed = false;
       let animPromise = Promise.resolve();
-      const anchor = instant || allowChain ? null : captureViewportAnchor();
       const neededNewCards =
         typeof plan.neededNewCards === 'number'
           ? plan.neededNewCards
@@ -986,6 +1027,7 @@ const bootCloudInkClient = () => {
         for (let i = 0; i < additionalFullCount && bufferedCards.length; i++) {
           const imported = document.importNode(bufferedCards.shift(), true);
           stripPeekAttrs(imported);
+          preserveCardImageRatios(imported);
           addedFull.push(imported);
           fragment.append(imported);
         }
@@ -993,20 +1035,21 @@ const bootCloudInkClient = () => {
         let nextPeek = null;
         if (plan.hasNextPeek && bufferedCards.length) {
           nextPeek = document.importNode(bufferedCards.shift(), true);
+          preserveCardImageRatios(nextPeek);
           markAsPeek(nextPeek);
           fragment.append(nextPeek);
         }
 
+        const anchor = instant || allowChain ? null : captureViewportAnchor();
         animPromise = peek ? unpeekCard(peek, instant) : Promise.resolve();
         if (fragment.childNodes.length) feed.append(fragment);
-        if (nextPeek) await ensurePeekFit();
         restoreViewportAnchor(anchor);
+        if (nextPeek) await ensurePeekFit();
         if (addedFull.some((card) => card.querySelector('pre code'))) {
           void reader?.activate?.();
         }
         changed = Boolean(peek || addedFull.length || nextPeek);
         await animPromise;
-        restoreViewportAnchor(anchor);
       } catch {
         if (!disposed && host.isConnected) {
           automatic = false;
@@ -1070,7 +1113,7 @@ const bootCloudInkClient = () => {
       }
       requestAnimationFrame(() => {
         if (disposed || !found.el.isConnected) return;
-        suppressScrollUntil = performance.now() + 120;
+        suppressScrollUntil = performance.now() + 140;
         found.el.scrollIntoView({ behavior: 'instant', block: 'start' });
         found.el.focus({ preventScroll: true });
         disarmAuto();
@@ -1103,7 +1146,7 @@ const bootCloudInkClient = () => {
       if (!visit && Number.isFinite(saved.scrollY) && saved.scrollY > 0) {
         requestAnimationFrame(() => {
           if (disposed) return;
-          suppressScrollUntil = performance.now() + 120;
+          suppressScrollUntil = performance.now() + 140;
           window.scrollTo({ top: saved.scrollY, behavior: 'instant' });
           disarmAuto();
           if (!refreshRequired && getPeekCard()) scheduleObservePeek();
@@ -1114,7 +1157,6 @@ const bootCloudInkClient = () => {
     };
 
     const onManualIntent = () => {
-      cancelPendingAuto();
       warmNextBatch();
     };
 
@@ -1122,9 +1164,15 @@ const bootCloudInkClient = () => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return;
       event.preventDefault();
+      if (event.detail > 0) expandBtn?.blur();
       if (loading) return;
       disarmAuto();
       void expand({ manual: true });
+    };
+
+    const onFeedMouseDown = (event) => {
+      const peek = event.target.closest?.('.short-card.shorts-peek');
+      if (peek && feed.contains(peek)) event.preventDefault();
     };
 
     const onFeedClick = (event) => {
@@ -1143,42 +1191,33 @@ const bootCloudInkClient = () => {
     const onScroll = () => {
       if (disposed || !host.isConnected) return;
       const currentY = window.scrollY;
-      const scrolledDown = currentY > lastScrollY + 0.5;
-      lastScrollY = currentY;
+      const movedDown = currentY > lastObservedScrollY;
+      lastObservedScrollY = currentY;
       saveState();
       if (performance.now() < suppressScrollUntil) {
-        armAnchorY = currentY;
+        if (!scrolledAfterExpand) lastExpandScrollY = currentY;
         return;
       }
-      if (loading || refreshRequired) return;
+      if (loading || refreshRequired || !automatic) return;
+      if (movedDown && currentY > lastExpandScrollY) {
+        scrolledAfterExpand = true;
+      }
       const peek = getPeekCard();
-      if (peek) {
-        const rect = peek.getBoundingClientRect();
-        const visible = rect.top < window.innerHeight && rect.bottom > 0;
-        if (visible) peekWasVisibleSinceDisarm = true;
-        else if (peekWasVisibleSinceDisarm) peekExitedSinceDisarm = true;
+      if (!peek) return;
+      evaluateAutoExpand(peek);
+    };
+
+    const canExpandAtBottomLimit = (peek) => {
+      if (
+        !scrolledAfterExpand ||
+        window.scrollY - lastExpandScrollY < 40 ||
+        !peekSeenLocked ||
+        performance.now() - peekSeenAt < 260
+      ) {
+        return false;
       }
-      if (!scrolledDown) return;
-      if (!autoArmed) {
-        const peekEnteredFromBelow = Boolean(
-          peekStartedBelow && peek && peek.getBoundingClientRect().top < window.innerHeight,
-        );
-        const canRearm = reader?.shouldRearmShortAuto
-          ? reader.shouldRearmShortAuto({
-              scrollY: currentY,
-              armAnchorY,
-              viewportHeight: window.innerHeight,
-              peekExited: peekExitedSinceDisarm,
-              peekEnteredFromBelow,
-            })
-          : currentY - armAnchorY >= Math.max(160, Math.round(window.innerHeight * 0.45));
-        if (canRearm) {
-          autoArmed = true;
-        }
-      }
-      if (autoArmed && automatic && peek && isPeekWithinTriggerZone(peek)) {
-        scheduleAutoExpand();
-      }
+      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      return window.scrollY >= maxScrollY - 4 && isPeekAtBottom(peek);
     };
 
     const onWheel = (event) => {
@@ -1187,18 +1226,45 @@ const bootCloudInkClient = () => {
         wheelDownAccum = 0;
         return;
       }
-      const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      if (window.scrollY < maxScrollY - 12) {
+      const peek = getPeekCard();
+      if (!peek || !canExpandAtBottomLimit(peek)) {
         wheelDownAccum = 0;
         return;
       }
-      const peek = getPeekCard();
-      if (!peek || !isPeekWithinTriggerZone(peek)) return;
       wheelDownAccum += event.deltaY;
-      if (wheelDownAccum >= 120) {
+      if (wheelDownAccum >= 40) {
         disarmAuto();
         void expand({ manual: false });
       }
+    };
+
+    const onTouchStart = (event) => {
+      touchStartY = event.touches?.[0]?.clientY ?? null;
+    };
+
+    const onTouchMove = (event) => {
+      if (
+        touchStartY === null ||
+        disposed ||
+        !host.isConnected ||
+        loading ||
+        refreshRequired ||
+        !automatic
+      ) {
+        return;
+      }
+      const currentTouchY = event.touches?.[0]?.clientY;
+      if (!Number.isFinite(currentTouchY)) return;
+      const dy = touchStartY - currentTouchY;
+      if (dy < 40) return;
+      const peek = getPeekCard();
+      if (!peek || !canExpandAtBottomLimit(peek)) return;
+      disarmAuto();
+      void expand({ manual: false });
+    };
+
+    const onTouchEnd = () => {
+      touchStartY = null;
     };
 
     const onKeyDown = (event) => {
@@ -1218,9 +1284,8 @@ const bootCloudInkClient = () => {
         event.key === 'End' ||
         (event.key === ' ' && !event.shiftKey)
       ) {
-        const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
         const peek = getPeekCard();
-        if (window.scrollY >= maxScrollY - 12 && peek && isPeekWithinTriggerZone(peek)) {
+        if (peek && canExpandAtBottomLimit(peek)) {
           disarmAuto();
           void expand({ manual: false });
         }
@@ -1239,7 +1304,6 @@ const bootCloudInkClient = () => {
 
     const onVisitStart = () => {
       if (disposed || !host.isConnected) return;
-      cancelPendingAuto();
       settleSprings();
       snapshotToCache();
     };
@@ -1248,12 +1312,17 @@ const bootCloudInkClient = () => {
     expandBtn?.addEventListener('pointerenter', onManualIntent, { passive: true });
     expandBtn?.addEventListener('pointerdown', onManualIntent, { passive: true });
     expandBtn?.addEventListener('touchstart', onManualIntent, { passive: true });
+    feed.addEventListener('mousedown', onFeedMouseDown);
     feed.addEventListener('click', onFeedClick);
     feed.addEventListener('pointerenter', onFeedWarm, { passive: true, capture: true });
     feed.addEventListener('pointerdown', onFeedWarm, { passive: true, capture: true });
     feed.addEventListener('touchstart', onFeedWarm, { passive: true, capture: true });
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
     window.addEventListener('keydown', onKeyDown, { passive: true });
     window.addEventListener('resize', onResize, { passive: true });
     window.addEventListener('hashchange', onHashChange);
@@ -1261,6 +1330,7 @@ const bootCloudInkClient = () => {
 
     // Measure initial peek (and promote if ultra-short), then sync controls & arm observer.
     void (async () => {
+      for (const card of getCards()) preserveCardImageRatios(card);
       if (getPeekCard()) await ensurePeekFit();
       if (disposed || !host.isConnected) return;
       syncControls();
@@ -1277,7 +1347,6 @@ const bootCloudInkClient = () => {
 
     cleanupFunctions.push(() => {
       disposed = true;
-      cancelPendingAuto();
       cancelAnimationFrame(observeFrame);
       settleSprings();
       request?.abort();
@@ -1286,12 +1355,17 @@ const bootCloudInkClient = () => {
       expandBtn?.removeEventListener('pointerenter', onManualIntent);
       expandBtn?.removeEventListener('pointerdown', onManualIntent);
       expandBtn?.removeEventListener('touchstart', onManualIntent);
+      feed.removeEventListener('mousedown', onFeedMouseDown);
       feed.removeEventListener('click', onFeedClick);
       feed.removeEventListener('pointerenter', onFeedWarm, true);
       feed.removeEventListener('pointerdown', onFeedWarm, true);
       feed.removeEventListener('touchstart', onFeedWarm, true);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', onResize);
       window.removeEventListener('hashchange', onHashChange);

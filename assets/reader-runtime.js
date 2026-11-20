@@ -890,10 +890,10 @@
   }
   const SHORTS_BATCH_SIZE = 3;
   const SHORTS_PEEK_MAX_HEIGHT = 120;
-  const SHORTS_PEEK_MIN_HIDDEN = 56;
-  const SHORTS_AUTO_REARM_RATIO = 0.45;
-  const SHORTS_AUTO_REARM_MIN_PX = 160;
-  const SHORTS_PEEK_TRIGGER_RATIO = 0.95;
+  const SHORTS_PEEK_MIN_HIDDEN = 32;
+  const SHORTS_AUTO_SCROLL_MIN_DELTA = 40;
+  const SHORTS_BOTTOM_TOLERANCE = 8;
+  const SHORTS_PEEK_MIN_VISIBLE_RATIO = 0.9;
 
   function computeShortPeek(
     naturalHeight,
@@ -911,43 +911,60 @@
     return { shouldPeek: true, height: exposed };
   }
 
-  function shouldRearmShortAuto({
+  function isShortPeekAtBottom({
     scrollY,
-    armAnchorY,
     viewportHeight,
-    peekExited = false,
-    peekEnteredFromBelow = false,
+    peekTop,
+    peekBottom,
+    observedRatio = null,
   }) {
     if (
       !Number.isFinite(scrollY) ||
-      !Number.isFinite(armAnchorY) ||
       !Number.isFinite(viewportHeight) ||
-      viewportHeight <= 0
-    ) {
-      return false;
-    }
-    const delta = scrollY - armAnchorY;
-    if (delta <= 0) return false;
-    if (peekExited) return delta >= 24;
-    if (peekEnteredFromBelow) return delta >= SHORTS_AUTO_REARM_MIN_PX;
-    const threshold = Math.max(
-      SHORTS_AUTO_REARM_MIN_PX,
-      Math.round(viewportHeight * SHORTS_AUTO_REARM_RATIO),
-    );
-    return delta >= threshold;
-  }
-
-  function isShortPeekInTriggerZone({ peekTop, peekBottom, viewportHeight }) {
-    if (
       !Number.isFinite(peekTop) ||
       !Number.isFinite(peekBottom) ||
-      !Number.isFinite(viewportHeight) ||
       viewportHeight <= 0
     ) {
       return false;
     }
-    const triggerLine = Math.round(viewportHeight * SHORTS_PEEK_TRIGGER_RATIO);
-    return peekBottom > 0 && peekTop <= triggerLine;
+    const peekHeight = peekBottom - peekTop;
+    if (peekHeight <= 0) return false;
+    const peekBottomDoc = scrollY + peekBottom;
+    if (scrollY + viewportHeight < peekBottomDoc - SHORTS_BOTTOM_TOLERANCE) {
+      return false;
+    }
+    const visibleHeight = Math.max(
+      0,
+      Math.min(viewportHeight, peekBottom) - Math.max(0, peekTop),
+    );
+    const ratio = Number.isFinite(observedRatio)
+      ? Math.min(observedRatio, visibleHeight / peekHeight)
+      : visibleHeight / peekHeight;
+    return ratio >= SHORTS_PEEK_MIN_VISIBLE_RATIO;
+  }
+
+  function canAutoExpandShorts({
+    scrolledAfterExpand,
+    scrollY,
+    lastExpandScrollY,
+    peekSeenLocked,
+    peekSeenScrollY,
+    peekAtBottom,
+  }) {
+    if (scrolledAfterExpand !== true || peekSeenLocked !== true || peekAtBottom !== true) {
+      return false;
+    }
+    if (
+      !Number.isFinite(scrollY) ||
+      !Number.isFinite(lastExpandScrollY) ||
+      !Number.isFinite(peekSeenScrollY)
+    ) {
+      return false;
+    }
+    if (scrollY - lastExpandScrollY < SHORTS_AUTO_SCROLL_MIN_DELTA) {
+      return false;
+    }
+    return scrollY - peekSeenScrollY >= SHORTS_AUTO_SCROLL_MIN_DELTA;
   }
 
   function planShortsPage(total, pageNumber = 1, batchSize = SHORTS_BATCH_SIZE) {
@@ -1006,9 +1023,10 @@
     skeletonMarkup,
     SHORTS_BATCH_SIZE,
     SHORTS_PEEK_MAX_HEIGHT,
+    SHORTS_AUTO_SCROLL_MIN_DELTA,
     computeShortPeek,
-    shouldRearmShortAuto,
-    isShortPeekInTriggerZone,
+    isShortPeekAtBottom,
+    canAutoExpandShorts,
     planShortsPage,
     planShortsExpand,
   });

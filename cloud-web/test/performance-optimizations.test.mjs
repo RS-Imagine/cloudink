@@ -1038,12 +1038,13 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
 
   const plain = (value) => ({ ...value });
 
-  // computeShortPeek: min(50% naturalHeight, 120px) and short-card promotion
+  // computeShortPeek: min(50% naturalHeight, 120px) and ultra-short promotion (<64px)
   assert.deepEqual(plain(computeShortPeek(0)), { shouldPeek: false, height: 0 });
   assert.deepEqual(plain(computeShortPeek(-20)), { shouldPeek: false, height: 0 });
-  assert.deepEqual(plain(computeShortPeek(84)), { shouldPeek: false, height: 84 });
-  assert.deepEqual(plain(computeShortPeek(110)), { shouldPeek: false, height: 110 });
-  assert.deepEqual(plain(computeShortPeek(112)), { shouldPeek: true, height: 56 });
+  assert.deepEqual(plain(computeShortPeek(56)), { shouldPeek: false, height: 56 });
+  assert.deepEqual(plain(computeShortPeek(62)), { shouldPeek: false, height: 62 });
+  assert.deepEqual(plain(computeShortPeek(64)), { shouldPeek: true, height: 32 });
+  assert.deepEqual(plain(computeShortPeek(101)), { shouldPeek: true, height: 51 });
   assert.deepEqual(plain(computeShortPeek(194)), { shouldPeek: true, height: 97 });
   assert.deepEqual(plain(computeShortPeek(240)), { shouldPeek: true, height: 120 });
   assert.deepEqual(plain(computeShortPeek(420)), { shouldPeek: true, height: 120 });
@@ -1159,70 +1160,139 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
     complete: false,
   });
 
-  // S1/S2: one-shot re-arming requires ~half-screen downward scroll or peek exit/re-entry
-  const { shouldRearmShortAuto, isShortPeekInTriggerZone } = window.CloudInkReader;
-  assert.equal(shouldRearmShortAuto({ scrollY: 192, armAnchorY: 0, viewportHeight: 844 }), false);
-  assert.equal(shouldRearmShortAuto({ scrollY: 320, armAnchorY: 0, viewportHeight: 998 }), false);
-  assert.equal(shouldRearmShortAuto({ scrollY: 380, armAnchorY: 0, viewportHeight: 844 }), true);
-  assert.equal(shouldRearmShortAuto({ scrollY: 450, armAnchorY: 0, viewportHeight: 998 }), true);
-  assert.equal(shouldRearmShortAuto({ scrollY: 400, armAnchorY: 500, viewportHeight: 844 }), false);
+  // True-bottom check: scrollY + vh >= peekBottomDoc - 8 AND visible ratio >= 0.9
+  const { SHORTS_AUTO_SCROLL_MIN_DELTA, isShortPeekAtBottom, canAutoExpandShorts } =
+    window.CloudInkReader;
+  assert.equal(SHORTS_AUTO_SCROLL_MIN_DELTA, 40);
+
+  // Peek barely entering viewport (< 90% visible, bottom well below viewport): false
   assert.equal(
-    shouldRearmShortAuto({
-      scrollY: 224,
-      armAnchorY: 200,
+    isShortPeekAtBottom({
+      scrollY: 300,
       viewportHeight: 844,
-      peekExited: true,
-    }),
-    true,
-  );
-  assert.equal(
-    shouldRearmShortAuto({
-      scrollY: 210,
-      armAnchorY: 200,
-      viewportHeight: 844,
-      peekExited: true,
+      peekTop: 802,
+      peekBottom: 922,
     }),
     false,
   );
+  // Peek 85% visible, bottom 18px past viewport (> 8px tolerance): false
   assert.equal(
-    shouldRearmShortAuto({
-      scrollY: 160,
-      armAnchorY: 0,
+    isShortPeekAtBottom({
+      scrollY: 300,
       viewportHeight: 844,
-      peekEnteredFromBelow: true,
+      peekTop: 742,
+      peekBottom: 862,
+    }),
+    false,
+  );
+  // Peek bottom within 8px tolerance (850 <= 852) and visible ratio = 114/120 = 0.95 >= 0.9: true
+  assert.equal(
+    isShortPeekAtBottom({
+      scrollY: 300,
+      viewportHeight: 844,
+      peekTop: 730,
+      peekBottom: 850,
     }),
     true,
   );
+  // Peek fully visible inside viewport (bottom <= vh): true
   assert.equal(
-    shouldRearmShortAuto({
-      scrollY: 120,
-      armAnchorY: 0,
+    isShortPeekAtBottom({
+      scrollY: 500,
+      viewportHeight: 998,
+      peekTop: 700,
+      peekBottom: 820,
+    }),
+    true,
+  );
+  // Peek scrolled off top of viewport: false
+  assert.equal(
+    isShortPeekAtBottom({
+      scrollY: 1200,
       viewportHeight: 844,
-      peekEnteredFromBelow: true,
+      peekTop: -200,
+      peekBottom: -80,
+    }),
+    false,
+  );
+  // Observer reported ratio < 0.9 vetoes trigger even if rect is near bottom
+  assert.equal(
+    isShortPeekAtBottom({
+      scrollY: 500,
+      viewportHeight: 844,
+      peekTop: 730,
+      peekBottom: 850,
+      observedRatio: 0.85,
     }),
     false,
   );
 
-  // S2: peek trigger zone locked on peek card top crossing 95% of viewport height
+  // Strict invariant: real scroll after expand + delta >= 40px + peek seen locked + delta from seen >= 40px + peek at bottom
   assert.equal(
-    isShortPeekInTriggerZone({ peekTop: 955, peekBottom: 1075, viewportHeight: 998 }),
+    canAutoExpandShorts({
+      scrolledAfterExpand: false,
+      scrollY: 400,
+      lastExpandScrollY: 300,
+      peekSeenLocked: true,
+      peekSeenScrollY: 300,
+      peekAtBottom: true,
+    }),
     false,
   );
   assert.equal(
-    isShortPeekInTriggerZone({ peekTop: 948, peekBottom: 1068, viewportHeight: 998 }),
+    canAutoExpandShorts({
+      scrolledAfterExpand: true,
+      scrollY: 339,
+      lastExpandScrollY: 300,
+      peekSeenLocked: true,
+      peekSeenScrollY: 280,
+      peekAtBottom: true,
+    }),
+    false,
+  );
+  assert.equal(
+    canAutoExpandShorts({
+      scrolledAfterExpand: true,
+      scrollY: 340,
+      lastExpandScrollY: 300,
+      peekSeenLocked: false,
+      peekSeenScrollY: 300,
+      peekAtBottom: true,
+    }),
+    false,
+  );
+  assert.equal(
+    canAutoExpandShorts({
+      scrolledAfterExpand: true,
+      scrollY: 340,
+      lastExpandScrollY: 300,
+      peekSeenLocked: true,
+      peekSeenScrollY: 310,
+      peekAtBottom: true,
+    }),
+    false,
+  );
+  assert.equal(
+    canAutoExpandShorts({
+      scrolledAfterExpand: true,
+      scrollY: 340,
+      lastExpandScrollY: 300,
+      peekSeenLocked: true,
+      peekSeenScrollY: 300,
+      peekAtBottom: false,
+    }),
+    false,
+  );
+  assert.equal(
+    canAutoExpandShorts({
+      scrolledAfterExpand: true,
+      scrollY: 340,
+      lastExpandScrollY: 300,
+      peekSeenLocked: true,
+      peekSeenScrollY: 300,
+      peekAtBottom: true,
+    }),
     true,
-  );
-  assert.equal(
-    isShortPeekInTriggerZone({ peekTop: 810, peekBottom: 925, viewportHeight: 844 }),
-    false,
-  );
-  assert.equal(
-    isShortPeekInTriggerZone({ peekTop: 802, peekBottom: 917, viewportHeight: 844 }),
-    true,
-  );
-  assert.equal(
-    isShortPeekInTriggerZone({ peekTop: -200, peekBottom: -80, viewportHeight: 844 }),
-    false,
   );
 });
 
@@ -1277,19 +1347,27 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
   assert.match(workerIndex, /Response\.redirect\(canonical\.toString\(\), 301\)/);
   assert.match(workerReader, /\(\?:post\|shorts\)\\\/page\\\/\[1-9\]\\d\*\\\/index\\\.html/);
 
-  // Scoped shorts- CSS, strict <=120px peek cap, overflow-anchor, & reduced-motion support
+  // Scoped shorts- CSS, strict <=120px peek cap, fixed-height controls, overflow-anchor, & reduced-motion support
   assert.match(homeCss, /\.short-card\.shorts-peek\s*\{/);
   assert.match(homeCss, /box-sizing:\s*border-box/);
   assert.match(homeCss, /max-height:\s*min\(var\(--shorts-peek-height,\s*120px\),\s*120px\)/);
+  assert.match(homeCss, /min-height:\s*68px/);
+  assert.match(homeCss, /height:\s*var\(--ci-control-height,\s*44px\)/);
   assert.match(homeCss, /pointer-events:\s*none/);
   assert.match(homeCss, /var\(--surface\)/);
   assert.match(homeCss, /prefers-reduced-motion:\s*reduce/);
 
-  // S1/S2: Client one-shot arming, peek-card 95% rootMargin, anchor pinning, deep-link chaining isolation
+  // Strict real-scroll >=40px invariant, true-bottom [0.9, 1] observer, no timer workaround, anchor pinning, deep-link isolation
   assert.match(clientJs, /function mountShortsFeed\(visit\)/);
   assert.match(clientJs, /mountShortsFeed\(visit\);/);
-  assert.match(clientJs, /rootMargin:\s*'0px 0px -5% 0px'/);
+  assert.match(clientJs, /rootMargin:\s*'0px',\s*threshold:\s*\[0\.9,\s*1\]/);
   assert.doesNotMatch(clientJs, /rootMargin:\s*'200px 0px'/);
+  assert.doesNotMatch(clientJs, /autoTimer/);
+  assert.match(clientJs, /scrolledAfterExpand/);
+  assert.match(clientJs, /lastExpandScrollY/);
+  assert.match(clientJs, /lastObservedScrollY/);
+  assert.match(clientJs, /peekIntersectionRatio/);
+  assert.match(clientJs, /peekSeenLocked/);
   assert.match(clientJs, /const disarmAuto = \(\) =>/);
   assert.match(clientJs, /allowChain = false/);
   assert.match(clientJs, /captureViewportAnchor/);
