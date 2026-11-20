@@ -166,7 +166,7 @@ dialog.search-modal[data-ci-sheet-active] .search-results {
   min-height: 68px;
 }
 @media (max-width: 759px) {
-  html[data-ci-keyboard] .mobile-toc-btn {
+  html[data-ci-keyboard] :is(.mobile-toc-btn, .mobile-toc-fab) {
     visibility: hidden;
     pointer-events: none;
   }

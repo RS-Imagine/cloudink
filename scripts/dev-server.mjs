@@ -185,7 +185,7 @@ const LONG_HEADINGS = Array.from({ length: 18 }, (_, index) => {
   const n = index + 1;
   const tag = n % 3 === 0 ? 'h3' : 'h2';
   return `<${tag} id="section-${n}">${n}. 章节示例：中文排版节奏与长文导航体验</${tag}>
-<p>在面向中文长文阅读的界面设计中，合理的行宽（约 35–42 个汉字）、舒缓的行高与克制的色彩层次，远比密集的装饰性元素更重要。右侧目录栏在多章节文档中应当能够内部平滑滚动，同时保证阅读进度、文章元信息与继续阅读卡片始终完整可见。</p>`;
+<p>在面向中文长文阅读的界面设计中，合理的行宽（约 35–42 个汉字）、舒缓的行高与克制的色彩层次，远比密集的装饰性元素更重要。右侧目录栏在多章节文档中应当能够内部平滑滚动，同时保证阅读进度与文章元信息卡片始终完整可见。</p>`;
 }).join('\n');
 
 const SAMPLE_KDL_CODE = Array.from(
@@ -258,6 +258,25 @@ ${LONG_HEADINGS}`,
 <p>优先使用自托管 Noto Serif SC（400/600）呈现标题与阅读正文，同时为 UI 控件配置覆盖 macOS、Linux 与 Windows 的无衬线中文字体回退栈。</p>
 <h2 id="touch-targets">2. 最小字号与触控热区</h2>
 <p>确保界面内不出现低于 12px 的辅助文字，并将主要操作与导航热区提升至 44px 以上。</p>`,
+  },
+  {
+    slug: 'quiet-morning-essay',
+    title: '清晨窗边的一篇无标题随笔',
+    date: '2026-07-05',
+    minutes: 3,
+    published: true,
+    changed: false,
+    etag: 'post-etag-4',
+    description: '一篇不划分小节的短随笔，用于验证无标题文章不渲染目录与跟随目录按钮。',
+    bodyPlain:
+      '清晨下过一阵细雨，窗外的银杏叶洗得发亮。桌上的手冲咖啡还冒着热气，翻开笔记本写下几段没有章节标题的随想。',
+    bodyMarkdown:
+      '清晨下过一阵细雨，窗外的银杏叶洗得发亮。桌上的手冲咖啡还冒着热气，翻开笔记本写下几段没有章节标题的随想。',
+    bodyHtml: `
+<p>清晨下过一阵细雨，窗外的银杏叶洗得发亮。桌上的手冲咖啡还冒着热气，翻开笔记本写下几段没有章节标题的随想。</p>
+<p>没有二级或三级标题的文章应当保持安静纯粹的阅读体验，移动端顶部工具条只保留复制链接，不再出现目录入口或悬浮目录按钮。</p>
+<p>沿着窗沿望出去，街角书店的招牌刚亮起暖白色的灯光，偶尔有一辆单车缓缓驶过湿润的石板路。</p>
+<p>文字并不总是需要大纲与目录，有时一段连贯的呼吸就足够把此刻记下来。</p>`,
   },
 ];
 
@@ -645,13 +664,7 @@ function renderPostsPage() {
 function renderPostPage(post) {
   const iconUrl = activeSiteIconUrl();
   const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${iconUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.link}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
-  const related = POSTS.filter((p) => p.slug !== post.slug)
-    .map(
-      (p) =>
-        `<a class="related-story" href="/posts/${p.slug}/"><span>${escapeHtml(p.title)}</span><time datetime="${p.date}">${p.date}</time></a>`,
-    )
-    .join('');
-  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.link}复制文章链接</button></section><section class="panel related-panel"><h2>继续阅读</h2><div id="related-stories">${related}</div></section>`;
+  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.link}复制文章链接</button></section>`;
   return renderShell('post', `${post.title} · ${SITE.title}`, body, context);
 }
 

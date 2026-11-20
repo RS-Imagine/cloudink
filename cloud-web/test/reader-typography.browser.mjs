@@ -29,7 +29,7 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
     '/about/':
       '.reader-page article > h1,.article-body,.article-body p,.article-body :is(h1,h2,h3,h4,h5,h6)',
     '/posts/font-primary/':
-      '.article-headline h1,.article-deck,.article-body,.article-body p,.article-body :is(h1,h2,h3,h4,h5,h6),.related-story > span',
+      '.article-headline h1,.article-deck,.article-body,.article-body p,.article-body :is(h1,h2,h3,h4,h5,h6)',
   };
   for (const font of ['default', 'serif', 'sans']) {
     const files = JSON.parse(
@@ -96,8 +96,6 @@ export async function verifyReaderTypography(browser, origin, output, engine) {
         await page.setViewportSize({ width, height: 900 });
         for (const [path, selector] of Object.entries(pages)) {
           await page.goto(origin + path);
-          if (path === '/posts/font-primary/')
-            await expect(page.locator('.related-story > span')).toHaveCount(1);
           await expect(page.locator('html')).toHaveAttribute(
             'data-reading-font',
             font === 'sans' ? 'sans' : 'serif',

@@ -977,10 +977,9 @@ test('public rendering pipeline uses non-blocking async styles, deferred scripts
   assert.match(devServer, /<script src="\/client\.js" defer><\/script>/);
   assert.match(devServer, /media="print" data-reader-async="style"/);
 
-  // client.js defer-safe boot, rAF scroll cue measurement, idle related-stories fetch
+  // client.js defer-safe boot and rAF scroll cue measurement
   assert.match(clientJs, /if \(document\.readyState === 'loading'\)/);
   assert.match(clientJs, /const initialRefreshFrame = requestAnimationFrame\(refresh\);/);
-  assert.match(clientJs, /requestIdleCallback\(loadStories, \{ timeout: 1200 \}\)/);
 
   // reader-runtime parallel idle warmup includes homepage shorts links
   assert.match(readerRuntime, /\.blog-note a\[href\^="\/shorts\/"\]/);
@@ -1379,4 +1378,59 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
   assert.doesNotMatch(readerToolsCss, /\.reader-zoom-badge/);
   assert.match(clientJs, /frame\.className = 'reader-zoom-frame'/);
   assert.match(readerToolsCss, /\.reader-zoom-frame\s*\{/);
+});
+
+test('article reading page removes related panel, gives TOC full right-rail height, and adds mobile floating TOC button', async () => {
+  const [renderRs, clientJs, readerCss, mobileCss, devServer] = await Promise.all([
+    readFile('crates/blog-core/src/render.rs', 'utf8'),
+    readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+    readFile('crates/blog-core/src/assets/reader.css', 'utf8'),
+    readFile('assets/mobile.css', 'utf8'),
+    readFile('scripts/dev-server.mjs', 'utf8'),
+  ]);
+
+  // R1: related-panel / #related-stories completely removed across Rust renderer, client.js, CSS, dev server
+  assert.doesNotMatch(renderRs, /related-panel|related-stories|继续阅读/);
+  assert.doesNotMatch(clientJs, /mountRelatedStories|related-stories|related-story/);
+  assert.doesNotMatch(readerCss, /related-panel|related-stories|related-story/);
+  assert.doesNotMatch(devServer, /related-panel|related-stories|related-story/);
+  // Bottom return-to-list link remains intact
+  assert.match(renderRs, /返回文章列表/);
+
+  // R1: TOC 40vh cap removed; right rail stays within viewport without outer scroll
+  assert.doesNotMatch(readerCss, /max-height:\s*40vh/);
+  assert.match(
+    readerCss,
+    /\.reader-shell:has\(\[data-page='post'\]\) #reader-context\s*\{[^}]*max-height:\s*calc\(100dvh - 104px\)/,
+  );
+  assert.match(
+    readerCss,
+    /\.reader-shell \.article-toc-panel\s*\{[^}]*flex:\s*0 1 auto;[^}]*min-height:\s*0;/,
+  );
+  assert.match(
+    readerCss,
+    /\.reader-shell \.article-toc-panel \.toc-container\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;[^}]*overflow-y:\s*auto;/,
+  );
+  assert.match(readerCss, /\.reader-shell \.article-info-panel\s*\{\s*flex:\s*none;\s*\}/);
+
+  // R2: Mobile floating TOC button (.mobile-toc-fab) driven by IntersectionObserver with synchronized ARIA
+  assert.match(clientJs, /floatingTocBtn\.className = 'mobile-toc-fab'/);
+  assert.match(clientJs, /new IntersectionObserver\(/);
+  assert.match(clientJs, /toolsObserver\.observe\(tools\)/);
+  assert.match(
+    clientJs,
+    /for \(const trigger of tocTriggers\) trigger\.setAttribute\('aria-expanded', 'false'\)/,
+  );
+  assert.match(
+    clientJs,
+    /for \(const btn of tocTriggers\) btn\.setAttribute\('aria-expanded', 'true'\)/,
+  );
+  assert.match(clientJs, /const restoreTocFocus = \(\) =>/);
+  assert.match(readerCss, /\.reader-shell \.mobile-toc-fab\s*\{/);
+  assert.match(readerCss, /\.reader-shell \.mobile-toc-fab\.is-visible\s*\{/);
+  assert.match(
+    readerCss,
+    /\.reader-shell:has\(> \.toc-container\.drawer-open\) \.mobile-toc-fab\s*\{/,
+  );
+  assert.match(mobileCss, /html\[data-ci-keyboard\] :is\(\.mobile-toc-btn, \.mobile-toc-fab\)/);
 });

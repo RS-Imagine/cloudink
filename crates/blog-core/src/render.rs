@@ -670,8 +670,7 @@ pub fn render_shorts_page(
     )
 }
 
-/// Renders a single article. Related links use the existing public index so
-/// incremental publishing does not need to regenerate every other article.
+/// Renders a single article with its reading table of contents and metadata rail.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
     let minutes = reading_minutes(post);
     let updated = post
@@ -695,11 +694,10 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         body = post.body_html
     );
     let context = format!(
-        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{link}复制文章链接</button></section>{related}"#,
+        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{link}复制文章链接</button></section>"#,
         author = escape_html(&config.author),
         date = escape_html(post.date()),
-        link = icon("link"),
-        related = r#"<section class="panel related-panel"><h2>继续阅读</h2><div id="related-stories"><a class="related-story" href="/post/">浏览全部文章 →</a></div></section>"#
+        link = icon("link")
     );
     let (icon_url, _) = site_icon(config);
     let extra_head = format!(

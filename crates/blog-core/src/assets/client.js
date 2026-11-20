@@ -897,7 +897,8 @@ const bootCloudInkClient = () => {
     };
 
     const evaluateAutoExpand = (peek, observedRatio = null) => {
-      if (disposed || !host.isConnected || loading || refreshRequired || !automatic || !peek) return;
+      if (disposed || !host.isConnected || loading || refreshRequired || !automatic || !peek)
+        return;
       if (!canTriggerAutoExpand(peek, observedRatio)) return;
       disarmAuto();
       void expand({ manual: false });
@@ -1812,57 +1813,6 @@ const bootCloudInkClient = () => {
     }
   }
 
-  function mountRelatedStories() {
-    const related = document.getElementById('related-stories');
-    if (!related) return;
-    let cancelled = false;
-    const loadStories = () => {
-      if (cancelled || !related.isConnected) return;
-      void loadPublicIndex()
-        .then((posts) => {
-          if (cancelled || !related.isConnected || !posts) return;
-          const fragment = document.createDocumentFragment();
-          const stories = posts
-            .filter(
-              (post) =>
-                /^[A-Za-z0-9_-]{1,100}$/.test(post.slug) &&
-                location.pathname !== '/posts/' + post.slug + '/',
-            )
-            .slice(0, 2);
-          if (!stories.length) return;
-          for (const post of stories) {
-            const link = document.createElement('a');
-            link.className = 'related-story';
-            link.href = '/posts/' + encodeURIComponent(post.slug) + '/';
-            const title = document.createElement('span');
-            title.textContent = post.title;
-            link.append(title);
-            if (typeof post.date === 'string') {
-              const date = document.createElement('time');
-              date.textContent = post.date;
-              link.append(date);
-            }
-            fragment.append(link);
-          }
-          related.replaceChildren(fragment);
-        })
-        .catch(() => {});
-    };
-    if (typeof requestIdleCallback === 'function') {
-      const handle = requestIdleCallback(loadStories, { timeout: 1200 });
-      cleanupFunctions.push(() => {
-        cancelled = true;
-        cancelIdleCallback(handle);
-      });
-    } else {
-      const timer = setTimeout(loadStories, 0);
-      cleanupFunctions.push(() => {
-        cancelled = true;
-        clearTimeout(timer);
-      });
-    }
-  }
-
   function mountCopyLinkButtons() {
     for (const button of document.querySelectorAll('.copy-article-link')) {
       const copy = async () => {
@@ -1966,20 +1916,38 @@ const bootCloudInkClient = () => {
         tocHost.appendChild(tocContainer);
         cleanupFunctions.push(() => tocContainer.remove());
 
-        // Mobile TOC Button & Drawer Logic
+        // Mobile TOC Buttons (inline + follow-along FAB) & Drawer Logic
+        const tocButtonIcon =
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/></svg>';
         const mobileTocBtn = document.createElement('button');
+        mobileTocBtn.type = 'button';
         mobileTocBtn.className = 'mobile-toc-btn';
         mobileTocBtn.setAttribute('aria-label', t('文章目录', 'Article contents'));
         mobileTocBtn.setAttribute('aria-controls', 'article-contents');
         mobileTocBtn.setAttribute('aria-expanded', 'false');
-        mobileTocBtn.innerHTML =
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/></svg>';
+        mobileTocBtn.innerHTML = tocButtonIcon;
         const tools = article.querySelector('.mobile-reader-tools');
+        let floatingTocBtn = null;
         if (tools) {
           mobileTocBtn.append(document.createTextNode(t('文章目录', 'Contents')));
           tools.prepend(mobileTocBtn);
+
+          floatingTocBtn = document.createElement('button');
+          floatingTocBtn.type = 'button';
+          floatingTocBtn.className = 'mobile-toc-fab';
+          floatingTocBtn.setAttribute('aria-label', t('文章目录', 'Article contents'));
+          floatingTocBtn.setAttribute('aria-controls', 'article-contents');
+          floatingTocBtn.setAttribute('aria-expanded', 'false');
+          floatingTocBtn.setAttribute('aria-hidden', 'true');
+          floatingTocBtn.tabIndex = -1;
+          floatingTocBtn.innerHTML = tocButtonIcon;
+          document.body.appendChild(floatingTocBtn);
+          cleanupFunctions.push(() => floatingTocBtn.remove());
         } else document.body.appendChild(mobileTocBtn);
         cleanupFunctions.push(() => mobileTocBtn.remove());
+
+        const tocTriggers = floatingTocBtn ? [mobileTocBtn, floatingTocBtn] : [mobileTocBtn];
+        let lastTocTrigger = mobileTocBtn;
 
         const tocDrawerOverlay = document.createElement('div');
         tocDrawerOverlay.className = 'zoom-overlay reader-toc-overlay';
@@ -1988,9 +1956,18 @@ const bootCloudInkClient = () => {
         cleanupFunctions.push(() => tocDrawerOverlay.remove());
 
         const narrowToc = matchMedia('(max-width: 1023px)');
+        let toolsOutOfView = false;
         let tocOverflow = null;
         let tocBackground = [];
         let tocDisposed = false;
+        const syncFloatingTocBtn = () => {
+          if (!floatingTocBtn || tocDisposed) return;
+          const visible =
+            narrowToc.matches && toolsOutOfView && !tocContainer.classList.contains('drawer-open');
+          floatingTocBtn.classList.toggle('is-visible', visible);
+          floatingTocBtn.setAttribute('aria-hidden', visible ? 'false' : 'true');
+          floatingTocBtn.tabIndex = visible ? 0 : -1;
+        };
         const syncToc = () => {
           if (tocDisposed) return;
           // Fixed drawers must live outside Swup's transformed content container.
@@ -2005,10 +1982,28 @@ const bootCloudInkClient = () => {
             tocContainer.removeAttribute('role');
             tocContainer.removeAttribute('aria-modal');
           }
+          syncFloatingTocBtn();
         };
         syncToc();
+        let toolsObserver = null;
+        if (tools && floatingTocBtn && typeof IntersectionObserver === 'function') {
+          toolsObserver = new IntersectionObserver(
+            (entries) => {
+              const entry = entries[entries.length - 1];
+              if (!entry) return;
+              toolsOutOfView = !entry.isIntersecting && entry.boundingClientRect.bottom <= 0;
+              syncFloatingTocBtn();
+            },
+            { threshold: 0 },
+          );
+          toolsObserver.observe(tools);
+          cleanupFunctions.push(() => toolsObserver.disconnect());
+        }
         const resizeToc = () => {
           closeTocDrawer();
+          if (tools && floatingTocBtn) {
+            toolsOutOfView = narrowToc.matches && tools.getBoundingClientRect().bottom <= 0;
+          }
           syncToc();
         };
         narrowToc.addEventListener('change', resizeToc);
@@ -2018,20 +2013,28 @@ const bootCloudInkClient = () => {
           closeTocDrawer();
           closeArticleContents = null;
         });
+        const restoreTocFocus = () => {
+          const target =
+            lastTocTrigger?.isConnected && lastTocTrigger.tabIndex >= 0
+              ? lastTocTrigger
+              : mobileTocBtn;
+          void target.offsetWidth;
+          target.focus({ preventScroll: true });
+        };
         tocContainer.dataset.sheet = 'list';
         const tocSheet = window.CloudInkMobile?.attach(tocContainer, {
           media: '(max-width:1023px)',
           dismissOnActivate: true,
           onDismiss: () => {
             closeTocDrawer();
-            mobileTocBtn.focus({ preventScroll: true });
+            restoreTocFocus();
           },
         });
         cleanupFunctions.push(() => tocSheet?.dispose());
         const requestTocClose = () => {
           if (!tocSheet?.close()) {
             closeTocDrawer();
-            mobileTocBtn.focus({ preventScroll: true });
+            restoreTocFocus();
           }
         };
         function closeTocDrawer() {
@@ -2044,16 +2047,17 @@ const bootCloudInkClient = () => {
           tocOverflow = null;
           for (const [node, inert] of tocBackground) node.inert = inert;
           tocBackground = [];
-          mobileTocBtn.setAttribute('aria-expanded', 'false');
+          for (const trigger of tocTriggers) trigger.setAttribute('aria-expanded', 'false');
           tocDrawerOverlay.classList.remove('active');
           syncToc();
         }
 
         closeArticleContents = closeTocDrawer;
-        mobileTocBtn.addEventListener('click', () => {
+        const toggleTocDrawer = (trigger) => {
           if (tocContainer.classList.contains('drawer-open')) {
             requestTocClose();
           } else {
+            lastTocTrigger = trigger;
             tocOverflow = document.body.style.overflow;
             tocBackground = [
               document.getElementById('swup'),
@@ -2062,6 +2066,7 @@ const bootCloudInkClient = () => {
               document.getElementById('primary-nav'),
               document.querySelector('.reader-dock'),
               document.querySelector('.reader-skip'),
+              floatingTocBtn,
               toTop,
             ]
               .filter(Boolean)
@@ -2070,13 +2075,16 @@ const bootCloudInkClient = () => {
             document.body.style.overflow = 'hidden';
             tocContainer.classList.add('drawer-open');
             syncToc();
-            mobileTocBtn.setAttribute('aria-expanded', 'true');
+            for (const btn of tocTriggers) btn.setAttribute('aria-expanded', 'true');
             tocDrawerOverlay.classList.add('active');
             tocSheet?.open();
             tocContainer.scrollTop = 0;
             tocContainer.querySelector('a')?.focus({ preventScroll: true });
           }
-        });
+        };
+        for (const trigger of tocTriggers) {
+          trigger.addEventListener('click', () => toggleTocDrawer(trigger));
+        }
 
         const tocLinks = Array.from(tocContainer.querySelectorAll('.toc-link'));
         tocDrawerOverlay.addEventListener('click', requestTocClose);
@@ -2222,7 +2230,6 @@ const bootCloudInkClient = () => {
     mountImageLightbox(showDialog);
     mountCodeBlocksAndTables();
     mountShareCard(showDialog);
-    mountRelatedStories();
     mountCopyLinkButtons();
     mountArticleReadingTools(visit);
   }
