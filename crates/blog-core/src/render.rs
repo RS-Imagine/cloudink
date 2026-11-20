@@ -37,9 +37,93 @@ pub fn favicon_svg() -> &'static str {
     include_str!("../../../assets/cloudink.svg")
 }
 
-/// Returns the shared CloudInk Web App Manifest source.
-pub fn manifest_json() -> &'static str {
-    include_str!("../../../assets/manifest.webmanifest")
+const SITE_ICON_LARGE_BYTES: u64 = 128 * 1024;
+
+fn parse_site_icon(config: &SiteConfig) -> Option<(&str, &str)> {
+    let key = config.site_icon.as_deref()?;
+    let name = key.strip_prefix("uploads/icons/")?;
+    let (hash, ext) = name.rsplit_once('.')?;
+    if hash.len() == 64
+        && hash
+            .bytes()
+            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+        && matches!(
+            ext,
+            "svg" | "ico" | "png" | "jpg" | "jpeg" | "webp" | "gif" | "avif"
+        )
+    {
+        Some((hash, ext))
+    } else {
+        None
+    }
+}
+
+fn site_icon_mime(ext: &str) -> &'static str {
+    match ext {
+        "svg" => "image/svg+xml",
+        "ico" => "image/x-icon",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "avif" => "image/avif",
+        _ => "application/octet-stream",
+    }
+}
+
+fn is_raster_ext(ext: &str) -> bool {
+    matches!(ext, "png" | "jpg" | "jpeg" | "webp" | "gif" | "avif")
+}
+
+/// Generates the Web App Manifest dynamically from site settings.
+/// Falls back to the bundled static manifest when no custom site icon is configured.
+pub fn manifest_json(config: &SiteConfig) -> String {
+    if let Some((hash, _)) = parse_site_icon(config) {
+        let title = if config.title.trim().is_empty() {
+            "CloudInk · 云砚"
+        } else {
+            config.title.trim()
+        };
+        let description = if config.description.trim().is_empty() {
+            "A personal blog built with CloudInk."
+        } else {
+            config.description.trim()
+        };
+        let manifest = serde_json::json!({
+            "name": title,
+            "short_name": title,
+            "description": description,
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#f6f5f0",
+            "theme_color": "#22312a",
+            "icons": [
+                {
+                    "src": format!("/site-icon/{hash}-192.png"),
+                    "sizes": "192x192",
+                    "type": "image/png",
+                    "purpose": "any"
+                },
+                {
+                    "src": format!("/site-icon/{hash}-512.png"),
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "any"
+                },
+                {
+                    "src": format!("/site-icon/{hash}-512-maskable.png"),
+                    "sizes": "512x512",
+                    "type": "image/png",
+                    "purpose": "maskable"
+                }
+            ]
+        });
+        serde_json::to_string_pretty(&manifest)
+            .unwrap_or_else(|_| include_str!("../../../assets/manifest.webmanifest").to_string())
+    } else {
+        include_str!("../../../assets/manifest.webmanifest").to_string()
+    }
 }
 
 /// Returns the CloudInk Service Worker source.
@@ -48,28 +132,39 @@ pub fn sw_js() -> &'static str {
 }
 
 fn site_icon(config: &SiteConfig) -> (String, &'static str) {
-    if let Some(key) = config.site_icon.as_deref() {
-        if let Some(name) = key.strip_prefix("uploads/icons/") {
-            if let Some((hash, ext)) = name.rsplit_once('.') {
-                if hash.len() == 64
-                    && hash
-                        .bytes()
-                        .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
-                    && matches!(ext, "svg" | "ico")
-                {
-                    return (
-                        format!("/site-icon/{name}"),
-                        if ext == "ico" {
-                            "image/x-icon"
-                        } else {
-                            "image/svg+xml"
-                        },
-                    );
-                }
-            }
+    if let Some((hash, ext)) = parse_site_icon(config) {
+        if is_raster_ext(ext)
+            && config
+                .site_icon_size
+                .is_some_and(|size| size > SITE_ICON_LARGE_BYTES)
+        {
+            return (format!("/site-icon/{hash}-512.png"), "image/png");
         }
+        return (format!("/site-icon/{hash}.{ext}"), site_icon_mime(ext));
     }
     ("/favicon.svg".into(), "image/svg+xml")
+}
+
+fn site_icon_apple(config: &SiteConfig) -> Option<String> {
+    let (hash, _) = parse_site_icon(config)?;
+    Some(format!("/site-icon/{hash}-180.png"))
+}
+
+fn site_icon_avatar(config: &SiteConfig) -> String {
+    if let Some((hash, ext)) = parse_site_icon(config) {
+        if is_raster_ext(ext) {
+            return format!("/site-icon/{hash}-192.png");
+        }
+        return format!("/site-icon/{hash}.{ext}");
+    }
+    "/favicon.svg".into()
+}
+
+fn site_icon_og(config: &SiteConfig) -> String {
+    if let Some((hash, _)) = parse_site_icon(config) {
+        return format!("/site-icon/{hash}-512.png");
+    }
+    "/favicon.svg".into()
 }
 
 pub fn client_script() -> &'static str {
@@ -233,10 +328,10 @@ fn icon(name: &str) -> String {
 }
 
 fn author_avatar(config: &SiteConfig, size: u32) -> String {
-    if config.site_icon.is_some() {
+    if parse_site_icon(config).is_some() {
         format!(
             r#"<img src="{}" width="{size}" height="{size}" alt="">"#,
-            escape_html(&site_icon(config).0)
+            escape_html(&site_icon_avatar(config))
         )
     } else {
         escape_html(&config.author.chars().next().unwrap_or(' ').to_string())
@@ -699,12 +794,12 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         date = escape_html(post.date()),
         link = icon("link")
     );
-    let (icon_url, _) = site_icon(config);
+    let og_icon_url = site_icon_og(config);
     let extra_head = format!(
-        r#"<meta property="og:title" content="{title}"><meta property="og:description" content="{description}"><meta property="og:type" content="article"><meta property="og:image" content="{icon_url}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="{title}"><meta name="twitter:description" content="{description}"><meta name="twitter:image" content="{icon_url}">"#,
+        r#"<meta property="og:title" content="{title}"><meta property="og:description" content="{description}"><meta property="og:type" content="article"><meta property="og:image" content="{og_icon_url}"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="{title}"><meta name="twitter:description" content="{description}"><meta name="twitter:image" content="{og_icon_url}">"#,
         title = escape_html(post.title()),
         description = escape_html(post.description()),
-        icon_url = escape_html(&icon_url)
+        og_icon_url = escape_html(&og_icon_url)
     );
     page(
         post.title(),
@@ -815,6 +910,17 @@ fn page(
         ""
     };
     let (icon_url, icon_type) = site_icon(config);
+    let icon_avatar_url = site_icon_avatar(config);
+    let apple_icon_url = site_icon_apple(config);
+    let apple_icon_link = apple_icon_url
+        .as_deref()
+        .map(|href| {
+            format!(
+                "\n  <link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"{}\">",
+                escape_html(href)
+            )
+        })
+        .unwrap_or_default();
     let has_math = body.contains("class=\"katex\"");
     let has_code = body.contains("<pre><code");
     let mut optional_head = String::new();
@@ -851,7 +957,7 @@ fn page(
   <title>{title}</title>
   <link rel="stylesheet" href="/styles.css?v={css_hash}">
   {reading_font_style}
-  <link rel="icon" type="{icon_type}" href="{icon_url}">
+  <link rel="icon" type="{icon_type}" href="{icon_url}">{apple_icon_link}
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
   <link rel="alternate" type="application/rss+xml" title="{site_title}" href="/feed.xml">
@@ -919,18 +1025,19 @@ fn page(
     };
 
     // ---- <body> -------------------------------------------------------------
+    let apple_icon_attr = apple_icon_url.as_deref().unwrap_or("");
     html.push_str(&format!(
         r##"<body class="reader-shell">
   <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
   <aside class="reader-sidebar" id="primary-nav" aria-label="站点导航">
-    <a class="site-brand" href="/" title="{site_title}"><span class="site-mark"><img src="{icon_url}" width="24" height="24" alt=""></span><span class="site-title">{site_title}</span></a>
+    <a class="site-brand" href="/" title="{site_title}"><span class="site-mark"><img src="{icon_avatar_url}" width="24" height="24" alt=""></span><span class="site-title">{site_title}</span></a>
     <nav class="reader-side-nav" aria-label="博客导航">{side_navigation}</nav>
     <p class="reader-sidebar-note">{subtitle}</p>
   </aside>
   <div class="wrapper reader-layout">
     <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button></div></header>
-    <main id="swup" class="blog-layout" data-palette="{palette}" data-site-icon="{icon_url}" data-page="{page_kind}" tabindex="-1">
-      <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
+    <main id="swup" class="blog-layout" data-palette="{palette}" data-site-icon="{icon_url}" data-site-icon-avatar="{icon_avatar_url}" data-site-icon-apple="{apple_icon_attr}" data-page="{page_kind}" tabindex="-1">
+      <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-site-icon-avatar="{icon_avatar_url}" data-site-icon-apple="{apple_icon_attr}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>
     </main>
     <footer class="site-footer"><p>{footer}</p><a class="plain-button" href="https://github.com/RS-Imagine/cloudink" target="_blank" rel="noopener">CloudInk · 云砚</a></footer>

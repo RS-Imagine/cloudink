@@ -64,7 +64,7 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
     write_if_changed(output_root.join("favicon.svg"), render::favicon_svg())?;
     write_if_changed(
         output_root.join("manifest.webmanifest"),
-        render::manifest_json(),
+        render::manifest_json(&config),
     )?;
     write_if_changed(output_root.join("sw.js"), render::sw_js())?;
     write_if_changed(

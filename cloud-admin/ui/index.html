@@ -1109,15 +1109,18 @@
                       <button id="reset-site-icon" type="button" class="secondary">恢复默认</button>
                     </div>
                     <input id="site-icon-value" name="siteIcon" type="hidden" value="" />
+                    <input id="site-icon-size" name="siteIconSize" type="hidden" value="" />
                     <input
                       id="site-icon-file"
                       type="file"
-                      accept=".svg,.ico,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
+                      accept=".png,.jpg,.jpeg,.webp,.gif,.avif,.svg,.ico,image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml,image/x-icon,image/vnd.microsoft.icon"
                       hidden=""
                     />
                     <p id="site-icon-help">
-                      支持 SVG / ICO，最多 256 KB。SVG
-                      会移除脚本、外部资源和嵌入内容。公开网页的标签页与页头共用此图标，上传文件可在图片库管理。
+                      支持 PNG、JPG、WebP、GIF、AVIF、SVG 与
+                      ICO；建议上传正方形图片（非正方形将自动居中裁切生成各尺寸派生图标，原图保持完整）。SVG
+                      会移除脚本、外部资源和嵌入内容。保存并发布后，全站标签页、主屏图标、PWA
+                      清单、/favicon.ico、分享兜底图与后台品牌标均统一使用此图标，上传文件可在图片库管理。
                     </p>
                     <p
                       id="site-icon-status"

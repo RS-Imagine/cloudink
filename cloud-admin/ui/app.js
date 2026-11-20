@@ -143,6 +143,7 @@ async function startWorkspace({ focus = false } = {}) {
   configReady = api('/api/config').then((config) => {
     appConfig = config;
     previewModule?.configurePreview(config);
+    applySiteIcon(config);
     $('site-link').href = config.siteUrl;
     $('service-site-link').href = config.siteUrl;
     $('service-site-link').textContent = config.siteUrl;
@@ -211,17 +212,60 @@ function loadIllustrationPicker() {
     });
   return illustrationLoader;
 }
+function siteIconMime(ext) {
+  return (
+    {
+      svg: 'image/svg+xml',
+      ico: 'image/x-icon',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      avif: 'image/avif',
+    }[String(ext || '').toLowerCase()] || 'image/svg+xml'
+  );
+}
 function applySiteIcon(config) {
   const key = config?.siteIcon || '';
-  const url = /^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(key)
-    ? '/site-icon/' + key.slice('uploads/icons/'.length)
+  const match = key.match(/^uploads\/icons\/([a-f0-9]{64})\.(svg|ico|png|jpe?g|webp|gif|avif)$/);
+  const hash = match?.[1] || '';
+  const ext = match?.[2] || '';
+  const isRaster = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'].includes(ext);
+  const largeRaster = isRaster && Number(config?.siteIconSize || 0) > 128 * 1024;
+  const faviconUrl = match
+    ? largeRaster
+      ? `/site-icon/${hash}-512.png`
+      : `/site-icon/${hash}.${ext}`
     : '/favicon.svg';
-  document.querySelectorAll('#app-view .brand-mark img, .studio-intro-mark').forEach((image) => {
-    image.src = url;
-  });
+  const faviconType = match ? (largeRaster ? 'image/png' : siteIconMime(ext)) : 'image/svg+xml';
+  const markUrl = match
+    ? isRaster
+      ? `/site-icon/${hash}-192.png`
+      : `/site-icon/${hash}.${ext}`
+    : '/favicon.svg';
+  document
+    .querySelectorAll(
+      '#startup-view .auth-brand img, #login-view .auth-brand img, #setup-view .setup-brand img, #app-view .brand-mark img, .studio-intro-mark',
+    )
+    .forEach((image) => {
+      image.src = markUrl;
+    });
   const favicon = document.querySelector('link[rel="icon"]');
-  favicon.href = url;
-  favicon.type = url.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
+  if (favicon) {
+    favicon.href = faviconUrl;
+    favicon.type = faviconType;
+  }
+  const existingApple = document.querySelector('link[rel="apple-touch-icon"]');
+  if (hash) {
+    const link = existingApple || document.createElement('link');
+    link.rel = 'apple-touch-icon';
+    link.sizes = '180x180';
+    link.href = `/site-icon/${hash}-180.png`;
+    if (!existingApple) document.head.append(link);
+  } else if (existingApple) {
+    existingApple.remove();
+  }
 }
 function applySiteAppearance(config) {
   const palette = config?.themePalette || 'ink';
@@ -231,6 +275,7 @@ function applySiteAppearance(config) {
     site.themePalette = palette;
     site.readingFont = config?.readingFont || 'serif';
     site.siteIcon = config?.siteIcon || '';
+    site.siteIconSize = config?.siteIconSize || 0;
     site.homeIllustration = config?.homeIllustration || '';
   }
 }
@@ -1516,7 +1561,7 @@ $('settings').addEventListener('click', async () => {
     ]);
     if (version !== navigationVersion) return;
     settingsEtag = data.etag;
-    iconPicker?.load(data.site);
+    iconPicker?.load(data.site, { derivativesReady: data.siteIconDerivativesReady !== false });
     homePicker.load(data.site);
     $('site-form').elements.themePalette.value = data.site.themePalette || 'ink';
     $('site-form').elements.readingFont.value = data.site.readingFont || 'serif';

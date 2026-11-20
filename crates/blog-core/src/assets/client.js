@@ -26,7 +26,14 @@ const bootCloudInkClient = () => {
     const content = document.getElementById('reader-center-content');
     const shell = document.getElementById('swup');
     if (content && shell) {
-      for (const key of ['page', 'palette', 'siteIcon', 'readingFont'])
+      for (const key of [
+        'page',
+        'palette',
+        'siteIcon',
+        'siteIconAvatar',
+        'siteIconApple',
+        'readingFont',
+      ])
         shell.dataset[key] = content.dataset[key] || '';
     }
     if (content)
@@ -1376,23 +1383,59 @@ const bootCloudInkClient = () => {
     });
   }
 
+  function siteIconMime(url) {
+    const ext = (url.split('.').pop() || '').toLowerCase();
+    return (
+      {
+        svg: 'image/svg+xml',
+        ico: 'image/x-icon',
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        webp: 'image/webp',
+        gif: 'image/gif',
+        avif: 'image/avif',
+      }[ext] || 'image/svg+xml'
+    );
+  }
+
+  function validSiteIconUrl(url) {
+    return (
+      url === '/favicon.svg' ||
+      /^\/site-icon\/[a-f0-9]{64}(?:-(?:180|192|512|512-maskable))?\.(?:svg|ico|png|jpe?g|webp|gif|avif)$/.test(
+        url || '',
+      )
+    );
+  }
+
   function syncSiteAppearance(swupContainer) {
     window.CloudInkTheme?.setPalette(
       swupContainer.dataset.palette || document.documentElement.dataset.palette || 'ink',
     );
     const iconURL = swupContainer.dataset.siteIcon;
-    if (
-      iconURL === '/favicon.svg' ||
-      /^\/site-icon\/[a-f0-9]{64}\.(?:svg|ico)$/.test(iconURL || '')
-    ) {
+    if (validSiteIconUrl(iconURL)) {
       const favicon = document.querySelector('link[rel="icon"]');
       if (favicon) {
         favicon.setAttribute('href', iconURL);
-        favicon.setAttribute('type', iconURL.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml');
+        favicon.setAttribute('type', siteIconMime(iconURL));
       }
+      const markURL = validSiteIconUrl(swupContainer.dataset.siteIconAvatar)
+        ? swupContainer.dataset.siteIconAvatar
+        : iconURL;
       document
         .querySelectorAll('.site-mark img')
-        .forEach((image) => image.setAttribute('src', iconURL));
+        .forEach((image) => image.setAttribute('src', markURL));
+    }
+    const appleURL = swupContainer.dataset.siteIconApple || '';
+    const existingApple = document.querySelector('link[rel="apple-touch-icon"]');
+    if (/^\/site-icon\/[a-f0-9]{64}-180\.png$/.test(appleURL)) {
+      const link = existingApple || document.createElement('link');
+      link.setAttribute('rel', 'apple-touch-icon');
+      link.setAttribute('sizes', '180x180');
+      link.setAttribute('href', appleURL);
+      if (!existingApple) document.head.append(link);
+    } else if (existingApple && swupContainer.dataset.siteIconApple !== undefined) {
+      existingApple.remove();
     }
   }
 

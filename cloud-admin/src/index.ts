@@ -38,7 +38,12 @@ import {
   type SiteConfig,
 } from './models';
 
-import { ensureSiteIcon, uploadSiteIcon } from './site-icons';
+import {
+  backfillSiteIconDerivatives,
+  ensureSiteIcon,
+  hasSiteIconDerivatives,
+  uploadSiteIcon,
+} from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
@@ -102,6 +107,8 @@ async function apiRoute(
     return json({ maintenance: await maintainStorage(env) });
   if (path === '/api/site-icon' && request.method === 'POST')
     return uploadSiteIcon(request, env.STORAGE);
+  if (path === '/api/site-icon/derivatives' && request.method === 'POST')
+    return backfillSiteIconDerivatives(request, env.STORAGE);
   if (path === '/api/images/optimize' && request.method === 'POST')
     return optimizeImage(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
@@ -249,6 +256,7 @@ async function apiRoute(
         themePalette: (savedSite || release.site).themePalette || 'ink',
         readingFont: (savedSite || release.site).readingFont || 'serif',
         siteIcon: (savedSite || release.site).siteIcon || '',
+        siteIconSize: (savedSite || release.site).siteIconSize || 0,
         homeIllustration: (savedSite || release.site).homeIllustration || '',
       },
       publishing,
@@ -472,11 +480,14 @@ async function apiRoute(
   if (path === '/api/publish/status' && request.method === 'GET')
     return json(await publishStatus(env));
   if (path === '/api/settings' && request.method === 'GET') {
-    const site = await env.STORAGE.get('draft-site.json'),
+    const siteObj = await env.STORAGE.get('draft-site.json'),
       release = await currentRelease(env);
+    const site: SiteConfig = siteObj ? await siteObj.json<SiteConfig>() : release.site;
+    const siteIconDerivativesReady = await hasSiteIconDerivatives(env.STORAGE, site.siteIcon);
     return json({
-      site: site ? await site.json() : release.site,
-      etag: site?.etag || null,
+      site,
+      etag: siteObj?.etag || null,
+      siteIconDerivativesReady,
     });
   }
   if (path === '/api/settings' && request.method === 'PUT') {
@@ -520,14 +531,24 @@ export default {
   async fetch(request: Request, env: CloudInkEnv, ctx?: ExecutionContext): Promise<Response> {
     try {
       const path = new URL(request.url).pathname;
-      if (path === '/api/config' && request.method === 'GET')
+      if (path === '/api/config' && request.method === 'GET') {
+        const [account, draftSite, pointer] = await Promise.all([
+          env.STORAGE.head('auth/account.json'),
+          readJson<SiteConfig>(env.STORAGE, 'draft-site.json'),
+          readJson<BrowserPointer>(env.STORAGE, 'state/published.json'),
+        ]);
+        const siteIcon = draftSite?.siteIcon ?? pointer?.siteIcon ?? '';
+        const siteIconSize = draftSite?.siteIconSize ?? pointer?.siteIconSize ?? 0;
         return protect(
           json({
             siteUrl: new URL(request.url).origin,
             imageOrigin: `${new URL(request.url).origin}/images`,
-            initialized: !!(await env.STORAGE.head('auth/account.json')),
+            initialized: !!account,
+            siteIcon,
+            siteIconSize,
           }),
         );
+      }
       if (request.method === 'GET' && Object.hasOwn(ASSETS, path)) {
         const asset = ASSETS[path];
         if (!asset) throw new HttpError(404, 'Not found');

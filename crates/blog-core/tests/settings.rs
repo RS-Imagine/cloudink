@@ -52,17 +52,68 @@ fn custom_icons_use_only_valid_content_addresses_on_all_pages() {
         .unwrap()
         .get("siteIcon")
         .is_none());
-    for (ext, mime) in [("svg", "image/svg+xml"), ("ico", "image/x-icon")] {
-        let name = format!("{}.{}", "a".repeat(64), ext);
+    let default_html = render::render_index(&site, &[], "test");
+    assert!(!default_html.contains("rel=\"apple-touch-icon\""));
+    let default_manifest = render::manifest_json(&site);
+    assert!(default_manifest.contains("/favicon.svg"));
+
+    let hash = "a".repeat(64);
+    for (ext, mime, raster) in [
+        ("svg", "image/svg+xml", false),
+        ("ico", "image/x-icon", false),
+        ("png", "image/png", true),
+        ("jpg", "image/jpeg", true),
+        ("jpeg", "image/jpeg", true),
+        ("webp", "image/webp", true),
+        ("gif", "image/gif", true),
+        ("avif", "image/avif", true),
+    ] {
+        let name = format!("{hash}.{ext}");
         site.site_icon = Some(format!("uploads/icons/{name}"));
+        site.site_icon_size = None;
+        let expected_avatar = if raster {
+            format!("/site-icon/{hash}-192.png")
+        } else {
+            format!("/site-icon/{name}")
+        };
         for html in [
             render::render_index(&site, &[], "test"),
             render::render_404(&site, "test"),
         ] {
             assert!(html.contains(&format!("type=\"{mime}\" href=\"/site-icon/{name}\"")));
-            assert!(html.contains(&format!("<img src=\"/site-icon/{name}\"")));
+            assert!(html.contains(&format!("<img src=\"{expected_avatar}\"")));
+            assert!(html.contains(&format!(
+                "<link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"/site-icon/{hash}-180.png\">"
+            )));
         }
     }
+
+    // Large raster (> 128 KB) serves the derived 512px PNG for <link rel="icon">.
+    site.site_icon = Some(format!("uploads/icons/{hash}.png"));
+    site.site_icon_size = Some(512 * 1024);
+    let large_html = render::render_index(&site, &[], "test");
+    assert!(large_html.contains(&format!(
+        "type=\"image/png\" href=\"/site-icon/{hash}-512.png\""
+    )));
+    assert!(large_html.contains(&format!("<img src=\"/site-icon/{hash}-192.png\"")));
+
+    // Dynamic manifest uses configured title/description and derived PNG icon set.
+    site.title = "My Studio".into();
+    site.description = "Custom site manifest".into();
+    let manifest: serde_json::Value =
+        serde_json::from_str(&render::manifest_json(&site)).unwrap();
+    assert_eq!(manifest["name"], "My Studio");
+    assert_eq!(manifest["short_name"], "My Studio");
+    assert_eq!(manifest["description"], "Custom site manifest");
+    assert_eq!(manifest["icons"][0]["src"], format!("/site-icon/{hash}-192.png"));
+    assert_eq!(manifest["icons"][1]["src"], format!("/site-icon/{hash}-512.png"));
+    assert_eq!(
+        manifest["icons"][2]["src"],
+        format!("/site-icon/{hash}-512-maskable.png")
+    );
+    assert_eq!(manifest["icons"][2]["purpose"], "maskable");
+
+    site.site_icon_size = None;
     for value in [
         "https://example.com/a.svg",
         "\"><script>alert(1)</script>",
@@ -72,6 +123,7 @@ fn custom_icons_use_only_valid_content_addresses_on_all_pages() {
         site.site_icon = Some(value.into());
         let html = render::render_index(&site, &[], "test");
         assert!(html.contains("type=\"image/svg+xml\" href=\"/favicon.svg\""));
+        assert!(!html.contains("rel=\"apple-touch-icon\""));
         assert!(!html.contains("<script>alert"));
     }
 }

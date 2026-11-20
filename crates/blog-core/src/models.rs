@@ -37,9 +37,16 @@ pub struct SiteConfig {
         skip_serializing_if = "Option::is_none"
     )]
     pub reading_font: Option<String>,
-    /// Content-addressed uploaded SVG or ICO; absent values use the project icon.
+    /// Content-addressed uploaded site icon; absent values use the project icon.
     #[serde(rename = "siteIcon", default, skip_serializing_if = "Option::is_none")]
     pub site_icon: Option<String>,
+    /// Byte size of the original uploaded site icon, used to choose derived icon for large bitmaps.
+    #[serde(
+        rename = "siteIconSize",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub site_icon_size: Option<u64>,
     /// Optional home decoration: absent/empty hides it; "default" uses bundled art.
     #[serde(
         rename = "homeIllustration",
@@ -63,6 +70,7 @@ impl Default for SiteConfig {
             theme_palette: None,
             reading_font: None,
             site_icon: None,
+            site_icon_size: None,
             home_illustration: None,
         }
     }

@@ -42,6 +42,7 @@ export interface SiteConfig {
   themePalette?: ThemePalette;
   readingFont?: 'serif' | 'sans';
   siteIcon?: string;
+  siteIconSize?: number;
   homeIllustration?: string;
 }
 export interface Release {
@@ -227,8 +228,72 @@ export function parseShortSource(source: string): ShortDraft {
 export function serializeShortDraft(draft: ShortDraft): string {
   return `+++\n${stringify({ ...draft.front_matter })}+++\n\n${draft.body_markdown}`;
 }
+export const SITE_ICON_LARGE_BYTES = 128 * 1024;
+const SITE_ICON_KEY_RE = /^uploads\/icons\/([a-f0-9]{64})\.(svg|ico|png|jpe?g|webp|gif|avif)$/;
+const SITE_ICON_DERIVED_RE =
+  /^uploads\/icons\/([a-f0-9]{64})-(?:(?:180|192|512|512-maskable)\.png|favicon\.ico)$/;
+
 export function validSiteIconKey(value: unknown): boolean {
-  return typeof value === 'string' && /^uploads\/icons\/[a-f0-9]{64}\.(?:svg|ico)$/.test(value);
+  return typeof value === 'string' && SITE_ICON_KEY_RE.test(value);
+}
+export function validSiteIconDerivedKey(value: unknown): boolean {
+  return typeof value === 'string' && SITE_ICON_DERIVED_RE.test(value);
+}
+export function validSiteIconAssetKey(value: unknown): boolean {
+  return validSiteIconKey(value) || validSiteIconDerivedKey(value);
+}
+export function parseSiteIconKey(key: unknown): { hash: string; ext: string } | null {
+  if (typeof key !== 'string') return null;
+  const match = key.match(SITE_ICON_KEY_RE);
+  return match ? { hash: match[1], ext: match[2] } : null;
+}
+export function siteIconDerivedKeys(key: unknown): {
+  hash: string;
+  ext: string;
+  apple: string;
+  icon192: string;
+  icon512: string;
+  maskable512: string;
+  faviconIco: string;
+  generated: string[];
+} | null {
+  const parsed = parseSiteIconKey(key);
+  if (!parsed) return null;
+  const base = 'uploads/icons/' + parsed.hash;
+  const apple = base + '-180.png';
+  const icon192 = base + '-192.png';
+  const icon512 = base + '-512.png';
+  const maskable512 = base + '-512-maskable.png';
+  const faviconIco = parsed.ext === 'ico' ? base + '.ico' : base + '-favicon.ico';
+  const generated =
+    parsed.ext === 'ico'
+      ? [apple, icon192, icon512, maskable512]
+      : [apple, icon192, icon512, maskable512, faviconIco];
+  return { ...parsed, apple, icon192, icon512, maskable512, faviconIco, generated };
+}
+export function siteIconMime(keyOrExt: string): string {
+  const ext = (
+    keyOrExt.includes('.') ? keyOrExt.slice(keyOrExt.lastIndexOf('.') + 1) : keyOrExt
+  ).toLowerCase();
+  switch (ext) {
+    case 'svg':
+      return 'image/svg+xml';
+    case 'ico':
+      return 'image/x-icon';
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    case 'avif':
+      return 'image/avif';
+    default:
+      return 'application/octet-stream';
+  }
 }
 export function validHomeIllustration(value: unknown): value is string {
   if (value === '' || value === 'default') return true;
@@ -245,7 +310,13 @@ export function validateSite(input: unknown): SiteConfig {
   const v = input as Record<string, unknown>;
   const appearance: Pick<
     SiteConfig,
-    'footer' | 'clarityId' | 'themePalette' | 'readingFont' | 'siteIcon' | 'homeIllustration'
+    | 'footer'
+    | 'clarityId'
+    | 'themePalette'
+    | 'readingFont'
+    | 'siteIcon'
+    | 'siteIconSize'
+    | 'homeIllustration'
   > = {};
   if (v.footer !== undefined) appearance.footer = text(v.footer, '页脚', 2000, false);
   if (v.clarityId !== undefined) {
@@ -271,6 +342,12 @@ export function validateSite(input: unknown): SiteConfig {
     if (typeof v.siteIcon !== 'string' || (v.siteIcon !== '' && !validSiteIconKey(v.siteIcon)))
       throw new HttpError(400, '网站图标地址不正确。');
     appearance.siteIcon = v.siteIcon;
+  }
+  if (v.siteIconSize !== undefined && v.siteIconSize !== null && v.siteIconSize !== '') {
+    const size = typeof v.siteIconSize === 'string' ? Number(v.siteIconSize) : v.siteIconSize;
+    if (typeof size !== 'number' || !Number.isInteger(size) || size < 0)
+      throw new HttpError(400, '网站图标大小不正确。');
+    if (appearance.siteIcon && size > 0) appearance.siteIconSize = size;
   }
   return {
     title: text(v.title, '网站标题', 300),

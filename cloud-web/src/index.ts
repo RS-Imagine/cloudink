@@ -7,6 +7,7 @@ import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
 import { publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
+import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
 
 export type WebBindings = CloudInkEnv;
 const editorAssets = new Set([
@@ -38,7 +39,6 @@ const compiledAssets = new Set([
   '/theme.js',
   '/styles.css',
   '/favicon.svg',
-  '/manifest.webmanifest',
   '/sw.js',
 ]);
 const POINTER_TTL = 180;
@@ -97,7 +97,8 @@ async function staticAsset(
 }
 function publicPath(path: string): string | null {
   if (path === '/' || path === '/index.html') return 'index.html';
-  if (['/404.html', '/search_index.json', '/_release.json'].includes(path)) return path.slice(1);
+  if (['/404.html', '/search_index.json', '/_release.json', '/manifest.webmanifest'].includes(path))
+    return path.slice(1);
   if (/^\/about(?:\/|\/index.html)?$/.test(path)) return 'about/index.html';
   if (/^\/post(?:\/|\/index.html)?$/.test(path)) return 'post/index.html';
   const postListPage = path.match(/^\/post\/page\/([1-9]\d*)(?:\/|\/index.html)?$/);
@@ -172,17 +173,51 @@ const web = {
         ? await pointer.json<{
             id: string;
             clarityId?: string;
+            siteIcon?: string;
+            siteIconSize?: number;
             postRedirects?: Record<string, string>;
             pages?: Record<string, string>;
           }>()
         : null;
+      if (published && published.siteIcon === undefined && published.id) {
+        const legacy = await env.STORAGE.get(`releases/${published.id}.posts.json`);
+        if (legacy) {
+          try {
+            const data = await legacy.json<{
+              site?: { siteIcon?: string; siteIconSize?: number };
+            }>();
+            published.siteIcon = data.site?.siteIcon || '';
+            if (data.site?.siteIconSize) published.siteIconSize = data.site.siteIconSize;
+          } catch {
+            published.siteIcon = '';
+          }
+        } else {
+          published.siteIcon = '';
+        }
+      }
       if (!cachedPointer && published)
         cacheWrite(ctx, pointerKey, Response.json(published), POINTER_TTL);
+      if (path === '/favicon.ico') {
+        const derived = siteIconDerivedKeys(published?.siteIcon || '');
+        const target = derived
+          ? '/site-icon/' + derived.faviconIco.slice('uploads/icons/'.length)
+          : '/favicon.svg';
+        const redirect = new URL(target, url.origin);
+        return protect(
+          new Response(null, {
+            status: 302,
+            headers: { Location: redirect.pathname },
+          }),
+          false,
+          ASSET_CACHE_CONTROL,
+        );
+      }
       const id = published?.id || null;
+      const siteIcon = published?.siteIcon || '';
       const pageVersion =
         key && published?.pages?.[key]
-          ? published.pages[key] + ':' + (published.clarityId || '')
-          : id || 'initial';
+          ? published.pages[key] + ':' + (published.clarityId || '') + ':' + siteIcon
+          : (id || 'initial') + ':' + siteIcon;
       const pageKey = cacheKey(request, 'page', pageVersion);
       const cached = await cacheRead(pageKey);
       if (cached) {
@@ -236,7 +271,7 @@ const web = {
           request.method === 'HEAD' && storageKey ? await env.STORAGE.head(storageKey) : body;
         if (object) {
           const etag = key.endsWith('.html')
-            ? await readerEtag(object.httpEtag, url)
+            ? await readerEtag(object.httpEtag, url, siteIcon)
             : object.httpEtag;
           const headers = new Headers({ 'Content-Type': publicType(key), ETag: etag });
           if (
@@ -254,13 +289,27 @@ const web = {
               new Response(body?.body || null, { status: key === '404.html' ? 404 : 200, headers }),
               url,
               analytics,
+              siteIcon,
             ),
             analytics,
-            key === '404.html' ? REVALIDATE_CACHE_CONTROL : HTML_CACHE_CONTROL,
+            key === '404.html'
+              ? REVALIDATE_CACHE_CONTROL
+              : key === 'manifest.webmanifest'
+                ? ASSET_CACHE_CONTROL
+                : HTML_CACHE_CONTROL,
           );
           if (request.method === 'GET') cacheWrite(ctx, pageKey, response, PAGE_TTL);
           return clientResponse(response, request);
         }
+        if (key === 'manifest.webmanifest')
+          return staticAsset(
+            request,
+            env,
+            '/manifest.webmanifest',
+            200,
+            false,
+            ASSET_CACHE_CONTROL,
+          );
         // Initial login seeds private content but doesn't publish any pages.
         // Once a public index exists, absent routes must stay absent.
         if (
@@ -280,11 +329,15 @@ const web = {
                 headers: { 'Content-Type': 'text/html; charset=utf-8' },
               }),
               url,
+              analytics,
+              siteIcon,
             ),
             analytics,
           );
         }
       }
+      if (key === 'manifest.webmanifest')
+        return staticAsset(request, env, '/manifest.webmanifest', 200, false, ASSET_CACHE_CONTROL);
       if (key === '_release.json')
         return protect(
           new Response(request.method === 'HEAD' ? null : JSON.stringify({ id }), {

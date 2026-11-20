@@ -33,19 +33,35 @@ test('site icons require authentication/CSRF and validate actual SVG/ICO bytes a
     (await f.request('/api/site-icon', 'POST', svgBytes, { 'X-CSRF-Token': 'wrong' })).status,
     403,
   );
-  assert.equal(
-    (await f.request('/api/site-icon', 'POST', new Uint8Array(256 * 1024 + 1))).status,
-    413,
-  );
+  const largePng = pngIcoBytes({ width: 16, height: 16 }).slice(22);
+  // Pad with a valid PNG tEXt-free trailing chunk? Build a >256KB valid PNG via a large zTXt/tEXt ancillary chunk before IEND.
+  const padText = new Uint8Array(300 * 1024).fill(65);
+  const padChunk = (() => {
+    const out = new Uint8Array(padText.length + 12);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, padText.length, false);
+    out.set([0x74, 0x45, 0x58, 0x74], 4); // tEXt
+    out.set(padText, 8);
+    // Any valid PNG magic + IHDR is accepted by imageType/imageInfo sniffing
+    return out;
+  })();
+  const bigPng = new Uint8Array(largePng.length + padChunk.length);
+  bigPng.set(largePng.subarray(0, largePng.length - 12), 0);
+  bigPng.set(padChunk, largePng.length - 12);
+  bigPng.set(largePng.subarray(largePng.length - 12), largePng.length - 12 + padChunk.length);
+  const bigRes = await upload(f, bigPng);
+  assert.match(bigRes.key, /^uploads\/icons\/[a-f0-9]{64}\.png$/);
+  assert.equal((await f.request(bigRes.url)).headers.get('Content-Type'), 'image/png');
   for (const source of [
+    'plain text disguised as image',
     '<html><script>alert(1)</script></html>',
     '<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg><path d="M0 0"/></svg>',
     '<svg/>',
   ]) {
-    assert.equal(
-      (await f.request('/api/site-icon', 'POST', new TextEncoder().encode(source))).status,
-      400,
-    );
+    const bad = await f.request('/api/site-icon', 'POST', new TextEncoder().encode(source), {
+      'Content-Type': 'image/png',
+    });
+    assert.equal(bad.status, 400);
   }
   const ico = icoBytes(),
     broken = ico.slice();
@@ -378,4 +394,116 @@ test('ICO bitfield masks validate RGB and optional or required alpha across DIB 
     f,
     bitfieldDibIcoBytes({ header: 108, masks: [0xff0000, 0xff00, 0xff, 0xff000000] }),
   );
+});
+
+function solidPng(size) {
+  const row = new Uint8Array(1 + size * 4);
+  for (let x = 0; x < size; x++) {
+    row[1 + x * 4] = 128;
+    row[1 + x * 4 + 1] = 82;
+    row[1 + x * 4 + 2] = 50;
+    row[1 + x * 4 + 3] = 255;
+  }
+  const raw = new Uint8Array(row.length * size);
+  for (let y = 0; y < size; y++) raw.set(row, y * row.length);
+  return pngIcoBytes({ width: size, height: size, compressed: deflateSync(raw) }).slice(22);
+}
+
+test('multipart derived icon upload validates dimensions atomically, supports /favicon.ico 302, dynamic manifest, og:image fallback and legacy backfill', async (t) => {
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+
+  // Unset /favicon.ico redirects to /favicon.svg (never 404).
+  const defaultFavicon = await f.request('/favicon.ico');
+  assert.equal(defaultFavicon.status, 302);
+  assert.equal(defaultFavicon.headers.get('Location'), '/favicon.svg');
+
+  const png180 = solidPng(180);
+  const png192 = solidPng(192);
+  const png512 = solidPng(512);
+  const ico32 = icoBytes();
+
+  // Corrupt/wrong-size derived file must fail atomically and store nothing.
+  const badForm = new FormData();
+  badForm.append('file', new Blob([png192], { type: 'image/png' }), 'icon.png');
+  badForm.append('derived_180', new Blob([png192], { type: 'image/png' }), 'icon-180.png'); // wrong size 192 != 180
+  badForm.append('derived_192', new Blob([png192], { type: 'image/png' }), 'icon-192.png');
+  badForm.append('derived_512', new Blob([png512], { type: 'image/png' }), 'icon-512.png');
+  badForm.append(
+    'derived_512_maskable',
+    new Blob([png512], { type: 'image/png' }),
+    'icon-512-maskable.png',
+  );
+  badForm.append('derived_ico', new Blob([ico32], { type: 'image/x-icon' }), 'favicon.ico');
+  const badRes = await f.request('/api/site-icon', 'POST', badForm);
+  assert.equal(badRes.status, 400);
+  assert.equal((await bucket.list({ prefix: 'uploads/icons/' })).objects.length, 0);
+
+  // Valid multipart upload stores original + all 5 derived files.
+  const goodForm = new FormData();
+  goodForm.append('file', new Blob([png192], { type: 'image/png' }), 'icon.png');
+  goodForm.append('derived_180', new Blob([png180], { type: 'image/png' }), 'icon-180.png');
+  goodForm.append('derived_192', new Blob([png192], { type: 'image/png' }), 'icon-192.png');
+  goodForm.append('derived_512', new Blob([png512], { type: 'image/png' }), 'icon-512.png');
+  goodForm.append(
+    'derived_512_maskable',
+    new Blob([png512], { type: 'image/png' }),
+    'icon-512-maskable.png',
+  );
+  goodForm.append('derived_ico', new Blob([ico32], { type: 'image/x-icon' }), 'favicon.ico');
+  const uploadedRes = await f.request('/api/site-icon', 'POST', goodForm);
+  assert.equal(uploadedRes.status, 201, await uploadedRes.clone().text());
+  const uploaded = await uploadedRes.json();
+  assert.match(uploaded.key, /^uploads\/icons\/[a-f0-9]{64}\.png$/);
+  const hash = uploaded.key.slice('uploads/icons/'.length, -4);
+  for (const suffix of ['-180.png', '-192.png', '-512.png', '-512-maskable.png', '-favicon.ico']) {
+    const res = await f.request('/site-icon/' + hash + suffix);
+    assert.equal(res.status, 200, suffix);
+    assert.equal(res.headers.get('X-Content-Type-Options'), 'nosniff');
+    assert.match(res.headers.get('Cache-Control'), /immutable/);
+  }
+
+  // Save + publish and verify /favicon.ico 302, apple-touch-icon, og:image fallback.
+  await save(f, uploaded.key);
+  const settingsData = await (await f.request('/api/settings')).json();
+  assert.equal(settingsData.siteIconDerivativesReady, true);
+  const pub = await f.prepare({ settings: true });
+  await f.stage(pub);
+  assert.equal((await f.commit(pub)).status, 200);
+  const icoRedirect = await f.request('/favicon.ico');
+  assert.equal(icoRedirect.status, 302);
+  assert.equal(icoRedirect.headers.get('Location'), `/site-icon/${hash}-favicon.ico`);
+  const homeHtml = await (await f.request('/')).text();
+  assert.match(
+    homeHtml,
+    new RegExp(`rel="apple-touch-icon"[^>]*href="/site-icon/${hash}-180\\.png"`),
+  );
+  assert.match(
+    homeHtml,
+    new RegExp(`property="og:image"[^>]*content="[^"]*/site-icon/${hash}-512\\.png"`),
+  );
+
+  // Legacy ICO without derivatives reports siteIconDerivativesReady: false and supports backfill.
+  const legacy = await upload(f, ico32);
+  await save(f, legacy.key);
+  const legacySettings = await (await f.request('/api/settings')).json();
+  assert.equal(legacySettings.siteIconDerivativesReady, false);
+  const backfillForm = new FormData();
+  backfillForm.append('key', legacy.key);
+  backfillForm.append('derived_180', new Blob([png180], { type: 'image/png' }), 'icon-180.png');
+  backfillForm.append('derived_192', new Blob([png192], { type: 'image/png' }), 'icon-192.png');
+  backfillForm.append('derived_512', new Blob([png512], { type: 'image/png' }), 'icon-512.png');
+  backfillForm.append(
+    'derived_512_maskable',
+    new Blob([png512], { type: 'image/png' }),
+    'icon-512-maskable.png',
+  );
+  const backfillRes = await f.request('/api/site-icon/derivatives', 'POST', backfillForm);
+  assert.equal(backfillRes.status, 200, await backfillRes.clone().text());
+  const afterBackfill = await (await f.request('/api/settings')).json();
+  assert.equal(afterBackfill.siteIconDerivativesReady, true);
+  const legacyHash = legacy.key.slice('uploads/icons/'.length, -4);
+  assert.equal((await f.request(`/site-icon/${legacyHash}-180.png`)).status, 200);
+  assert.equal((await f.request(`/site-icon/${legacyHash}-favicon.ico`)).status, 404);
 });

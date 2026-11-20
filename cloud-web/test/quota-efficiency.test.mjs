@@ -8,21 +8,18 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 async function rendered(f, state, overrides = {}) {
   const values = Object.fromEntries(
     state.files
-      .filter(
-        (path) =>
-          !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(
-            path,
-          ),
-      )
+      .filter((path) => !['styles.css', 'client.js', 'favicon.svg', 'sw.js'].includes(path))
       .map((path) => [
         path,
         path === '_release.json'
           ? JSON.stringify({ id: state.release_id, template_version: state.template_version })
-          : path.endsWith('.html')
-            ? '<html><head><title>Quota</title></head><body><h1>Stable page</h1></body></html>'
-            : path === 'site.json'
-              ? JSON.stringify({ title: 'Quota blog' })
-              : '[]',
+          : path === 'manifest.webmanifest'
+            ? JSON.stringify({ name: 'Quota blog', icons: [] })
+            : path.endsWith('.html')
+              ? '<html><head><title>Quota</title></head><body><h1>Stable page</h1></body></html>'
+              : path === 'site.json'
+                ? JSON.stringify({ title: 'Quota blog' })
+                : '[]',
       ]),
   );
   Object.assign(values, overrides);

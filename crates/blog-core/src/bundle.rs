@@ -123,7 +123,7 @@ pub fn render_release(input: &str) -> Result<BTreeMap<String, String>> {
     if wants("manifest.webmanifest") {
         files.insert(
             "manifest.webmanifest".into(),
-            render::manifest_json().into(),
+            render::manifest_json(&release.site),
         );
     }
     if wants("sw.js") {

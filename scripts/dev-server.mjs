@@ -173,6 +173,7 @@ const SITE = {
   themePalette: 'brown',
   readingFont: 'serif',
   siteIcon: '',
+  siteIconSize: 0,
   homeIllustration: 'default',
   clarityId: '',
   about:
@@ -529,11 +530,74 @@ function escapeHtml(str) {
     .replaceAll('"', '&quot;');
 }
 
-function activeSiteIconUrl() {
-  if (/^uploads\/icons\/[a-f0-9]{64}\.(svg|ico)$/.test(SITE.siteIcon)) {
-    return '/site-icon/' + SITE.siteIcon.slice('uploads/icons/'.length);
+const SITE_ICON_LARGE_BYTES = 128 * 1024;
+const SITE_ICON_KEY_RE = /^uploads\/icons\/([a-f0-9]{64})\.(svg|ico|png|jpe?g|webp|gif|avif)$/;
+const SITE_ICON_ASSET_RE =
+  /^uploads\/icons\/([a-f0-9]{64})(?:\.(svg|ico|png|jpe?g|webp|gif|avif)|-(?:180|192|512|512-maskable)\.png|-favicon\.ico)$/;
+const RASTER_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif']);
+
+function parseSiteIcon(key) {
+  const m = typeof key === 'string' ? key.match(SITE_ICON_KEY_RE) : null;
+  return m ? { hash: m[1], ext: m[2] } : null;
+}
+
+function siteIconMimeFor(nameOrExt) {
+  const ext = (
+    nameOrExt.includes('.') ? nameOrExt.slice(nameOrExt.lastIndexOf('.') + 1) : nameOrExt
+  ).toLowerCase();
+  return (
+    {
+      svg: 'image/svg+xml',
+      ico: 'image/x-icon',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      gif: 'image/gif',
+      avif: 'image/avif',
+    }[ext] || 'application/octet-stream'
+  );
+}
+
+function siteIconDerivedList(key) {
+  const parsed = parseSiteIcon(key);
+  if (!parsed) return null;
+  const { hash, ext } = parsed;
+  const apple = `${hash}-180.png`;
+  const icon192 = `${hash}-192.png`;
+  const icon512 = `${hash}-512.png`;
+  const maskable512 = `${hash}-512-maskable.png`;
+  const faviconIco = ext === 'ico' ? `${hash}.ico` : `${hash}-favicon.ico`;
+  const generated =
+    ext === 'ico'
+      ? [apple, icon192, icon512, maskable512]
+      : [apple, icon192, icon512, maskable512, faviconIco];
+  return { hash, ext, apple, icon192, icon512, maskable512, faviconIco, generated };
+}
+
+function activeSiteIconMeta() {
+  const parsed = parseSiteIcon(SITE.siteIcon);
+  if (!parsed) {
+    return {
+      faviconUrl: '/favicon.svg',
+      faviconType: 'image/svg+xml',
+      avatarUrl: '/favicon.svg',
+      appleUrl: '',
+      ogUrl: '/favicon.svg',
+      hasCustom: false,
+    };
   }
-  return '/favicon.svg';
+  const { hash, ext } = parsed;
+  const isRaster = RASTER_EXTS.has(ext);
+  const largeRaster = isRaster && Number(SITE.siteIconSize || 0) > SITE_ICON_LARGE_BYTES;
+  return {
+    faviconUrl: largeRaster ? `/site-icon/${hash}-512.png` : `/site-icon/${hash}.${ext}`,
+    faviconType: largeRaster ? 'image/png' : siteIconMimeFor(ext),
+    avatarUrl: isRaster ? `/site-icon/${hash}-192.png` : `/site-icon/${hash}.${ext}`,
+    appleUrl: `/site-icon/${hash}-180.png`,
+    ogUrl: `/site-icon/${hash}-512.png`,
+    hasCustom: true,
+  };
 }
 
 function navLinks(pageKind, dock) {
@@ -560,11 +624,11 @@ function navLinks(pageKind, dock) {
 }
 
 function authorContext(showAboutLink = true) {
-  const iconUrl = activeSiteIconUrl();
+  const icon = activeSiteIconMeta();
   const aboutLink = showAboutLink
     ? `<a class="plain-button" href="/about/">${ICONS.about}关于我</a>`
     : '';
-  return `<section class="panel author-card"><div class="author-head"><span class="author-avatar" aria-hidden="true"><img src="${iconUrl}" width="42" height="42" alt=""></span><div><h2>你好，我是${escapeHtml(SITE.author)}。</h2><p class="author-sub">${escapeHtml(SITE.subtitle)}</p></div></div><p class="author-intro">${escapeHtml(SITE.description)}</p>${aboutLink}</section>`;
+  return `<section class="panel author-card"><div class="author-head"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="42" height="42" alt=""></span><div><h2>你好，我是${escapeHtml(SITE.author)}。</h2><p class="author-sub">${escapeHtml(SITE.subtitle)}</p></div></div><p class="author-intro">${escapeHtml(SITE.description)}</p>${aboutLink}</section>`;
 }
 
 function homeContext() {
@@ -579,12 +643,14 @@ function homeContext() {
 
 function renderShell(pageKind, title, body, context, extraHead = '') {
   const themeBootstrap = readText('assets/theme.js');
-  const iconUrl = activeSiteIconUrl();
-  const iconType = iconUrl.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
+  const icon = activeSiteIconMeta();
   const palette = SITE.themePalette || 'brown';
   const readingFont = SITE.readingFont || 'serif';
   const codeStyle = body.includes('<pre><code')
     ? '\n  <link rel="stylesheet" media="print" data-reader-style="code" data-reader-async="style" href="/reader-assets/code.css">'
+    : '';
+  const appleLink = icon.appleUrl
+    ? `\n  <link rel="apple-touch-icon" sizes="180x180" href="${icon.appleUrl}">`
     : '';
   const extraHeadLine = extraHead ? `\n  ${extraHead}` : '';
   return `<!doctype html>
@@ -596,7 +662,7 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
   <title>${escapeHtml(title)}</title>
   <link rel="stylesheet" href="/styles.css">
   <link id="reader-font-styles" rel="stylesheet" media="print" data-reader-async="style" href="/reader-assets/editorial-font.css">${codeStyle}${extraHeadLine}
-  <link rel="icon" type="${iconType}" href="${iconUrl}">
+  <link rel="icon" type="${icon.faviconType}" href="${icon.faviconUrl}">${appleLink}
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#6d4327">
   <script>${themeBootstrap}</script>
@@ -604,7 +670,7 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
 <body class="reader-shell">
   <a class="reader-skip" href="#swup" data-no-swup>跳到正文</a>
   <aside class="reader-sidebar" id="primary-nav" aria-label="站点导航">
-    <a class="site-brand" href="/" title="${escapeHtml(SITE.title)}"><span class="site-mark"><img src="${iconUrl}" width="24" height="24" alt=""></span><span class="site-title">${escapeHtml(SITE.title)}</span></a>
+    <a class="site-brand" href="/" title="${escapeHtml(SITE.title)}"><span class="site-mark"><img src="${icon.avatarUrl}" width="24" height="24" alt=""></span><span class="site-title">${escapeHtml(SITE.title)}</span></a>
     <nav class="reader-side-nav" aria-label="博客导航">${navLinks(pageKind, false)}</nav>
     <p class="reader-sidebar-note">${escapeHtml(SITE.subtitle)}</p>
   </aside>
@@ -616,8 +682,8 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
         <button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button>
       </div>
     </header>
-    <main id="swup" class="blog-layout" data-palette="${palette}" data-site-icon="${iconUrl}" data-page="${pageKind}" tabindex="-1">
-      <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="${pageKind}" data-palette="${palette}" data-site-icon="${iconUrl}" data-reading-font="${readingFont}" data-site-title="${escapeHtml(SITE.title)}">${body}</div></div>
+    <main id="swup" class="blog-layout" data-palette="${palette}" data-site-icon="${icon.faviconUrl}" data-site-icon-avatar="${icon.avatarUrl}" data-site-icon-apple="${icon.appleUrl}" data-page="${pageKind}" tabindex="-1">
+      <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="${pageKind}" data-palette="${palette}" data-site-icon="${icon.faviconUrl}" data-site-icon-avatar="${icon.avatarUrl}" data-site-icon-apple="${icon.appleUrl}" data-reading-font="${readingFont}" data-site-title="${escapeHtml(SITE.title)}">${body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">${context}</div></aside>
     </main>
     <footer class="site-footer"><p>${escapeHtml(SITE.footer)}</p><a class="plain-button" href="/admin">写作后台</a></footer>
@@ -662,10 +728,24 @@ function renderPostsPage() {
 }
 
 function renderPostPage(post) {
-  const iconUrl = activeSiteIconUrl();
-  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${iconUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.link}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
+  const icon = activeSiteIconMeta();
+  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.link}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
   const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.link}复制文章链接</button></section>`;
-  return renderShell('post', `${post.title} · ${SITE.title}`, body, context);
+  const imgMatch = post.bodyHtml.match(/<img[^>]+src="([^"]+)"/i);
+  const ogImage = imgMatch ? imgMatch[1] : icon.hasCustom ? icon.ogUrl : '';
+  const ogHead = [
+    `<meta property="og:title" content="${escapeHtml(post.title)}">`,
+    `<meta property="og:description" content="${escapeHtml(post.description)}">`,
+    `<meta property="og:type" content="article">`,
+    ...(ogImage
+      ? [
+          `<meta property="og:image" content="${escapeHtml(ogImage)}">`,
+          `<meta name="twitter:image" content="${escapeHtml(ogImage)}">`,
+        ]
+      : []),
+    `<meta name="twitter:card" content="${imgMatch ? 'summary_large_image' : 'summary'}">`,
+  ].join('\n  ');
+  return renderShell('post', `${post.title} · ${SITE.title}`, body, context, ogHead);
 }
 
 const SHORTS_PER_PAGE = 3;
@@ -811,6 +891,8 @@ async function handleApi(req, res, url) {
       siteUrl: origin + '/',
       imageOrigin: origin + '/images/',
       releaseId: 'dev-preview',
+      siteIcon: SITE.siteIcon || '',
+      siteIconSize: SITE.siteIconSize || 0,
     });
   }
   if (pathname === '/api/login' && method === 'POST') {
@@ -1023,38 +1105,216 @@ async function handleApi(req, res, url) {
     }
   }
 
+  function sniffDevIcon(bytes) {
+    if (!bytes.length) throw new Error('请选择有效的网站图标文件。');
+    if (bytes.length >= 4 && bytes[0] === 0 && bytes[1] === 0 && bytes[2] === 1 && bytes[3] === 0)
+      return { bytes, ext: 'ico', type: 'image/x-icon' };
+    if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+      return { bytes, ext: 'jpg', type: 'image/jpeg' };
+    if (
+      bytes.length >= 24 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    )
+      return { bytes, ext: 'png', type: 'image/png' };
+    if (
+      bytes.length >= 10 &&
+      bytes[0] === 0x47 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x38 &&
+      (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+      bytes[5] === 0x61
+    )
+      return { bytes, ext: 'gif', type: 'image/gif' };
+    if (
+      bytes.length >= 16 &&
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50
+    )
+      return { bytes, ext: 'webp', type: 'image/webp' };
+    if (
+      bytes.length >= 12 &&
+      bytes[4] === 0x66 &&
+      bytes[5] === 0x74 &&
+      bytes[6] === 0x79 &&
+      bytes[7] === 0x70 &&
+      ['avif', 'avis', 'mif1'].includes(String.fromCharCode(...bytes.subarray(8, 12)))
+    )
+      return { bytes, ext: 'avif', type: 'image/avif' };
+    const text = Buffer.from(bytes).toString('utf8').trimStart();
+    if (/^(?:<\?xml|<!|<svg\b)/i.test(text) && /<svg[\s>]/i.test(text)) {
+      const cleaned = text
+        .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+        .replace(/<foreignObject\b[\s\S]*?<\/foreignObject>/gi, '')
+        .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+        .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+        .replace(/\b(?:href|xlink:href)\s*=\s*(?:"https?:[^"]*"|'https?:[^']*')/gi, '');
+      return { bytes: Buffer.from(cleaned, 'utf8'), ext: 'svg', type: 'image/svg+xml' };
+    }
+    throw new Error('不支持的文件格式，请上传有效的 PNG、JPG、WebP、GIF、AVIF、SVG 或 ICO 图片。');
+  }
+
+  function validateDevDerivedPng(buf, expectedSize) {
+    if (
+      buf.length < 24 ||
+      buf[0] !== 0x89 ||
+      buf[1] !== 0x50 ||
+      buf[2] !== 0x4e ||
+      buf[3] !== 0x47
+    )
+      throw new Error(`派生图标 ${expectedSize}×${expectedSize} 不是有效的 PNG 图片。`);
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    if (width !== expectedSize || height !== expectedSize)
+      throw new Error(`派生图标尺寸应为 ${expectedSize}×${expectedSize}，实际为 ${width}×${height}。`);
+  }
+
+  async function validateDevDerivedSet(form, key) {
+    const list = siteIconDerivedList(key);
+    if (!list) throw new Error('网站图标地址不正确。');
+    const items = [];
+    for (const [field, filename, size] of [
+      ['derived_180', list.apple, 180],
+      ['derived_192', list.icon192, 192],
+      ['derived_512', list.icon512, 512],
+      ['derived_512_maskable', list.maskable512, 512],
+    ]) {
+      const part = form.get(field);
+      if (!part || typeof part === 'string') throw new Error(`缺少 ${size}×${size} 派生图标。`);
+      const buf = Buffer.from(await part.arrayBuffer());
+      validateDevDerivedPng(buf, size);
+      items.push({ filename, bytes: buf, type: 'image/png' });
+    }
+    if (list.ext !== 'ico') {
+      const icoPart = form.get('derived_ico');
+      if (!icoPart || typeof icoPart === 'string') throw new Error('缺少 favicon.ico 派生图标。');
+      const icoBuf = Buffer.from(await icoPart.arrayBuffer());
+      if (icoBuf.length < 22 || icoBuf[0] !== 0 || icoBuf[1] !== 0 || icoBuf[2] !== 1 || icoBuf[3] !== 0)
+        throw new Error('favicon.ico 派生图标无效。');
+      items.push({ filename: list.faviconIco, bytes: icoBuf, type: 'image/x-icon' });
+    }
+    return items;
+  }
+
+  function devHasDerivatives(siteIcon) {
+    if (!siteIcon) return true;
+    const list = siteIconDerivedList(siteIcon);
+    if (!list) return true;
+    return list.generated.every((filename) => uploadedIcons.has(filename));
+  }
+
   // Settings & Site Icon API
   if (pathname === '/api/settings' && method === 'GET') {
-    return json(res, 200, { site: { ...SITE }, etag: `settings-${settingsVersion}` });
+    return json(res, 200, {
+      site: { ...SITE },
+      etag: `settings-${settingsVersion}`,
+      siteIconDerivativesReady: devHasDerivatives(SITE.siteIcon),
+    });
   }
   if (pathname === '/api/settings' && method === 'PUT') {
     const payload = JSON.parse((await readBodyBuffer(req)).toString('utf8') || '{}');
     if (payload.site && typeof payload.site === 'object') {
-      Object.assign(SITE, payload.site);
+      const nextSite = { ...payload.site };
+      if (!nextSite.siteIcon) {
+        nextSite.siteIcon = '';
+        nextSite.siteIconSize = 0;
+      } else {
+        const stored = uploadedIcons.get(nextSite.siteIcon.slice('uploads/icons/'.length));
+        if (stored) nextSite.siteIconSize = stored.bytes.length;
+        else nextSite.siteIconSize = Number(nextSite.siteIconSize || 0);
+      }
+      Object.assign(SITE, nextSite);
       settingsVersion++;
     }
-    return json(res, 200, { site: { ...SITE }, etag: `settings-${settingsVersion}` });
+    return json(res, 200, {
+      site: { ...SITE },
+      etag: `settings-${settingsVersion}`,
+      siteIconDerivativesReady: devHasDerivatives(SITE.siteIcon),
+    });
   }
   if (pathname === '/api/site-icon' && method === 'POST') {
     const buf = await readBodyBuffer(req);
-    if (!buf.length || buf.length > 256 * 1024) {
-      return json(res, 400, { error: '网站图标需为 1 字节至 256 KB。' });
+    const contentType = String(req.headers['content-type'] || '').toLowerCase();
+    try {
+      if (contentType.startsWith('multipart/form-data')) {
+        const form = await new Response(buf, {
+          headers: { 'content-type': String(req.headers['content-type'] || '') },
+        }).formData();
+        const file = form.get('file');
+        if (!file || typeof file === 'string') return json(res, 400, { error: '请选择网站图标文件。' });
+        const inspected = sniffDevIcon(Buffer.from(await file.arrayBuffer()));
+        const hash = crypto.createHash('sha256').update(inspected.bytes).digest('hex');
+        const filename = `${hash}.${inspected.ext}`;
+        const key = 'uploads/icons/' + filename;
+        const derivedItems = await validateDevDerivedSet(form, key);
+        for (const item of derivedItems) {
+          uploadedIcons.set(item.filename, { bytes: item.bytes, type: item.type });
+        }
+        uploadedIcons.set(filename, { bytes: inspected.bytes, type: inspected.type });
+        return json(res, 201, {
+          key,
+          url: '/site-icon/' + filename,
+          type: inspected.type,
+          ext: inspected.ext,
+          size: inspected.bytes.length,
+          derived: derivedItems.map((i) => 'uploads/icons/' + i.filename),
+          derivativesReady: true,
+        });
+      }
+      const inspected = sniffDevIcon(buf);
+      const hash = crypto.createHash('sha256').update(inspected.bytes).digest('hex');
+      const filename = `${hash}.${inspected.ext}`;
+      const key = 'uploads/icons/' + filename;
+      uploadedIcons.set(filename, { bytes: inspected.bytes, type: inspected.type });
+      return json(res, 201, {
+        key,
+        url: '/site-icon/' + filename,
+        type: inspected.type,
+        ext: inspected.ext,
+        size: inspected.bytes.length,
+        derivativesReady: devHasDerivatives(key),
+      });
+    } catch (error) {
+      return json(res, 400, { error: error instanceof Error ? error.message : '图标上传失败。' });
     }
-    const isIco = buf.length >= 4 && buf[0] === 0 && buf[1] === 0 && buf[2] === 1 && buf[3] === 0;
-    const head = buf.slice(0, 256).toString('utf8').trimStart();
-    const isSvg = head.startsWith('<svg') || head.startsWith('<?xml');
-    if (!isIco && !isSvg) {
-      return json(res, 400, { error: '仅支持有效的 SVG 或 ICO 文件。' });
+  }
+  if (pathname === '/api/site-icon/derivatives' && method === 'POST') {
+    const buf = await readBodyBuffer(req);
+    try {
+      const form = await new Response(buf, {
+        headers: { 'content-type': String(req.headers['content-type'] || '') },
+      }).formData();
+      const key = form.get('key');
+      if (typeof key !== 'string' || !SITE_ICON_KEY_RE.test(key))
+        return json(res, 400, { error: '网站图标地址不正确。' });
+      const origFilename = key.slice('uploads/icons/'.length);
+      if (!uploadedIcons.has(origFilename))
+        return json(res, 404, { error: '原网站图标不存在，请重新上传图标。' });
+      const derivedItems = await validateDevDerivedSet(form, key);
+      const created = [];
+      for (const item of derivedItems) {
+        if (!uploadedIcons.has(item.filename)) {
+          uploadedIcons.set(item.filename, { bytes: item.bytes, type: item.type });
+          created.push('uploads/icons/' + item.filename);
+        }
+      }
+      return json(res, 200, { key, derivativesReady: true, created });
+    } catch (error) {
+      return json(res, 400, { error: error instanceof Error ? error.message : '派生图标校验失败。' });
     }
-    const ext = isIco ? '.ico' : '.svg';
-    const hash = crypto.createHash('sha256').update(buf).digest('hex');
-    const filename = hash + ext;
-    const key = 'uploads/icons/' + filename;
-    uploadedIcons.set(filename, {
-      bytes: buf,
-      type: isIco ? 'image/x-icon' : 'image/svg+xml',
-    });
-    return json(res, 200, { key, size: buf.length });
   }
 
   // Maintenance / Publish / Images / Backup dev preview stubs
@@ -1098,12 +1358,32 @@ const server = http.createServer(async (req, res) => {
       return await handleApi(req, res, url);
     }
 
+    if (reqPath === '/favicon.ico') {
+      const derived = siteIconDerivedList(SITE.siteIcon);
+      const target = derived ? '/site-icon/' + derived.faviconIco : '/favicon.svg';
+      res.writeHead(302, {
+        location: target,
+        'cache-control': 'public, max-age=300',
+      });
+      return res.end();
+    }
+
     if (reqPath.startsWith('/site-icon/')) {
       const filename = reqPath.slice('/site-icon/'.length);
+      const key = 'uploads/icons/' + filename;
+      if (!SITE_ICON_ASSET_RE.test(key)) {
+        res.writeHead(404);
+        return res.end('Not found');
+      }
       const stored = uploadedIcons.get(filename);
-      if (stored) {
-        res.writeHead(200, { 'content-type': stored.type, 'cache-control': 'no-store' });
-        return res.end(stored.bytes);
+      if (stored && stored.type === siteIconMimeFor(filename)) {
+        res.writeHead(200, {
+          'content-type': stored.type,
+          'cache-control': 'public, max-age=31536000, immutable',
+          'x-content-type-options': 'nosniff',
+          'content-security-policy': "sandbox; default-src 'none'",
+        });
+        return res.end(req.method === 'HEAD' ? undefined : stored.bytes);
       }
       res.writeHead(404);
       return res.end('Not found');
@@ -1164,7 +1444,49 @@ const server = http.createServer(async (req, res) => {
       return res.end(readText('assets/sw.js'));
     }
     if (reqPath === '/manifest.webmanifest') {
-      res.writeHead(200, { 'content-type': 'application/manifest+json; charset=utf-8' });
+      res.writeHead(200, {
+        'content-type': 'application/manifest+json; charset=utf-8',
+        'cache-control': 'no-store',
+      });
+      const derived = siteIconDerivedList(SITE.siteIcon);
+      if (derived) {
+        return res.end(
+          JSON.stringify(
+            {
+              name: SITE.title,
+              short_name: SITE.title,
+              description: SITE.description,
+              start_url: '/',
+              scope: '/',
+              display: 'standalone',
+              background_color: '#f6f5f0',
+              theme_color: '#22312a',
+              icons: [
+                {
+                  src: '/site-icon/' + derived.icon192,
+                  sizes: '192x192',
+                  type: 'image/png',
+                  purpose: 'any',
+                },
+                {
+                  src: '/site-icon/' + derived.icon512,
+                  sizes: '512x512',
+                  type: 'image/png',
+                  purpose: 'any',
+                },
+                {
+                  src: '/site-icon/' + derived.maskable512,
+                  sizes: '512x512',
+                  type: 'image/png',
+                  purpose: 'maskable',
+                },
+              ],
+            },
+            null,
+            2,
+          ),
+        );
+      }
       return res.end(readText('assets/manifest.webmanifest'));
     }
     if (reqPath === '/favicon.svg') {

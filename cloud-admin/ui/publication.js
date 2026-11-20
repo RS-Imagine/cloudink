@@ -20,10 +20,7 @@ export async function publishInBrowser(
     if (result.incremental) {
       const sources = {};
       for (const path of files.filter(
-        (path) =>
-          !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(
-            path,
-          ),
+        (path) => !['styles.css', 'client.js', 'favicon.svg', 'sw.js'].includes(path),
       )) {
         if (typeof rendered[path] !== 'string') throw new Error('网页生成不完整，请重新发布。');
         sources[path] = await sha256Hex(rendered[path]);

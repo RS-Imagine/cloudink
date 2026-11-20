@@ -12,7 +12,15 @@ import { managedImageKeys, localImageKeys, IMAGE_REFERENCE_VERSION } from './ima
 export { managedImageKeys } from './image-references';
 import { parentImageKey, imagePresentation, IMAGE_WIDTHS } from './image-variants';
 import type { CloudInkEnv } from './env';
-import { HttpError, json, jsonInput, readJson, type Publishing, type Release } from './models';
+import {
+  HttpError,
+  json,
+  jsonInput,
+  readJson,
+  siteIconDerivedKeys,
+  type Publishing,
+  type Release,
+} from './models';
 import { validImageKey } from './media';
 
 const MAX_SOURCES = 2000;
@@ -454,8 +462,10 @@ export async function imageLibraryRoute(
     const refs = (await references(env.STORAGE, [input.key])).get(input.key) || [];
     if (refs.length)
       return json({ error: '图片仍被文章或网站设置引用，请先处理引用。', references: refs }, 409);
+    const derivedIcons = siteIconDerivedKeys(input.key)?.generated || [];
     await env.STORAGE.delete([
       ...IMAGE_WIDTHS.map((width) => input.key + '.w' + width + '.webp'),
+      ...derivedIcons,
       input.key,
     ]);
     return json({ deleted: true, key: input.key });

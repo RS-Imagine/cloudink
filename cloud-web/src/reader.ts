@@ -2,16 +2,19 @@ import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated'
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
 import { sha256Hex } from '../../cloud-admin/src/crypto';
 import { legacyImagePath } from '../../cloud-admin/src/media';
-export async function readerEtag(etag: string, url: URL): Promise<string> {
+import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
+export async function readerEtag(etag: string, url: URL, siteIcon = ''): Promise<string> {
   const hash = await sha256Hex(
-    'reader-v4:' +
+    'reader-v5:' +
       PUBLIC_RESPONSE_VERSION +
       ':' +
       CURRENT_TEMPLATE_VERSION +
       ':' +
       url.origin +
       url.pathname +
-      etag,
+      etag +
+      ':' +
+      siteIcon,
   );
   return '"' + hash + '"';
 }
@@ -38,6 +41,7 @@ export async function readerHtml(
   response: Response,
   url: URL,
   analytics = false,
+  siteIcon = '',
 ): Promise<Response> {
   if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
   const path = url.pathname.replace(/\/index\.html$/, '/');
@@ -167,7 +171,7 @@ export async function readerHtml(
       },
     })
     .on(
-      'head link[rel="canonical"],head meta[property^="og:"],head meta[name^="twitter:"],head script[type="application/ld+json"]',
+      'head link[rel="canonical"],head link[rel="apple-touch-icon"],head meta[property^="og:"],head meta[name^="twitter:"],head script[type="application/ld+json"]',
       {
         element(el) {
           el.remove();
@@ -181,6 +185,13 @@ export async function readerHtml(
   author = decode(author);
   site = decode(site);
   imageAlt = decode(imageAlt);
+  const derivedIcon = siteIconDerivedKeys(siteIcon);
+  const fallbackImage = derivedIcon
+    ? new URL('/site-icon/' + derivedIcon.icon512.slice('uploads/icons/'.length), url.origin).href
+    : '';
+  const hasArticleImage = !!image;
+  const shareImage = image || fallbackImage;
+  const shareImageAlt = image ? imageAlt : site.trim() || title.trim();
   const tags = [
     ...(hasMath
       ? ['<link rel="stylesheet" data-reader-style="math" href="/reader-assets/katex.css">']
@@ -190,22 +201,27 @@ export async function readerHtml(
           '<link rel="stylesheet" media="print" data-reader-style="code" data-reader-async="style" href="/reader-assets/code.css">',
         ]
       : []),
+    ...(derivedIcon
+      ? [
+          `<link rel="apple-touch-icon" sizes="180x180" href="/site-icon/${derivedIcon.apple.slice('uploads/icons/'.length)}">`,
+        ]
+      : []),
     `<link rel="canonical" href="${escape(canonical.href)}">`,
     `<meta property="og:url" content="${escape(canonical.href)}">`,
     `<meta property="og:title" content="${escape(title.trim())}">`,
     `<meta property="og:description" content="${escape(description)}">`,
     `<meta property="og:site_name" content="${escape(site.trim())}">`,
     `<meta property="og:type" content="${isPost ? 'article' : 'website'}">`,
-    `<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">`,
+    `<meta name="twitter:card" content="${hasArticleImage ? 'summary_large_image' : 'summary'}">`,
     `<meta name="twitter:title" content="${escape(title.trim())}">`,
     `<meta name="twitter:description" content="${escape(description)}">`,
   ];
-  if (image)
+  if (shareImage)
     tags.push(
-      `<meta property="og:image" content="${escape(image)}">`,
-      `<meta property="og:image:alt" content="${escape(imageAlt)}">`,
-      `<meta name="twitter:image" content="${escape(image)}">`,
-      `<meta name="twitter:image:alt" content="${escape(imageAlt)}">`,
+      `<meta property="og:image" content="${escape(shareImage)}">`,
+      `<meta property="og:image:alt" content="${escape(shareImageAlt)}">`,
+      `<meta name="twitter:image" content="${escape(shareImage)}">`,
+      `<meta name="twitter:image:alt" content="${escape(shareImageAlt)}">`,
     );
   if (response.status === 200) {
     const data = {
@@ -216,7 +232,7 @@ export async function readerHtml(
       headline: title.trim(),
       description,
       ...(author ? { author: { '@type': 'Person', name: author } } : {}),
-      ...(image ? { image: [image] } : {}),
+      ...(shareImage ? { image: [shareImage] } : {}),
       mainEntityOfPage: canonical.href,
     };
     // Escape '<' so author text can never terminate the JSON data element.

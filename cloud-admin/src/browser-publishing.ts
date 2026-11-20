@@ -42,6 +42,8 @@ export interface BrowserPointer {
   responseVersion?: string;
   generationVersion?: string;
   clarityId?: string;
+  siteIcon?: string;
+  siteIconSize?: number;
   postRedirects?: Record<string, string>;
 }
 export async function claimBrowserPublication(env: CloudInkEnv, state: Publishing): Promise<void> {
@@ -100,7 +102,12 @@ export async function initializeBrowserContent(env: CloudInkEnv, site: SiteConfi
   await env.STORAGE.put(`releases/${release.id}.json`, JSON.stringify(release));
   await env.STORAGE.put(
     'state/published.json',
-    JSON.stringify({ id: release.id, clarityId: release.site.clarityId || '' }),
+    JSON.stringify({
+      id: release.id,
+      clarityId: release.site.clarityId || '',
+      siteIcon: release.site.siteIcon || '',
+      ...(release.site.siteIconSize ? { siteIconSize: release.site.siteIconSize } : {}),
+    }),
     { onlyIf: { etagDoesNotMatch: '*' } },
   );
 }
@@ -149,8 +156,7 @@ export interface PageManifest {
 }
 const generatedFiles = (state: Publishing) =>
   (state.files || []).filter(
-    (path) =>
-      !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(path),
+    (path) => !['styles.css', 'client.js', 'favicon.svg', 'sw.js'].includes(path),
   );
 function compatible(pointer: BrowserPointer | null, state: Publishing): boolean {
   return (
@@ -513,6 +519,8 @@ export async function commitBrowserPublish(
         ...(state.plan ? { pages: state.plan.pages } : {}),
         previous_ids: [current.id, ...(current.previous_ids || [])].slice(0, 2),
         clarityId: release.site.clarityId || '',
+        siteIcon: release.site.siteIcon || '',
+        ...(release.site.siteIconSize ? { siteIconSize: release.site.siteIconSize } : {}),
         postRedirects: postRedirects(release),
         templateVersion: state.template_version,
         responseVersion: state.response_version,

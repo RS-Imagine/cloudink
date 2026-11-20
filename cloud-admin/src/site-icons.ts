@@ -1,9 +1,18 @@
 import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
 import { SaxesParser } from 'saxes';
 import { sha256Hex } from './crypto';
-import { HttpError, json, limitedBody, validSiteIconKey, type SiteConfig } from './models';
+import { imageInfo } from './image-info';
+import { imageType } from './media';
+import {
+  HttpError,
+  json,
+  siteIconDerivedKeys,
+  siteIconMime,
+  validSiteIconAssetKey,
+  validSiteIconKey,
+  type SiteConfig,
+} from './models';
 
-export const MAX_SITE_ICON = 256 * 1024;
 const encoder = new TextEncoder();
 const elements = new Set([
   'svg',
@@ -186,7 +195,6 @@ async function sanitizeSvg(bytes: Uint8Array): Promise<Uint8Array> {
   validateSvgDocument(sanitized);
   const output = encoder.encode(sanitized);
   if (roots !== 1 || !shapes) throw new HttpError(400, 'SVG 需要一个根元素和可显示的图形。');
-  if (output.length > MAX_SITE_ICON) throw new HttpError(413, '网站图标最多 256 KB。');
   return output;
 }
 const crcTable = Uint32Array.from({ length: 256 }, (_, value) => {
@@ -540,50 +548,290 @@ async function validateIco(bytes: Uint8Array): Promise<void> {
     }
   }
 }
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+function hasPngSignature(bytes: Uint8Array): boolean {
+  return bytes.length >= 24 && PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
+}
+
+async function validateDerivedPng(bytes: Uint8Array, expectedSize: number): Promise<void> {
+  if (!hasPngSignature(bytes))
+    throw new HttpError(400, `派生图标 ${expectedSize}×${expectedSize} 不是有效的 PNG 图片。`);
+  try {
+    await validateIconPng(bytes, expectedSize, expectedSize, 4 * 1024 * 1024);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 413) throw error;
+    throw new HttpError(
+      400,
+      `派生图标 ${expectedSize}×${expectedSize} 的尺寸或 PNG 结构校验失败。`,
+    );
+  }
+}
+
+function detectRasterIcon(input: Uint8Array): { ext: string; type: string } | null {
+  let detected: { ext: string; type: string };
+  try {
+    detected = imageType(input);
+  } catch {
+    return null;
+  }
+  if (detected.ext !== 'avif') {
+    const info = imageInfo(input);
+    if (!info.width || !info.height || info.width <= 0 || info.height <= 0)
+      throw new HttpError(400, '图片文件已损坏或无法读取尺寸，请重新选择图片。');
+  }
+  return detected;
+}
+
+function looksLikeXmlOrSvg(input: Uint8Array): boolean {
+  const sample = new TextDecoder().decode(input.subarray(0, 512)).trimStart();
+  return (
+    sample.startsWith('<svg') ||
+    sample.startsWith('<?xml') ||
+    sample.startsWith('<!') ||
+    sample.startsWith('<')
+  );
+}
+
 export async function inspectSiteIcon(input: Uint8Array) {
-  if (!input.length || input.length > MAX_SITE_ICON)
-    throw new HttpError(413, '网站图标需为 1 字节至 256 KB。');
-  const ico = input[0] === 0 && input[1] === 0 && input[2] === 1 && input[3] === 0;
-  const bytes = ico ? input : await sanitizeSvg(input);
-  if (ico) await validateIco(bytes);
+  if (!input.length) throw new HttpError(400, '请选择有效的网站图标文件。');
+  const ico =
+    input.length >= 4 && input[0] === 0 && input[1] === 0 && input[2] === 1 && input[3] === 0;
+  if (ico) {
+    await validateIco(input);
+    const hash = await sha256Hex(input);
+    return {
+      bytes: input,
+      hash,
+      ext: 'ico',
+      key: 'uploads/icons/' + hash + '.ico',
+      type: 'image/x-icon',
+    };
+  }
+  const raster = detectRasterIcon(input);
+  if (raster) {
+    const hash = await sha256Hex(input);
+    return {
+      bytes: input,
+      hash,
+      ext: raster.ext,
+      key: 'uploads/icons/' + hash + '.' + raster.ext,
+      type: raster.type,
+    };
+  }
+  if (!looksLikeXmlOrSvg(input))
+    throw new HttpError(
+      400,
+      '不支持的文件格式，请上传有效的 PNG、JPG、WebP、GIF、AVIF、SVG 或 ICO 图片。',
+    );
+  const bytes = await sanitizeSvg(input);
   const hash = await sha256Hex(bytes);
-  const ext = ico ? 'ico' : 'svg';
   return {
     bytes,
-    key: 'uploads/icons/' + hash + '.' + ext,
-    type: ico ? 'image/x-icon' : 'image/svg+xml',
+    hash,
+    ext: 'svg',
+    key: 'uploads/icons/' + hash + '.svg',
+    type: 'image/svg+xml',
   };
 }
-export async function ensureSiteIcon(storage: R2Bucket, site: SiteConfig): Promise<void> {
-  if (!site.siteIcon) return;
-  const object = await storage.head(site.siteIcon);
-  if (
-    !object ||
-    object.size > MAX_SITE_ICON ||
-    object.httpMetadata?.contentType !==
-      (site.siteIcon.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml')
-  )
-    throw new HttpError(400, '网站图标已被删除或尚未上传，请重新选择后保存。');
+
+interface PreparedDerived {
+  key: string;
+  bytes: Uint8Array;
+  type: string;
 }
+
+async function readFormBlob(form: FormData, field: string, label: string): Promise<Uint8Array> {
+  const part = form.get(field);
+  if (!part || typeof part === 'string') throw new HttpError(400, `缺少${label}派生图标。`);
+  const bytes = new Uint8Array(await part.arrayBuffer());
+  if (!bytes.length) throw new HttpError(400, `${label}派生图标为空。`);
+  return bytes;
+}
+
+async function validateDerivedSet(form: FormData, key: string): Promise<PreparedDerived[]> {
+  const derived = siteIconDerivedKeys(key);
+  if (!derived) throw new HttpError(400, '网站图标地址不正确。');
+  const pngSpecs: [string, string, number, string][] = [
+    ['derived_180', derived.apple, 180, 'Apple 主屏 180×180'],
+    ['derived_192', derived.icon192, 192, 'PWA 192×192'],
+    ['derived_512', derived.icon512, 512, 'PWA 512×512'],
+    ['derived_512_maskable', derived.maskable512, 512, 'PWA 512×512 Maskable'],
+  ];
+  const prepared: PreparedDerived[] = [];
+  for (const [field, targetKey, size, label] of pngSpecs) {
+    const bytes = await readFormBlob(form, field, label);
+    await validateDerivedPng(bytes, size);
+    prepared.push({ key: targetKey, bytes, type: 'image/png' });
+  }
+  if (derived.ext !== 'ico') {
+    const icoBytes = await readFormBlob(form, 'derived_ico', 'favicon.ico');
+    await validateIco(icoBytes);
+    prepared.push({ key: derived.faviconIco, bytes: icoBytes, type: 'image/x-icon' });
+  }
+  return prepared;
+}
+
+async function putIconObjectsAtomic(
+  storage: R2Bucket,
+  objects: { key: string; bytes: Uint8Array; type: string; metadata?: Record<string, string> }[],
+): Promise<{ created: string[]; reusedAll: boolean }> {
+  const created: string[] = [];
+  let reusedAll = true;
+  try {
+    for (const item of objects) {
+      const existing = await storage.head(item.key);
+      if (
+        existing &&
+        existing.size === item.bytes.byteLength &&
+        existing.httpMetadata?.contentType === item.type
+      )
+        continue;
+      reusedAll = false;
+      const saved = await storage.put(item.key, item.bytes, {
+        httpMetadata: {
+          contentType: item.type,
+          cacheControl: 'public, max-age=31536000, immutable',
+        },
+        ...(item.metadata ? { customMetadata: item.metadata } : {}),
+      });
+      if (!saved) throw new HttpError(500, '保存网站图标失败，请重试。');
+      created.push(item.key);
+    }
+    return { created, reusedAll };
+  } catch (error) {
+    if (created.length) await storage.delete(created).catch(() => {});
+    throw error;
+  }
+}
+
+export async function hasSiteIconDerivatives(
+  storage: R2Bucket,
+  siteIcon?: string,
+): Promise<boolean> {
+  if (!siteIcon) return true;
+  const derived = siteIconDerivedKeys(siteIcon);
+  if (!derived) return true;
+  const results = await Promise.all(
+    derived.generated.map(async (key) => {
+      const head = await storage.head(key);
+      return !!head && head.httpMetadata?.contentType === siteIconMime(key);
+    }),
+  );
+  return results.every(Boolean);
+}
+
+export async function ensureSiteIcon(storage: R2Bucket, site: SiteConfig): Promise<void> {
+  if (!site.siteIcon) {
+    delete site.siteIconSize;
+    return;
+  }
+  const object = await storage.head(site.siteIcon);
+  if (!object || object.httpMetadata?.contentType !== siteIconMime(site.siteIcon))
+    throw new HttpError(400, '网站图标已被删除或尚未上传，请重新选择后保存。');
+  site.siteIconSize = object.size;
+}
+
 export async function uploadSiteIcon(request: Request, storage: R2Bucket): Promise<Response> {
-  const icon = await inspectSiteIcon(new Uint8Array(await limitedBody(request, MAX_SITE_ICON)));
+  const contentType = (request.headers.get('Content-Type') || '').toLowerCase();
+  if (contentType.startsWith('multipart/form-data')) {
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch {
+      throw new HttpError(400, '无法解析上传的图标表单，请重试。');
+    }
+    const file = form.get('file');
+    if (!file || typeof file === 'string') throw new HttpError(400, '请选择网站图标文件。');
+    const icon = await inspectSiteIcon(new Uint8Array(await file.arrayBuffer()));
+    const derived = await validateDerivedSet(form, icon.key);
+    const { reusedAll } = await putIconObjectsAtomic(storage, [
+      ...derived,
+      {
+        key: icon.key,
+        bytes: icon.bytes,
+        type: icon.type,
+        metadata: { name: '网站图标.' + icon.ext },
+      },
+    ]);
+    return json(
+      {
+        key: icon.key,
+        url: '/site-icon/' + icon.key.slice('uploads/icons/'.length),
+        type: icon.type,
+        ext: icon.ext,
+        size: icon.bytes.byteLength,
+        derived: derived.map((item) => item.key),
+        derivativesReady: true,
+        ...(reusedAll ? { reused: true } : {}),
+      },
+      201,
+    );
+  }
+  const raw = new Uint8Array(await request.arrayBuffer());
+  const icon = await inspectSiteIcon(raw);
   const existing = await storage.head(icon.key);
+  const derivativesReady = await hasSiteIconDerivatives(storage, icon.key);
   if (
     existing &&
     existing.size === icon.bytes.byteLength &&
     existing.httpMetadata?.contentType === icon.type
   )
     return json(
-      { key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length), reused: true },
+      {
+        key: icon.key,
+        url: '/site-icon/' + icon.key.slice('uploads/icons/'.length),
+        type: icon.type,
+        ext: icon.ext,
+        size: icon.bytes.byteLength,
+        derivativesReady,
+        reused: true,
+      },
       201,
     );
   await storage.put(icon.key, icon.bytes, {
     onlyIf: { etagDoesNotMatch: '*' },
     httpMetadata: { contentType: icon.type, cacheControl: 'public, max-age=31536000, immutable' },
-    customMetadata: { name: '网站图标.' + (icon.key.endsWith('.ico') ? 'ico' : 'svg') },
+    customMetadata: { name: '网站图标.' + icon.ext },
   });
-  return json({ key: icon.key, url: '/site-icon/' + icon.key.slice('uploads/icons/'.length) }, 201);
+  return json(
+    {
+      key: icon.key,
+      url: '/site-icon/' + icon.key.slice('uploads/icons/'.length),
+      type: icon.type,
+      ext: icon.ext,
+      size: icon.bytes.byteLength,
+      derivativesReady,
+    },
+    201,
+  );
 }
+
+export async function backfillSiteIconDerivatives(
+  request: Request,
+  storage: R2Bucket,
+): Promise<Response> {
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    throw new HttpError(400, '无法解析派生图标表单，请重试。');
+  }
+  const key = form.get('key');
+  if (typeof key !== 'string' || !validSiteIconKey(key))
+    throw new HttpError(400, '网站图标地址不正确。');
+  const original = await storage.head(key);
+  if (!original || original.httpMetadata?.contentType !== siteIconMime(key))
+    throw new HttpError(404, '原网站图标不存在，请重新上传图标。');
+  const derived = await validateDerivedSet(form, key);
+  const { created } = await putIconObjectsAtomic(storage, derived);
+  return json({
+    key,
+    derivativesReady: true,
+    created,
+  });
+}
+
 export async function publicSiteIcon(
   request: Request,
   storage: R2Bucket,
@@ -593,13 +841,13 @@ export async function publicSiteIcon(
     return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
   const name = new URL(request.url).pathname.slice('/site-icon/'.length);
   const key = 'uploads/icons/' + name;
-  if (!validSiteIconKey(key)) return new Response('Not found', { status: 404 });
+  if (!validSiteIconAssetKey(key)) return new Response('Not found', { status: 404 });
   const cache = cacheKey(request, 'image');
   const cached = ctx ? await cacheRead(cache) : undefined;
   if (cached) return clientResponse(cached, request, true);
   const body = request.method === 'GET' ? await storage.get(key) : null;
   const object = request.method === 'HEAD' ? await storage.head(key) : body;
-  const type = name.endsWith('.ico') ? 'image/x-icon' : 'image/svg+xml';
+  const type = siteIconMime(key);
   if (!object || object.httpMetadata?.contentType !== type) {
     if (body) await body.body.cancel();
     return new Response('Not found', { status: 404 });

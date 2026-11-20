@@ -2,7 +2,7 @@ import { backupSource, legacyHistoryKey } from './backup-contract';
 import { sameSha256 } from './crypto';
 import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey, contentImageKey } from './image-variants';
-import { ensureSiteIcon, inspectSiteIcon, MAX_SITE_ICON } from './site-icons';
+import { ensureSiteIcon, inspectSiteIcon } from './site-icons';
 import type { CloudInkEnv } from './env';
 import { currentRelease } from './publishing';
 import { draftSummary, shortSummary } from './post-metadata';
@@ -265,10 +265,7 @@ export async function backupRoute(
     if (!validImageKey(key)) throw new HttpError(400, '图片路径不正确。');
     const bytes = new Uint8Array(await limitedBody(request, MAX_IMAGE)),
       type = validSiteIconKey(key) ? await inspectSiteIcon(bytes) : imageType(bytes);
-    if (
-      validSiteIconKey(key) &&
-      (!('key' in type) || type.key !== key || bytes.length > MAX_SITE_ICON)
-    )
+    if (validSiteIconKey(key) && (!('key' in type) || type.key !== key))
       throw new HttpError(400, '备份图标与其内容地址不一致。');
     const content = 'bytes' in type ? type.bytes : bytes;
     if (

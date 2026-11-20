@@ -58,17 +58,18 @@ test('article batch manifests use ten published posts per page and route extra b
 });
 async function planned(f, state, receipts = true) {
   const paths = (state.render_files || state.files).filter(
-    (path) =>
-      !['styles.css', 'client.js', 'favicon.svg', 'manifest.webmanifest', 'sw.js'].includes(path),
+    (path) => !['styles.css', 'client.js', 'favicon.svg', 'sw.js'].includes(path),
   );
   const values = Object.fromEntries(
     paths.map((path) => [
       path,
       path === '_release.json'
         ? JSON.stringify({ id: state.release_id, template_version: state.template_version })
-        : path.endsWith('.html')
-          ? '<html><head></head><body>Stable page</body></html>'
-          : '[]',
+        : path === 'manifest.webmanifest'
+          ? JSON.stringify({ name: 'Test Blog', icons: [] })
+          : path.endsWith('.html')
+            ? '<html><head></head><body>Stable page</body></html>'
+            : '[]',
     ]),
   );
   const planResponse = await f.request('/api/publish/' + state.release_id + '/plan', 'POST', {
