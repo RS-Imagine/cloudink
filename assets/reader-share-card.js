@@ -10,7 +10,7 @@ export async function openShareCard({ showDialog, shareBtn, t }) {
   const readingFont =
     palette.getPropertyValue('--reader-font-family').trim() ||
     palette.getPropertyValue('--ci-font-reading').trim() ||
-    "'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', serif";
+    "'Iowan Old Style', 'Palatino Linotype', 'Noto Serif', 'Noto Serif SC', 'Songti SC', 'Noto Serif CJK SC', serif";
   const uiFont =
     palette.getPropertyValue('--ci-font-ui').trim() ||
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif";

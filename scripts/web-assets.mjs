@@ -100,8 +100,8 @@ if (process.argv[2] === 'seed') {
   const fontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif-sc');
   let fontCSS = '';
   for (const weight of [400, 600]) {
-    // Keep Latin on the stable system serif: swapping it reflows English headings.
-    // Han glyphs retain their one-em advance, even while the font is downloading.
+    // Latin (with true italics) is served by standalone Noto Serif below; SC remains scoped
+    // to CJK and fullwidth ranges so Han glyphs retain their one-em advance while downloading.
     const source = (await readFile(resolve(fontRoot, weight + '.css'), 'utf8')).replace(
       /@font-face\s*\{[^}]+\}/g,
       (rule) => {
@@ -138,8 +138,43 @@ if (process.argv[2] === 'seed') {
       return 'src:url(/reader-assets/fonts/' + file + ') format("woff2");';
     });
   }
+  const latinFontRoot = resolve(root, 'cloud-admin/node_modules/@fontsource/noto-serif');
+  let latinFaceCount = 0;
+  for (const sheet of ['400.css', '400-italic.css', '600.css', '600-italic.css']) {
+    const raw = await readFile(resolve(latinFontRoot, sheet), 'utf8');
+    const matches = [
+      ...raw.matchAll(
+        /\/\*\s*(noto-serif-(?:latin|latin-ext)-(?:400|600)-(?:normal|italic))\s*\*\/\s*(@font-face\s*\{[^}]+\})/g,
+      ),
+    ];
+    if (matches.length !== 2)
+      throw new Error('Expected latin and latin-ext slices in @fontsource/noto-serif/' + sheet);
+    for (const [, label, rule] of matches) {
+      const file = rule.match(/url\(\.\/files\/([a-z0-9-]+\.woff2)\)/)?.[1];
+      if (!file) throw new Error('Missing Latin editorial WOFF2 slice: ' + label);
+      await copyFile(resolve(latinFontRoot, 'files', file), resolve(vendor, 'fonts', file));
+      fontCSS +=
+        `\n/* ${label} */\n` +
+        rule.replace(/src:[^;]+;/g, 'src:url(/reader-assets/fonts/' + file + ') format("woff2");') +
+        '\n';
+      latinFaceCount++;
+    }
+  }
+  if (latinFaceCount !== 8) throw new Error('Unexpected Noto Serif Latin face count');
   await writeFile(resolve(vendor, 'editorial-font.css'), fontCSS);
-  await copyFile(resolve(fontRoot, 'LICENSE'), resolve(vendor, 'editorial-font-LICENSE.txt'));
+  const scLicense = (await readFile(resolve(fontRoot, 'LICENSE'), 'utf8')).trim();
+  const latinLicense = (await readFile(resolve(latinFontRoot, 'LICENSE'), 'utf8')).trim();
+  await writeFile(
+    resolve(vendor, 'editorial-font-LICENSE.txt'),
+    [
+      '=== Noto Serif SC (@fontsource/noto-serif-sc) ===',
+      scLicense,
+      '',
+      '=== Noto Serif (@fontsource/noto-serif) ===',
+      latinLicense,
+      '',
+    ].join('\n'),
+  );
   const highlightRoot = resolve(root, 'cloud-admin/node_modules/highlight.js');
   const light = await readFile(resolve(highlightRoot, 'styles/github.min.css'), 'utf8');
   const dark = await readFile(resolve(highlightRoot, 'styles/github-dark.min.css'), 'utf8');

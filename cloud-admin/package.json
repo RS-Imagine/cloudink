@@ -7,6 +7,7 @@
     "ui": "node build-ui.mjs"
   },
   "dependencies": {
+    "@fontsource/noto-serif": "5.3.0",
     "@fontsource/noto-serif-sc": "5.3.1",
     "entities": "9.0.0",
     "fflate": "^0.8.2",

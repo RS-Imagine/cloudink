@@ -933,10 +933,7 @@
     if (scrollY + viewportHeight < peekBottomDoc - SHORTS_BOTTOM_TOLERANCE) {
       return false;
     }
-    const visibleHeight = Math.max(
-      0,
-      Math.min(viewportHeight, peekBottom) - Math.max(0, peekTop),
-    );
+    const visibleHeight = Math.max(0, Math.min(viewportHeight, peekBottom) - Math.max(0, peekTop));
     const ratio = Number.isFinite(observedRatio)
       ? Math.min(observedRatio, visibleHeight / peekHeight)
       : visibleHeight / peekHeight;

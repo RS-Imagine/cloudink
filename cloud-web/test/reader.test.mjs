@@ -305,14 +305,54 @@ test('editorial fonts are sliced, same-origin WOFF2 with their license', async (
   assert.match(source, /unicode-range:/);
   assert.match(source, /font-display: swap/);
   assert.doesNotMatch(source, /https?:|\.woff\)/);
-  const font = source.match(/url\((\/reader-assets\/fonts\/[^)]+\.woff2)\)/)[1];
+  const font = source.match(/url\((\/reader-assets\/fonts\/noto-serif-sc-[^)]+\.woff2)\)/)[1];
   const response = await f.request(font);
   assert.equal(response.status, 200);
   assert.match(response.headers.get('Content-Type'), /font\/woff2/);
-  assert.match(
-    await (await f.request('/reader-assets/editorial-font-LICENSE.txt')).text(),
-    /SIL OPEN FONT LICENSE/,
+
+  const faces = source.match(/@font-face\s*\{[^}]+\}/g) || [];
+  const latinFaces = faces.filter((face) => /font-family:\s*['"]?Noto Serif['"]?\s*;/.test(face));
+  assert.equal(latinFaces.length, 8);
+  for (const weight of ['400', '600']) {
+    assert.ok(
+      latinFaces.some(
+        (face) =>
+          new RegExp(`font-weight:\\s*${weight}\\b`).test(face) &&
+          /font-style:\s*italic\b/.test(face),
+      ),
+      `expected Noto Serif ${weight} italic @font-face`,
+    );
+    assert.ok(
+      latinFaces.some(
+        (face) =>
+          new RegExp(`font-weight:\\s*${weight}\\b`).test(face) &&
+          /font-style:\s*normal\b/.test(face),
+      ),
+      `expected Noto Serif ${weight} normal @font-face`,
+    );
+  }
+  assert.ok(
+    latinFaces.some((face) => /unicode-range:[^;]*U\+0000-00FF/i.test(face)),
+    'expected basic Latin unicode-range U+0000-00FF on Noto Serif',
   );
+  const latinNormalFont = source.match(
+    /url\((\/reader-assets\/fonts\/noto-serif-latin-[a-z0-9-]+-normal\.woff2)\)/,
+  )?.[1];
+  const latinItalicFont = source.match(
+    /url\((\/reader-assets\/fonts\/noto-serif-latin-[a-z0-9-]+-italic\.woff2)\)/,
+  )?.[1];
+  assert.ok(latinNormalFont, 'expected Noto Serif latin normal woff2 url');
+  assert.ok(latinItalicFont, 'expected Noto Serif latin italic woff2 url');
+  for (const url of [latinNormalFont, latinItalicFont]) {
+    const res = await f.request(url);
+    assert.equal(res.status, 200, `expected 200 for ${url}`);
+    assert.match(res.headers.get('Content-Type'), /font\/woff2/);
+  }
+
+  const license = await (await f.request('/reader-assets/editorial-font-LICENSE.txt')).text();
+  assert.match(license, /SIL OPEN FONT LICENSE/);
+  assert.match(license, /Noto Serif SC/);
+  assert.match(license, /Noto Serif \(@fontsource\/noto-serif\)/);
 });
 
 test('the generated social cover can be fetched anonymously without Referer', async (t) => {

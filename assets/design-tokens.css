@@ -85,7 +85,8 @@
     system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC',
     'Segoe UI', 'Microsoft YaHei', sans-serif;
   --ci-font-reading:
-    'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Songti SC', 'Noto Serif CJK SC', serif;
+    'Iowan Old Style', 'Palatino Linotype', 'Noto Serif', 'Noto Serif SC', 'Songti SC',
+    'Noto Serif CJK SC', serif;
   --ci-font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --ci-type-display: clamp(2.5rem, 5.1vw, 4.5rem);
   --ci-type-title: clamp(1.75rem, 3vw, 2.75rem);

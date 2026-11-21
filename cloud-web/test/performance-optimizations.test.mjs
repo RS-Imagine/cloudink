@@ -302,13 +302,17 @@ test('service worker uses stale-while-revalidate for reading pages, cacheFirst f
   assert.equal(await reloaded.text(), 'fresh:https://forimagine.eu.org/shorts/');
   assert.equal(fetchCalls[0].cache, 'no-cache');
 
-  // Immutable font uses cacheFirst (zero network fetch on hit)
-  fetchCalls.length = 0;
-  const fontUrl = 'https://forimagine.eu.org/reader-assets/fonts/noto-serif-sc-0.woff2';
-  store.set(fontUrl, new Response('font-bytes', { status: 200 }));
-  const fontRes = await dispatch(fontUrl, { accept: '*/*' });
-  assert.equal(await fontRes.text(), 'font-bytes');
-  assert.equal(fetchCalls.length, 0);
+  // Immutable fonts use cacheFirst (zero network fetch on hit)
+  for (const fontUrl of [
+    'https://forimagine.eu.org/reader-assets/fonts/noto-serif-sc-0.woff2',
+    'https://forimagine.eu.org/reader-assets/fonts/noto-serif-latin-400-italic.woff2',
+  ]) {
+    fetchCalls.length = 0;
+    store.set(fontUrl, new Response('font-bytes', { status: 200 }));
+    const fontRes = await dispatch(fontUrl, { accept: '*/*' });
+    assert.equal(await fontRes.text(), 'font-bytes');
+    assert.equal(fetchCalls.length, 0);
+  }
 });
 
 test('packPngIco builds a valid multi-frame PNG-in-ICO container', () => {
