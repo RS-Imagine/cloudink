@@ -62,7 +62,7 @@ const bootCloudInkClient = () => {
   toTop.className = 'to-top';
   toTop.setAttribute('aria-label', t('回到顶部', 'Back to top'));
   toTop.innerHTML =
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 11 6-6 6 6M12 5v14"/></svg>';
+    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.5 4h13"/><path d="M12 20v-9.5"/><path d="m6.8 15.2L12 10l5.2 5.2"/></svg>';
   toTop.hidden = true;
   document.body.append(toTop);
   const narrowReader = matchMedia('(max-width: 767px)');
@@ -1729,7 +1729,7 @@ const bootCloudInkClient = () => {
       button.className = 'copy-code';
       button.type = 'button';
       button.innerHTML =
-        '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span class="copy-label"></span><span class="reader-sr-only"></span>';
+        '<svg class="copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11.5" height="11.5" rx="3.2"/><path d="M5.5 15h-.8a2.2 2.2 0 0 1-2.2-2.2V5A2.2 2.2 0 0 1 4.7 2.8h8A2.2 2.2 0 0 1 14.9 5v.8"/></svg><span class="copy-label"></span><span class="reader-sr-only"></span>';
       const label = button.querySelector('.copy-label');
       const copyLabel = t('复制', 'Copy');
       const copiedLabel = t('已复制', 'Copied');
@@ -1961,7 +1961,7 @@ const bootCloudInkClient = () => {
 
         // Mobile TOC Buttons (inline + follow-along FAB) & Drawer Logic
         const tocButtonIcon =
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3" cy="6" r="1"/><circle cx="3" cy="12" r="1"/><circle cx="3" cy="18" r="1"/></svg>';
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6.2h9.5"/><path d="M10 12h9.5"/><path d="M10 17.8h9.5"/><circle cx="4.6" cy="6.2" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.6" cy="17.8" r="1.6" fill="currentColor" stroke="none"/></svg>';
         const mobileTocBtn = document.createElement('button');
         mobileTocBtn.type = 'button';
         mobileTocBtn.className = 'mobile-toc-btn';

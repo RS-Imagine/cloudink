@@ -1335,7 +1335,9 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
     renderRs,
     /id="shorts-list-next" href="\/shorts\/page\/\{\}\/" rel="next" data-shorts-next-link="true" data-no-swup/,
   );
-  assert.match(renderRs, /rel="prev">← 上一页<\/a>/);
+  assert.match(renderRs, /rel="prev">\{back\}上一页<\/a>/);
+  assert.doesNotMatch(renderRs, /stroke-width="(?:1\.8|2)"/);
+  assert.doesNotMatch(clientJs, /stroke-width="(?:1\.8|2)"/);
   assert.match(renderRs, /<link rel="next" href="\/shorts\/page\/\{\}\/">/);
   assert.match(renderRs, /<link rel="prev" href="\{prev_href\}">/);
   assert.match(libRs, /render::SHORTS_PER_PAGE/);

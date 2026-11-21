@@ -150,16 +150,23 @@ self.onmessage = ({ data }) => {
 `;
 
 const ICONS = {
-  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>',
+  home: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="3"/><rect x="13.5" y="3.5" width="7" height="7" rx="3"/><rect x="3.5" y="13.5" width="7" height="7" rx="3"/><rect x="13.5" y="13.5" width="7" height="7" rx="3"/></svg>',
   article:
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H5v18h14V8z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>',
+    '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h6.8L19 8.7V19a1.8 1.8 0 0 1-1.8 1.8H7A1.8 1.8 0 0 1 5.2 19V5.3A1.8 1.8 0 0 1 7 3.5Z"/><path d="M13.5 3.8v4.2a1.6 1.6 0 0 0 1.6 1.6h4"/><path d="M8.8 13h6.4"/><path d="M8.8 16.8h4"/></svg>',
   shorts:
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v14H9l-5 3V4Z"/><path d="M8 9h8M8 13h5"/></svg>',
+    '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.3 3.5h9.4a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H12l-4.3 3.4c-.6.5-1.4 0-1.4-.7v-2.7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"/><path d="M7.8 8.4h6.4"/><path d="M7.8 11.8h3.8"/></svg>',
   archive:
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>',
+    '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4.6" rx="2.3"/><path d="M4.8 8.6v8.6a2.8 2.8 0 0 0 2.8 2.8h8.8a2.8 2.8 0 0 0 2.8-2.8V8.6"/><path d="M10 12.6h4"/></svg>',
   about:
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
-  link: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>',
+    '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.8"/><path d="M5 20.2c.8-3.4 3.6-5.2 7-5.2s6.2 1.8 7 5.2"/></svg>',
+  link: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.2 13.8a4.2 4.2 0 0 0 6 0l3-3a4.24 4.24 0 1 0-6-6l-1.5 1.5"/><path d="M13.8 10.2a4.2 4.2 0 0 0-6 0l-3 3a4.24 4.24 0 1 0 6 6l1.5-1.5"/></svg>',
+  copy: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11.5" height="11.5" rx="3.2"/><path d="M5.5 15h-.8a2.2 2.2 0 0 1-2.2-2.2V5A2.2 2.2 0 0 1 4.7 2.8h8A2.2 2.2 0 0 1 14.9 5v.8"/></svg>',
+  share:
+    '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="17.8" cy="5.6" r="2.9"/><circle cx="6.2" cy="12" r="2.9"/><circle cx="17.8" cy="18.4" r="2.9"/><path d="m8.8 10.8 6.2-3.8"/><path d="m8.8 13.2 6.2 3.8"/></svg>',
+  arrowLeft:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12h-14"/><path d="M11 6.5 5.5 12l5.5 5.5"/></svg>',
+  close:
+    '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>',
 };
 
 const SITE = {
@@ -787,8 +794,8 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
     <header class="site-header reader-header">
       <p class="reader-site-heading" title="${escapeHtml(SITE.title)}">${escapeHtml(SITE.title)}</p>
       <div class="reader-tools">
-        <button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-        <button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button>
+        <button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></button>
+        <button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.8 14.2A8.2 8.2 0 0 1 9.8 4.2a8.5 8.5 0 1 0 10 10Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v1.4"/><path d="M12 19.6V21"/><path d="M3 12h1.4"/><path d="M19.6 12H21"/><path d="m5.6 5.6 1 1"/><path d="m17.4 17.4 1 1"/><path d="m5.6 18.4 1-1"/><path d="m17.4 6.6 1-1"/></svg></button>
       </div>
     </header>
     <main id="swup" class="blog-layout" data-palette="${palette}" data-site-icon="${icon.faviconUrl}" data-site-icon-avatar="${icon.avatarUrl}" data-site-icon-apple="${icon.appleUrl}" data-page="${pageKind}" tabindex="-1">
@@ -800,7 +807,7 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
   <nav class="reader-dock" aria-label="手机博客导航">${navLinks(pageKind, true)}</nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
-      <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
+      <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">${ICONS.close}</button></div>
       <label class="search-input-wrapper" for="search-input"><span>标题、摘要或正文</span><input type="search" id="search-input" class="search-input" placeholder="寻找一段文字…" autocomplete="off" enterkeyhint="search" aria-controls="search-results"></label>
       <p id="search-status" class="search-status" role="status" aria-live="polite">输入关键词搜索文章…</p>
       <ul id="search-results" class="search-results"></ul>
@@ -838,8 +845,8 @@ function renderPostsPage() {
 
 function renderPostPage(post) {
   const icon = activeSiteIconMeta();
-  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.link}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
-  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.link}复制文章链接</button></section>`;
+  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">${ICONS.arrowLeft}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.copy}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">${ICONS.arrowLeft}返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
+  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.copy}复制文章链接</button></section>`;
   const imgMatch = post.bodyHtml.match(/<img[^>]+src="([^"]+)"/i);
   const ogImage = imgMatch ? imgMatch[1] : icon.hasCustom ? icon.ogUrl : '';
   const ogHead = [
@@ -884,7 +891,7 @@ function renderShortsPage(pageNumber = 1) {
   const prevHref = page === 2 ? '/shorts/' : `/shorts/page/${page - 1}/`;
   const previous =
     page > 1
-      ? `<a class="plain-button shorts-page-link" href="${prevHref}" rel="prev">← 上一页</a>`
+      ? `<a class="plain-button shorts-page-link" href="${prevHref}" rel="prev">${ICONS.arrowLeft}上一页</a>`
       : '';
   const next = hasPeek
     ? `<a class="plain-button shorts-page-link" id="shorts-list-next" data-shorts-next-link="true" href="/shorts/page/${page + 1}/" rel="next" data-no-swup>下一页 →</a>`

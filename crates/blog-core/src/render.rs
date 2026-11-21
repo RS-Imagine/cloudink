@@ -311,19 +311,35 @@ fn display_title(title: &str) -> String {
 fn icon(name: &str) -> String {
     let path = match name {
         "home" => {
-            r#"<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>"#
+            r#"<rect x="3.5" y="3.5" width="7" height="7" rx="3"/><rect x="13.5" y="3.5" width="7" height="7" rx="3"/><rect x="3.5" y="13.5" width="7" height="7" rx="3"/><rect x="13.5" y="13.5" width="7" height="7" rx="3"/>"#
         }
-        "article" => r#"<path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/>"#,
-        "shorts" => r#"<path d="M4 4h16v14H9l-5 3V4Z"/><path d="M8 9h8M8 13h5"/>"#,
-        "archive" => r#"<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>"#,
-        "about" => r#"<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>"#,
+        "article" => {
+            r#"<path d="M7 3.5h6.8L19 8.7V19a1.8 1.8 0 0 1-1.8 1.8H7A1.8 1.8 0 0 1 5.2 19V5.3A1.8 1.8 0 0 1 7 3.5Z"/><path d="M13.5 3.8v4.2a1.6 1.6 0 0 0 1.6 1.6h4"/><path d="M8.8 13h6.4"/><path d="M8.8 16.8h4"/>"#
+        }
+        "shorts" => {
+            r#"<path d="M7.3 3.5h9.4a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H12l-4.3 3.4c-.6.5-1.4 0-1.4-.7v-2.7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"/><path d="M7.8 8.4h6.4"/><path d="M7.8 11.8h3.8"/>"#
+        }
+        "archive" => {
+            r#"<rect x="3" y="4" width="18" height="4.6" rx="2.3"/><path d="M4.8 8.6v8.6a2.8 2.8 0 0 0 2.8 2.8h8.8a2.8 2.8 0 0 0 2.8-2.8V8.6"/><path d="M10 12.6h4"/>"#
+        }
+        "about" => {
+            r#"<circle cx="12" cy="8" r="3.8"/><path d="M5 20.2c.8-3.4 3.6-5.2 7-5.2s6.2 1.8 7 5.2"/>"#
+        }
         "link" => {
-            r#"<path d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M16 9l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0"/>"#
+            r#"<path d="M10.2 13.8a4.2 4.2 0 0 0 6 0l3-3a4.24 4.24 0 1 0-6-6l-1.5 1.5"/><path d="M13.8 10.2a4.2 4.2 0 0 0-6 0l-3 3a4.24 4.24 0 1 0 6 6l1.5-1.5"/>"#
         }
-        _ => r#"<path d="M4 12h16m-6-6 6 6-6 6"/>"#,
+        "copy" => {
+            r#"<rect x="9" y="9" width="11.5" height="11.5" rx="3.2"/><path d="M5.5 15h-.8a2.2 2.2 0 0 1-2.2-2.2V5A2.2 2.2 0 0 1 4.7 2.8h8A2.2 2.2 0 0 1 14.9 5v.8"/>"#
+        }
+        "share" => {
+            r#"<circle cx="17.8" cy="5.6" r="2.9"/><circle cx="6.2" cy="12" r="2.9"/><circle cx="17.8" cy="18.4" r="2.9"/><path d="m8.8 10.8 6.2-3.8"/><path d="m8.8 13.2 6.2 3.8"/>"#
+        }
+        "arrow-left" => r#"<path d="M19.5 12h-14"/><path d="M11 6.5 5.5 12l5.5 5.5"/>"#,
+        "close" => r#"<path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/>"#,
+        _ => r#"<path d="M4.5 12h14"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>"#,
     };
     format!(
-        r#"<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{path}</svg>"#
+        r#"<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{path}</svg>"#
     )
 }
 
@@ -536,12 +552,13 @@ pub fn render_posts_page(
     } else {
         let previous = if page_number > 1 {
             format!(
-                r#"<a class="plain-button" href="{}">← 上一页</a>"#,
-                if page_number == 2 {
+                r#"<a class="plain-button" href="{href}">{back}上一页</a>"#,
+                href = if page_number == 2 {
                     "/post/".into()
                 } else {
                     format!("/post/page/{}/", page_number - 1)
-                }
+                },
+                back = icon("arrow-left")
             )
         } else {
             String::new()
@@ -691,12 +708,13 @@ pub fn render_shorts_page(
     } else {
         let previous = if page_number > 1 {
             format!(
-                r#"<a class="plain-button shorts-page-link" href="{}" rel="prev">← 上一页</a>"#,
-                if page_number == 2 {
+                r#"<a class="plain-button shorts-page-link" href="{href}" rel="prev">{back}上一页</a>"#,
+                href = if page_number == 2 {
                     "/shorts/".into()
                 } else {
                     format!("/shorts/page/{}/", page_number - 1)
-                }
+                },
+                back = icon("arrow-left")
             )
         } else {
             String::new()
@@ -779,20 +797,22 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         })
         .unwrap_or_default();
     let body = format!(
-        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">← 返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{link}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">← 返回文章列表</a><button id="share-btn" class="plain-button share-button">{link}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
+        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">{back}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{copy}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">{back}返回文章列表</a><button id="share-btn" class="plain-button share-button">{share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
+        back = icon("arrow-left"),
         title = display_title(post.title()),
         description = escape_html(post.description()),
         initial = author_avatar(config, 26),
         author = escape_html(&config.author),
         date = escape_html(post.date()),
-        link = icon("link"),
+        copy = icon("copy"),
+        share = icon("share"),
         body = post.body_html
     );
     let context = format!(
-        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{link}复制文章链接</button></section>"#,
+        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{copy}复制文章链接</button></section>"#,
         author = escape_html(&config.author),
         date = escape_html(post.date()),
-        link = icon("link")
+        copy = icon("copy")
     );
     let og_icon_url = site_icon_og(config);
     let extra_head = format!(
@@ -1035,7 +1055,7 @@ fn page(
     <p class="reader-sidebar-note">{subtitle}</p>
   </aside>
   <div class="wrapper reader-layout">
-    <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button><button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A8.5 8.5 0 0 1 10 3.5 8.5 8.5 0 1 0 20.5 14Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1 1M18 18l1 1M5 19l1-1M18 6l1-1"/></svg></button></div></header>
+    <header class="site-header reader-header"><p class="reader-site-heading" title="{site_title}">{site_title}</p><div class="reader-tools"><button type="button" id="site-search-btn" class="reader-icon search-btn" aria-label="搜索文章 / Search" aria-haspopup="dialog" aria-controls="search-modal"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></button><button type="button" id="theme-toggle-btn" class="reader-icon" data-reader-theme data-theme-toggle data-icon-only aria-label="切换明暗主题"><svg class="theme-moon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.8 14.2A8.2 8.2 0 0 1 9.8 4.2a8.5 8.5 0 1 0 10 10Z"/></svg><svg class="theme-sun" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v1.4"/><path d="M12 19.6V21"/><path d="M3 12h1.4"/><path d="M19.6 12H21"/><path d="m5.6 5.6 1 1"/><path d="m17.4 17.4 1 1"/><path d="m5.6 18.4 1-1"/><path d="m17.4 6.6 1-1"/></svg></button></div></header>
     <main id="swup" class="blog-layout" data-palette="{palette}" data-site-icon="{icon_url}" data-site-icon-avatar="{icon_avatar_url}" data-site-icon-apple="{apple_icon_attr}" data-page="{page_kind}" tabindex="-1">
       <div id="reader-center" class="blog-main"><div id="reader-center-content" class="transition-fade" data-page="{page_kind}" data-palette="{palette}" data-site-icon="{icon_url}" data-site-icon-avatar="{icon_avatar_url}" data-site-icon-apple="{apple_icon_attr}" data-reading-font="{reading_font}" data-site-title="{site_title}">{body}</div></div>
       <aside id="reader-context" class="blog-aside" aria-label="相关内容"><div id="reader-context-content" class="transition-fade">{context}</div></aside>
@@ -1045,7 +1065,7 @@ fn page(
   <nav class="reader-dock" aria-label="手机博客导航">{dock_navigation}</nav>
   <dialog id="search-modal" class="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-heading" aria-describedby="search-status" aria-hidden="true" inert>
     <div class="search-content">
-      <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">&times;</button></div>
+      <div class="search-heading"><h2 id="search-heading">搜索文章</h2><button id="search-close" class="search-close" aria-label="关闭搜索">{search_close}</button></div>
       <label class="search-input-wrapper" for="search-input"><span>标题、摘要或正文</span><input type="search" id="search-input" class="search-input" placeholder="寻找一段文字…" autocomplete="off" enterkeyhint="search" aria-controls="search-results"></label>
       <p id="search-status" class="search-status" role="status" aria-live="polite">输入关键词搜索文章…</p>
       <ul id="search-results" class="search-results"></ul>
@@ -1064,6 +1084,7 @@ fn page(
         footer = escape_html(&footer),
         side_navigation = navigation(false),
         dock_navigation = navigation(true),
+        search_close = icon("close"),
         client_hash = crate::content_hash(client_script()),
     ));
 
