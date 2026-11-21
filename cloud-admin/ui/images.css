@@ -69,6 +69,15 @@
   margin: 0 0 8px;
   font: 600 18px/28px var(--ci-font-reading);
 }
+.image-meta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.workflow-empty .image-clear-filters {
+  margin-top: 14px;
+}
 .image-card-body p {
   font: 12px/24px var(--ci-font-ui);
 }
@@ -88,8 +97,11 @@
   font: 12px/24px var(--ci-font-ui);
 }
 .image-card-body summary {
-  min-height: 48px;
-  padding: 12px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
 }
 .image-actions {
   display: grid;

@@ -147,7 +147,7 @@ try {
   await page.locator('#body').fill('Edited alpha **content** $y^2$');
   await page.locator('#save-post').click();
   await expect(page.locator('#save-post')).toHaveAttribute('aria-busy', 'true');
-  await expect(page.locator('#notice')).toContainText('草稿已保存');
+  await expect(page.locator('#notice')).toContainText('已保存到云端');
   assert.equal(counts.list, initialLists, 'Saving must not refetch the entire article list');
   await page.locator('#body').fill('Latest alpha content');
   await openArticleList(page);

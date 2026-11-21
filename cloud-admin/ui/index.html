@@ -552,12 +552,24 @@
             </div>
           </div>
           <div class="image-library-filters">
-            <input
-              id="image-library-search"
-              type="search"
-              placeholder="筛选已加载的图片名称或路径"
-              aria-label="搜索图片"
-            />
+            <div class="image-search-wrap">
+              <input
+                id="image-library-search"
+                type="search"
+                placeholder="筛选已加载的图片名称或路径"
+                aria-label="搜索图片"
+              />
+              <button
+                id="image-library-search-clear"
+                type="button"
+                class="image-search-clear"
+                aria-label="清除搜索"
+                title="清除搜索"
+                hidden=""
+              >
+                ×
+              </button>
+            </div>
             <label class="library-switch"
               ><input id="image-library-unused" type="checkbox" role="switch" /><span
                 >仅未引用</span
@@ -604,7 +616,13 @@
         <section id="shorts-view" class="shorts-view" aria-labelledby="workspace-title" hidden="">
           <div class="section-heading">
             <div>
-              <p class="muted">已发布的短记按时间显示在博客的「短记」页。</p>
+              <p class="muted">
+                已发布的短记按时间显示在博客的「短记」页。<span
+                  id="short-total-count"
+                  class="short-total-count"
+                  hidden=""
+                ></span>
+              </p>
               <p
                 id="short-operation-status"
                 class="workflow-feedback"

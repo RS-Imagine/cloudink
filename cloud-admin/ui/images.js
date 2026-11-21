@@ -1,4 +1,5 @@
 import { $, formatBytes as size } from './dom.js';
+import { formatMiddleEllipsis, formatImageReferenceLabel } from './admin-text-utils.js';
 const kinds = {
   published: '已发布',
   draft: '草稿',
@@ -58,7 +59,10 @@ export function configureImages({
     const grid = $('image-library-grid');
     grid.replaceChildren();
     grid.setAttribute('aria-busy', String(loading));
-    const query = $('image-library-search').value.trim().toLowerCase();
+    const searchInput = $('image-library-search');
+    const clearSearch = $('image-library-search-clear');
+    if (clearSearch) clearSearch.hidden = !searchInput.value;
+    const query = searchInput.value.trim().toLowerCase();
     const unused = $('image-library-unused').checked;
     const visible = images.filter(
       (image) =>
@@ -114,8 +118,10 @@ export function configureImages({
       const body = document.createElement('div');
       body.className = 'image-card-body';
       const name = document.createElement('h3');
-      name.textContent = image.name;
+      name.textContent = formatMiddleEllipsis(image.name, { maxLength: 28, tailLength: 16 });
       name.title = image.name + '\n' + image.key;
+      const metaRow = document.createElement('div');
+      metaRow.className = 'image-meta-row';
       const meta = document.createElement('p');
       meta.className = 'muted';
       meta.textContent = `${image.srcset ? '网页 ' + size(image.displaySize) + ' / 原图 ' : ''}${size(image.size)} · ${new Date(image.uploaded).toLocaleDateString()}`;
@@ -127,7 +133,8 @@ export function configureImages({
         : image.references.length
           ? '正在使用'
           : '未发现引用';
-      body.append(name, meta, badge);
+      metaRow.append(meta, badge);
+      body.append(name, metaRow);
       if (image.optimization === 'skipped') {
         const skipped = document.createElement('p');
         skipped.className = 'muted';
@@ -142,7 +149,7 @@ export function configureImages({
         const list = document.createElement('ul');
         for (const ref of image.references) {
           const item = document.createElement('li');
-          item.textContent = `${kinds[ref.kind]} · ${ref.title}`;
+          item.textContent = formatImageReferenceLabel(ref, kinds);
           list.append(item);
         }
         details.append(summary, list);
@@ -231,13 +238,30 @@ export function configureImages({
       card.append(preview, body);
       grid.append(card);
     }
-    $('image-library-empty').hidden = visible.length > 0 || loading;
+    const emptyBox = $('image-library-empty');
+    emptyBox.hidden = visible.length > 0 || loading;
     $('image-library-retry').hidden = !loadError || loading;
-    $('image-library-empty').textContent = loadError
+    emptyBox.replaceChildren();
+    const emptyText = document.createElement('p');
+    emptyText.textContent = loadError
       ? '图片库暂时无法读取，请重新加载。'
       : images.length
         ? '没有符合筛选条件的图片。'
         : '还没有图片。可以在这里上传，也可以在编辑器中粘贴或拖入图片。';
+    emptyBox.append(emptyText);
+    if (!loadError && images.length && (query || unused)) {
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.className = 'plain-button image-clear-filters';
+      clearBtn.textContent = '清除筛选';
+      clearBtn.addEventListener('click', () => {
+        $('image-library-search').value = '';
+        $('image-library-unused').checked = false;
+        render();
+        $('image-library-search').focus({ preventScroll: true });
+      });
+      emptyBox.append(clearBtn);
+    }
     $('image-library-more').hidden =
       (completeCatalog ? visible.length <= visibleLimit : !cursor) || loading || !!loadError;
     $('image-library-back').hidden = !canInsert();
@@ -338,6 +362,11 @@ export function configureImages({
     action('image-library-more', '正在加载…', () => load(false)),
   );
   $('image-library-search').addEventListener('input', render);
+  $('image-library-search-clear')?.addEventListener('click', () => {
+    $('image-library-search').value = '';
+    render();
+    $('image-library-search').focus({ preventScroll: true });
+  });
   $('image-library-unused').addEventListener('change', render);
   $('image-library-back').addEventListener('click', () => open(true));
   const closePreview = () => window.CloudInkMotion.closeDialog(previewDialog);

@@ -1,6 +1,7 @@
 // Shorts ("短记") management: list, compose, save draft, publish, delete.
 import { $ } from './dom.js';
 import { confirmAction, feedback } from './workflows.js';
+import { markdownToShortPreview } from './admin-text-utils.js';
 function nowMinute() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
@@ -11,6 +12,7 @@ function slugFor(date) {
 }
 export function configureShorts({ api, notice, action, open, startPublish, onList }) {
   let shorts = [],
+    totalShorts = null,
     cursor = null,
     loadRevision = 0,
     hasLoaded = false;
@@ -205,24 +207,26 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       preview.className = 'short-card-preview';
       const cached = contentCache.get(item.slug);
       if (cached) {
-        const clean = cached.replace(/^#+\s+/gm, '').trim();
-        preview.textContent = clean;
+        const clean = markdownToShortPreview(cached);
+        const hasImage = /!\[.*?\]\(.*?\)|<img\b/i.test(cached);
+        const hasCode = /```|~~~/.test(cached);
+        preview.textContent = clean || (hasImage ? '图片短记' : '空白短记');
         bodyWrapper.append(preview);
 
         const footer = document.createElement('div');
         footer.className = 'short-card-footer';
-        const count = cached.replace(/\s/g, '').length;
+        const count = (clean || cached).replace(/\s/g, '').length;
         const countSpan = document.createElement('span');
         countSpan.className = 'short-count-pill';
         countSpan.textContent = `${count} 字`;
         footer.append(countSpan);
-        if (/!\[.*?\]\(.*?\)/.test(cached)) {
+        if (hasImage) {
           const imgBadge = document.createElement('span');
           imgBadge.className = 'short-feature-pill';
           imgBadge.textContent = '含图片';
           footer.append(imgBadge);
         }
-        if (/```/.test(cached)) {
+        if (hasCode) {
           const codeBadge = document.createElement('span');
           codeBadge.className = 'short-feature-pill';
           codeBadge.textContent = '含代码';
@@ -252,8 +256,14 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     if (revision !== loadRevision) return;
     if (!append) onList?.(data);
     shorts = append ? [...shorts, ...(data.shorts || [])] : data.shorts || [];
+    totalShorts = typeof data.total === 'number' ? data.total : shorts.length;
     hasLoaded = true;
     cursor = data.cursor;
+    const totalEl = $('short-total-count');
+    if (totalEl) {
+      totalEl.textContent = `共 ${totalShorts} 条`;
+      totalEl.hidden = false;
+    }
     for (const item of shorts) {
       const full = fullShortCache.get(item.slug);
       if (full && item.etag && full.etag && full.etag !== item.etag)

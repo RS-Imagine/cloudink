@@ -111,7 +111,12 @@ async function references(
       for (const entry of index.images.entries)
         add(entry.keys, {
           kind: entry.settings ? 'settings' : kind,
-          title: entry.title,
+          title:
+            entry.settings && entry.title === '网站设置'
+              ? kind === 'published'
+                ? '网站设置（已发布）'
+                : '网站设置（待发布）'
+              : entry.title,
           ...(entry.slug ? { slug: entry.slug } : {}),
         });
       return;
@@ -126,7 +131,7 @@ async function references(
       source(text, { kind, slug, title: slug });
     source(JSON.stringify(data.site), {
       kind: 'settings',
-      title: kind === 'published' ? '线上网站设置' : '待发布网站设置',
+      title: kind === 'published' ? '网站设置（已发布）' : '网站设置（待发布）',
     });
     if (data.about_markdown) source(data.about_markdown, { kind: 'settings', title: '关于页面' });
   }
@@ -149,7 +154,7 @@ async function references(
   const settings = await storage.get('draft-site.json');
   if (settings) {
     if (settings.size > 500_000) throw new HttpError(413, '网站设置过大，无法安全检查图片引用。');
-    source(await settings.text(), { kind: 'settings', title: '待发布网站设置' });
+    source(await settings.text(), { kind: 'settings', title: '网站设置（待发布）' });
   }
   let cursor: string | undefined;
   do {

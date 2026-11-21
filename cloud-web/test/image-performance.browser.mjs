@@ -49,7 +49,7 @@ export async function verifyImagePerformance(browser, context, page, mf, origin)
         ')',
     );
   await page.locator('#save-post').click();
-  await expect(page.locator('#notice')).toContainText('草稿已保存');
+  await expect(page.locator('#notice')).toContainText('已保存到云端');
   await publishArticle(page);
   await expect(page.locator('#notice')).toContainText('发布', { timeout: 60000 });
   await expect

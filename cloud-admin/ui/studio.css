@@ -830,7 +830,7 @@ body:has(dialog[open]) {
     display: none;
   }
   .workspace {
-    padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+    padding: 0 16px var(--ci-dock-space, calc(106px + env(safe-area-inset-bottom)));
   }
   .article-browser {
     gap: 8px;

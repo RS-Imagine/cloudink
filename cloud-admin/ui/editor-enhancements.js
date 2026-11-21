@@ -1,4 +1,5 @@
 import { $ } from './dom.js';
+import { extractMarkdownHeadings, mapScrollBetweenAnchors } from './admin-text-utils.js';
 
 const AUTO_WRAP_PAIRS = {
   '(': ')',
@@ -11,9 +12,42 @@ const AUTO_WRAP_PAIRS = {
   _: '_',
 };
 
-export function configureEditorEnhancements({ changed, setZen, saveCurrent, notice }) {
+export function configureEditorEnhancements({ changed, setZen }) {
   const textarea = $('body');
   if (!textarea) return;
+
+  // Use browser-native insertText/delete commands so toolbar and keyboard edits
+  // participate seamlessly in Ctrl+Z / Ctrl+Shift+Z undo/redo history.
+  function replaceSelectionUndoable(text, start, end, { mode = 'cursor', cursorPos } = {}) {
+    const scrollTop = textarea.scrollTop;
+    const expected = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+    textarea.focus({ preventScroll: true });
+    textarea.setSelectionRange(start, end);
+    let applied = false;
+    try {
+      if (typeof document.execCommand === 'function') {
+        applied =
+          text === '' && end > start
+            ? document.execCommand('delete', false)
+            : document.execCommand('insertText', false, text);
+      }
+    } catch {
+      applied = false;
+    }
+    if (!applied || textarea.value !== expected) {
+      textarea.setRangeText(text, start, end, 'end');
+      changed();
+    }
+    if (mode === 'select') {
+      textarea.setSelectionRange(start, start + text.length);
+    } else if (typeof cursorPos === 'number') {
+      textarea.setSelectionRange(cursorPos, cursorPos);
+    } else {
+      const next = start + text.length;
+      textarea.setSelectionRange(next, next);
+    }
+    textarea.scrollTop = scrollTop;
+  }
 
   function applyFormat(type) {
     const start = textarea.selectionStart;
@@ -71,9 +105,7 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
         else if (currentLine.startsWith('### ')) newLine = '#### ' + currentLine.slice(4);
         else if (currentLine.startsWith('#### ')) newLine = currentLine.slice(5);
         else newLine = '## ' + currentLine;
-        textarea.setRangeText(newLine, lineStart, fullLineEnd, 'select');
-        changed();
-        textarea.focus();
+        replaceSelectionUndoable(newLine, lineStart, fullLineEnd, { mode: 'select' });
         return;
       }
       case 'link':
@@ -86,10 +118,7 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
     }
 
     if (replacement) {
-      textarea.setRangeText(replacement, start, end, 'end');
-      textarea.setSelectionRange(newCursor, newCursor);
-      textarea.focus();
-      changed();
+      replaceSelectionUndoable(replacement, start, end, { mode: 'cursor', cursorPos: newCursor });
     }
   }
 
@@ -105,7 +134,7 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
     if (e.key === 'Tab') {
       e.preventDefault();
       if (start === end) {
-        textarea.setRangeText('  ', start, end, 'end');
+        replaceSelectionUndoable('  ', start, end, { cursorPos: start + 2 });
       } else {
         const lineStart = text.lastIndexOf('\n', start - 1) + 1;
         const lineEnd = text.indexOf('\n', end);
@@ -118,9 +147,8 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
               )
               .join('\n')
           : lines.map((line) => '  ' + line).join('\n');
-        textarea.setRangeText(nextText, lineStart, rangeEnd, 'select');
+        replaceSelectionUndoable(nextText, lineStart, rangeEnd, { mode: 'select' });
       }
-      changed();
       return;
     }
 
@@ -132,23 +160,21 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
       if (ulMatch) {
         e.preventDefault();
         if (currentLine.trim() === ulMatch[2].trim())
-          textarea.setRangeText('', lineStart, start, 'end');
-        else textarea.setRangeText('\n' + ulMatch[1] + ulMatch[2], start, end, 'end');
-        changed();
+          replaceSelectionUndoable('', lineStart, start, { cursorPos: lineStart });
+        else {
+          const insertion = '\n' + ulMatch[1] + ulMatch[2];
+          replaceSelectionUndoable(insertion, start, end, { cursorPos: start + insertion.length });
+        }
         return;
       }
       if (olMatch) {
         e.preventDefault();
         if (currentLine.trim() === olMatch[2] + '.')
-          textarea.setRangeText('', lineStart, start, 'end');
-        else
-          textarea.setRangeText(
-            '\n' + olMatch[1] + (parseInt(olMatch[2], 10) + 1) + '. ',
-            start,
-            end,
-            'end',
-          );
-        changed();
+          replaceSelectionUndoable('', lineStart, start, { cursorPos: lineStart });
+        else {
+          const insertion = '\n' + olMatch[1] + (parseInt(olMatch[2], 10) + 1) + '. ';
+          replaceSelectionUndoable(insertion, start, end, { cursorPos: start + insertion.length });
+        }
         return;
       }
     }
@@ -156,8 +182,9 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
     if (start !== end && AUTO_WRAP_PAIRS[e.key]) {
       e.preventDefault();
       const selected = text.slice(start, end);
-      textarea.setRangeText(`${e.key}${selected}${AUTO_WRAP_PAIRS[e.key]}`, start, end, 'select');
-      changed();
+      replaceSelectionUndoable(`${e.key}${selected}${AUTO_WRAP_PAIRS[e.key]}`, start, end, {
+        mode: 'select',
+      });
       return;
     }
 
@@ -172,40 +199,162 @@ export function configureEditorEnhancements({ changed, setZen, saveCurrent, noti
       } else if (key === 'k') {
         e.preventDefault();
         applyFormat('link');
-      } else if (key === 's') {
-        e.preventDefault();
-        saveCurrent()
-          .then(() => notice('草稿已保存。', 'success'))
-          .catch((err) => notice(err.message, 'error'));
       }
     }
 
     if (e.key === 'Escape' && $('app-view')?.classList.contains('zen-mode')) setZen(false);
   });
 
-  let scrollSyncing = false;
-  textarea.addEventListener(
-    'scroll',
-    () => {
-      if (scrollSyncing) return;
-      const scrollable = textarea.scrollHeight - textarea.clientHeight;
-      if (scrollable <= 0) return;
-      const progress = textarea.scrollTop / scrollable;
-      const frame = $('preview-frame');
-      const frameWin = frame?.contentWindow;
-      const frameDoc = frame?.contentDocument;
-      if (!frameWin || !frameDoc) return;
-      const frameScrollable = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
-      if (frameScrollable > 0) {
-        scrollSyncing = true;
-        frameWin.scrollTo({ top: progress * frameScrollable, behavior: 'auto' });
-        requestAnimationFrame(() => {
-          scrollSyncing = false;
-        });
+  // Bidirectional heading-anchor scroll sync between Markdown editor and preview iframe.
+  let mirrorEl = null;
+  let cachedMirrorKey = '';
+  let cachedEditorAnchors = [];
+
+  function ensureMirror() {
+    if (mirrorEl) return mirrorEl;
+    mirrorEl = document.createElement('div');
+    mirrorEl.setAttribute('aria-hidden', 'true');
+    mirrorEl.style.cssText =
+      'position:fixed;top:-99999px;left:-99999px;visibility:hidden;pointer-events:none;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;box-sizing:border-box;';
+    document.body.append(mirrorEl);
+    return mirrorEl;
+  }
+
+  function getEditorHeadingAnchors() {
+    const value = textarea.value;
+    const width = textarea.clientWidth;
+    const cacheKey = `${width}:${value.length}:${value}`;
+    if (cacheKey === cachedMirrorKey) return cachedEditorAnchors;
+
+    const headings = extractMarkdownHeadings(value);
+    if (!headings.length) {
+      cachedMirrorKey = cacheKey;
+      cachedEditorAnchors = [];
+      return cachedEditorAnchors;
+    }
+
+    const style = getComputedStyle(textarea);
+    const mirror = ensureMirror();
+    mirror.style.width = `${width}px`;
+    mirror.style.fontFamily = style.fontFamily;
+    mirror.style.fontSize = style.fontSize;
+    mirror.style.fontWeight = style.fontWeight;
+    mirror.style.lineHeight = style.lineHeight;
+    mirror.style.letterSpacing = style.letterSpacing;
+    mirror.style.wordSpacing = style.wordSpacing;
+    mirror.style.tabSize = style.tabSize;
+    mirror.style.paddingTop = style.paddingTop;
+    mirror.style.paddingRight = style.paddingRight;
+    mirror.style.paddingBottom = style.paddingBottom;
+    mirror.style.paddingLeft = style.paddingLeft;
+
+    const frag = document.createDocumentFragment();
+    const markers = [];
+    let cursor = 0;
+    for (const h of headings) {
+      if (h.charOffset > cursor) {
+        frag.append(document.createTextNode(value.slice(cursor, h.charOffset)));
       }
-    },
-    { passive: true },
-  );
+      const marker = document.createElement('span');
+      marker.textContent = '\u200b';
+      markers.push(marker);
+      frag.append(marker);
+      cursor = h.charOffset;
+    }
+    if (cursor < value.length) {
+      frag.append(document.createTextNode(value.slice(cursor)));
+    }
+    mirror.replaceChildren(frag);
+
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    cachedEditorAnchors = markers.map((marker) => Math.max(0, marker.offsetTop - paddingTop));
+    cachedMirrorKey = cacheKey;
+    return cachedEditorAnchors;
+  }
+
+  function getPreviewHeadingAnchors(frameDoc, frameWin) {
+    const container =
+      frameDoc.querySelector('.article-body') ||
+      frameDoc.querySelector('.reader-article') ||
+      frameDoc.body;
+    if (!container) return [];
+    const elements = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+    const scrollY = frameWin.scrollY || frameDoc.documentElement.scrollTop || 0;
+    return elements.map((el) => Math.max(0, el.getBoundingClientRect().top + scrollY));
+  }
+
+  let activeSyncSource = null;
+  let syncUnlockTimer = null;
+  function lockSync(source) {
+    activeSyncSource = source;
+    clearTimeout(syncUnlockTimer);
+    syncUnlockTimer = setTimeout(() => {
+      activeSyncSource = null;
+    }, 60);
+  }
+
+  function syncEditorToPreview() {
+    if (activeSyncSource === 'preview') return;
+    const frame = $('preview-frame');
+    const frameWin = frame?.contentWindow;
+    const frameDoc = frame?.contentDocument;
+    if (!frameWin || !frameDoc) return;
+    attachPreviewScrollListener();
+    const editorMax = textarea.scrollHeight - textarea.clientHeight;
+    const frameMax = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
+    if (editorMax <= 0 || frameMax <= 0) return;
+
+    const editorAnchors = getEditorHeadingAnchors();
+    const previewAnchors = getPreviewHeadingAnchors(frameDoc, frameWin);
+    const targetTop = mapScrollBetweenAnchors(
+      textarea.scrollTop,
+      editorAnchors,
+      previewAnchors,
+      editorMax,
+      frameMax,
+    );
+    lockSync('editor');
+    frameWin.scrollTo({ top: targetTop, behavior: 'auto' });
+  }
+
+  function syncPreviewToEditor() {
+    if (activeSyncSource === 'editor') return;
+    const frame = $('preview-frame');
+    const frameWin = frame?.contentWindow;
+    const frameDoc = frame?.contentDocument;
+    if (!frameWin || !frameDoc) return;
+    const editorMax = textarea.scrollHeight - textarea.clientHeight;
+    const frameMax = frameDoc.documentElement.scrollHeight - frameWin.innerHeight;
+    if (editorMax <= 0 || frameMax <= 0) return;
+
+    const frameScrollY = frameWin.scrollY || frameDoc.documentElement.scrollTop || 0;
+    const editorAnchors = getEditorHeadingAnchors();
+    const previewAnchors = getPreviewHeadingAnchors(frameDoc, frameWin);
+    const targetTop = mapScrollBetweenAnchors(
+      frameScrollY,
+      previewAnchors,
+      editorAnchors,
+      frameMax,
+      editorMax,
+    );
+    lockSync('preview');
+    textarea.scrollTop = targetTop;
+  }
+
+  let boundPreviewDoc = null;
+  function attachPreviewScrollListener() {
+    const frame = $('preview-frame');
+    const frameWin = frame?.contentWindow;
+    const frameDoc = frame?.contentDocument;
+    if (!frameWin || !frameDoc || frameDoc === boundPreviewDoc) return;
+    boundPreviewDoc = frameDoc;
+    frameWin.addEventListener('scroll', syncPreviewToEditor, { passive: true });
+    frameDoc.addEventListener('scroll', syncPreviewToEditor, { passive: true });
+  }
+
+  textarea.addEventListener('scroll', syncEditorToPreview, { passive: true });
+  $('preview-frame')?.addEventListener('load', attachPreviewScrollListener);
+  attachPreviewScrollListener();
 
   const splitter = $('editor-splitter');
   const panes = $('editor-panes');

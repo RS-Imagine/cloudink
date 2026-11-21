@@ -81,7 +81,7 @@ export async function verifyMarkdownImport(browser, origin, output, engine) {
     await expect(page.locator('#upload-image')).not.toHaveAttribute('aria-busy', 'true');
     await page.locator('#body').fill(source.slice(source.indexOf('\n') + 1));
     await page.locator('#save-post').click();
-    await expect(page.locator('#notice')).toContainText('草稿已保存');
+    await expect(page.locator('#notice')).toContainText('已保存到云端');
     await page.unroute('**/api/upload');
     const original = await (await context.request.get(origin + '/api/posts/' + first)).json();
     const legacy =

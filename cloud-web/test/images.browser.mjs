@@ -109,7 +109,7 @@ try {
     /<img src="\/images\/uploads\/[^"]+" alt="Reusable photo.png" width="1" height="1">/,
   );
   await page.locator('#save-post').click();
-  await expect(page.locator('#notice')).toContainText('草稿已保存');
+  await expect(page.locator('#notice')).toContainText('已保存到云端');
   await navigateStudio(page, 'images');
   await expect(reusable.getByText('正在使用', { exact: true })).toBeVisible();
   await expect(reusable.getByRole('button', { name: '删除', exact: true })).toBeDisabled();

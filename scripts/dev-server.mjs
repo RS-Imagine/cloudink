@@ -142,7 +142,7 @@ self.onmessage = ({ data }) => {
     const html = '<article class="article-reading"><h1>' + esc(fm.title || '未命名文章') + '</h1>' +
       (fm.description ? '<p class="article-description">' + esc(fm.description) + '</p>' : '') +
       '<div class="article-body">' + renderMd(data.draft?.body_markdown) + '</div></article>';
-    self.postMessage({ id: data.id, result: { html, css: 'body{font-family:system-ui,-apple-system,sans-serif;line-height:1.8;padding:24px;color:#2c241d;}h1{font-size:1.8rem;margin:0 0 12px;}' } });
+    self.postMessage({ id: data.id, result: { html, css: 'body{font-family:system-ui,-apple-system,sans-serif;line-height:1.9;padding:24px;color:#2c241d;}h1{font-size:1.8rem;margin:0 0 12px;}h2{font-size:1.35rem;margin:28px 0 12px;}h3{font-size:1.1rem;margin:22px 0 10px;}p{margin:0 0 16px;}' } });
   } catch (error) {
     self.postMessage({ id: data.id, error: String(error) });
   }
@@ -209,7 +209,12 @@ const POSTS = [
     bodyPlain:
       '探讨滚动平铺式窗口管理器的日常配置、KDL 语法结构，以及面向中文长文阅读的精细排版实践。右侧目录栏支持长文内部滚动，代码块行号严格右对齐并与正文保持 24px 等行高。',
     bodyMarkdown:
-      '> 优秀的中文排版应当让人忘记排版的存在，引用文字保持端正清晰，仅在行内保留语义强调。\n\n## 1. 滚动平铺式工作流\n\n探讨滚动平铺式窗口管理器的日常配置、KDL 语法结构，以及面向中文长文阅读的精细排版实践。',
+      '> 优秀的中文排版应当让人忘记排版的存在，引用文字保持端正清晰，仅在行内保留语义强调。\n\n' +
+      Array.from(
+        { length: 12 },
+        (_, index) =>
+          `${index % 3 === 2 ? '###' : '##'} ${index + 1}. 章节示例：中文排版节奏与窗口管理实践\n\n探讨滚动平铺式窗口管理器的日常配置、KDL 语法结构，以及面向中文长文阅读的精细排版实践。右侧目录栏在多章节文档中应当能够内部平滑滚动，同时保证编辑区与预览区按标题锚点自然对齐。\n\n在面向中文长文阅读的界面设计中，合理的行宽（约 35–42 个汉字）、舒缓的行高与克制的色彩层次，远比密集的装饰性元素更重要。长文写作时希望滚动同步不飘移、不抢焦点。`,
+      ).join('\n\n'),
     bodyHtml: `
 <blockquote><p>优秀的中文排版应当让人忘记排版的存在，引用文字保持端正清晰，仅在行内保留语义强调。<em>—— 中文排版需求（W3C CLREQ）</em></p></blockquote>
 <p>配图点击可直接弹出大图灯箱预览，默认画面保持干净，不再额外叠加角标：</p>
@@ -288,7 +293,7 @@ const SHORTS = [
     published: true,
     changed: false,
     etag: 'short-etag-1',
-    text: '秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。顺便记下一条体会：柔和的对比度比纯粹的黑白更耐看，长时间阅读不容易视觉疲劳。',
+    text: '## 秋雨夜记\n\n秋雨后的夜晚很安静，把书桌上的台灯调成 **暖黄色**，参考了 [排版规范](https://example.com/clreq) 整理完了深色模式细描边。\n\n![书桌植物线稿](/images/uploads/editorial-botanical.webp)\n\n顺便记下一句 `border-color` 对比度体会：柔和的对比度比纯粹黑白更耐看。',
     html: '<p>秋雨后的夜晚很安静，把书桌上的台灯调成暖黄色，顺手整理完了博客的深色模式细描边与目录滚动。顺便记下一条体会：柔和的对比度比纯粹的黑白更耐看，长时间阅读不容易视觉疲劳。</p><p>在手机端小屏阅读时，段落与段间距的呼吸感尤其重要。每张短记卡片都像一张独立的手账便签，不需要塞满整屏，但要有足够的留白让视线自然停顿。</p>',
   },
   {
@@ -297,7 +302,7 @@ const SHORTS = [
     published: true,
     changed: false,
     etag: 'short-etag-2',
-    text: '好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。',
+    text: '> 好的工具界面应当像一本装帧考究的笔记本。\n\n- 留白充分\n- 边界清晰\n\n```js\nconst focus = true;\n```\n\n每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。',
     html: '<p>好的工具界面应当像一本装帧考究的笔记本：留白充分、边界清晰、没有任何多余的视觉噪音。每次打开写作后台时，如果能在两秒内进入专注状态，这套工具就算是真正站稳了脚跟。</p><p>把复杂留在后台构建与边缘缓存里，把克制留给前台读者：无多余角标、无突兀跳动，翻页与展开都跟着手势的节奏慢慢发生。</p>',
   },
   {
@@ -519,6 +524,110 @@ const SHORTS = [
     changed: false,
     etag: 'short-etag-29',
     text: '第二十九条（最早一条短记）：这是短记流的第一块基石。希望以后无论过了多久，翻回最底部时依然能清晰地看到最初动笔时的心境与天气。',
+  },
+];
+
+function postSnapshot(p) {
+  return JSON.stringify([p.title || '', p.date || '', p.description || '', p.bodyMarkdown || '']);
+}
+for (const p of POSTS) {
+  p.publishedSnapshot = p.published ? postSnapshot(p) : null;
+}
+
+const DEV_ICON_HASH = '7f3c9a2e41b8d605f4a1c8e2b79d4031e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0';
+const DEV_IMAGES = [
+  {
+    key: `uploads/icons/${DEV_ICON_HASH}-180.png`,
+    url: `/images/uploads/icons/${DEV_ICON_HASH}-180.png`,
+    previewUrl: `/images/uploads/icons/${DEV_ICON_HASH}-180.png`,
+    name: `${DEV_ICON_HASH}-180.png`,
+    size: 18420,
+    uploaded: '2026-10-19T08:15:00.000Z',
+    contentType: 'image/png',
+    referencesChecked: true,
+    used: true,
+    references: [
+      { slug: '__settings__', title: '网站设置（已发布）', kinds: ['published'] },
+      { slug: '__settings__', title: '网站设置（待发布）', kinds: ['draft'] },
+    ],
+  },
+  {
+    key: `uploads/icons/${DEV_ICON_HASH}-192.png`,
+    url: `/images/uploads/icons/${DEV_ICON_HASH}-192.png`,
+    previewUrl: `/images/uploads/icons/${DEV_ICON_HASH}-192.png`,
+    name: `${DEV_ICON_HASH}-192.png`,
+    size: 20110,
+    uploaded: '2026-10-19T08:15:00.000Z',
+    contentType: 'image/png',
+    referencesChecked: true,
+    used: true,
+    references: [{ slug: '__settings__', title: '网站设置（已发布）', kinds: ['published'] }],
+  },
+  {
+    key: `uploads/icons/${DEV_ICON_HASH}-512.png`,
+    url: `/images/uploads/icons/${DEV_ICON_HASH}-512.png`,
+    previewUrl: `/images/uploads/icons/${DEV_ICON_HASH}-512.png`,
+    name: `${DEV_ICON_HASH}-512.png`,
+    size: 54320,
+    uploaded: '2026-10-19T08:15:00.000Z',
+    contentType: 'image/png',
+    referencesChecked: true,
+    used: true,
+    references: [{ slug: '__settings__', title: '网站设置（已发布）', kinds: ['published'] }],
+  },
+  {
+    key: `uploads/icons/${DEV_ICON_HASH}-512-maskable.png`,
+    url: `/images/uploads/icons/${DEV_ICON_HASH}-512-maskable.png`,
+    previewUrl: `/images/uploads/icons/${DEV_ICON_HASH}-512-maskable.png`,
+    name: `${DEV_ICON_HASH}-512-maskable.png`,
+    size: 59840,
+    uploaded: '2026-10-19T08:15:00.000Z',
+    contentType: 'image/png',
+    referencesChecked: true,
+    used: true,
+    references: [{ slug: '__settings__', title: '网站设置（待发布）', kinds: ['draft'] }],
+  },
+  {
+    key: 'uploads/editorial-botanical.webp',
+    url: '/images/uploads/editorial-botanical.webp',
+    previewUrl: '/images/uploads/editorial-botanical.webp',
+    name: 'editorial-botanical.webp',
+    size: 24576,
+    uploaded: '2026-10-18T10:30:00.000Z',
+    contentType: 'image/webp',
+    referencesChecked: true,
+    used: true,
+    references: [
+      {
+        slug: 'niri-editorial-workflow',
+        title: '从零构建 Niri 窗口管理器与中文排版阅读工作流',
+        kinds: ['draft', 'published'],
+      },
+    ],
+  },
+  {
+    key: 'uploads/unused-desk-photo.webp',
+    url: '/images/uploads/unused-desk-photo.webp',
+    previewUrl: '/images/uploads/unused-desk-photo.webp',
+    name: 'unused-desk-photo.webp',
+    size: 138420,
+    uploaded: '2026-10-12T14:20:00.000Z',
+    contentType: 'image/webp',
+    referencesChecked: true,
+    used: false,
+    references: [],
+  },
+  {
+    key: 'uploads/unused-sketch-draft.webp',
+    url: '/images/uploads/unused-sketch-draft.webp',
+    previewUrl: '/images/uploads/unused-sketch-draft.webp',
+    name: 'unused-sketch-draft.webp',
+    size: 86210,
+    uploaded: '2026-10-05T11:05:00.000Z',
+    contentType: 'image/webp',
+    referencesChecked: true,
+    used: false,
+    references: [],
   },
 ];
 
@@ -959,6 +1068,7 @@ async function handleApi(req, res, url) {
       cursor: null,
       counts: {
         all: POSTS.length,
+        total: POSTS.length,
         published: publishedCount,
         draft: POSTS.length - publishedCount,
       },
@@ -1011,6 +1121,7 @@ async function handleApi(req, res, url) {
           bodyPlain: bodyMarkdown.replace(/[#>*`]/g, '').slice(0, 160),
           bodyMarkdown,
           bodyHtml: markdownToSimpleHtml(bodyMarkdown),
+          publishedSnapshot: null,
         };
         POSTS.unshift(post);
       } else {
@@ -1021,7 +1132,7 @@ async function handleApi(req, res, url) {
         post.bodyPlain = bodyMarkdown.replace(/[#>*`]/g, '').slice(0, 160);
         post.bodyHtml = markdownToSimpleHtml(bodyMarkdown);
         post.minutes = Math.max(1, Math.ceil(bodyMarkdown.length / 300));
-        post.changed = true;
+        post.changed = post.published ? postSnapshot(post) !== post.publishedSnapshot : true;
         post.etag = nextEtag;
       }
       return json(res, 200, {
@@ -1044,11 +1155,12 @@ async function handleApi(req, res, url) {
       shorts: SHORTS.map((s) => ({
         slug: s.slug,
         date: s.date,
-        snippet: s.text.slice(0, 140),
+        snippet: s.text.slice(0, 220),
         published: s.published,
         changed: s.changed,
         etag: s.etag,
       })),
+      total: SHORTS.length,
       cursor: null,
       publishing: null,
     });
@@ -1328,6 +1440,7 @@ async function handleApi(req, res, url) {
     for (const p of POSTS) {
       p.published = true;
       p.changed = false;
+      p.publishedSnapshot = postSnapshot(p);
     }
     for (const s of SHORTS) {
       s.published = true;
@@ -1340,7 +1453,15 @@ async function handleApi(req, res, url) {
     });
   }
   if (pathname === '/api/images' && method === 'GET') {
-    return json(res, 200, { images: [], cursor: null, indexStale: false });
+    const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+    const filter = url.searchParams.get('filter') || 'all';
+    const filtered = DEV_IMAGES.filter((img) => {
+      if (filter === 'unused' && img.used) return false;
+      if (filter === 'used' && !img.used) return false;
+      if (q && !`${img.name} ${img.key}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    return json(res, 200, { images: filtered, cursor: null, indexStale: false });
   }
   if (pathname === '/api/backup/jobs' && method === 'GET') {
     return json(res, 200, null);
@@ -1492,6 +1613,13 @@ const server = http.createServer(async (req, res) => {
     if (reqPath === '/favicon.svg') {
       res.writeHead(200, { 'content-type': 'image/svg+xml' });
       return res.end(readBin('assets/cloudink.svg'));
+    }
+    if (reqPath.startsWith('/images/')) {
+      res.writeHead(200, {
+        'content-type': 'image/webp',
+        'cache-control': 'public, max-age=3600',
+      });
+      return res.end(readBin('assets/editorial-botanical.webp'));
     }
     if (reqPath === '/editorial-botanical.webp') {
       res.writeHead(200, { 'content-type': 'image/webp' });

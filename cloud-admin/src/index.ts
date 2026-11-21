@@ -69,6 +69,11 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     throw new HttpError(409, '这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。');
   if ((!existing || existing.customMetadata?.deleted) && input.etag)
     throw new HttpError(409, '文章已删除或改址，请重新打开。');
+  const summary = await draftSummary(draft, env.STORAGE, existing?.customMetadata);
+  const pointer = await readJson<BrowserPointer>(env.STORAGE, 'state/published.json');
+  const index = pointer ? await readPostIndex(env.STORAGE, pointer.id) : null;
+  const publishedPost = index?.posts ? ownValue(index.posts, slug) : undefined;
+  const changed = !publishedPost || publishedPost.digest !== summary.digest;
   if (existing && !existing.customMetadata?.deleted && (await unchangedSource(existing, source)))
     return json({
       draft,
@@ -77,11 +82,12 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
       saved_at: existing.uploaded.toISOString(),
       created: false,
       unchanged: true,
+      changed,
     });
   const saved = await env.STORAGE.put(`drafts/${slug}.md`, source, {
     onlyIf: existing ? { etagMatches: existing.etag } : { etagDoesNotMatch: '*' },
     customMetadata: {
-      ...(await draftSummary(draft, env.STORAGE, existing?.customMetadata)),
+      ...summary,
       source_digest: await sourceDigest(source),
     },
     httpMetadata: { contentType: 'text/markdown; charset=utf-8' },
@@ -93,6 +99,7 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     etag: saved.etag,
     saved_at: new Date().toISOString(),
     created: !existing || !!existing.customMetadata?.deleted,
+    changed,
   });
 }
 async function apiRoute(

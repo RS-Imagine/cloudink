@@ -13,6 +13,7 @@ let postFilter = 'all',
   postCounts = null,
   listRevision = 0,
   searchTimer;
+const SAVED_CLOUD_COPY = '已保存到云端';
 
 const keepOriginal = $('image-keep-original');
 try {
@@ -363,7 +364,7 @@ function localSaved(draft, result) {
       ...draft.front_matter,
       published: old?.published ?? (doc?.front_matter.slug === slug ? !!doc.published : false),
       has_draft: true,
-      changed: true,
+      changed: typeof result.changed === 'boolean' ? result.changed : true,
       etag: result.etag,
     };
   posts = posts.filter((p) => p.slug !== slug);
@@ -373,7 +374,7 @@ function localSaved(draft, result) {
     postCounts.draft++;
   }
   cacheArticle(slug, {
-    draft: result.draft,
+    draft: result.draft || draft,
     source: result.source,
     etag: result.etag,
   });
@@ -895,7 +896,7 @@ function fillEditor(draft, etag) {
   $('slug').readOnly =
     !!etag || posts.some((p) => p.slug === draft.front_matter.slug && p.published);
   $('body').value = draft.body_markdown;
-  feedback('save-state', etag ? '草稿已保存' : '尚未保存草稿', etag ? 'success' : 'neutral');
+  feedback('save-state', etag ? SAVED_CLOUD_COPY : '尚未保存草稿', etag ? 'success' : 'neutral');
   const published = posts.some((p) => p.slug === draft.front_matter.slug && p.published);
   $('unpublish-post').hidden = !published;
   $('delete-post').hidden = published;
@@ -988,7 +989,7 @@ async function saveCurrent() {
       savedVersion = version;
       feedback(
         'save-state',
-        dirty === version ? '已保存到云端' : '正在等待保存最新修改…',
+        dirty === version ? SAVED_CLOUD_COPY : '正在等待保存最新修改…',
         dirty === version ? 'success' : 'pending',
       );
       if (dirty !== version)
@@ -1097,6 +1098,7 @@ for (const id of ['load-more-posts'])
   $(id).addEventListener('click', () => action(id, '正在读取…', () => refresh({ append: true })));
 async function returnToList(name = 'home') {
   if (editorLocked) return;
+  const wasEditing = !!doc || $('app-view').dataset.view === 'editor';
   const version = ++navigationVersion;
   try {
     await flush();
@@ -1106,6 +1108,7 @@ async function returnToList(name = 'home') {
     doc = null;
     view(name);
     renderLists();
+    if (wasEditing) void refresh().catch(() => {});
   } catch (error) {
     notice(error.message);
   }
@@ -1135,7 +1138,7 @@ async function manualSave() {
       await flush();
       if (!doc?.etag) throw new Error('请先填写文章标题。');
     },
-    '草稿已保存到云端。',
+    `${SAVED_CLOUD_COPY}。`,
   );
 }
 $('save-post').addEventListener('click', manualSave);
