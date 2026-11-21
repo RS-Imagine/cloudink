@@ -23,6 +23,15 @@ button,
 a {
   touch-action: manipulation;
 }
+button,
+a,
+summary,
+label,
+[role='button'],
+input[type='checkbox'],
+input[type='radio'] {
+  -webkit-tap-highlight-color: transparent;
+}
 button {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1337,11 +1346,11 @@ dialog {
 .short-admin-card {
   border: 1px solid var(--line);
   border-radius: 18px;
-  padding: 18px 20px;
+  padding: 14px 16px;
   background: var(--paper);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   box-shadow: var(--shadow);
   transition:
     border-color 0.15s,
@@ -1353,22 +1362,67 @@ dialog {
   box-shadow: var(--ci-shadow-floating);
   transform: translateY(-1px);
 }
+.short-admin-card.is-editing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
 .short-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 10px;
   flex-wrap: wrap;
 }
 .short-card-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.short-card-meta time {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.short-card-meta .badge {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+.short-card-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+.short-card-actions button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+.short-card-actions .danger {
+  color: var(--ci-error, var(--danger));
+  border-color: color-mix(
+    in srgb,
+    var(--ci-error, var(--danger)) 30%,
+    var(--ci-divider, var(--line))
+  );
+}
+.short-card-actions .danger:hover {
+  background: var(--ci-error-container, rgba(180, 40, 40, 0.08));
+  border-color: var(--ci-error, var(--danger));
 }
 .short-card-content {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  cursor: pointer;
 }
 .short-card-preview {
   margin: 0;
@@ -1391,7 +1445,7 @@ dialog {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 2px;
+  margin-top: 0;
 }
 .short-count-pill,
 .short-feature-pill {
@@ -1404,10 +1458,6 @@ dialog {
 }
 .short-feature-pill {
   color: var(--accent);
-}
-.short-admin-card .image-actions {
-  margin-top: 0;
-  margin-left: auto;
 }
 @media (max-width: 650px) {
   .shorts-view {

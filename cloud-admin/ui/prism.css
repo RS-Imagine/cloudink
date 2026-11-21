@@ -859,6 +859,9 @@ html[data-cloudink-admin] {
   background: var(--ci-surface);
   color: var(--ci-primary);
 }
+.editor-tool-strip {
+  display: contents;
+}
 .editor-format-actions {
   display: flex;
   gap: 6px;
@@ -1044,6 +1047,12 @@ html[data-cloudink-admin] {
   background: var(--ci-surface);
   box-shadow: var(--studio-shadow);
 }
+#short-editor.is-inline {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  position: static;
+  margin: 0;
+}
 #short-list,
 #short-empty,
 #short-more {
@@ -1051,9 +1060,22 @@ html[data-cloudink-admin] {
 }
 #short-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 368px), 1fr));
+  gap: 14px;
   align-items: start;
   margin: 0;
+}
+#app-view .short-admin-card {
+  border-radius: 22px;
+  border: 1px solid var(--ci-divider);
+  background: var(--ci-surface);
+  box-shadow: var(--studio-shadow);
+  padding: 14px 16px;
+  gap: 10px;
+}
+#app-view .short-admin-card.is-editing {
+  border-color: var(--ci-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ci-primary) 22%, transparent);
 }
 #app-view .short-body {
   font-size: 14px;
@@ -1341,7 +1363,7 @@ html[data-cloudink-admin] {
   }
   #app-view .pane-heading {
     padding: 8px;
-    gap: 7px;
+    gap: 8px;
   }
   .editor-view-switch {
     flex-wrap: nowrap;
@@ -1353,20 +1375,49 @@ html[data-cloudink-admin] {
     padding: 7px 11px;
     min-height: 32px;
   }
-  .editor-format-actions {
-    width: 100%;
+  #app-view .editor-tool-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 4px;
+    width: 100%;
+    padding-top: 8px;
     border-top: 1px solid var(--ci-divider);
-    padding-top: 7px;
+    align-items: center;
   }
-  .editor-format-actions .tool-btn {
-    width: 29px;
-    height: 30px;
-    min-height: 30px;
-    padding: 7px;
+  #app-view .editor-format-actions,
+  #app-view .editor-image-actions {
+    display: contents;
   }
-  .editor-format-actions .tool-sep {
-    margin-inline: 2px;
+  #app-view .editor-format-actions .tool-sep {
+    display: none;
+  }
+  #app-view .editor-format-actions .tool-btn,
+  #app-view .editor-image-actions button {
+    width: 100%;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 0;
+    background: transparent;
+    color: var(--ci-text);
+  }
+  #app-view .editor-format-actions .tool-btn svg,
+  #app-view .editor-image-actions button svg {
+    width: 18px;
+    height: 18px;
+  }
+  #app-view .editor-format-actions .tool-btn[aria-pressed='true'] {
+    background: var(--ci-primary-container);
+    color: var(--ci-primary);
+  }
+  #app-view .editor-image-actions button span {
+    display: none;
   }
   #app-view #body {
     min-height: 500px;
@@ -1528,17 +1579,53 @@ html[data-cloudink-admin] {
     font-size: 11px;
   }
   #app-view .shorts-view {
-    gap: 16px;
+    gap: 14px;
     padding-bottom: 12px;
   }
   #short-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
     padding-bottom: 8px;
   }
+  #app-view .short-admin-card {
+    padding: 12px 14px;
+    gap: 8px;
+    border-radius: 18px;
+  }
+  #app-view .short-card-actions button {
+    min-height: 30px;
+    padding: 4px 9px;
+    font-size: 11px;
+  }
   #short-editor {
-    padding: 22px;
+    padding: 18px;
+    border-radius: 20px;
   }
   .studio-sheet:has(.studio-nav) {
     display: none;
+  }
+}
+@media (max-width: 400px) {
+  #app-view .short-card-header {
+    gap: 6px;
+  }
+  #app-view .short-card-meta {
+    gap: 5px;
+  }
+  #app-view .short-card-meta time {
+    font-size: 11px;
+  }
+  #app-view .short-card-meta .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  #app-view .short-card-actions {
+    gap: 4px;
+  }
+  #app-view .short-card-actions button {
+    min-height: 28px;
+    padding: 3px 7px;
+    font-size: 11px;
   }
 }
 @media (max-width: 359px) {

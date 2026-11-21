@@ -22,9 +22,72 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
   more.hidden = true;
   $('short-list').after(more);
   more.addEventListener('click', () => action('short-more', '正在加载…', () => load(true)));
+  const editorEl = $('short-editor');
+  const editorHomeParent = editorEl?.parentNode || null;
+  const editorHomeNext = $('short-list');
   let editing = null, // { slug, etag } or null for new
     editorRevision = 0,
-    savedEditorValue = '';
+    savedEditorValue = '',
+    returnContext = null; // { slug, scrollY, cardTop }
+  function isInlineEditorMode() {
+    return !window.matchMedia('(min-width: 1150px)').matches;
+  }
+  function findShortCard(slug) {
+    if (!slug) return null;
+    for (const card of $('short-list').querySelectorAll('.short-admin-card')) {
+      if (card.dataset.shortSlug === slug) return card;
+    }
+    return null;
+  }
+  function restoreEditorHome() {
+    if (!editorEl || !editorHomeParent) return;
+    editorEl.classList.remove('is-inline');
+    if (editorEl.parentNode !== editorHomeParent) {
+      editorHomeParent.insertBefore(editorEl, editorHomeNext);
+    }
+  }
+  function syncEditingHighlight(slug) {
+    for (const card of $('short-list').querySelectorAll('.short-admin-card.is-editing')) {
+      card.classList.remove('is-editing');
+    }
+    const active = findShortCard(slug);
+    if (active) active.classList.add('is-editing');
+    return active;
+  }
+  function mountEditorForSlug(slug) {
+    const activeCard = syncEditingHighlight(slug);
+    if (slug && activeCard && isInlineEditorMode()) {
+      editorEl.classList.add('is-inline');
+      activeCard.after(editorEl);
+      return activeCard;
+    }
+    restoreEditorHome();
+    return activeCard;
+  }
+  function isElementInViewport(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.bottom > 80 && rect.top < window.innerHeight - 40;
+  }
+  function restoreCardPosition(slug, cardTop, fallbackScrollY) {
+    const card = findShortCard(slug);
+    if (card) {
+      if (typeof cardTop === 'number') {
+        const delta = card.getBoundingClientRect().top - cardTop;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+      }
+      const rect = card.getBoundingClientRect();
+      const bottomSafe = window.innerWidth <= 767 ? 116 : 28;
+      if (rect.top < 84 || rect.bottom > window.innerHeight - bottomSafe) {
+        card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
+      card.querySelector('.short-edit-btn')?.focus({ preventScroll: true });
+      return;
+    }
+    if (typeof fallbackScrollY === 'number') {
+      window.scrollTo({ top: fallbackScrollY, behavior: 'instant' });
+    }
+  }
   function editorValue(draft = null) {
     return JSON.stringify(
       draft
@@ -103,11 +166,19 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
   $('short-body')?.addEventListener('input', updateWordCount);
   function render() {
     const list = $('short-list');
+    const editingSlug = !editorEl.hidden && editing?.slug ? editing.slug : null;
+    const activeCardTopBefore = editingSlug
+      ? (findShortCard(editingSlug)?.getBoundingClientRect().top ?? null)
+      : null;
+    if (editorEl && editorEl.parentNode === list) {
+      restoreEditorHome();
+    }
     list.replaceChildren();
     $('short-empty').hidden = shorts.length > 0;
     for (const item of shorts) {
       const card = document.createElement('article');
       card.className = 'short-admin-card';
+      card.dataset.shortSlug = item.slug;
 
       const header = document.createElement('div');
       header.className = 'short-card-header';
@@ -130,9 +201,9 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       meta.append(time, badge);
 
       const actions = document.createElement('div');
-      actions.className = 'image-actions';
+      actions.className = 'short-card-actions';
       const edit = document.createElement('button');
-      edit.className = 'plain-button';
+      edit.className = 'plain-button short-edit-btn';
       edit.textContent = '编辑';
       edit.addEventListener('click', () => openEditor(item));
       const pub = document.createElement('button');
@@ -241,6 +312,13 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       card.append(header, bodyWrapper);
       list.append(card);
     }
+    if (editingSlug) {
+      const remounted = mountEditorForSlug(editingSlug);
+      if (remounted && typeof activeCardTopBefore === 'number') {
+        const delta = remounted.getBoundingClientRect().top - activeCardTopBefore;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+      }
+    }
   }
   async function load(append = false) {
     const revision = ++loadRevision;
@@ -280,6 +358,14 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
   async function openEditor(item = null) {
     if (!(await confirmDiscard())) return;
     const revision = ++editorRevision;
+    const prevScrollY = window.scrollY;
+    const sourceCard = item ? findShortCard(item.slug) : null;
+    const sourceCardTop = sourceCard ? sourceCard.getBoundingClientRect().top : null;
+    returnContext = {
+      slug: item?.slug || null,
+      scrollY: prevScrollY,
+      cardTop: sourceCardTop,
+    };
     const cached = item ? fullShortCache.get(item.slug) : null;
     const cacheFresh = Boolean(cached && (!item.etag || !cached.etag || cached.etag === item.etag));
     editing = item
@@ -296,11 +382,33 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
     const waiting = Boolean(item && !cacheFresh);
     $('short-body').readOnly = $('short-date').readOnly = waiting;
     $('short-save').disabled = $('short-publish').disabled = waiting;
-    $('short-editor').hidden = false;
-    window.CloudInkMotion.enter($('short-editor'), { kind: 'content' });
+    const activeCard = mountEditorForSlug(item?.slug || null);
+    editorEl.hidden = false;
+    window.CloudInkMotion.enter(editorEl, { kind: 'content' });
     savedEditorValue = editorValue();
     updateWordCount();
     if (waiting) status('正在加载短记正文…');
+
+    if (item && activeCard) {
+      if (typeof sourceCardTop === 'number') {
+        const delta = activeCard.getBoundingClientRect().top - sourceCardTop;
+        if (Math.abs(delta) > 1) window.scrollBy(0, delta);
+      }
+      if (editorEl.classList.contains('is-inline')) {
+        const edRect = editorEl.getBoundingClientRect();
+        const bottomSafe = window.innerWidth <= 767 ? 110 : 24;
+        const maxBottom = window.innerHeight - bottomSafe;
+        if (edRect.top < 84) {
+          window.scrollBy(0, edRect.top - 84);
+        } else if (edRect.bottom > maxBottom) {
+          const shift = Math.min(edRect.bottom - maxBottom, Math.max(0, edRect.top - 84));
+          if (shift > 0) window.scrollBy(0, shift);
+        }
+      }
+    } else if (!item && !isElementInViewport(editorEl)) {
+      editorEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
     if (item) {
       fetchShort(item.slug).then(
         (data) => {
@@ -324,15 +432,24 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         },
       );
     }
-    $('short-date').focus();
+    if (window.innerWidth > 767 && isElementInViewport(editorEl)) {
+      $('short-date').focus({ preventScroll: true });
+    }
   }
-  function closeEditor() {
+  function closeEditor({ restoreScroll = true } = {}) {
     ++editorRevision;
-    window.CloudInkMotion.cancelWithin($('short-editor'));
-    $('short-editor').hidden = true;
+    const ctx = returnContext;
+    returnContext = null;
+    window.CloudInkMotion.cancelWithin(editorEl);
+    editorEl.hidden = true;
+    restoreEditorHome();
+    syncEditingHighlight(null);
     editing = null;
     $('short-body').value = $('short-date').value = '';
     savedEditorValue = editorValue();
+    if (restoreScroll && ctx) {
+      restoreCardPosition(ctx.slug, ctx.cardTop, ctx.scrollY);
+    }
   }
   async function editorAction(id, label, work) {
     await action(id, label, work);
@@ -412,15 +529,23 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
         savedEditorValue = editorValue(draft);
       }
       await startPublish({ shortSlug: slug, etag: saved.etag });
+      const publishReturn = returnContext
+        ? { ...returnContext, slug }
+        : { slug, cardTop: null, scrollY: window.scrollY };
+      let closedAfterPublish = false;
       if (revision === editorRevision) {
         if (
           $('short-body').value === draft.body_markdown &&
           $('short-date').value.trim() === draft.front_matter.date
-        )
-          closeEditor();
-        else status('短记已发布；当前修改尚未保存。');
+        ) {
+          closeEditor({ restoreScroll: false });
+          closedAfterPublish = true;
+        } else status('短记已发布；当前修改尚未保存。');
       }
       await refreshPublished();
+      if (closedAfterPublish) {
+        restoreCardPosition(publishReturn.slug, publishReturn.cardTop, publishReturn.scrollY);
+      }
     });
   });
   async function show() {
@@ -455,7 +580,7 @@ export function configureShorts({ api, notice, action, open, startPublish, onLis
       cursor = null;
       fullShortCache.clear();
       shortRequests.clear();
-      closeEditor();
+      closeEditor({ restoreScroll: false });
     },
   };
 }
