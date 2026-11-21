@@ -151,7 +151,9 @@
   border: 0;
 }
 .reader-shell .article-body {
-  text-align: left;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
   font: 400 var(--ci-article-body-size) / 1.95 var(--reader-font-family);
 }
 .reader-shell :is(.article-body, .short-body) a:is([href], [data-preview-link]) {
@@ -174,14 +176,14 @@
   font-weight: 600;
   line-height: 1.6;
 }
+.reader-shell :is(.article-body, .short-body) :is(h1, h2, h3, h4, h5, h6) {
+  text-align: left;
+}
 .reader-shell .article-body p {
   margin: 23px 0;
 }
 .reader-shell :is(.article-body, .short-body) p {
   text-wrap: pretty;
-}
-.reader-shell :is(.article-body, .short-body) blockquote p {
-  text-wrap: balance;
 }
 .reader-shell :is(.article-body, .short-body) :is(ul, ol) {
   padding-inline-start: 24px;

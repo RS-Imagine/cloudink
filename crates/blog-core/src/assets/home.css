@@ -1387,6 +1387,9 @@
   line-height: 1.95;
   margin-top: 12px;
   overflow-wrap: anywhere;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  text-align-last: left;
 }
 .reader-shell .short-body img {
   max-width: 100%;
