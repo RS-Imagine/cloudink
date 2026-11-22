@@ -78,7 +78,8 @@ try {
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('#publish-banner')).toContainText('已上线');
-  const live = await browser.newPage();
+  const liveContext = await browser.newContext();
+  const live = await liveContext.newPage();
   live.on('pageerror', (e) => errors.push(e.message));
   await live.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({ status: 200, contentType: 'text/css', body: '' }),
@@ -407,7 +408,8 @@ try {
   const backup = await downloaded;
   const backupPath = resolve('cloud-web/dist/browser-backup.zip');
   await backup.saveAs(backupPath);
-  await expect(page.locator('#backup-status')).toContainText('3 个图片文件');
+  // One article image and the two original icons, each with four generated PNG sizes.
+  await expect(page.locator('#backup-status')).toContainText('11 个图片文件');
   await page.locator('#reset-site-icon').click();
   await page.locator('#site-form input[name=themePalette][value=blue]').check();
   await page.locator('#save-site').click();
@@ -440,7 +442,7 @@ try {
     'href',
     '/site-icon/' + icoIconKey.split('/').pop(),
   );
-  const reopenedArticle = await live.context().newPage();
+  const reopenedArticle = await liveContext.newPage();
   await reopenedArticle.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(reopenedArticle.locator('head link[rel=icon]')).toHaveAttribute(
     'href',
