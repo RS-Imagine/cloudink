@@ -267,7 +267,8 @@ export async function backupRoute(
       type = validSiteIconKey(key) ? await inspectSiteIcon(bytes) : imageType(bytes);
     if (validSiteIconKey(key) && (!('key' in type) || type.key !== key))
       throw new HttpError(400, '备份图标与其内容地址不一致。');
-    const content = 'bytes' in type ? type.bytes : bytes;
+    const content =
+      'bytes' in type ? (type as Awaited<ReturnType<typeof inspectSiteIcon>>).bytes : bytes;
     if (
       key.startsWith('uploads/sha256/') &&
       parentImageKey(key) === key &&

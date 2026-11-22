@@ -100,13 +100,18 @@ fn custom_icons_use_only_valid_content_addresses_on_all_pages() {
     // Dynamic manifest uses configured title/description and derived PNG icon set.
     site.title = "My Studio".into();
     site.description = "Custom site manifest".into();
-    let manifest: serde_json::Value =
-        serde_json::from_str(&render::manifest_json(&site)).unwrap();
+    let manifest: serde_json::Value = serde_json::from_str(&render::manifest_json(&site)).unwrap();
     assert_eq!(manifest["name"], "My Studio");
     assert_eq!(manifest["short_name"], "My Studio");
     assert_eq!(manifest["description"], "Custom site manifest");
-    assert_eq!(manifest["icons"][0]["src"], format!("/site-icon/{hash}-192.png"));
-    assert_eq!(manifest["icons"][1]["src"], format!("/site-icon/{hash}-512.png"));
+    assert_eq!(
+        manifest["icons"][0]["src"],
+        format!("/site-icon/{hash}-192.png")
+    );
+    assert_eq!(
+        manifest["icons"][1]["src"],
+        format!("/site-icon/{hash}-512.png")
+    );
     assert_eq!(
         manifest["icons"][2]["src"],
         format!("/site-icon/{hash}-512-maskable.png")

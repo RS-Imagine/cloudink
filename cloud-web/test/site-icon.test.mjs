@@ -1,7 +1,7 @@
 import { deflateSync } from 'node:zlib';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fixture } from './fixture.mjs';
+import { fixture, origin } from './fixture.mjs';
 import {
   svgBytes,
   svgIcon,
@@ -415,9 +415,14 @@ test('multipart derived icon upload validates dimensions atomically, supports /f
   const bucket = await f.mf.getR2Bucket('STORAGE');
 
   // Unset /favicon.ico redirects to /favicon.svg (never 404).
-  const defaultFavicon = await f.request('/favicon.ico');
+  const faviconRedirect = () => f.mf.dispatchFetch(origin + '/favicon.ico', { redirect: 'manual' });
+  const defaultFavicon = await faviconRedirect();
   assert.equal(defaultFavicon.status, 302);
   assert.equal(defaultFavicon.headers.get('Location'), '/favicon.svg');
+  assert.equal(
+    defaultFavicon.headers.get('Cache-Control'),
+    'public, max-age=300, stale-while-revalidate=86400',
+  );
 
   const png180 = solidPng(180);
   const png192 = solidPng(192);
@@ -471,7 +476,7 @@ test('multipart derived icon upload validates dimensions atomically, supports /f
   const pub = await f.prepare({ settings: true });
   await f.stage(pub);
   assert.equal((await f.commit(pub)).status, 200);
-  const icoRedirect = await f.request('/favicon.ico');
+  const icoRedirect = await faviconRedirect();
   assert.equal(icoRedirect.status, 302);
   assert.equal(icoRedirect.headers.get('Location'), `/site-icon/${hash}-favicon.ico`);
   const homeHtml = await (await f.request('/')).text();
