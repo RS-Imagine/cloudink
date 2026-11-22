@@ -106,18 +106,31 @@ test('warm public caches serve body, HEAD and validators without reopening delet
   assert.equal((await f.commit(state)).status, 200);
   const first = await f.request('/');
   const body = await first.text();
+  const revalidate = 'public, max-age=0, must-revalidate';
+  assert.equal(first.headers.get('Cache-Control'), revalidate);
+  for (const path of ['/search_index.json', '/client.js', '/theme.js', '/styles.css']) {
+    const response = await f.request(path);
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('Cache-Control'), revalidate, path);
+  }
+  assert.equal(
+    (await f.request('/manifest.webmanifest')).headers.get('Cache-Control'),
+    'public, max-age=300, stale-while-revalidate=86400',
+  );
   assert.doesNotMatch(body, /src="\/analytics.js"/);
   // Let waitUntil finish through the next request; no timeout or extra fixture deployment.
   await f.request('/');
   await bucket.delete(`public/${state.release_id}/index.html`);
   const cached = await f.request('/');
   assert.equal(cached.headers.get('Cache-Status'), 'CloudInk; hit');
+  assert.equal(cached.headers.get('Cache-Control'), revalidate);
   assert.equal(await cached.text(), body);
   assert.equal((await f.request('/', 'HEAD')).status, 200);
-  assert.equal(
-    (await f.request('/', 'GET', undefined, { 'If-None-Match': first.headers.get('ETag') })).status,
-    304,
-  );
+  const unchanged = await f.request('/', 'GET', undefined, {
+    'If-None-Match': first.headers.get('ETag'),
+  });
+  assert.equal(unchanged.status, 304);
+  assert.equal(unchanged.headers.get('Cache-Control'), revalidate);
   await bucket.put('uploads/cache.png', new Uint8Array([137, 80, 78, 71]), {
     httpMetadata: { contentType: 'image/png' },
   });

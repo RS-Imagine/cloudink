@@ -93,6 +93,13 @@ try {
     )
     .toBe(true);
   await expect(live.locator('html')).toHaveAttribute('data-palette', 'brown');
+  await live.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await live.goto('http://localhost:8791/post/');
+  await expect(live.locator('.post-index-empty')).toBeVisible();
+  await live.locator('#site-search-btn').click();
+  await live.locator('#search-input').fill('mathematics');
+  await expect(live.locator('#search-status')).toContainText('还没有找到');
+  await live.keyboard.press('Escape');
   await page.locator('#new-post').click();
   await page.locator('#show-split').click();
   await page.locator('#title').fill('Browser published mathematics');
@@ -152,6 +159,13 @@ try {
     .toBe(true);
   await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
+  await live.locator('#site-search-btn').click();
+  await expect(live.locator('.search-result-title')).toHaveText('Browser published mathematics');
+  await live.keyboard.press('Escape');
+  await live.goto('http://localhost:8791/');
+  await expect(live.locator('.post-card h2 a')).toHaveText('Browser published mathematics');
+  await live.goto('http://localhost:8791/post/');
+  await expect(live.locator('.post-index-list h2 a')).toHaveText('Browser published mathematics');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article h1')).toHaveText('Browser published mathematics');
   const noScript = await browser.newContext({ javaScriptEnabled: false, colorScheme: 'dark' });
@@ -277,11 +291,13 @@ try {
       await navigator.serviceWorker.ready;
     });
     await offlineReader.waitForFunction(() => !!navigator.serviceWorker.controller);
-    await offlineReader.reload();
-    await expect(offlineReader.locator('.post-card')).toHaveCount(1);
+    await offlineReader.goto(`http://localhost:8791/posts/${slug}/`);
+    await expect(offlineReader.locator('article h1')).toHaveText('Browser published mathematics');
     await offlineContext.setOffline(true);
-    await offlineReader.reload();
+    await offlineReader.goto('http://localhost:8791/');
     await expect(offlineReader.locator('.post-card')).toHaveCount(1);
+    await offlineReader.goto(`http://localhost:8791/posts/${slug}/`);
+    await expect(offlineReader.locator('article h1')).toHaveText('Browser published mathematics');
   } finally {
     await offlineContext.close();
   }
@@ -337,9 +353,16 @@ try {
   const after = await (await mf.dispatchFetch('http://localhost:8791/_release.json')).json();
   assert.equal(after.id, original.id);
   await page.unroute('**/api/publish/*/file?**');
+  await page.locator('#title').fill('Revised mathematics');
+  await page.locator('#description').fill('A revised summary.');
   await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
+  await live.locator('#site-search-btn').click();
+  await live.locator('#search-input').fill('Revised mathematics');
+  await expect(live.locator('.search-result-excerpt')).toHaveText('A revised summary.');
+  await live.keyboard.press('Escape');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
+  await expect(live.locator('article h1')).toHaveText('Revised mathematics');
   await expect(live.locator('article')).toContainText(
     'New version that must remain a draft after failure.',
   );
@@ -417,6 +440,13 @@ try {
     'href',
     '/site-icon/' + icoIconKey.split('/').pop(),
   );
+  const reopenedArticle = await live.context().newPage();
+  await reopenedArticle.goto(`http://localhost:8791/posts/${slug}/`);
+  await expect(reopenedArticle.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
+  await reopenedArticle.close();
   await page.locator('#reset-site-icon').click();
   await page.locator('#publish-settings').click();
   await expect(page.locator('#publish-settings')).not.toHaveAttribute('aria-busy', 'true');
@@ -467,6 +497,7 @@ try {
   await page.locator('#save-site').click();
   await expect(page.locator('#notice')).toContainText('网站信息已保存');
   // Both public views must update through normal short publication, without a rebuild.
+  await live.goto('http://localhost:8791/shorts/');
   await navigateStudio(page, 'shorts');
   await page.locator('#short-new').click();
   for (const body of ['Published home note.', 'Edited home note.']) {
@@ -477,9 +508,8 @@ try {
     await live.goto('http://localhost:8791/');
     await expect(live.locator('.blog-notes')).toContainText(body);
     await expect(live.locator('.blog-notes .blog-note')).toHaveCount(1);
-    assert.ok(
-      (await (await live.request.get('http://localhost:8791/shorts/')).text()).includes(body),
-    );
+    await live.goto('http://localhost:8791/shorts/');
+    await expect(live.locator('#shorts-feed')).toContainText(body);
     if (body === 'Published home note.')
       await page
         .locator('.short-admin-card')
@@ -494,7 +524,7 @@ try {
     .click();
   await acceptConfirmation(page);
   await expect(page.locator('#notice')).toContainText('短记已删除');
-  await live.reload();
+  await live.goto('http://localhost:8791/');
   await expect(live.locator('.blog-notes')).toContainText('还没有发布短记。');
   await expect(live.locator('.blog-notes .blog-note')).toHaveCount(0);
   await navigateStudio(page, 'settings');

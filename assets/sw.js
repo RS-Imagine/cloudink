@@ -1,14 +1,8 @@
-// Public reading cache: instant repeat reads via stale-while-revalidate, fresh on reload, offline-ready.
+// Revalidate public reading content on every visit. Keep the last good response for offline reads.
 const CACHE_PREFIX = 'cloudink-reader-';
-const CACHE_NAME = CACHE_PREFIX + 'v3';
-const STATIC_ASSETS = [
-  '/',
-  '/client.js',
-  '/theme.js',
-  '/styles.css',
-  '/favicon.svg',
-  '/manifest.webmanifest',
-];
+const CACHE_NAME = CACHE_PREFIX + 'v4';
+const READER_BUNDLES = ['/client.js', '/theme.js', '/styles.css'];
+const STATIC_ASSETS = ['/', ...READER_BUNDLES, '/favicon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -102,29 +96,27 @@ self.addEventListener('fetch', (event) => {
     return;
 
   const key = cacheKeyFor(request);
-  const publicAsset =
-    STATIC_ASSETS.includes(url.pathname) ||
-    url.pathname === '/search_index.json' ||
+  const media =
     url.pathname.startsWith('/reader-assets/') ||
     url.pathname.startsWith('/images/') ||
     url.pathname.startsWith('/site-icon/');
-  if (publicAsset) {
-    // Fonts and content-addressed media are immutable; compiled styles/scripts refresh in background.
-    const immutable =
-      /\.(?:woff2?|png|jpe?g|webp|gif|avif|svg|ico)$/.test(url.pathname) &&
-      (url.pathname.startsWith('/reader-assets/') ||
-        url.pathname.startsWith('/images/') ||
-        url.pathname.startsWith('/site-icon/'));
+  if (media) {
+    const immutable = /\.(?:woff2?|png|jpe?g|webp|gif|avif|svg|ico)$/.test(url.pathname);
     event.respondWith(
       immutable ? cacheFirst(request, key) : staleWhileRevalidate(event, request, key),
     );
     return;
   }
   if (
+    READER_BUNDLES.includes(url.pathname) ||
+    url.pathname === '/search_index.json' ||
     request.mode === 'navigate' ||
     request.headers.get('accept')?.includes('text/html') ||
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('.html')
-  )
+  ) {
+    event.respondWith(networkFirst(request, key));
+  } else if (STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(staleWhileRevalidate(event, request, key));
+  }
 });

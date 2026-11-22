@@ -89,12 +89,11 @@ test('reader-runtime prefetchUrl filters routes safely and respects network cons
   );
 });
 
-test('reader-runtime shares in-flight touchstart prefetch with performNavigation without duplicate fetches', async () => {
+test('reader navigation shares an in-flight prefetch but revalidates on a subsequent visit', async () => {
   const source = await readFile('assets/reader-runtime.js', 'utf8');
   const listeners = new Map();
   let fetchCalls = 0;
   let resolveFetch;
-  const cache = new Map();
   const performed = [];
   const window = { addEventListener() {} };
   const document = {
@@ -133,15 +132,17 @@ test('reader-runtime shares in-flight touchstart prefetch with performNavigation
     URL,
     setTimeout,
     clearTimeout,
-    fetch: () => {
+    fetch: (_url, options) => {
+      assert.equal(options.cache, 'no-cache');
       fetchCalls++;
+      const version = fetchCalls;
       const promise = new Promise((resolve) => {
         resolveFetch = () =>
           resolve({
             ok: true,
             url: 'https://forimagine.eu.org/shorts/',
             headers: new Headers({ 'Content-Type': 'text/html; charset=utf-8' }),
-            text: async () => '<html><body><main id="swup"><h1>短记</h1></main></body></html>',
+            text: async () => '<main id="swup">短记 ' + version + '</main>',
           });
       });
       return promise;
@@ -150,10 +151,6 @@ test('reader-runtime shares in-flight touchstart prefetch with performNavigation
 
   const swup = {
     options: { containers: ['#swup'], requestHeaders: { 'X-Requested-With': 'swup' } },
-    cache: {
-      get: (url) => cache.get(url),
-      set: (url, page) => cache.set(url, page),
-    },
     hooks: { replace() {}, on() {} },
     performNavigation(visit, options) {
       performed.push({ visit, options });
@@ -189,35 +186,25 @@ test('reader-runtime shares in-flight touchstart prefetch with performNavigation
   await navPromise;
   assert.equal(performed.length, 1);
   assert.equal(performed[0].options.meta.readerPage.url, '/shorts/');
-  assert.ok(cache.has('/shorts/'));
-
-  // Explicit retry (cache: { read: false }) must bypass cache and trigger a fresh fetch
-  const retryVisit = {
-    to: { url: '/shorts/', hash: '' },
-    cache: { read: true, write: true },
-    history: { popstate: false },
-    trigger: {},
-    abort() {
-      assert.fail('retry navigation should not abort');
-    },
-  };
-  const retryPromise = swup.performNavigation(retryVisit, { cache: { read: false, write: true } });
-  assert.equal(fetchCalls, 2, 'explicit retry bypasses cached page');
+  assert.match(performed[0].options.meta.readerPage.html, /短记 1/);
+  const revisit = swup.performNavigation({ ...visit });
+  assert.equal(fetchCalls, 2);
   resolveFetch();
-  await retryPromise;
+  await revisit;
+  assert.match(performed[1].options.meta.readerPage.html, /短记 2/);
 });
 
-test('service worker uses stale-while-revalidate for reading pages, cacheFirst for fonts, and networkFirst on reload', async () => {
+test('service worker revalidates reading content before display and serves the last good copy offline', async () => {
   const source = await readFile('assets/sw.js', 'utf8');
   const handlers = new Map();
   const store = new Map();
   const fetchCalls = [];
-  const waitUntilPromises = [];
+  let offline = false;
   const caches = {
     async open() {
       return {
         async match(key) {
-          return store.get(key);
+          return store.get(key)?.clone();
         },
         async put(key, response) {
           store.set(key, response);
@@ -247,6 +234,7 @@ test('service worker uses stale-while-revalidate for reading pages, cacheFirst f
     fetch: async (input, init) => {
       const url = typeof input === 'string' ? input : input.url;
       fetchCalls.push({ url, cache: init?.cache });
+      if (offline) throw new TypeError('Offline');
       return new Response('fresh:' + url, { status: 200 });
     },
   });
@@ -267,9 +255,6 @@ test('service worker uses stale-while-revalidate for reading pages, cacheFirst f
       respondWith(promise) {
         responsePromise = promise;
       },
-      waitUntil(promise) {
-        waitUntilPromises.push(promise);
-      },
     });
     return responsePromise ? await responsePromise : null;
   };
@@ -280,37 +265,40 @@ test('service worker uses stale-while-revalidate for reading pages, cacheFirst f
   assert.equal(await dispatch('https://forimagine.eu.org/sw.js'), null);
   assert.equal(await dispatch('https://forimagine.eu.org/_release.json'), null);
 
-  // Reading HTML: cold miss populates cache, second hit returns cached immediately + revalidates in background
-  store.set('https://forimagine.eu.org/shorts/', new Response('cached:/shorts/', { status: 200 }));
-  const hit = await dispatch('https://forimagine.eu.org/shorts/', { mode: 'navigate' });
-  assert.equal(await hit.text(), 'cached:/shorts/');
-  await Promise.all(waitUntilPromises.splice(0));
-  assert.equal(fetchCalls.length, 1);
-  assert.equal(fetchCalls[0].cache, 'no-cache');
-  assert.equal(
-    await store.get('https://forimagine.eu.org/shorts/').clone().text(),
-    'fresh:https://forimagine.eu.org/shorts/',
-  );
+  const origin = self.location.origin;
+  for (const [path, options] of [
+    ['/', { mode: 'navigate' }],
+    ['/post/', {}],
+    ['/posts/visited', { mode: 'navigate', accept: '*/*' }],
+    ['/shorts/', {}],
+    ['/shorts/page/2/', { accept: '*/*' }],
+    ['/shorts/page/3/index.html', { accept: '*/*' }],
+    ['/shorts/page/4', { accept: 'text/html' }],
+    ...['/search_index.json', '/client.js', '/theme.js', '/styles.css'].map((path) => [
+      path,
+      { accept: '*/*' },
+    ]),
+  ]) {
+    const url = origin + path;
+    store.set(url, new Response('old'));
+    assert.equal(await (await dispatch(url, options)).text(), 'fresh:' + url);
+    assert.deepEqual(fetchCalls.splice(0), [{ url, cache: 'no-cache' }]);
+  }
 
-  // Explicit reload bypasses stale cache via networkFirst
-  fetchCalls.length = 0;
-  store.set('https://forimagine.eu.org/shorts/', new Response('stale', { status: 200 }));
-  const reloaded = await dispatch('https://forimagine.eu.org/shorts/', {
-    mode: 'navigate',
-    cache: 'reload',
-  });
-  assert.equal(await reloaded.text(), 'fresh:https://forimagine.eu.org/shorts/');
-  assert.equal(fetchCalls[0].cache, 'no-cache');
+  offline = true;
+  const visited = origin + '/posts/visited';
+  assert.equal(await (await dispatch(visited, { mode: 'navigate' })).text(), 'fresh:' + visited);
+  assert.equal((await dispatch(origin + '/posts/unvisited/')).type, 'error');
 
-  // Immutable fonts use cacheFirst (zero network fetch on hit)
-  for (const fontUrl of [
+  for (const assetUrl of [
     'https://forimagine.eu.org/reader-assets/fonts/noto-serif-sc-0.woff2',
     'https://forimagine.eu.org/reader-assets/fonts/noto-serif-latin-400-italic.woff2',
+    'https://forimagine.eu.org/images/uploads/cover.webp',
+    'https://forimagine.eu.org/site-icon/icon.svg',
   ]) {
     fetchCalls.length = 0;
-    store.set(fontUrl, new Response('font-bytes', { status: 200 }));
-    const fontRes = await dispatch(fontUrl, { accept: '*/*' });
-    assert.equal(await fontRes.text(), 'font-bytes');
+    store.set(assetUrl, new Response('asset bytes'));
+    assert.equal(await (await dispatch(assetUrl, { accept: '*/*' })).text(), 'asset bytes');
     assert.equal(fetchCalls.length, 0);
   }
 });
@@ -412,7 +400,6 @@ test('reader-runtime mounts layout skeleton after debounce on slow navigation an
   };
   let resolveFetch;
   const hooks = new Map();
-  const cache = new Map();
   const window = { addEventListener() {} };
   const document = {
     hidden: false,
@@ -467,10 +454,6 @@ test('reader-runtime mounts layout skeleton after debounce on slow navigation an
       containers: ['#reader-center-content', '#reader-context-content'],
       requestHeaders: {},
     },
-    cache: {
-      get: (url) => cache.get(url),
-      set: (url, page) => cache.set(url, page),
-    },
     hooks: {
       replace() {},
       on(name, cb) {
@@ -511,10 +494,10 @@ test('reader-runtime mounts layout skeleton after debounce on slow navigation an
   assert.equal(nodes['reader-center'].querySelector(':scope > .reader-skeleton-layer'), null);
   assert.equal(nodes['reader-center-content'].classList.contains('is-skeleton-reveal'), true);
 
-  // Cached second navigation never mounts skeleton
+  // A fast revalidation on the second visit finishes before the skeleton debounce.
   await new Promise((r) => setTimeout(r, 280));
   assert.equal(nodes['reader-center-content'].classList.contains('is-skeleton-reveal'), false);
-  const cachedVisit = {
+  const repeatVisit = {
     id: 'v2',
     to: { url: '/posts/slow-article/', hash: '' },
     cache: { read: true, write: true },
@@ -522,9 +505,11 @@ test('reader-runtime mounts layout skeleton after debounce on slow navigation an
     trigger: {},
     abort() {},
   };
-  await swup.performNavigation(cachedVisit);
+  const repeat = swup.performNavigation(repeatVisit);
+  resolveFetch();
+  await repeat;
   assert.equal(nodes['reader-center'].classList.contains('is-skeleton'), false);
-  assert.equal(cachedVisit.meta.hadSkeleton, false);
+  assert.equal(repeatVisit.meta.hadSkeleton, false);
 });
 
 test('reader-runtime loads Highlight.js asynchronously only when code blocks exist and supports parallel load + retry', async () => {

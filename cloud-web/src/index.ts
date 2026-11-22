@@ -34,20 +34,14 @@ const editorAssets = new Set([
   '/blog_wasm.js',
   '/blog_wasm_bg.wasm',
 ]);
-const compiledAssets = new Set([
-  '/client.js',
-  '/theme.js',
-  '/styles.css',
-  '/favicon.svg',
-  '/sw.js',
-]);
-const POINTER_TTL = 180;
+const revalidatedAssets = new Set(['/client.js', '/theme.js', '/styles.css', '/sw.js']);
+const POINTER_TTL = 30;
 const PAGE_TTL = 604800;
 const DISCOVERY_TTL = 3600;
-const HTML_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=86400';
+const REVALIDATE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
+const HTML_CACHE_CONTROL = REVALIDATE_CACHE_CONTROL;
 const ASSET_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-const REVALIDATE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 function protect(
   response: Response,
   analytics = false,
@@ -147,17 +141,16 @@ const web = {
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
         );
+      if (revalidatedAssets.has(path)) return staticAsset(request, env, path);
       if (
-        compiledAssets.has(path) ||
+        path === '/favicon.svg' ||
         /^\/reader-assets\/(?:highlight\.js|share-card\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif(?:-sc)?-[a-z0-9-]+)\.woff2)$/.test(
           path,
         )
       ) {
         const policy = /^\/reader-assets\/fonts\/.+\.woff2$/.test(path)
           ? IMMUTABLE_CACHE_CONTROL
-          : path === '/sw.js'
-            ? REVALIDATE_CACHE_CONTROL
-            : ASSET_CACHE_CONTROL;
+          : ASSET_CACHE_CONTROL;
         return staticAsset(request, env, path, 200, false, policy);
       }
       if (/^\/shorts\/page\/1(?:\/|\/index\.html)?$/.test(path)) {
