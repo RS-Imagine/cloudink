@@ -1083,15 +1083,41 @@ const bootCloudInkClient = () => {
       return changed;
     }
 
-    const resolveShortDeepLink = async () => {
-      if (!location.hash || disposed || !host.isConnected) return;
-      let rawId;
-      try {
-        rawId = decodeURIComponent(location.hash.slice(1));
-      } catch {
-        return;
+    let calHighlightTimer = null;
+    let calHighlightedCard = null;
+    const clearShortHighlight = () => {
+      if (calHighlightTimer !== null) {
+        clearTimeout(calHighlightTimer);
+        calHighlightTimer = null;
       }
-      if (!rawId) return;
+      if (calHighlightedCard) {
+        calHighlightedCard.classList.remove('shorts-cal-highlight');
+        calHighlightedCard = null;
+      }
+    };
+    const highlightShortCard = (el) => {
+      if (!el || disposed || !el.isConnected) return;
+      clearShortHighlight();
+      el.classList.add('shorts-cal-highlight');
+      calHighlightedCard = el;
+      calHighlightTimer = setTimeout(() => {
+        el.classList.remove('shorts-cal-highlight');
+        if (calHighlightedCard === el) calHighlightedCard = null;
+        calHighlightTimer = null;
+      }, 1500);
+    };
+
+    let jumpSeq = 0;
+    const waitWhileLoading = async (seq) => {
+      const deadline = performance.now() + 2500;
+      while (loading && !disposed && host.isConnected && seq === jumpSeq && performance.now() < deadline) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    };
+
+    const jumpToShortById = async (rawId, { smooth = false, updateHash = false } = {}) => {
+      if (!rawId || disposed || !host.isConnected) return;
+      const seq = ++jumpSeq;
       const findTarget = () => {
         const direct = document.getElementById(rawId);
         if (direct?.classList.contains('short-card')) return { el: direct, legacy: false };
@@ -1104,34 +1130,390 @@ const bootCloudInkClient = () => {
       while (
         !disposed &&
         host.isConnected &&
+        seq === jumpSeq &&
         guard < Math.ceil(total / batchSize) + 2 &&
         (!found || found.el.classList.contains('shorts-peek'))
       ) {
         if (start - 1 + getFullCount() >= total && !getPeekCard()) break;
+        if (loading) {
+          await waitWhileLoading(seq);
+          if (disposed || !host.isConnected || seq !== jumpSeq) return;
+          found = findTarget();
+          if (found && !found.el.classList.contains('shorts-peek')) break;
+        }
         guard++;
         const ok = await expand({ manual: false, instant: true, allowChain: true });
         if (!ok) break;
         found = findTarget();
       }
-      if (!found || disposed || !host.isConnected) {
+      if (disposed || !host.isConnected || seq !== jumpSeq) return;
+      if (!found || found.el.classList.contains('shorts-peek')) {
+        if (updateHash && start > 1) {
+          location.assign('/shorts/#' + encodeURIComponent(rawId));
+          return;
+        }
         disarmAuto();
         if (!refreshRequired && getPeekCard()) scheduleObservePeek();
         return;
       }
-      if (found.legacy) {
+      if (updateHash || found.legacy) {
         const canonical = new URL(location.href);
         canonical.hash = found.el.id;
         history.replaceState(history.state, '', canonical);
       }
       requestAnimationFrame(() => {
-        if (disposed || !found.el.isConnected) return;
-        suppressScrollUntil = performance.now() + 140;
-        found.el.scrollIntoView({ behavior: 'instant', block: 'start' });
-        found.el.focus({ preventScroll: true });
+        if (disposed || !found.el.isConnected || seq !== jumpSeq) return;
+        const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        suppressScrollUntil = performance.now() + (smooth && !reducedMotion ? 700 : 140);
+        found.el.scrollIntoView({
+          behavior: smooth && !reducedMotion ? 'smooth' : 'instant',
+          block: 'start',
+        });
+        if (!smooth) found.el.focus({ preventScroll: true });
+        highlightShortCard(found.el);
         disarmAuto();
         if (!refreshRequired && getPeekCard()) scheduleObservePeek();
       });
     };
+
+    const resolveShortDeepLink = async () => {
+      if (!location.hash || disposed || !host.isConnected) return;
+      let rawId;
+      try {
+        rawId = decodeURIComponent(location.hash.slice(1));
+      } catch {
+        return;
+      }
+      if (!rawId) return;
+      await jumpToShortById(rawId, { smooth: false, updateHash: false });
+    };
+
+    const getShanghaiToday = () => {
+      try {
+        const parts = Object.fromEntries(
+          new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          })
+            .formatToParts(new Date())
+            .map((part) => [part.type, part.value]),
+        );
+        const year = Number(parts.year);
+        const month = Number(parts.month);
+        const day = Number(parts.day);
+        if (Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)) {
+          return {
+            year,
+            month,
+            day,
+            iso:
+              String(year).padStart(4, '0') +
+              '-' +
+              String(month).padStart(2, '0') +
+              '-' +
+              String(day).padStart(2, '0'),
+          };
+        }
+      } catch {}
+      const d = new Date(Date.now() + 8 * 3600 * 1000);
+      const year = d.getUTCFullYear();
+      const month = d.getUTCMonth() + 1;
+      const day = d.getUTCDate();
+      return {
+        year,
+        month,
+        day,
+        iso:
+          String(year).padStart(4, '0') +
+          '-' +
+          String(month).padStart(2, '0') +
+          '-' +
+          String(day).padStart(2, '0'),
+      };
+    };
+
+    const mountShortsCalendar = () => {
+      const panel = document.getElementById('shorts-cal-panel');
+      const widget = panel?.querySelector('[data-shorts-cal-root]');
+      const dataEl = document.getElementById('shorts-cal-data');
+      if (!panel || !widget || !dataEl) return () => {};
+
+      const rawData = (() => {
+        try {
+          const parsed = JSON.parse(dataEl.textContent || '{}');
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch {
+          return {};
+        }
+      })();
+      const calendarData = Object.create(null);
+      const dateKeys = [];
+      for (const [key, value] of Object.entries(rawData)) {
+        if (
+          /^\d{4}-\d{2}-\d{2}$/.test(key) &&
+          value &&
+          typeof value === 'object' &&
+          Number(value.count) >= 1 &&
+          typeof value.firstId === 'string' &&
+          value.firstId
+        ) {
+          calendarData[key] = { count: Math.floor(Number(value.count)), firstId: value.firstId };
+          dateKeys.push(key);
+        }
+      }
+      dateKeys.sort();
+
+      const today = getShanghaiToday();
+      const maxYM = today.year * 12 + (today.month - 1);
+      let minYM = maxYM;
+      if (dateKeys.length) {
+        const [ey, em] = dateKeys[0].split('-').map(Number);
+        if (Number.isFinite(ey) && Number.isFinite(em)) {
+          minYM = Math.min(maxYM, ey * 12 + (em - 1));
+        }
+      }
+      let currentYM = maxYM;
+
+      const monthEl = widget.querySelector('[data-shorts-cal-month]');
+      const prevBtn = widget.querySelector('[data-shorts-cal-prev]');
+      const nextBtn = widget.querySelector('[data-shorts-cal-next]');
+      const gridEl = widget.querySelector('[data-shorts-cal-grid]');
+      if (!monthEl || !prevBtn || !nextBtn || !gridEl) return () => {};
+
+      const renderMonth = () => {
+        const year = Math.floor(currentYM / 12);
+        const month = (currentYM % 12) + 1;
+        monthEl.textContent = `${year} 年 ${month} 月`;
+        prevBtn.disabled = currentYM <= minYM;
+        nextBtn.disabled = currentYM >= maxYM;
+
+        const firstWeekday = (new Date(Date.UTC(year, month - 1, 1)).getUTCDay() + 6) % 7;
+        const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < firstWeekday; i++) {
+          const spacer = document.createElement('span');
+          spacer.className = 'shorts-cal-spacer';
+          spacer.setAttribute('aria-hidden', 'true');
+          frag.append(spacer);
+        }
+        for (let day = 1; day <= daysInMonth; day++) {
+          const iso =
+            String(year).padStart(4, '0') +
+            '-' +
+            String(month).padStart(2, '0') +
+            '-' +
+            String(day).padStart(2, '0');
+          const isToday = iso === today.iso;
+          const isFuture = iso > today.iso;
+          const entry = isFuture ? null : calendarData[iso] || null;
+          if (entry && entry.count > 0) {
+            const level = Math.min(4, entry.count);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `shorts-cal-day shorts-cal-has shorts-cal-l${level}${isToday ? ' shorts-cal-today' : ''}`;
+            btn.dataset.shortsCalDate = iso;
+            btn.dataset.shortsCalTarget = entry.firstId;
+            btn.textContent = String(day);
+            btn.setAttribute(
+              'aria-label',
+              `${year} 年 ${month} 月 ${day} 日，共 ${entry.count} 条短记`,
+            );
+            frag.append(btn);
+          } else {
+            const cell = document.createElement('span');
+            cell.className = `shorts-cal-day shorts-cal-empty${isToday ? ' shorts-cal-today' : ''}`;
+            cell.setAttribute('aria-disabled', 'true');
+            cell.textContent = String(day);
+            frag.append(cell);
+          }
+        }
+        gridEl.replaceChildren(frag);
+      };
+
+      // Mobile floating calendar FAB & drawer (reuses the exact same widget node)
+      const calFab = document.createElement('button');
+      calFab.type = 'button';
+      calFab.className = 'shorts-cal-fab';
+      calFab.setAttribute('aria-label', '短记日历');
+      calFab.setAttribute('aria-controls', 'shorts-cal-drawer');
+      calFab.setAttribute('aria-expanded', 'false');
+      calFab.innerHTML =
+        '<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/></svg>';
+
+      const calBackdrop = document.createElement('div');
+      calBackdrop.className = 'shorts-cal-backdrop';
+      calBackdrop.hidden = true;
+
+      const calDrawer = document.createElement('div');
+      calDrawer.className = 'shorts-cal-drawer';
+      calDrawer.id = 'shorts-cal-drawer';
+      calDrawer.tabIndex = -1;
+      calDrawer.setAttribute('role', 'dialog');
+      calDrawer.setAttribute('aria-modal', 'true');
+      calDrawer.setAttribute('aria-label', '短记日历');
+      calDrawer.hidden = true;
+
+      const drawerBar = document.createElement('div');
+      drawerBar.className = 'shorts-cal-drawer-bar';
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'shorts-cal-close';
+      closeBtn.setAttribute('aria-label', '关闭短记日历');
+      closeBtn.innerHTML =
+        '<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>';
+      drawerBar.append(closeBtn);
+      calDrawer.append(drawerBar);
+
+      document.body.append(calFab, calBackdrop, calDrawer);
+
+      const narrowCal = matchMedia('(max-width: 1023px)');
+      let drawerOpen = false;
+      let lockedScrollY = 0;
+      let savedBodyStyles = null;
+      let lockedBackground = [];
+
+      const unlockScrollAndBg = () => {
+        if (savedBodyStyles) {
+          document.body.style.overflow = savedBodyStyles.overflow;
+          document.body.style.position = savedBodyStyles.position;
+          document.body.style.top = savedBodyStyles.top;
+          document.body.style.left = savedBodyStyles.left;
+          document.body.style.right = savedBodyStyles.right;
+          document.body.style.width = savedBodyStyles.width;
+          savedBodyStyles = null;
+          window.scrollTo({ top: lockedScrollY, behavior: 'instant' });
+        }
+        for (const [node, prevInert] of lockedBackground) {
+          if (node) node.inert = prevInert;
+        }
+        lockedBackground = [];
+      };
+
+      const closeDrawer = ({ restoreFocus = false } = {}) => {
+        if (!drawerOpen) return;
+        drawerOpen = false;
+        calBackdrop.hidden = true;
+        calDrawer.hidden = true;
+        calFab.classList.remove('shorts-cal-fab-hidden');
+        calFab.setAttribute('aria-expanded', 'false');
+        unlockScrollAndBg();
+        if (restoreFocus && calFab.isConnected) {
+          calFab.focus({ preventScroll: true });
+        }
+      };
+
+      const syncWidgetHost = () => {
+        if (narrowCal.matches) {
+          if (widget.parentElement !== calDrawer) calDrawer.append(widget);
+        } else {
+          if (drawerOpen) closeDrawer({ restoreFocus: false });
+          if (widget.parentElement !== panel) panel.prepend(widget);
+        }
+      };
+
+      const openDrawer = () => {
+        if (drawerOpen || !narrowCal.matches) return;
+        syncWidgetHost();
+        drawerOpen = true;
+        lockedScrollY = window.scrollY;
+        savedBodyStyles = {
+          overflow: document.body.style.overflow,
+          position: document.body.style.position,
+          top: document.body.style.top,
+          left: document.body.style.left,
+          right: document.body.style.right,
+          width: document.body.style.width,
+        };
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${lockedScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        lockedBackground = [
+          document.getElementById('swup'),
+          document.querySelector('.site-header'),
+          document.querySelector('.site-footer'),
+          document.getElementById('primary-nav'),
+          document.querySelector('.reader-dock'),
+          document.querySelector('.reader-skip'),
+          document.getElementById('to-top'),
+          calFab,
+        ]
+          .filter(Boolean)
+          .map((node) => [node, node.inert]);
+        for (const [node] of lockedBackground) node.inert = true;
+        calBackdrop.hidden = false;
+        calDrawer.hidden = false;
+        calFab.classList.add('shorts-cal-fab-hidden');
+        calFab.setAttribute('aria-expanded', 'true');
+        calDrawer.focus({ preventScroll: true });
+      };
+
+      const onPrevClick = () => {
+        if (currentYM <= minYM) return;
+        currentYM -= 1;
+        renderMonth();
+      };
+      const onNextClick = () => {
+        if (currentYM >= maxYM) return;
+        currentYM += 1;
+        renderMonth();
+      };
+      const onGridClick = (event) => {
+        const btn = event.target.closest?.('.shorts-cal-day.shorts-cal-has');
+        if (!btn || !gridEl.contains(btn)) return;
+        const targetId = btn.dataset.shortsCalTarget;
+        if (!targetId) return;
+        if (drawerOpen) {
+          closeDrawer({ restoreFocus: false });
+        }
+        void jumpToShortById(targetId, { smooth: true, updateHash: true });
+      };
+      const onFabClick = () => {
+        if (drawerOpen) closeDrawer({ restoreFocus: true });
+        else openDrawer();
+      };
+      const onBackdropClick = () => closeDrawer({ restoreFocus: true });
+      const onCloseClick = () => closeDrawer({ restoreFocus: true });
+      const onCalKeyDown = (event) => {
+        if (event.key === 'Escape' && drawerOpen) {
+          event.preventDefault();
+          closeDrawer({ restoreFocus: true });
+        }
+      };
+
+      prevBtn.addEventListener('click', onPrevClick);
+      nextBtn.addEventListener('click', onNextClick);
+      gridEl.addEventListener('click', onGridClick);
+      calFab.addEventListener('click', onFabClick);
+      calBackdrop.addEventListener('click', onBackdropClick);
+      closeBtn.addEventListener('click', onCloseClick);
+      window.addEventListener('keydown', onCalKeyDown);
+      narrowCal.addEventListener('change', syncWidgetHost);
+
+      renderMonth();
+      syncWidgetHost();
+
+      return () => {
+        closeDrawer({ restoreFocus: false });
+        prevBtn.removeEventListener('click', onPrevClick);
+        nextBtn.removeEventListener('click', onNextClick);
+        gridEl.removeEventListener('click', onGridClick);
+        calFab.removeEventListener('click', onFabClick);
+        calBackdrop.removeEventListener('click', onBackdropClick);
+        closeBtn.removeEventListener('click', onCloseClick);
+        window.removeEventListener('keydown', onCalKeyDown);
+        narrowCal.removeEventListener('change', syncWidgetHost);
+        calFab.remove();
+        calBackdrop.remove();
+        calDrawer.remove();
+      };
+    };
+
+    const cleanupCalendar = mountShortsCalendar();
 
     const restoreSavedBatches = async () => {
       if (location.hash) return;
@@ -1356,6 +1738,8 @@ const bootCloudInkClient = () => {
 
     cleanupFunctions.push(() => {
       disposed = true;
+      clearShortHighlight();
+      cleanupCalendar();
       cancelAnimationFrame(observeFrame);
       settleSprings();
       request?.abort();

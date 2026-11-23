@@ -1519,6 +1519,300 @@
     transition: none;
   }
 }
+
+/* Shorts calendar directory (/shorts/ only) */
+.shorts-cal-panel {
+  padding: 20px 22px 22px;
+}
+.shorts-cal-widget {
+  display: grid;
+  gap: 12px;
+}
+.shorts-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.shorts-cal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font: 600 14px/1.3 var(--ci-font-ui);
+  color: var(--ci-text);
+  white-space: nowrap;
+}
+.shorts-cal-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.shorts-cal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.shorts-cal-month {
+  margin-right: 4px;
+  font: 500 12px/1.3 var(--ci-font-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--ci-muted);
+  white-space: nowrap;
+}
+.shorts-cal-nav-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ci-radius-sm);
+  background: transparent;
+  color: var(--ci-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color var(--ci-motion-fast) var(--ci-ease);
+}
+.shorts-cal-nav-btn:not(:disabled):is(:hover, :focus-visible) {
+  background: var(--ci-hover);
+  color: var(--ci-primary);
+}
+.shorts-cal-nav-btn:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+.shorts-cal-weekdays,
+.shorts-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  align-items: center;
+}
+.shorts-cal-weekday {
+  text-align: center;
+  font: 500 11px/1.4 var(--ci-font-ui);
+  color: var(--ci-muted);
+  user-select: none;
+}
+.shorts-cal-spacer {
+  display: block;
+  aspect-ratio: 1;
+}
+.shorts-cal-day {
+  aspect-ratio: 1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ci-radius-sm);
+  display: grid;
+  place-items: center;
+  font: 500 12px/1 var(--ci-font-ui);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.shorts-cal-empty {
+  background: transparent;
+  color: var(--ci-muted);
+  cursor: default;
+}
+.shorts-cal-has {
+  cursor: pointer;
+  transition:
+    transform var(--ci-motion-fast) var(--ci-ease),
+    filter var(--ci-motion-fast) var(--ci-ease),
+    box-shadow var(--ci-motion-fast) var(--ci-ease);
+}
+.shorts-cal-has:not(:disabled):is(:hover, :focus-visible) {
+  transform: translateY(-1px);
+  filter: brightness(0.94);
+}
+.shorts-cal-has:not(:disabled):active {
+  transform: none;
+  filter: brightness(0.9);
+}
+.shorts-cal-l1,
+.shorts-cal-l1:not(:disabled):is(:hover, :active) {
+  background: var(--ci-primary-container);
+  background: color-mix(in srgb, var(--ci-primary) 15%, var(--ci-surface));
+  color: var(--ci-text);
+}
+.shorts-cal-l2,
+.shorts-cal-l2:not(:disabled):is(:hover, :active) {
+  background: var(--ci-primary-container);
+  background: color-mix(in srgb, var(--ci-primary) 32%, var(--ci-surface));
+  color: var(--ci-text);
+}
+.shorts-cal-l3,
+.shorts-cal-l3:not(:disabled):is(:hover, :active) {
+  background: var(--ci-primary);
+  background: color-mix(in srgb, var(--ci-primary) 50%, var(--ci-surface));
+  color: var(--ci-text);
+}
+.shorts-cal-l4,
+.shorts-cal-l4:not(:disabled):is(:hover, :active) {
+  background: var(--ci-primary);
+  background: color-mix(in srgb, var(--ci-primary) 92%, var(--ci-surface));
+  color: var(--ci-on-primary);
+}
+.shorts-cal-today {
+  box-shadow: inset 0 0 0 1.5px var(--ci-primary);
+}
+.shorts-cal-l4.shorts-cal-today {
+  box-shadow:
+    inset 0 0 0 1.5px var(--ci-surface),
+    0 0 0 1.5px var(--ci-primary);
+}
+.shorts-cal-highlight {
+  background: color-mix(in srgb, var(--ci-primary) 10%, transparent);
+  box-shadow:
+    0 0 0 8px color-mix(in srgb, var(--ci-primary) 10%, transparent),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--ci-primary) 40%, transparent);
+  border-radius: var(--ci-radius-md);
+  transition:
+    background-color var(--ci-motion-standard) var(--ci-ease),
+    box-shadow var(--ci-motion-standard) var(--ci-ease);
+}
+.shorts-cal-fab,
+.shorts-cal-backdrop,
+.shorts-cal-drawer {
+  display: none;
+}
+.shorts-cal-backdrop[hidden],
+.shorts-cal-drawer[hidden] {
+  display: none !important;
+}
+@media (max-width: 1279px) and (min-width: 1024px) {
+  .shorts-cal-panel {
+    padding: 18px 16px 20px;
+  }
+  .shorts-cal-weekdays,
+  .shorts-cal-grid {
+    gap: 4px;
+  }
+}
+@media (max-width: 1023px) {
+  .shorts-cal-panel {
+    display: none;
+  }
+  .shorts-cal-fab {
+    position: fixed;
+    right: 24px;
+    bottom: 80px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid var(--ci-divider);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: var(--shadow);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    z-index: 55;
+    transition:
+      opacity var(--ci-motion-fast, 160ms) var(--ci-ease, ease),
+      transform var(--ci-motion-fast, 160ms) var(--ci-ease, ease),
+      background-color var(--ci-motion-fast, 160ms) var(--ci-ease, ease);
+  }
+  .shorts-cal-fab .shorts-cal-icon {
+    width: 20px;
+    height: 20px;
+  }
+  .shorts-cal-fab:not(:disabled):is(:hover, :focus-visible) {
+    background: var(--inset);
+  }
+  .shorts-cal-fab.shorts-cal-fab-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .shorts-cal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: block;
+    background: var(--ci-overlay);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 998;
+  }
+  .shorts-cal-drawer {
+    position: fixed;
+    left: 18px;
+    right: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    top: auto;
+    max-height: 78dvh;
+    overflow-y: auto;
+    padding: 18px 20px 22px;
+    border: 1px solid var(--ci-divider);
+    border-radius: 28px;
+    background: var(--surface);
+    box-shadow: var(--ci-shadow-overlay);
+    display: grid;
+    gap: 10px;
+    z-index: 999;
+  }
+  .shorts-cal-drawer:focus {
+    outline: none;
+  }
+  .shorts-cal-drawer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .shorts-cal-close {
+    width: 34px;
+    height: 34px;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ci-muted);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .shorts-cal-close:not(:disabled):is(:hover, :focus-visible) {
+    background: var(--ci-hover);
+    color: var(--ci-text);
+  }
+  .shorts-cal-drawer .shorts-cal-weekdays,
+  .shorts-cal-drawer .shorts-cal-grid {
+    gap: 6px;
+  }
+  .shorts-cal-drawer .shorts-cal-day {
+    font-size: 13px;
+  }
+}
+@media (max-width: 767px) {
+  .shorts-cal-fab {
+    right: 18px;
+    bottom: calc(152px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shorts-cal-has,
+  .shorts-cal-nav-btn,
+  .shorts-cal-highlight,
+  .shorts-cal-fab {
+    transition: none;
+  }
+  .shorts-cal-has:hover,
+  .shorts-cal-has:focus-visible {
+    transform: none;
+  }
+}
 @media (min-width: 768px) and (max-width: 1279px) {
   :root {
     --sidebar-width: 76px;
