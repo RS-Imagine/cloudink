@@ -108,7 +108,7 @@ test('warm public caches serve body, HEAD and validators without reopening delet
   const body = await first.text();
   const revalidate = 'public, max-age=0, must-revalidate';
   assert.equal(first.headers.get('Cache-Control'), revalidate);
-  for (const path of ['/search_index.json', '/client.js', '/theme.js', '/styles.css']) {
+  for (const path of ['/search_index.json', '/client.js', '/theme.js', '/styles.css', '/sw.js']) {
     const response = await f.request(path);
     assert.equal(response.status, 200, path);
     assert.equal(response.headers.get('Cache-Control'), revalidate, path);

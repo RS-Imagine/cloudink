@@ -223,7 +223,6 @@ const bootCloudInkClient = () => {
           const timeout = setTimeout(() => controller.abort(), 15000);
           try {
             const response = await fetch('/search_index.json', {
-              cache: 'no-cache',
               signal: controller.signal,
             });
             if (!response.ok) throw new Error('Search index unavailable');
@@ -267,11 +266,12 @@ const bootCloudInkClient = () => {
         else if (!searchModal.open) searchModal.showModal();
       }
       searchInput.focus({ preventScroll: true });
-      searchIndex = null;
-      searchError = false;
+      if (!searchIndex) searchError = false;
       renderSearch();
-      await loadSearch();
-      if (searchModal.classList.contains('active')) renderSearch();
+      if (!searchIndex) {
+        await loadSearch();
+        if (searchModal.classList.contains('active')) renderSearch();
+      }
     };
     const warmSearch = () => {
       if (!searchIndex && !searchLoading && !navigator.connection?.saveData) void loadSearch();
@@ -391,8 +391,10 @@ const bootCloudInkClient = () => {
       let changed = false;
       try {
         const response = await fetch(target, {
-          cache: 'no-cache',
-          headers: { Accept: 'text/html' },
+          headers: {
+            Accept: 'text/html',
+            'X-CloudInk-List-Revision': host.dataset.postRevision || '',
+          },
           signal: request.signal,
         });
         if (!response.ok || new URL(response.url).origin !== location.origin) {
@@ -497,6 +499,7 @@ const bootCloudInkClient = () => {
       Number(host.dataset.shortsBatch || reader?.SHORTS_BATCH_SIZE || 3),
     );
     const revision = host.dataset.shortsRevision || '';
+    const batchHeaders = { Accept: 'text/html', 'X-CloudInk-List-Revision': revision };
     const storageKey = 'cloudink:shorts-state:' + location.pathname;
 
     host.classList.add('shorts-enhanced');
@@ -532,7 +535,7 @@ const bootCloudInkClient = () => {
         ? normalizePath(nextPageForRendered())
         : normalizePath(nextLink?.getAttribute('href') || nextPageForRendered());
     const bufferedCards = [];
-    const pendingBatches = new Map();
+    const prefetchedBatches = new Map();
     const activeSprings = new Set();
     const hasIntersectionObserver = 'IntersectionObserver' in window;
     let loading = false,
@@ -726,7 +729,7 @@ const bootCloudInkClient = () => {
     const warmNextBatch = () => {
       if (
         !nextUrl ||
-        pendingBatches.has(nextUrl) ||
+        prefetchedBatches.has(nextUrl) ||
         loading ||
         disposed ||
         refreshRequired ||
@@ -734,7 +737,7 @@ const bootCloudInkClient = () => {
       )
         return;
       const targetPath = nextUrl;
-      const pending = fetch(targetPath, { cache: 'no-cache', headers: { Accept: 'text/html' } })
+      const pending = fetch(targetPath, { headers: batchHeaders })
         .then(async (response) => {
           if (!response.ok || new URL(response.url).origin !== location.origin) {
             await response.body?.cancel();
@@ -742,24 +745,26 @@ const bootCloudInkClient = () => {
           }
           return response.text();
         })
-        .catch(() => null)
-        .finally(() => pendingBatches.delete(targetPath));
-      pendingBatches.set(targetPath, pending);
+        .catch(() => {
+          prefetchedBatches.delete(targetPath);
+          return null;
+        });
+      prefetchedBatches.set(targetPath, pending);
     };
 
     const fetchNextBatch = async () => {
       const targetPath = normalizePath(nextUrl);
       if (!targetPath) return false;
-      const pending = pendingBatches.get(targetPath);
-      let html = pending ? await pending : null;
+      const prefetched = prefetchedBatches.get(targetPath);
+      prefetchedBatches.delete(targetPath);
+      let html = prefetched ? await prefetched : null;
       if (disposed || !host.isConnected) return false;
       if (html === null) {
         request = new AbortController();
         const timeout = setTimeout(() => request?.abort(), 12000);
         try {
           const response = await fetch(targetPath, {
-            cache: 'no-cache',
-            headers: { Accept: 'text/html' },
+            headers: batchHeaders,
             signal: request.signal,
           });
           if (!response.ok || new URL(response.url).origin !== location.origin) {

@@ -34,7 +34,7 @@ const editorAssets = new Set([
   '/blog_wasm.js',
   '/blog_wasm_bg.wasm',
 ]);
-const revalidatedAssets = new Set(['/client.js', '/theme.js', '/styles.css', '/sw.js']);
+const READER_BUNDLES = new Set(['/client.js', '/theme.js', '/styles.css']);
 const POINTER_TTL = 30;
 const PAGE_TTL = 604800;
 const DISCOVERY_TTL = 3600;
@@ -141,7 +141,8 @@ const web = {
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
         );
-      if (revalidatedAssets.has(path)) return staticAsset(request, env, path);
+      if (path === '/sw.js' || READER_BUNDLES.has(path))
+        return staticAsset(request, env, path, 200, false, REVALIDATE_CACHE_CONTROL);
       if (
         path === '/favicon.svg' ||
         /^\/reader-assets\/(?:highlight\.js|share-card\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif(?:-sc)?-[a-z0-9-]+)\.woff2)$/.test(

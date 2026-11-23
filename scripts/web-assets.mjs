@@ -224,6 +224,7 @@ if (process.argv[2] === 'seed') {
       '/sw.js',
       '  X-Content-Type-Options: nosniff',
       '  Content-Type: application/javascript; charset=utf-8',
+      '  Cache-Control: public, max-age=0, must-revalidate',
       '/reader-assets/*',
       '  X-Content-Type-Options: nosniff',
     ].join('\n') + '\n',
