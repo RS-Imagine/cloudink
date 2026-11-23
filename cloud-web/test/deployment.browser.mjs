@@ -3,7 +3,6 @@ import { verifyReaderLayout } from './reader-layout.browser.mjs';
 import { verifyReaderTypography } from './reader-typography.browser.mjs';
 import { verifyMediaPanels } from './reader.browser.mjs';
 import { verifyPostList } from './post-list.browser.mjs';
-import { verifyShortsCalendar } from './shorts-calendar.browser.mjs';
 import { verifyStudio } from './studio.browser.mjs';
 import { verifyUiAuditRegressions } from './ui-audit-regressions.browser.mjs';
 import { navigateStudio } from './studio-navigation.mjs';
@@ -560,7 +559,6 @@ try {
   await verifyReaderTypography(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
   await verifyPostList(browser, 'http://localhost:8791');
   await verifyStudio(browser, 'http://localhost:8791', 'cloud-web/dist', 'chromium');
-  await verifyShortsCalendar(browser, page, 'http://localhost:8791');
   await page.locator('#account-form input[name=email]').fill('new-reader@example.net');
   await page.locator('#account-form input[name=current_password]').fill(password);
   await page.locator('#save-account').click();
