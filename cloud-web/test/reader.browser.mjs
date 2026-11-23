@@ -162,7 +162,7 @@ export async function verifyReader(browser, origin, output, engine) {
   await expect(page.locator('.article-heading h1')).toBeVisible();
   await expect(page.locator('h1')).toHaveCount(1);
   await expect(page.locator('.article-author-name')).toBeVisible();
-  await expect(page.locator('.article-details')).toContainText('分钟阅读');
+  await expect(page.locator('.article-details')).toContainText(/全文 [\d,]+ 字/);
   await expect(page.locator('.toc-link')).toHaveCount(3);
   const bounds = await page.evaluate(() => {
     const article = (

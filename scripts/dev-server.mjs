@@ -207,7 +207,6 @@ const POSTS = [
     slug: 'niri-editorial-workflow',
     title: '从零构建 Niri 窗口管理器与中文排版阅读工作流',
     date: '2026-10-18',
-    minutes: 12,
     published: true,
     changed: false,
     etag: 'post-etag-1',
@@ -234,7 +233,6 @@ ${LONG_HEADINGS}`,
     slug: 'cloudflare-workers-edge',
     title: 'Cloudflare Workers 与 R2 静态博客架构实践',
     date: '2026-09-24',
-    minutes: 8,
     published: true,
     changed: false,
     etag: 'post-etag-2',
@@ -257,7 +255,6 @@ ${LONG_HEADINGS}`,
     slug: 'chinese-typography-notes',
     title: '面向数字屏幕的中文排版与阅读器细节笔记',
     date: '2026-08-11',
-    minutes: 6,
     published: true,
     changed: false,
     etag: 'post-etag-3',
@@ -276,7 +273,6 @@ ${LONG_HEADINGS}`,
     slug: 'quiet-morning-essay',
     title: '清晨窗边的一篇无标题随笔',
     date: '2026-07-05',
-    minutes: 3,
     published: true,
     changed: false,
     etag: 'post-etag-4',
@@ -819,14 +815,42 @@ function renderShell(pageKind, title, body, context, extraHead = '') {
 </html>`;
 }
 
+function postWordCount(post) {
+  const plain = String(post.bodyHtml || post.bodyPlain || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"');
+  const isCjk = (cp) =>
+    (cp >= 0x3400 && cp <= 0x9fff) ||
+    (cp >= 0x3040 && cp <= 0x30ff) ||
+    (cp >= 0xac00 && cp <= 0xd7af);
+  let characters = 0;
+  for (const ch of plain) {
+    if (isCjk(ch.codePointAt(0))) characters++;
+  }
+  let words = 0;
+  for (const token of plain.split(/\s+/)) {
+    if (!token) continue;
+    for (const ch of token) {
+      if (/[\p{L}\p{N}]/u.test(ch) && !isCjk(ch.codePointAt(0))) {
+        words++;
+        break;
+      }
+    }
+  }
+  return (characters + words).toLocaleString('en-US');
+}
+
 function renderHome() {
   const [featured, ...rest] = POSTS;
-  const featuredMeta = `<div class="story-meta"><span>${escapeHtml(SITE.author)}</span><time datetime="${featured.date}">${featured.date}</time><span>${featured.minutes} 分钟阅读</span></div>`;
+  const featuredMeta = `<div class="story-meta"><span>${escapeHtml(SITE.author)}</span><time datetime="${featured.date}">${featured.date}</time><span>全文 ${postWordCount(featured)} 字</span></div>`;
   const featuredCard = `<article class="post-card home-card home-feature panel featured-article"><div class="feature-copy"><div class="story-eyebrow">${ICONS.article}<span>最近发布</span></div><h2><a href="/posts/${featured.slug}/">${escapeHtml(featured.title)}</a></h2><p class="feature-summary">${escapeHtml(featured.description)}</p>${featuredMeta}<a class="plain-button primary feature-read" href="/posts/${featured.slug}/">阅读全文 <span aria-hidden="true">→</span></a></div><a class="feature-cover home-illustration" href="/posts/${featured.slug}/" aria-hidden="true" tabindex="-1"><img src="/editorial-botanical.webp" width="150" height="174" alt=""></a></article>`;
   const feedItems = rest
     .map(
       (post) =>
-        `<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/${post.slug}/">${escapeHtml(post.title)}</a></h3><p>${escapeHtml(post.description || post.bodyPlain.slice(0, 72) + '…')}</p><div class="story-meta"><span>${escapeHtml(SITE.author)}</span><time datetime="${post.date}">${post.date}</time><span>${post.minutes} 分钟阅读</span></div></div></article>`,
+        `<article class="post-card home-card blog-post"><div class="post-copy"><h3><a href="/posts/${post.slug}/">${escapeHtml(post.title)}</a></h3><p>${escapeHtml(post.description || post.bodyPlain.slice(0, 72) + '…')}</p><div class="story-meta"><span>${escapeHtml(SITE.author)}</span><time datetime="${post.date}">${post.date}</time><span>全文 ${postWordCount(post)} 字</span></div></div></article>`,
     )
     .join('');
   const feed = `<section id="posts" class="panel blog-feed" aria-labelledby="posts-heading"><div class="blog-section-heading"><h2 id="posts-heading">更多文章</h2><a class="blog-text-link plain-button" href="/post/">全部文章 →</a></div>${feedItems}</section>`;
@@ -837,7 +861,7 @@ function renderHome() {
 function renderPostsPage() {
   const items = POSTS.map(
     (post) =>
-      `<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/${post.slug}/">${escapeHtml(post.title)}</a></h2><div class="story-meta"><time datetime="${post.date}">${post.date}</time><span>${post.minutes} 分钟阅读</span></div></div></article></li>`,
+      `<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/${post.slug}/">${escapeHtml(post.title)}</a></h2><div class="story-meta"><time datetime="${post.date}">${post.date}</time><span>全文 ${postWordCount(post)} 字</span></div></div></article></li>`,
   ).join('');
   const body = `<section class="panel blog-feed post-index" aria-labelledby="post-index-heading"><header class="blog-section-heading"><h1 id="post-index-heading">文章</h1><p class="post-index-count">共 ${POSTS.length} 篇</p></header><ol class="post-index-list" id="post-index-list" start="1">${items}</ol><nav class="post-index-pagination" aria-label="文章分页"><p id="post-list-status" role="status">已显示第 1–${POSTS.length} 篇，共 ${POSTS.length} 篇。</p><div><a class="plain-button" href="/archive/">按时间归档 →</a></div></nav></section>`;
   return renderShell('posts', `文章 · ${SITE.title}`, body, authorContext(true));
@@ -845,8 +869,9 @@ function renderPostsPage() {
 
 function renderPostPage(post) {
   const icon = activeSiteIconMeta();
-  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">${ICONS.arrowLeft}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>约 ${post.minutes} 分钟阅读</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.copy}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">${ICONS.arrowLeft}返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
-  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>阅读时长</dt><dd>约 ${post.minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.copy}复制文章链接</button></section>`;
+  const words = postWordCount(post);
+  const body = `<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">${ICONS.arrowLeft}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">${escapeHtml(post.title)}</h1><p class="article-description article-deck">${escapeHtml(post.description)}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true"><img src="${icon.avatarUrl}" width="26" height="26" alt=""></span><span class="article-author-name">${escapeHtml(SITE.author)}</span><div class="article-details"><time datetime="${post.date}">${post.date}</time><span>全文 ${words} 字</span></div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">${ICONS.copy}复制链接</button></div></header><div class="article-body article-body-text">${post.bodyHtml}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">${ICONS.arrowLeft}返回文章列表</a><button id="share-btn" class="plain-button share-button">${ICONS.share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>`;
+  const context = `<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>${escapeHtml(SITE.author)}</dd></div><div><dt>发布日期</dt><dd>${post.date}</dd></div><div><dt>字数</dt><dd>${words} 字</dd></div></dl><button class="plain-button copy-article-link" type="button">${ICONS.copy}复制文章链接</button></section>`;
   const imgMatch = post.bodyHtml.match(/<img[^>]+src="([^"]+)"/i);
   const ogImage = imgMatch ? imgMatch[1] : icon.hasCustom ? icon.ogUrl : '';
   const ogHead = [
@@ -1120,7 +1145,6 @@ async function handleApi(req, res, url) {
           slug,
           title: fm.title || '未命名文章',
           date: fm.date || new Date().toISOString().slice(0, 10),
-          minutes: Math.max(1, Math.ceil(bodyMarkdown.length / 300)),
           published: false,
           changed: true,
           etag: nextEtag,
@@ -1138,7 +1162,6 @@ async function handleApi(req, res, url) {
         post.bodyMarkdown = bodyMarkdown;
         post.bodyPlain = bodyMarkdown.replace(/[#>*`]/g, '').slice(0, 160);
         post.bodyHtml = markdownToSimpleHtml(bodyMarkdown);
-        post.minutes = Math.max(1, Math.ceil(bodyMarkdown.length / 300));
         post.changed = post.published ? postSnapshot(post) !== post.publishedSnapshot : true;
         post.etag = nextEtag;
       }

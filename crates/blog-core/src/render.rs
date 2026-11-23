@@ -396,7 +396,7 @@ fn home_context(config: &SiteConfig, shorts: &[Short]) -> String {
     )
 }
 
-fn reading_minutes(post: &Post) -> usize {
+fn word_count(post: &Post) -> usize {
     let cjk = |c: char| matches!(c as u32, 0x3400..=0x9fff | 0x3040..=0x30ff | 0xac00..=0xd7af);
     let characters = post.body_plain_text.chars().filter(|c| cjk(*c)).count();
     let words = post
@@ -404,9 +404,20 @@ fn reading_minutes(post: &Post) -> usize {
         .split_whitespace()
         .filter(|word| word.chars().any(|c| c.is_alphanumeric() && !cjk(c)))
         .count();
-    (characters as f64 / 400.0 + words as f64 / 200.0)
-        .ceil()
-        .max(1.0) as usize
+    characters + words
+}
+
+fn format_word_count(count: usize) -> String {
+    let digits = count.to_string();
+    let len = digits.len();
+    let mut out = String::with_capacity(len + len.saturating_sub(1) / 3);
+    for (index, ch) in digits.chars().enumerate() {
+        if index > 0 && (len - index) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(ch);
+    }
+    out
 }
 
 /// Published content only; the first post is featured once and never repeated.
@@ -439,10 +450,10 @@ pub fn render_index_with_shorts(
             )
         };
         let meta = format!(
-            r#"<div class="story-meta"><span>{author}</span><time datetime="{date}">{date}</time><span>{minutes} 分钟阅读</span>{updated}</div>"#,
+            r#"<div class="story-meta"><span>{author}</span><time datetime="{date}">{date}</time><span>全文 {words} 字</span>{updated}</div>"#,
             author = escape_html(&config.author),
             date = escape_html(post.date()),
-            minutes = reading_minutes(post),
+            words = format_word_count(word_count(post)),
             updated = post
                 .updated()
                 .filter(|date| *date != post.date())
@@ -527,7 +538,7 @@ pub fn render_posts_page(
         &serde_json::to_string(
             &visible
                 .iter()
-                .map(|p| (p.slug(), p.title(), p.date(), reading_minutes(p)))
+                .map(|p| (p.slug(), p.title(), p.date(), word_count(p)))
                 .collect::<Vec<_>>(),
         )
         .expect("article metadata is serializable"),
@@ -540,11 +551,11 @@ pub fn render_posts_page(
     let mut items = String::new();
     for post in &visible[start..end] {
         items.push_str(&format!(
-            r#"<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/{slug}/">{title}</a></h2><div class="story-meta"><time datetime="{date}">{date}</time><span>{minutes} 分钟阅读</span></div></div></article></li>"#,
+            r#"<li><article class="post-card blog-post"><div class="post-copy"><h2><a href="/posts/{slug}/">{title}</a></h2><div class="story-meta"><time datetime="{date}">{date}</time><span>全文 {words} 字</span></div></div></article></li>"#,
             slug = escape_html(post.slug()),
             title = display_title(post.title()),
             date = escape_html(post.date()),
-            minutes = reading_minutes(post),
+            words = format_word_count(word_count(post)),
         ));
     }
     let contents = if visible.is_empty() {
@@ -783,7 +794,7 @@ pub fn render_shorts_page(
 
 /// Renders a single article with its reading table of contents and metadata rail.
 pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
-    let minutes = reading_minutes(post);
+    let words = format_word_count(word_count(post));
     let updated = post
         .updated()
         .filter(|date| *date != post.date())
@@ -795,7 +806,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         })
         .unwrap_or_default();
     let body = format!(
-        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">{back}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>约 {minutes} 分钟阅读</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{copy}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">{back}返回文章列表</a><button id="share-btn" class="plain-button share-button">{share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
+        r#"<section class="article-shell reader-article"><article class="panel article-reading"><div class="article-inner"><div class="article-back-row"><a class="plain-button article-back" href="/post/">{back}返回列表</a></div><header class="article-heading article-headline"><h1 id="article-title">{title}</h1><p class="article-description article-deck">{description}</p><div class="article-author article-metadata"><span class="author-avatar" aria-hidden="true">{initial}</span><span class="article-author-name">{author}</span><div class="article-details"><time datetime="{date}">{date}</time><span>全文 {words} 字</span>{updated}</div></div><div class="mobile-reader-tools"><button type="button" class="copy-article-link plain-button">{copy}复制链接</button></div></header><div class="article-body article-body-text">{body}</div><footer class="article-end share-container"><a class="plain-button" href="/post/">{back}返回文章列表</a><button id="share-btn" class="plain-button share-button">{share}分享文章</button><span id="share-status" role="status"></span></footer></div></article></section>"#,
         back = icon("arrow-left"),
         title = display_title(post.title()),
         description = escape_html(post.description()),
@@ -807,7 +818,7 @@ pub fn render_post(config: &SiteConfig, post: &Post, css_hash: &str) -> String {
         body = post.body_html
     );
     let context = format!(
-        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>阅读时长</dt><dd>约 {minutes} 分钟</dd></div></dl><button class="plain-button copy-article-link" type="button">{copy}复制文章链接</button></section>"#,
+        r#"<section class="panel article-toc-panel"><h2>文章目录</h2><div class="reader-toc-slot"></div><div class="reading-progress-widget"><div><span>阅读进度</span><strong id="reading-percent">0%</strong></div><div class="reading-progress-track"><div id="reading-progress" class="reading-progress" aria-hidden="true"></div></div></div></section><section class="panel article-info-panel"><h2>关于这篇文章</h2><dl><div><dt>作者</dt><dd>{author}</dd></div><div><dt>发布日期</dt><dd>{date}</dd></div><div><dt>字数</dt><dd>{words} 字</dd></div></dl><button class="plain-button copy-article-link" type="button">{copy}复制文章链接</button></section>"#,
         author = escape_html(&config.author),
         date = escape_html(post.date()),
         copy = icon("copy")
