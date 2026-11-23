@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { decodeHTMLAttribute } from '../../cloud-admin/node_modules/entities/dist/index.js';
 import { fixture, draft, origin } from './fixture.mjs';
 
 test('legacy published image URLs use public media without changing stored snapshots or API authentication', async (t) => {
@@ -152,6 +153,50 @@ test('public metadata, lazy images and discovery follow the live release without
   await f.stage(removed);
   assert.equal((await f.commit(removed)).status, 200);
   assert.ok(!(await (await f.request('/sitemap.xml')).text()).includes('/posts/public/'));
+});
+
+test('published short calendar data survives HTML sanitization', async (t) => {
+  const { default: init, render_release } = await import('../../cloud-admin/ui/wasm/blog_wasm.js');
+  await init({
+    module_or_path: await readFile(
+      new URL('../../cloud-admin/ui/wasm/blog_wasm_bg.wasm', import.meta.url),
+    ),
+  });
+  const f = await fixture(t);
+  await f.login();
+  const state = await f.prepare();
+  const source = (slug, time, draft = false) =>
+    `+++\nslug = "${slug}"\ndate = "2026-11-06 ${time}"\ndraft = ${draft}\n+++\n\n短记。`;
+  const path = 'shorts/index.html';
+  const html = JSON.parse(
+    render_release(
+      JSON.stringify({
+        ...state.browser_release,
+        markdown_shorts: {
+          later: source('later', '19:40'),
+          earlier: source('earlier', '14:30'),
+          draft: source('draft', '12:00', true),
+        },
+      }),
+    ),
+  )[path];
+  await f.stage(state, [path]);
+  const stage = await f.request(
+    `/api/publish/${state.release_id}/file?path=${encodeURIComponent(path)}`,
+    'PUT',
+    html,
+  );
+  assert.equal(stage.status, 200, await stage.text());
+  assert.equal((await f.commit(state)).status, 200);
+
+  const response = await f.request('/shorts/');
+  assert.equal(response.status, 200);
+  const served = await response.text();
+  const attribute = served.match(/data-shorts-cal-root\s+data-shorts-cal="([^"]+)"/)?.[1];
+  assert.ok(attribute, 'The sanitized short feed must retain the calendar attribute');
+  assert.deepEqual(JSON.parse(decodeHTMLAttribute(attribute)), {
+    '2026-11-06': { count: 2, firstId: 'note:earlier' },
+  });
 });
 
 test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => {

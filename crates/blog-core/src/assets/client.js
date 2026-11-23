@@ -1237,12 +1237,11 @@ const bootCloudInkClient = () => {
     const mountShortsCalendar = () => {
       const panel = document.getElementById('shorts-cal-panel');
       const widget = panel?.querySelector('[data-shorts-cal-root]');
-      const dataEl = document.getElementById('shorts-cal-data');
-      if (!panel || !widget || !dataEl) return () => {};
+      if (!widget) return () => {};
 
       const rawData = (() => {
         try {
-          const parsed = JSON.parse(dataEl.textContent || '{}');
+          const parsed = JSON.parse(widget.dataset.shortsCal || '{}');
           return parsed && typeof parsed === 'object' ? parsed : {};
         } catch {
           return {};
