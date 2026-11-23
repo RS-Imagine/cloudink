@@ -1687,6 +1687,19 @@
 .shorts-cal-drawer[hidden] {
   display: none !important;
 }
+@media (min-width: 1024px) {
+  #reader-context:has(.shorts-cal-panel) {
+    align-self: stretch;
+  }
+  #reader-context-content:has(> .shorts-cal-panel) {
+    display: flex;
+    flex-direction: column;
+  }
+  .shorts-cal-panel {
+    position: sticky;
+    top: 24px;
+  }
+}
 @media (max-width: 1279px) and (min-width: 1024px) {
   .shorts-cal-panel {
     padding: 18px 16px 20px;

@@ -698,19 +698,16 @@ fn shorts_calendar_data(visible: &[&Short]) -> String {
             )
         })
         .collect();
-    serde_json::to_string(&payload)
-        .expect("shorts calendar data is serializable")
-        .replace("</", "<\\/")
-        .replace("<!--", "<\\!--")
+    serde_json::to_string(&payload).expect("shorts calendar data is serializable")
 }
 
 fn shorts_calendar_panel(visible: &[&Short]) -> String {
-    let json = shorts_calendar_data(visible);
+    let json = escape_html(&shorts_calendar_data(visible));
     let calendar_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/></svg>"#;
     let prev_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"/></svg>"#;
     let next_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5"/></svg>"#;
     format!(
-        r#"<section class="panel shorts-cal-panel" id="shorts-cal-panel" aria-label="短记日历"><div class="shorts-cal-widget" data-shorts-cal-root><div class="shorts-cal-head"><h2 class="shorts-cal-title">{calendar_svg}<span>短记日历</span></h2><div class="shorts-cal-nav"><span class="shorts-cal-month" data-shorts-cal-month></span><button type="button" class="shorts-cal-nav-btn" data-shorts-cal-prev aria-label="上一个月">{prev_svg}</button><button type="button" class="shorts-cal-nav-btn" data-shorts-cal-next aria-label="下一个月">{next_svg}</button></div></div><div class="shorts-cal-weekdays" aria-hidden="true"><span class="shorts-cal-weekday">一</span><span class="shorts-cal-weekday">二</span><span class="shorts-cal-weekday">三</span><span class="shorts-cal-weekday">四</span><span class="shorts-cal-weekday">五</span><span class="shorts-cal-weekday">六</span><span class="shorts-cal-weekday">日</span></div><div class="shorts-cal-grid" data-shorts-cal-grid role="grid" aria-label="按日期查找短记"></div></div><script type="application/json" id="shorts-cal-data">{json}</script></section>"#
+        r#"<section class="panel shorts-cal-panel" id="shorts-cal-panel" aria-label="短记日历"><div class="shorts-cal-widget" data-shorts-cal-root data-shorts-cal="{json}"><div class="shorts-cal-head"><h2 class="shorts-cal-title">{calendar_svg}<span>短记日历</span></h2><div class="shorts-cal-nav"><span class="shorts-cal-month" data-shorts-cal-month></span><button type="button" class="shorts-cal-nav-btn" data-shorts-cal-prev aria-label="上一个月">{prev_svg}</button><button type="button" class="shorts-cal-nav-btn" data-shorts-cal-next aria-label="下一个月">{next_svg}</button></div></div><div class="shorts-cal-weekdays" aria-hidden="true"><span class="shorts-cal-weekday">一</span><span class="shorts-cal-weekday">二</span><span class="shorts-cal-weekday">三</span><span class="shorts-cal-weekday">四</span><span class="shorts-cal-weekday">五</span><span class="shorts-cal-weekday">六</span><span class="shorts-cal-weekday">日</span></div><div class="shorts-cal-grid" data-shorts-cal-grid role="grid" aria-label="按日期查找短记"></div></div></section>"#
     )
 }
 

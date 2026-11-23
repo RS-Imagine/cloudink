@@ -106,7 +106,7 @@ fn shorts_calendar_data_and_scoping() {
     for (slug, date, draft) in [
         ("short-20261121-2120", "2026-11-21 21:20", false),
         ("short-20261121-0915", "2026-11-21 09:15", false),
-        ("short-20261121-2300", "2026-11-21 23:00", true),
+        ("short-20261121-0700", "2026-11-21 07:00", true),
         ("short-20261110-1200", "2026-11-10 12:00", false),
         ("short-20261015-0830", "2026-10-15 08:30", false),
         ("short-20261015-1845", "2026-10-15 18:45", false),
@@ -129,27 +129,29 @@ fn shorts_calendar_data_and_scoping() {
         .expect("shorts-cal-panel exists");
     assert!(cal_pos > author_pos, "日历应位于作者卡片下方");
 
-    let marker = r#"<script type="application/json" id="shorts-cal-data">"#;
-    let json_start = shorts_html.find(marker).expect("embedded calendar JSON") + marker.len();
-    let json_end = shorts_html[json_start..]
-        .find("</script>")
-        .expect("closing script tag")
-        + json_start;
-    let parsed: serde_json::Value =
-        serde_json::from_str(&shorts_html[json_start..json_end]).expect("valid calendar JSON");
-    assert_eq!(parsed.as_object().unwrap().len(), 3, "只应包含有公开短记的 3 天");
+    let (_, widget) = shorts_html
+        .split_once(r#" data-shorts-cal-root data-shorts-cal=""#)
+        .expect("embedded calendar data attribute");
+    let (escaped_json, _) = widget.split_once('"').expect("closing attribute quote");
+    assert!(escaped_json.contains("&quot;firstId&quot;"));
+    assert!(!shorts_html.contains("shorts-cal-data"));
+    let parsed: serde_json::Value = serde_json::from_str(&escaped_json.replace("&quot;", "\""))
+        .expect("valid calendar JSON in the attribute");
+    assert_eq!(
+        parsed.as_object().unwrap().len(),
+        3,
+        "只应包含有公开短记的 3 天"
+    );
     assert_eq!(parsed["2026-11-21"]["count"], 2);
     assert_eq!(
-        parsed["2026-11-21"]["firstId"],
-        "note:short-20261121-0915",
+        parsed["2026-11-21"]["firstId"], "note:short-20261121-0915",
         "同一天应指向最早一条公开短记"
     );
     assert_eq!(parsed["2026-11-10"]["count"], 1);
     assert_eq!(parsed["2026-11-10"]["firstId"], "note:short-20261110-1200");
     assert_eq!(parsed["2026-10-15"]["count"], 2);
     assert_eq!(
-        parsed["2026-10-15"]["firstId"],
-        "note:short-20261015-0830",
+        parsed["2026-10-15"]["firstId"], "note:short-20261015-0830",
         "跨分页的早期月份数据也必须完整内嵌"
     );
 
