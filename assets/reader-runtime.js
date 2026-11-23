@@ -658,8 +658,12 @@
           const html = await response.text();
           if (!html.includes('id="swup"')) return null;
           const resolved = finalUrl.pathname + finalUrl.search;
-          const page = { url: resolved, html };
-          if (resolved === targetUrl) swup.cache.set(resolved, page);
+          const page = {
+            url: resolved,
+            html,
+            cacheable: !response.headers.has('X-CloudInk-Opening-Refresh'),
+          };
+          if (resolved === targetUrl && page.cacheable) swup.cache.set(resolved, page);
           if (
             warmCode &&
             (html.includes('data-reader-style="code"') || /<pre[^>]*>\s*<code/i.test(html))
@@ -805,7 +809,11 @@
             native();
             return;
           }
-          page = { url: url.pathname + url.search, html: await response.text() };
+          page = {
+            url: url.pathname + url.search,
+            html: await response.text(),
+            cacheable: !response.headers.has('X-CloudInk-Opening-Refresh'),
+          };
         }
         const doc = new DOMParser().parseFromString(page.html, 'text/html');
         if (!doc.getElementById('swup')) {
@@ -822,7 +830,8 @@
         }
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
-        if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
+        if (visit.cache.write && page.cacheable !== false && page.url === visit.to.url)
+          swup.cache.set(page.url, page);
         clearTimeout(skeletonTimer);
         skeletonTimer = 0;
         clearTimeout(delayed);

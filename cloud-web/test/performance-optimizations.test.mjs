@@ -94,6 +94,7 @@ test('reader navigation reuses pending and completed prefetches without fetching
   const listeners = new Map();
   let fetchCalls = 0;
   let resolveFetch;
+  let openingRefreshPending = false;
   const scheduledDelays = [];
   const performed = [];
   const window = { addEventListener() {} };
@@ -145,7 +146,10 @@ test('reader navigation reuses pending and completed prefetches without fetching
           resolve({
             ok: true,
             url: 'https://forimagine.eu.org/shorts/',
-            headers: new Headers({ 'Content-Type': 'text/html; charset=utf-8' }),
+            headers: new Headers({
+              'Content-Type': 'text/html; charset=utf-8',
+              ...(openingRefreshPending ? { 'X-CloudInk-Opening-Refresh': 'pending' } : {}),
+            }),
             text: async () => '<main id="swup">短记 ' + version + '</main>',
           });
       });
@@ -198,6 +202,19 @@ test('reader navigation reuses pending and completed prefetches without fetching
   assert.equal(fetchCalls, 1);
   assert.ok(!scheduledDelays.includes(120), 'A cache hit does not schedule a skeleton');
   assert.match(performed[1].options.meta.readerPage.html, /短记 1/);
+
+  swup.cache.delete('/shorts/');
+  openingRefreshPending = true;
+  listeners.get('touchstart')({ target: anchor });
+  const earlyVisit = swup.performNavigation({ ...visit });
+  resolveFetch();
+  await earlyVisit;
+  assert.match(performed[2].options.meta.readerPage.html, /短记 2/);
+  assert.equal(
+    swup.cache.has('/shorts/'),
+    false,
+    'A pending opening refresh can replace this copy',
+  );
 });
 
 test('service worker refreshes visited sections on document open and serves cache hits without network', async () => {
@@ -302,13 +319,15 @@ test('service worker refreshes visited sections on document open and serves cach
 
   const { response, background } = get('/', { mode: 'navigate' });
   assert.equal(await (await response).text(), 'fresh:' + origin + '/');
-  const callsBeforeHot = fetchCalls.length;
+  const earlySection = await get('/shorts/').response;
+  assert.equal(earlySection.headers.get('X-CloudInk-Opening-Refresh'), 'pending');
+  assert.equal(await earlySection.text(), 'old:/shorts/');
   assert.equal(await read('/shorts/page/2/', { accept: '*/*' }), oldBatch);
   assert.equal(await read('/shorts/page/2/', { revision: 'old' }), oldBatch);
   assert.equal(
-    fetchCalls.length,
-    callsBeforeHot,
-    'A hot hit does not wait for its opening refresh',
+    fetchCalls.filter(({ url }) => url === origin + '/shorts/page/2/').length,
+    1,
+    'A hot hit does not duplicate the opening refresh',
   );
   const matchingBatch = read('/shorts/page/2/', { revision: 'new' });
   finishBatch();

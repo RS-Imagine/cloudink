@@ -75,15 +75,34 @@ async function cacheFirst(request, key) {
   return cached || networkFirst(request, key, false);
 }
 
-async function readListBatch(request, key, list, revision, pending) {
+async function readReaderPage(request, key, pathname) {
+  const pending = openingRefreshes.get(key);
+  if (!pending) return cacheFirst(request, key);
   const cached = await cachedResponse(key);
   if (!cached) return networkFirst(request, key, false);
-  // A batch from another list revision cannot extend the list already on screen.
-  if ((await cached.clone().text()).includes(`data-${list}-revision="${revision}"`)) return cached;
-  await pending;
-  const refreshed = await cachedResponse(key);
-  if (refreshed) void cached.body?.cancel();
-  return refreshed || cached;
+
+  const revision = request.headers.get('X-CloudInk-List-Revision');
+  const list = pathname.match(LIST_PAGE)?.[1];
+  if (revision && list) {
+    // A batch from another list revision cannot extend the list already on screen.
+    if ((await cached.clone().text()).includes(`data-${list}-revision="${revision}"`))
+      return cached;
+    await pending;
+    const refreshed = await cachedResponse(key);
+    if (refreshed) void cached.body?.cancel();
+    return refreshed || cached;
+  }
+
+  // Let the reader use this copy immediately without pinning it in Swup for the whole visit.
+  const headers = new Headers(cached.headers);
+  headers.set('X-CloudInk-Opening-Refresh', 'pending');
+  headers.delete('Content-Encoding');
+  headers.delete('Content-Length');
+  return new Response(cached.body, {
+    status: cached.status,
+    statusText: cached.statusText,
+    headers,
+  });
 }
 
 function refreshOnOpen(navigationKey) {
@@ -91,12 +110,12 @@ function refreshOnOpen(navigationKey) {
     cache,
     keys: new Set((await cache.keys()).map(({ url }) => url)),
   }));
-  const refresh = (key, priority) => {
+  const refresh = (key, priority, after) => {
     if (key === navigationKey) return;
     const existing = openingRefreshes.get(key);
     if (existing) return existing;
-    const pending = snapshot
-      .then(async ({ cache, keys }) => {
+    const pending = Promise.all([snapshot, after])
+      .then(async ([{ cache, keys }]) => {
         if (!keys.has(key)) return;
         const response = await fetch(key, { cache: 'no-cache', priority });
         if (response.ok && ['basic', 'default'].includes(response.type)) {
@@ -135,9 +154,7 @@ function refreshOnOpen(navigationKey) {
     return Promise.all([
       ...batches['/post/'],
       ...batches['/shorts/'],
-      ...sections.map(({ key, path }) =>
-        Promise.all(batches[path] || []).then(() => refresh(key, 'low')),
-      ),
+      ...sections.map(({ key, path }) => refresh(key, 'low', Promise.all(batches[path] || []))),
     ]);
   });
   return Promise.allSettled([...assets, pages]);
@@ -201,14 +218,7 @@ self.addEventListener('fetch', (event) => {
     url.pathname.endsWith('/') ||
     url.pathname.endsWith('.html')
   ) {
-    const pending = openingRefreshes.get(key);
-    const revision = request.headers.get('X-CloudInk-List-Revision');
-    const list = url.pathname.match(LIST_PAGE)?.[1];
-    event.respondWith(
-      pending && revision && list
-        ? readListBatch(request, key, list, revision, pending)
-        : cacheFirst(request, key),
-    );
+    event.respondWith(readReaderPage(request, key, url.pathname));
   } else if (STATIC_ASSETS.includes(url.pathname)) {
     event.respondWith(staleWhileRevalidate(event, request, key));
   }
