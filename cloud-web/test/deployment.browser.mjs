@@ -160,11 +160,12 @@ try {
     .toBe(true);
   await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
-  await live.locator('#site-search-btn').click();
-  await expect(live.locator('.search-result-title')).toHaveText('Browser published mathematics');
-  await live.keyboard.press('Escape');
   await live.goto('http://localhost:8791/');
   await expect(live.locator('.post-card h2 a')).toHaveText('Browser published mathematics');
+  await live.locator('#site-search-btn').click();
+  await live.locator('#search-input').fill('mathematics');
+  await expect(live.locator('.search-result-title')).toHaveText('Browser published mathematics');
+  await live.keyboard.press('Escape');
   await live.goto('http://localhost:8791/post/');
   await expect(live.locator('.post-index-list h2 a')).toHaveText('Browser published mathematics');
   await live.goto(`http://localhost:8791/posts/${slug}/`);
@@ -359,9 +360,29 @@ try {
   await publishArticle(page);
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.locator('#site-search-btn').click();
+  await live.locator('#search-input').fill('Browser published mathematics');
+  await expect(live.locator('.search-result-title')).toHaveText('Browser published mathematics');
+  await live.keyboard.press('Escape');
+  const openingRequests = [];
+  const recordOpeningRequest = (request) => {
+    if (request.serviceWorker()) openingRequests.push(new URL(request.url()).pathname);
+  };
+  liveContext.on('request', recordOpeningRequest);
+  await live.goto('http://localhost:8791/');
+  await expect(live.locator('.post-card h2 a')).toHaveText('Revised mathematics');
+  await live.locator('#site-search-btn').click();
   await live.locator('#search-input').fill('Revised mathematics');
   await expect(live.locator('.search-result-excerpt')).toHaveText('A revised summary.');
   await live.keyboard.press('Escape');
+  await live.locator('#site-search-btn').click();
+  await live.locator('#search-input').fill('Revised mathematics');
+  await expect(live.locator('.search-result-excerpt')).toHaveText('A revised summary.');
+  await live.keyboard.press('Escape');
+  liveContext.off('request', recordOpeningRequest);
+  assert.deepEqual(
+    openingRequests.filter((path) => path === '/search_index.json'),
+    ['/search_index.json'],
+  );
   await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('article h1')).toHaveText('Revised mathematics');
   await expect(live.locator('article')).toContainText(

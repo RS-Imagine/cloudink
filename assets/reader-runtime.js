@@ -558,7 +558,6 @@
       idleHandle = 0,
       activePrefetches = 0;
     const inflight = new Map();
-    const warmedUrls = new Set();
     const MAX_PREFETCHES = 2;
     const SKELETON_DELAY = 120;
     const mountSkeletonLayer = (host, html, kind) => {
@@ -634,7 +633,7 @@
         !targetUrl ||
         !canPrefetch() ||
         activePrefetches >= MAX_PREFETCHES ||
-        warmedUrls.has(targetUrl) ||
+        swup.cache.has(targetUrl) ||
         inflight.has(targetUrl) ||
         typeof globalThis.fetch !== 'function'
       )
@@ -646,7 +645,6 @@
         try {
           const response = await fetch(targetUrl, {
             method: 'GET',
-            cache: 'no-cache',
             headers: { ...(swup.options?.requestHeaders || {}), Purpose: 'prefetch' },
             signal: abort.signal,
             priority: 'low',
@@ -661,7 +659,7 @@
           if (!html.includes('id="swup"')) return null;
           const resolved = finalUrl.pathname + finalUrl.search;
           const page = { url: resolved, html };
-          if (resolved === targetUrl) warmedUrls.add(resolved);
+          if (resolved === targetUrl) swup.cache.set(resolved, page);
           if (
             warmCode &&
             (html.includes('data-reader-style="code"') || /<pre[^>]*>\s*<code/i.test(html))
@@ -689,7 +687,7 @@
         const add = (el) => {
           if (!el || el.id?.startsWith('reader-link-')) return;
           const url = prefetchUrl(el);
-          if (url && !candidates.includes(url) && !warmedUrls.has(url)) candidates.push(url);
+          if (url && !candidates.includes(url) && !swup.cache.has(url)) candidates.push(url);
         };
         document
           .querySelectorAll(
@@ -768,14 +766,16 @@
         visit.cache.write =
           typeof cache === 'object' ? (cache.write ?? visit.cache.write) : !!cache;
       }
-      // A completed prefetch may predate a publication. Only share a request still in flight.
-      let page;
-      skeletonTimer = setTimeout(() => {
-        if (pending === visit) showSkeleton(visit.to.url);
-      }, SKELETON_DELAY);
-      delayed = setTimeout(() => {
-        if (pending === visit) show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
-      }, 500);
+      let page = visit.cache.read ? swup.cache.get(visit.to.url) : null;
+      if (!page) {
+        skeletonTimer = setTimeout(() => {
+          if (pending === visit) showSkeleton(visit.to.url);
+        }, SKELETON_DELAY);
+        delayed = setTimeout(() => {
+          if (pending === visit)
+            show('reader-navigation-status', '正在打开文章，当前内容仍可阅读…');
+        }, 500);
+      }
       document.getElementById?.('swup')?.setAttribute('aria-busy', 'true');
       const timeout = setTimeout(() => current.abort(), 12000);
       const target = visit.to.url + (visit.to.hash || '');
@@ -785,12 +785,11 @@
         else location.assign(target);
       };
       try {
-        if (visit.cache.read && inflight.has(visit.to.url))
+        if (!page && visit.cache.read && inflight.has(visit.to.url))
           page = await untilAbort(inflight.get(visit.to.url).promise, current.signal);
         if (!page) {
           const response = await fetch(visit.to.url, {
             method: options.method || 'GET',
-            cache: 'no-cache',
             body: options.body,
             headers: { ...swup.options.requestHeaders, ...options.headers },
             signal: current.signal,
@@ -823,7 +822,7 @@
         }
         await untilAbort(prepare(doc, true), current.signal);
         if (pending !== visit || current.signal.aborted) throw new Error('请求已中断。');
-        if (visit.cache.write && page.url === visit.to.url) warmedUrls.add(page.url);
+        if (visit.cache.write && page.url === visit.to.url) swup.cache.set(page.url, page);
         clearTimeout(skeletonTimer);
         skeletonTimer = 0;
         clearTimeout(delayed);

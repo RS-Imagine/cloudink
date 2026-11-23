@@ -89,11 +89,12 @@ test('reader-runtime prefetchUrl filters routes safely and respects network cons
   );
 });
 
-test('reader navigation shares an in-flight prefetch but revalidates on a subsequent visit', async () => {
+test('reader navigation reuses pending and completed prefetches without fetching again', async () => {
   const source = await readFile('assets/reader-runtime.js', 'utf8');
   const listeners = new Map();
   let fetchCalls = 0;
   let resolveFetch;
+  const scheduledDelays = [];
   const performed = [];
   const window = { addEventListener() {} };
   const document = {
@@ -130,10 +131,13 @@ test('reader navigation shares an in-flight prefetch but revalidates on a subseq
     DOMParser: FakeDOMParser,
     AbortController,
     URL,
-    setTimeout,
+    setTimeout: (callback, delay) => {
+      scheduledDelays.push(delay);
+      return setTimeout(callback, delay);
+    },
     clearTimeout,
     fetch: (_url, options) => {
-      assert.equal(options.cache, 'no-cache');
+      assert.equal(options.cache, undefined);
       fetchCalls++;
       const version = fetchCalls;
       const promise = new Promise((resolve) => {
@@ -150,6 +154,7 @@ test('reader navigation shares an in-flight prefetch but revalidates on a subseq
   });
 
   const swup = {
+    cache: new Map(),
     options: { containers: ['#swup'], requestHeaders: { 'X-Requested-With': 'swup' } },
     hooks: { replace() {}, on() {} },
     performNavigation(visit, options) {
@@ -187,27 +192,39 @@ test('reader navigation shares an in-flight prefetch but revalidates on a subseq
   assert.equal(performed.length, 1);
   assert.equal(performed[0].options.meta.readerPage.url, '/shorts/');
   assert.match(performed[0].options.meta.readerPage.html, /短记 1/);
-  const revisit = swup.performNavigation({ ...visit });
-  assert.equal(fetchCalls, 2);
-  resolveFetch();
-  await revisit;
-  assert.match(performed[1].options.meta.readerPage.html, /短记 2/);
+  scheduledDelays.length = 0;
+  listeners.get('touchstart')({ target: anchor });
+  await swup.performNavigation({ ...visit });
+  assert.equal(fetchCalls, 1);
+  assert.ok(!scheduledDelays.includes(120), 'A cache hit does not schedule a skeleton');
+  assert.match(performed[1].options.meta.readerPage.html, /短记 1/);
 });
 
-test('service worker revalidates reading content before display and serves the last good copy offline', async () => {
+test('service worker refreshes visited sections on document open and serves cache hits without network', async () => {
   const source = await readFile('assets/sw.js', 'utf8');
   const handlers = new Map();
   const store = new Map();
   const fetchCalls = [];
   let offline = false;
+  let finishBatch;
+  const slowBatch = new Promise((resolve) => (finishBatch = resolve));
+  const oldBatch = '<main data-shorts-revision="old">Previous batch</main>';
+  const freshBatch = '<main data-shorts-revision="new">Fresh batch</main>';
   const caches = {
-    async open() {
+    async open(name) {
+      assert.equal(name, 'cloudink-reader-v4');
       return {
         async match(key) {
           return store.get(key)?.clone();
         },
         async put(key, response) {
           store.set(key, response);
+        },
+        async keys() {
+          return Array.from(store.keys(), (url) => ({ url }));
+        },
+        async delete(key) {
+          store.delete(key);
         },
         async addAll() {},
       };
@@ -235,60 +252,107 @@ test('service worker revalidates reading content before display and serves the l
       const url = typeof input === 'string' ? input : input.url;
       fetchCalls.push({ url, cache: init?.cache });
       if (offline) throw new TypeError('Offline');
+      if (new URL(url).pathname === '/shorts/page/2/') {
+        await slowBatch;
+        return new Response(freshBatch);
+      }
       return new Response('fresh:' + url, { status: 200 });
     },
   });
 
-  const dispatch = async (
+  const dispatch = (
     url,
-    { method = 'GET', mode = 'cors', cache = 'default', accept = 'text/html' } = {},
+    { method = 'GET', mode = 'cors', cache = 'default', accept = 'text/html', revision } = {},
   ) => {
     let responsePromise;
+    let background;
+    const headers = new Headers({ accept });
+    if (revision) headers.set('X-CloudInk-List-Revision', revision);
     handlers.get('fetch')({
       request: {
         url,
         method,
         mode,
         cache,
-        headers: new Headers({ accept }),
+        headers,
       },
       respondWith(promise) {
         responsePromise = promise;
       },
+      waitUntil(promise) {
+        background = promise;
+      },
     });
-    return responsePromise ? await responsePromise : null;
+    return { response: responsePromise ?? null, background };
   };
 
-  // Bypass private/control routes
-  assert.equal(await dispatch('https://forimagine.eu.org/admin'), null);
-  assert.equal(await dispatch('https://forimagine.eu.org/api/posts'), null);
-  assert.equal(await dispatch('https://forimagine.eu.org/sw.js'), null);
-  assert.equal(await dispatch('https://forimagine.eu.org/_release.json'), null);
-
   const origin = self.location.origin;
-  for (const [path, options] of [
-    ['/', { mode: 'navigate' }],
-    ['/post/', {}],
-    ['/posts/visited', { mode: 'navigate', accept: '*/*' }],
-    ['/shorts/', {}],
-    ['/shorts/page/2/', { accept: '*/*' }],
-    ['/shorts/page/3/index.html', { accept: '*/*' }],
-    ['/shorts/page/4', { accept: 'text/html' }],
-    ...['/search_index.json', '/client.js', '/theme.js', '/styles.css'].map((path) => [
-      path,
-      { accept: '*/*' },
-    ]),
-  ]) {
-    const url = origin + path;
-    store.set(url, new Response('old'));
-    assert.equal(await (await dispatch(url, options)).text(), 'fresh:' + url);
-    assert.deepEqual(fetchCalls.splice(0), [{ url, cache: 'no-cache' }]);
+  const get = (path, options) => dispatch(origin + path, options);
+  const read = async (path, options) => (await get(path, options).response).text();
+  for (const path of ['/admin', '/api/posts', '/sw.js', '/_release.json']) {
+    assert.equal(get(path).response, null);
   }
 
+  const sections = ['/', '/post/', '/shorts/', '/shorts/page/2/', '/archive/'];
+  const assets = ['/search_index.json', '/client.js', '/theme.js', '/styles.css'];
+  for (const path of [...sections, ...assets, '/posts/visited/']) {
+    store.set(origin + path, new Response('old:' + path));
+  }
+  store.set(origin + '/shorts/page/2/', new Response(oldBatch));
+
+  const { response, background } = get('/', { mode: 'navigate' });
+  assert.equal(await (await response).text(), 'fresh:' + origin + '/');
+  const callsBeforeHot = fetchCalls.length;
+  assert.equal(await read('/shorts/page/2/', { accept: '*/*' }), oldBatch);
+  assert.equal(await read('/shorts/page/2/', { revision: 'old' }), oldBatch);
+  assert.equal(
+    fetchCalls.length,
+    callsBeforeHot,
+    'A hot hit does not wait for its opening refresh',
+  );
+  const matchingBatch = read('/shorts/page/2/', { revision: 'new' });
+  finishBatch();
+  assert.equal(await matchingBatch, freshBatch);
+  await background;
+  assert.deepEqual(
+    fetchCalls.splice(0).sort((a, b) => a.url.localeCompare(b.url)),
+    [...sections, ...assets]
+      .sort((a, b) => a.localeCompare(b))
+      .map((path) => ({ url: origin + path, cache: 'no-cache' })),
+    'The cold opening refreshes only cached sections, pagination and bundles, once each',
+  );
+
+  for (const path of [...sections.slice(1), ...assets]) {
+    assert.equal(
+      await read(path, { accept: '*/*' }),
+      path === '/shorts/page/2/' ? freshBatch : 'fresh:' + origin + path,
+    );
+  }
+  assert.equal(await read('/styles.css?v=new-layout'), 'fresh:' + origin + '/styles.css');
+  assert.equal(await read('/client.js?v=last-published'), 'fresh:' + origin + '/client.js');
+  assert.equal(await read('/posts/visited/'), 'old:/posts/visited/');
+  assert.deepEqual(fetchCalls, []);
+
+  const firstArticle = '/posts/first-visit/';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    assert.equal(await read(firstArticle), 'fresh:' + origin + firstArticle);
+  }
+  assert.deepEqual(fetchCalls.splice(0), [{ url: origin + firstArticle, cache: undefined }]);
+
+  // Directly opening a known article refreshes it, and the about page joins future opening rounds.
+  await read('/about/');
+  const article = get('/posts/visited/', { mode: 'navigate', accept: '*/*' });
+  assert.equal(await (await article.response).text(), 'fresh:' + origin + '/posts/visited/');
+  await article.background;
+  assert.equal(await read('/about/'), 'fresh:' + origin + '/about/');
+  fetchCalls.length = 0;
+
   offline = true;
-  const visited = origin + '/posts/visited';
-  assert.equal(await (await dispatch(visited, { mode: 'navigate' })).text(), 'fresh:' + visited);
-  assert.equal((await dispatch(origin + '/posts/unvisited/')).type, 'error');
+  const offlineArticle = get('/posts/visited/', { mode: 'navigate' });
+  assert.equal(await (await offlineArticle.response).text(), 'fresh:' + origin + '/posts/visited/');
+  await offlineArticle.background;
+  assert.deepEqual(fetchCalls.splice(0), [{ url: origin + '/posts/visited/', cache: 'no-cache' }]);
+  assert.equal((await get('/posts/unvisited/').response).type, 'error');
 
   for (const assetUrl of [
     'https://forimagine.eu.org/reader-assets/fonts/noto-serif-sc-0.woff2',
@@ -298,7 +362,10 @@ test('service worker revalidates reading content before display and serves the l
   ]) {
     fetchCalls.length = 0;
     store.set(assetUrl, new Response('asset bytes'));
-    assert.equal(await (await dispatch(assetUrl, { accept: '*/*' })).text(), 'asset bytes');
+    assert.equal(
+      await (await dispatch(assetUrl, { accept: '*/*' }).response).text(),
+      'asset bytes',
+    );
     assert.equal(fetchCalls.length, 0);
   }
 });
@@ -449,6 +516,7 @@ test('reader-runtime mounts layout skeleton after debounce on slow navigation an
   });
 
   const swup = {
+    cache: new Map(),
     visit: { id: 'v1' },
     options: {
       containers: ['#reader-center-content', '#reader-context-content'],
