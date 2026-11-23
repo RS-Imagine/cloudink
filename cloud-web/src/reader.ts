@@ -261,101 +261,6 @@ export async function readerHtml(
     .transform(new Response(html, { status: response.status, headers }));
 }
 
-interface FeedItem {
-  title: string;
-  slug: string;
-  description?: string;
-  date?: string;
-  updated?: string | null;
-}
-
-const isFeedItem = (value: unknown): value is FeedItem => {
-  if (!value || typeof value !== 'object') return false;
-  const item = value as Partial<FeedItem>;
-  return (
-    typeof item.title === 'string' &&
-    item.title.length <= 300 &&
-    typeof item.slug === 'string' &&
-    /^[A-Za-z0-9_-]{1,100}$/.test(item.slug) &&
-    (item.description === undefined ||
-      (typeof item.description === 'string' && item.description.length <= 2000)) &&
-    (item.date === undefined || typeof item.date === 'string') &&
-    (item.updated == null || typeof item.updated === 'string')
-  );
-};
-
-const toRfc822 = (value: string | undefined | null): string | null => {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const time = Date.parse(value + 'T00:00:00Z');
-  if (Number.isNaN(time) || new Date(time).toISOString().slice(0, 10) !== value) return null;
-  return new Date(time).toUTCString();
-};
-
-const feedText = (value: string) =>
-  escape(value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, ''));
-
-// Only public, release-scoped metadata is read. Storage errors must not replace
-// a previously populated subscription with a successful but empty response.
-async function buildFeed(
-  url: URL,
-  bucket: R2Bucket,
-  id: string | null,
-  pages?: Record<string, string>,
-): Promise<string> {
-  let siteTitle = 'Blog';
-  let siteDescription = '';
-  let items: unknown = [];
-  if (id) {
-    const siteObj = await bucket.get(
-      pages?.['site.json'] ? 'public/content/' + pages['site.json'] : `public/${id}/site.json`,
-    );
-    if (siteObj) {
-      const site = await siteObj.json<{ title?: string; description?: string }>();
-      if (site && typeof site.title === 'string' && site.title)
-        siteTitle = site.title.slice(0, 300);
-      if (site && typeof site.description === 'string')
-        siteDescription = site.description.slice(0, 2000);
-    }
-    const indexObj = await bucket.get(
-      pages?.['search_index.json']
-        ? 'public/content/' + pages['search_index.json']
-        : `public/${id}/search_index.json`,
-    );
-    if (indexObj) items = await indexObj.json();
-  }
-  if (!Array.isArray(items)) throw new Error('Published feed index is invalid');
-  const selected = items.filter(isFeedItem).slice(0, 50);
-  const lastBuildDate = selected
-    .map((item) => toRfc822(item.updated || item.date))
-    .filter((date): date is string => date !== null)
-    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
-  const entries = selected
-    .map((item) => {
-      const link = url.origin + '/posts/' + item.slug + '/';
-      const pubDate = toRfc822(item.date);
-      return (
-        '<item>' +
-        `<title>${feedText(item.title)}</title>` +
-        `<link>${escape(link)}</link>` +
-        `<guid>${escape(link)}</guid>` +
-        (pubDate ? `<pubDate>${pubDate}</pubDate>` : '') +
-        `<description>${feedText(item.description || '')}</description>` +
-        '</item>'
-      );
-    })
-    .join('');
-  return (
-    '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<rss version="2.0"><channel>' +
-    `<title>${feedText(siteTitle)}</title>` +
-    `<link>${escape(url.origin + '/')}</link>` +
-    `<description>${feedText(siteDescription)}</description>` +
-    (lastBuildDate ? `<lastBuildDate>${lastBuildDate}</lastBuildDate>` : '') +
-    entries +
-    '</channel></rss>'
-  );
-}
-
 export async function discovery(
   request: Request,
   bucket: R2Bucket,
@@ -367,9 +272,6 @@ export async function discovery(
   if (url.pathname === '/robots.txt') {
     body = `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${url.origin}/sitemap.xml\n`;
     type = 'text/plain; charset=utf-8';
-  } else if (url.pathname === '/feed.xml') {
-    body = await buildFeed(url, bucket, id, pages);
-    type = 'application/rss+xml; charset=utf-8';
   } else {
     const paths = ['/'];
     if (pages) {
@@ -420,16 +322,5 @@ export async function discovery(
     'Content-Type': type,
     'Cache-Control': 'public, max-age=0, must-revalidate',
   });
-  if (url.pathname === '/feed.xml') {
-    const etag = await readerEtag(body, url);
-    headers.set('ETag', etag);
-    if (
-      request.headers
-        .get('If-None-Match')
-        ?.split(',')
-        .some((tag) => tag.trim().replace(/^W\//, '') === etag || tag.trim() === '*')
-    )
-      return new Response(null, { status: 304, headers });
-  }
   return new Response(request.method === 'HEAD' ? null : body, { headers });
 }

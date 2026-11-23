@@ -1,0 +1,22 @@
+[package]
+name = "cloudink-worker"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+# Keep server dependencies out of the blog-core template fingerprint.
+[workspace]
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["alloc"] }
+serde_json = "1"
+web-sys = { version = "0.3", features = ["Crypto", "SubtleCrypto", "Url", "WorkerGlobalScope"] }
+worker = "=0.9.0"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1

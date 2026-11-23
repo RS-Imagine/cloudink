@@ -7,6 +7,7 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `crates/blog-core`：Markdown、数学公式、配置校验与页面模板。
 - `crates/blog-wasm`：将同一渲染核心提供给浏览器 Worker。
 - `crates/sitegen`：原生静态构建入口。
+- `crates/worker`：Worker 端 Rust/WASM。目前负责 `/feed.xml` 的公开读取，使用独立 `Cargo.lock`。
 - `cloud-web/src`：唯一 Worker 入口、公开页面、图片路由与响应增强。
 - `cloud-admin/src`：认证、草稿、短记、设置、图片、备份与发布 API。
 - `cloud-admin/ui`：后台界面、预览线程与图片压缩线程。
@@ -14,16 +15,18 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `scripts`：构建、类型生成与正式界面回归工具。
 - `cloud-web/test`、`crates/blog-core/tests`：功能与渲染测试。
 
-需要 Node.js 24、Rust 1.98.1。Rust 版本由 `rust-toolchain.toml` 固定，依赖版本使用锁文件。
+需要 Node.js 24、Rust 1.98.1。Rust 版本由 `rust-toolchain.toml` 固定，根目录的 `packageManager` 固定 npm 版本。
 
 ```bash
-npm ci
+npm exec --yes --package=npm@10.9.11 -- npm ci
 npm run build
 npm run check
 npx wrangler deploy --dry-run --outdir cloud-web/dist
 ```
 
-`build` 准备 Rust/WASM 和后台资源，不读取个人网站配置与文章。根目录 `wrangler.jsonc` 是唯一部署配置；`cloud-admin` 不单独部署。绑定类型从该配置与 `.dev.vars.example` 生成。
+`build` 准备浏览器 Rust/WASM、后台资源和 Worker 端 Rust 模块。Wrangler 把 TypeScript 入口和 Rust 模块打进同一个 Worker，使用根目录的 `wrangler.jsonc`。绑定类型从该配置与 `.dev.vars.example` 生成。
+
+修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 

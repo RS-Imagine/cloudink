@@ -201,13 +201,16 @@ test('published short calendar data survives HTML sanitization', async (t) => {
 
 test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => {
   const f = await fixture(t);
+  const initial = await f.request('/feed.xml');
+  assert.equal(initial.status, 200);
+  assert.match(await initial.text(), /<title>Blog<\/title>/);
   await f.login();
   const release = await f.prepare();
   // Staged pages are immutable, so skip the two JSON files and stage real feed data.
   await f.stage(release, ['site.json', 'search_index.json']);
-  const put = (path, value) =>
+  const put = (path, value, publication = release) =>
     f.request(
-      `/api/publish/${release.release_id}/file?path=${encodeURIComponent(path)}`,
+      `/api/publish/${publication.release_id}/file?path=${encodeURIComponent(path)}`,
       'PUT',
       value,
     );
@@ -284,6 +287,29 @@ test('feed.xml serves an RSS 2.0 feed from the published release', async (t) => 
     (await f.mf.dispatchFetch('https://uncached-reader.example/feed.xml')).status,
     503,
     'an uncached storage error must not become an empty successful feed',
+  );
+  assert.equal((await f.request('/feed.xml')).headers.get('Cache-Status'), 'CloudInk; hit');
+
+  const rebuilt = await f.prepare();
+  await f.stage(rebuilt, ['site.json']);
+  const longTitle = 'Updated feed'.padEnd(299, 'x');
+  assert.equal(
+    (await put('site.json', JSON.stringify({ title: longTitle + '🦀' }), rebuilt)).status,
+    200,
+  );
+  assert.equal((await f.commit(rebuilt)).status, 200);
+  const updated = await f.request('/feed.xml', 'GET', undefined, { 'If-None-Match': etag });
+  assert.equal(updated.status, 200, 'the TS commit invalidates the RSS publication pointer');
+  const updatedBody = Buffer.from(await updated.arrayBuffer());
+  assert.ok(
+    updatedBody.includes(
+      Buffer.concat([
+        Buffer.from(`<title>${longTitle}`),
+        Buffer.from([0xed, 0xa0, 0xbe]),
+        Buffer.from('</title>'),
+      ]),
+    ),
+    'the legacy UTF-16 title limit keeps the same RSS bytes at a split surrogate',
   );
 });
 

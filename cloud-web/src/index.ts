@@ -8,8 +8,16 @@ import { publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
 import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
+import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
+import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
+import RustFeedWorker from '../../build-work/feed-worker/index.js';
 
 export type WebBindings = CloudInkEnv;
+type RenderFeed = (
+  request: Request,
+  storage: R2Bucket,
+  ctx: ExecutionContext,
+) => Promise<[Response, boolean | null]>;
 const editorAssets = new Set([
   '/writing-illustration.svg',
   '/backup.js',
@@ -111,7 +119,12 @@ function publicPath(path: string): string | null {
   return null;
 }
 const web = {
-  async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: WebBindings,
+    ctx: ExecutionContext,
+    renderFeed: RenderFeed,
+  ): Promise<Response> {
     try {
       const url = new URL(request.url),
         path = url.pathname;
@@ -141,6 +154,17 @@ const web = {
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
         );
+      if (path === '/feed.xml') {
+        const [feed, analyticsOnHit] = await renderFeed(request, env.STORAGE, ctx);
+        const response = clientResponse(feed, request, analyticsOnHit !== null);
+        return analyticsOnHit === null
+          ? response
+          : protect(
+              response,
+              analyticsOnHit,
+              response.headers.get('Cache-Control') || HTML_CACHE_CONTROL,
+            );
+      }
       if (path === '/sw.js' || READER_BUNDLES.has(path))
         return staticAsset(request, env, path, 200, false, REVALIDATE_CACHE_CONTROL);
       if (
@@ -224,7 +248,7 @@ const web = {
       }
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
-      if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
+      if (path === '/robots.txt' || path === '/sitemap.xml') {
         const response = await discovery(
           new Request(request, { method: 'GET', headers: {} }),
           env.STORAGE,
@@ -386,14 +410,27 @@ const web = {
       }),
     );
   },
-} satisfies ExportedHandler<WebBindings>;
+};
 
-export default {
-  async fetch(request: Request, env: WebBindings, ctx: ExecutionContext): Promise<Response> {
+export default class CloudInkWorker extends RustFeedWorker {
+  async fetch(request: Request): Promise<Response> {
+    const { env, ctx } = this;
     const stats = storageStats(env.STORAGE),
       started = Date.now(),
       id = crypto.randomUUID();
-    const response = await web.fetch(request, { ...env, STORAGE: stats.bucket }, ctx);
+    const response = await web.fetch(
+      request,
+      { ...env, STORAGE: stats.bucket },
+      ctx,
+      (feedRequest, storage, feedContext) =>
+        this.rss_response(
+          feedRequest,
+          storage,
+          feedContext,
+          CURRENT_TEMPLATE_VERSION,
+          PUBLIC_RESPONSE_VERSION,
+        ),
+    );
     const route = new URL(request.url).pathname
       .split('/')
       .slice(0, 3)
@@ -403,6 +440,9 @@ export default {
     const headers = new Headers(response.headers);
     headers.set('X-Request-ID', id);
     return new Response(response.body, { status: response.status, headers });
-  },
-  scheduled: web.scheduled,
-} satisfies ExportedHandler<WebBindings>;
+  }
+
+  scheduled(event: ScheduledController): Promise<void> {
+    return web.scheduled(event, this.env, this.ctx);
+  }
+}
