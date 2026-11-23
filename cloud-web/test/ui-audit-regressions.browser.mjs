@@ -33,6 +33,21 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
       });
       assert.equal(response.status(), 200);
     }
+    // Gate cold reads before any hover or focus can prefetch these two drafts.
+    const readGate = new Promise((resolve) => (releaseRead = resolve));
+    const crossRead = new Promise((resolve) => (releaseCrossRead = resolve));
+    const gatedReads = new Map([
+      ['/api/shorts/' + slug + '-2', readGate],
+      ['/api/shorts/' + slug + '-1', crossRead],
+    ]);
+    await context.route(
+      (url) => gatedReads.has(url.pathname),
+      async (route) => {
+        if (route.request().method() === 'GET')
+          await gatedReads.get(new URL(route.request().url()).pathname);
+        await route.fallback();
+      },
+    );
     await page.reload();
     await navigateStudio(page, 'shorts');
     await expect(page.locator('#shorts-view')).toBeVisible();
@@ -92,14 +107,6 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     await expect(page.locator('#short-editor')).toBeHidden();
     await page.setViewportSize({ width: 1440, height: 1000 });
 
-    const readGate = new Promise((resolve) => (releaseRead = resolve));
-    await context.route(
-      (url) => url.pathname === '/api/shorts/' + slug + '-2',
-      async (route) => {
-        if (route.request().method() === 'GET') await readGate;
-        await route.continue();
-      },
-    );
     await page
       .locator('.short-admin-card')
       .filter({ has: page.locator('#short-publish-' + slug + '-2') })
@@ -110,10 +117,11 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     await page.locator('#short-cancel').click();
     await page.locator('#short-new').click();
     await page.locator('#short-body').fill('新输入不能被旧请求覆盖');
-    releaseRead();
-    await page.waitForResponse(
+    const completedRead = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/api/shorts/' + slug + '-2',
     );
+    releaseRead();
+    await completedRead;
     await expect(page.locator('#short-body')).toHaveValue('新输入不能被旧请求覆盖');
     await page.locator('#short-cancel').click();
     await acceptConfirmation(page);
@@ -192,18 +200,10 @@ export async function verifyUiAuditRegressions(browser, origin, output, engine) 
     await page.locator('#short-cancel').click();
 
     const crossSave = new Promise((resolve) => (releaseCrossSave = resolve));
-    const crossRead = new Promise((resolve) => (releaseCrossRead = resolve));
     await context.route(
       (url) => url.pathname === '/api/shorts/' + slug + '-0',
       async (route) => {
         if (route.request().method() === 'PUT') await crossSave;
-        await route.fallback();
-      },
-    );
-    await context.route(
-      (url) => url.pathname === '/api/shorts/' + slug + '-1',
-      async (route) => {
-        if (route.request().method() === 'GET') await crossRead;
         await route.fallback();
       },
     );

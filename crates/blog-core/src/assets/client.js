@@ -222,7 +222,10 @@ const bootCloudInkClient = () => {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 15000);
           try {
-            const response = await fetch('/search_index.json', { signal: controller.signal });
+            const response = await fetch('/search_index.json', {
+              cache: 'no-cache',
+              signal: controller.signal,
+            });
             if (!response.ok) throw new Error('Search index unavailable');
             const posts = await response.json();
             if (
@@ -264,12 +267,11 @@ const bootCloudInkClient = () => {
         else if (!searchModal.open) searchModal.showModal();
       }
       searchInput.focus({ preventScroll: true });
-      if (!searchIndex) searchError = false;
+      searchIndex = null;
+      searchError = false;
       renderSearch();
-      if (!searchIndex) {
-        await loadSearch();
-        if (searchModal.classList.contains('active')) renderSearch();
-      }
+      await loadSearch();
+      if (searchModal.classList.contains('active')) renderSearch();
     };
     const warmSearch = () => {
       if (!searchIndex && !searchLoading && !navigator.connection?.saveData) void loadSearch();
@@ -350,14 +352,24 @@ const bootCloudInkClient = () => {
     });
   }
 
+  const expandedPostLists = new Map();
   function mountPostList() {
-    const host = document.querySelector('.post-index');
-    const list = host?.querySelector('.post-index-list');
-    const next = host?.querySelector('#post-list-next');
-    const footer = host?.querySelector('.post-index-pagination');
-    const status = host?.querySelector('#post-list-status');
-    if (!list || !next || next.hidden || !footer || !status) return;
+    let host = document.querySelector('.post-index');
+    if (!host) return;
     const listUrl = location.pathname + location.search;
+    const expanded = expandedPostLists.get(listUrl);
+    if (expanded && expanded.dataset.postRevision === host.dataset.postRevision) {
+      const restored = expanded.cloneNode(true);
+      host.replaceWith(restored);
+      host = restored;
+    } else {
+      expandedPostLists.delete(listUrl);
+    }
+    const list = host.querySelector('.post-index-list');
+    const next = host.querySelector('#post-list-next');
+    const footer = host.querySelector('.post-index-pagination');
+    const status = host.querySelector('#post-list-status');
+    if (!list || !next || next.hidden || !footer || !status) return;
     let loading = false,
       disposed = false,
       automatic = true,
@@ -379,6 +391,7 @@ const bootCloudInkClient = () => {
       let changed = false;
       try {
         const response = await fetch(target, {
+          cache: 'no-cache',
           headers: { Accept: 'text/html' },
           signal: request.signal,
         });
@@ -432,9 +445,8 @@ const bootCloudInkClient = () => {
         loading = false;
         footer.removeAttribute('aria-busy');
         next.removeAttribute('aria-disabled');
-        // Preserve expanded batches for the existing back/forward scroll restoration.
-        if (changed && !disposed && host.isConnected)
-          swup?.cache.update(listUrl, { html: document.documentElement.outerHTML });
+        if (changed && !disposed && host.isConnected && host.dataset.postRevision)
+          expandedPostLists.set(listUrl, host.cloneNode(true));
       }
     }
     const click = (event) => {
@@ -485,7 +497,6 @@ const bootCloudInkClient = () => {
       Number(host.dataset.shortsBatch || reader?.SHORTS_BATCH_SIZE || 3),
     );
     const revision = host.dataset.shortsRevision || '';
-    const listUrl = location.pathname + location.search;
     const storageKey = 'cloudink:shorts-state:' + location.pathname;
 
     host.classList.add('shorts-enhanced');
@@ -521,7 +532,7 @@ const bootCloudInkClient = () => {
         ? normalizePath(nextPageForRendered())
         : normalizePath(nextLink?.getAttribute('href') || nextPageForRendered());
     const bufferedCards = [];
-    const prefetchedHtml = new Map();
+    const pendingBatches = new Map();
     const activeSprings = new Set();
     const hasIntersectionObserver = 'IntersectionObserver' in window;
     let loading = false,
@@ -612,12 +623,6 @@ const bootCloudInkClient = () => {
           JSON.stringify({ revision, end, scrollY: window.scrollY }),
         );
       } catch {}
-    };
-
-    const snapshotToCache = () => {
-      if (disposed || !host.isConnected || loading || activeSprings.size) return;
-      saveState();
-      swup?.cache.update(listUrl, { html: document.documentElement.outerHTML });
     };
 
     const syncControls = () => {
@@ -721,7 +726,7 @@ const bootCloudInkClient = () => {
     const warmNextBatch = () => {
       if (
         !nextUrl ||
-        prefetchedHtml.has(nextUrl) ||
+        pendingBatches.has(nextUrl) ||
         loading ||
         disposed ||
         refreshRequired ||
@@ -729,7 +734,7 @@ const bootCloudInkClient = () => {
       )
         return;
       const targetPath = nextUrl;
-      const pending = fetch(targetPath, { headers: { Accept: 'text/html' } })
+      const pending = fetch(targetPath, { cache: 'no-cache', headers: { Accept: 'text/html' } })
         .then(async (response) => {
           if (!response.ok || new URL(response.url).origin !== location.origin) {
             await response.body?.cancel();
@@ -737,28 +742,23 @@ const bootCloudInkClient = () => {
           }
           return response.text();
         })
-        .catch(() => {
-          prefetchedHtml.delete(targetPath);
-          return null;
-        });
-      prefetchedHtml.set(targetPath, pending);
+        .catch(() => null)
+        .finally(() => pendingBatches.delete(targetPath));
+      pendingBatches.set(targetPath, pending);
     };
 
     const fetchNextBatch = async () => {
       const targetPath = normalizePath(nextUrl);
       if (!targetPath) return false;
-      let html = null;
-      if (prefetchedHtml.has(targetPath)) {
-        const cached = prefetchedHtml.get(targetPath);
-        prefetchedHtml.delete(targetPath);
-        html = await cached;
-      }
+      const pending = pendingBatches.get(targetPath);
+      let html = pending ? await pending : null;
       if (disposed || !host.isConnected) return false;
       if (html === null) {
         request = new AbortController();
         const timeout = setTimeout(() => request?.abort(), 12000);
         try {
           const response = await fetch(targetPath, {
+            cache: 'no-cache',
             headers: { Accept: 'text/html' },
             signal: request.signal,
           });
@@ -1072,7 +1072,6 @@ const bootCloudInkClient = () => {
         if (!disposed && host.isConnected) {
           if (!allowChain) disarmAuto();
           syncControls();
-          if (changed) snapshotToCache();
           if (!allowChain && !refreshRequired && getPeekCard()) scheduleObservePeek();
         }
       }
@@ -1132,8 +1131,7 @@ const bootCloudInkClient = () => {
     const restoreSavedBatches = async () => {
       if (location.hash) return;
       const navEntry = performance.getEntriesByType?.('navigation')?.[0];
-      const isBackForward = visit?.history?.popstate || navEntry?.type === 'back_forward';
-      if (!isBackForward) return;
+      if (!visit && navEntry?.type !== 'back_forward') return;
       let saved = null;
       try {
         saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null');
@@ -1151,7 +1149,7 @@ const bootCloudInkClient = () => {
         const ok = await expand({ manual: false, instant: true, allowChain: true });
         if (!ok) break;
       }
-      if (!visit && Number.isFinite(saved.scrollY) && saved.scrollY > 0) {
+      if (Number.isFinite(saved.scrollY) && saved.scrollY > 0) {
         requestAnimationFrame(() => {
           if (disposed) return;
           suppressScrollUntil = performance.now() + 140;
@@ -1313,7 +1311,7 @@ const bootCloudInkClient = () => {
     const onVisitStart = () => {
       if (disposed || !host.isConnected) return;
       settleSprings();
-      snapshotToCache();
+      saveState();
     };
 
     expandBtn?.addEventListener('click', onExpandClick);
@@ -1339,14 +1337,12 @@ const bootCloudInkClient = () => {
     // Measure initial peek (and promote if ultra-short), then sync controls & arm observer.
     void (async () => {
       for (const card of getCards()) preserveCardImageRatios(card);
+      await restoreSavedBatches();
+      if (disposed || !host.isConnected) return;
       if (getPeekCard()) await ensurePeekFit();
       if (disposed || !host.isConnected) return;
       syncControls();
-      if (location.hash) {
-        await resolveShortDeepLink();
-      } else {
-        await restoreSavedBatches();
-      }
+      if (location.hash) await resolveShortDeepLink();
       if (!disposed && host.isConnected && getPeekCard()) {
         disarmAuto();
         scheduleObservePeek();

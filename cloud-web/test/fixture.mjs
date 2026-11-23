@@ -48,7 +48,11 @@ export async function fixture(t, bindings = {}, port) {
       ...(method !== 'GET' && method !== 'HEAD' ? { Origin: origin, 'X-CSRF-Token': csrf } : {}),
       ...extra,
     };
-    if (body !== undefined)
+    if (body instanceof FormData) {
+      const multipart = new Response(body);
+      headers['Content-Type'] = multipart.headers.get('Content-Type');
+      body = new Uint8Array(await multipart.arrayBuffer());
+    } else if (body !== undefined)
       headers['Content-Type'] =
         body instanceof Uint8Array
           ? 'application/octet-stream'

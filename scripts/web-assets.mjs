@@ -210,12 +210,11 @@ if (process.argv[2] === 'seed') {
   await writeFile(
     resolve(output, '_headers'),
     [
-      '/client.js',
-      '  X-Content-Type-Options: nosniff',
-      '/theme.js',
-      '  X-Content-Type-Options: nosniff',
-      '/styles.css',
-      '  X-Content-Type-Options: nosniff',
+      ...['/client.js', '/theme.js', '/styles.css'].flatMap((path) => [
+        path,
+        '  X-Content-Type-Options: nosniff',
+        '  Cache-Control: public, max-age=0, must-revalidate',
+      ]),
       '/favicon.svg',
       '  X-Content-Type-Options: nosniff',
       "  Content-Security-Policy: sandbox; default-src 'none'",

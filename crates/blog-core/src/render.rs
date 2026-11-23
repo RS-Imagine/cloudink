@@ -680,9 +680,7 @@ pub fn render_shorts_page(
     );
     let page_number = page_number.max(1);
     let total = visible.len();
-    let start = (page_number - 1)
-        .saturating_mul(SHORTS_PER_PAGE)
-        .min(total);
+    let start = (page_number - 1).saturating_mul(SHORTS_PER_PAGE).min(total);
     let full_end = start.saturating_add(SHORTS_PER_PAGE).min(total);
     let has_peek = full_end < total;
     let mut items = String::new();
