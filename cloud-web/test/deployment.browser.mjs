@@ -476,6 +476,11 @@ try {
   await expect(page.locator('#publish-banner')).toContainText('已上线');
   await live.locator('.post-card h2 a').first().click();
   await expect(live.locator('article h1')).toBeVisible();
+  await expect(live.locator('head link[rel=icon]')).toHaveAttribute(
+    'href',
+    '/site-icon/' + icoIconKey.split('/').pop(),
+  );
+  await live.goto(`http://localhost:8791/posts/${slug}/`);
   await expect(live.locator('head link[rel=icon]')).toHaveAttribute('href', '/favicon.svg');
   await expect(live.locator('.site-mark img')).toHaveAttribute('src', '/favicon.svg');
   // Updating layout must retain the published content and all unpublished work.
