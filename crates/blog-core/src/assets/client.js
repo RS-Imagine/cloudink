@@ -1339,7 +1339,7 @@ const bootCloudInkClient = () => {
       calFab.setAttribute('aria-controls', 'shorts-cal-drawer');
       calFab.setAttribute('aria-expanded', 'false');
       calFab.innerHTML =
-        '<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/></svg>';
+        '<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/><circle cx="8" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>';
 
       const calBackdrop = document.createElement('div');
       calBackdrop.className = 'shorts-cal-backdrop';
@@ -1353,17 +1353,6 @@ const bootCloudInkClient = () => {
       calDrawer.setAttribute('aria-modal', 'true');
       calDrawer.setAttribute('aria-label', '短记日历');
       calDrawer.hidden = true;
-
-      const drawerBar = document.createElement('div');
-      drawerBar.className = 'shorts-cal-drawer-bar';
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.className = 'shorts-cal-close';
-      closeBtn.setAttribute('aria-label', '关闭短记日历');
-      closeBtn.innerHTML =
-        '<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>';
-      drawerBar.append(closeBtn);
-      calDrawer.append(drawerBar);
 
       document.body.append(calFab, calBackdrop, calDrawer);
 
@@ -1476,7 +1465,6 @@ const bootCloudInkClient = () => {
         else openDrawer();
       };
       const onBackdropClick = () => closeDrawer({ restoreFocus: true });
-      const onCloseClick = () => closeDrawer({ restoreFocus: true });
       const onCalKeyDown = (event) => {
         if (event.key === 'Escape' && drawerOpen) {
           event.preventDefault();
@@ -1489,7 +1477,6 @@ const bootCloudInkClient = () => {
       gridEl.addEventListener('click', onGridClick);
       calFab.addEventListener('click', onFabClick);
       calBackdrop.addEventListener('click', onBackdropClick);
-      closeBtn.addEventListener('click', onCloseClick);
       window.addEventListener('keydown', onCalKeyDown);
       narrowCal.addEventListener('change', syncWidgetHost);
 
@@ -1503,7 +1490,6 @@ const bootCloudInkClient = () => {
         gridEl.removeEventListener('click', onGridClick);
         calFab.removeEventListener('click', onFabClick);
         calBackdrop.removeEventListener('click', onBackdropClick);
-        closeBtn.removeEventListener('click', onCloseClick);
         window.removeEventListener('keydown', onCalKeyDown);
         narrowCal.removeEventListener('change', syncWidgetHost);
         calFab.remove();

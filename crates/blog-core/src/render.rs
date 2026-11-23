@@ -703,7 +703,7 @@ fn shorts_calendar_data(visible: &[&Short]) -> String {
 
 fn shorts_calendar_panel(visible: &[&Short]) -> String {
     let json = escape_html(&shorts_calendar_data(visible));
-    let calendar_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/></svg>"#;
+    let calendar_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3.2"/><path d="M8 2.8v3.6"/><path d="M16 2.8v3.6"/><path d="M3.5 10h17"/><circle cx="8" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/><circle cx="16" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>"#;
     let prev_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6.5 9 12l5.5 5.5"/></svg>"#;
     let next_svg = r#"<svg class="shorts-cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6.5 15 12l-5.5 5.5"/></svg>"#;
     format!(

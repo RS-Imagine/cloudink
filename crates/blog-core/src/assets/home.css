@@ -1525,6 +1525,7 @@
   padding: 20px 22px 22px;
 }
 .shorts-cal-widget {
+  container-type: inline-size;
   display: grid;
   gap: 12px;
 }
@@ -1587,10 +1588,15 @@
 }
 .shorts-cal-weekdays,
 .shorts-cal-grid {
+  --shorts-cal-gap: 5px;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  gap: var(--shorts-cal-gap);
   align-items: center;
+}
+.shorts-cal-grid {
+  grid-auto-rows: calc((100cqi - 6 * var(--shorts-cal-gap)) / 7);
+  justify-items: center;
 }
 .shorts-cal-weekday {
   text-align: center;
@@ -1600,16 +1606,17 @@
 }
 .shorts-cal-spacer {
   display: block;
+  width: 100%;
   aspect-ratio: 1;
 }
 .shorts-cal-day {
   aspect-ratio: 1;
-  width: 100%;
+  width: 82%;
   min-width: 0;
   min-height: 0;
   padding: 0;
   border: 0;
-  border-radius: var(--ci-radius-sm);
+  border-radius: 50%;
   display: grid;
   place-items: center;
   font: 500 12px/1 var(--ci-font-ui);
@@ -1663,10 +1670,10 @@
 .shorts-cal-today {
   box-shadow: inset 0 0 0 1.5px var(--ci-primary);
 }
-.shorts-cal-l4.shorts-cal-today {
+.shorts-cal-has.shorts-cal-today {
   box-shadow:
-    inset 0 0 0 1.5px var(--ci-surface),
-    0 0 0 1.5px var(--ci-primary);
+    0 0 0 1.5px var(--ci-surface),
+    0 0 0 3px var(--ci-primary);
 }
 .shorts-cal-highlight {
   background: color-mix(in srgb, var(--ci-primary) 10%, transparent);
@@ -1706,7 +1713,7 @@
   }
   .shorts-cal-weekdays,
   .shorts-cal-grid {
-    gap: 4px;
+    --shorts-cal-gap: 4px;
   }
 }
 @media (max-width: 1023px) {
@@ -1765,44 +1772,20 @@
     top: auto;
     max-height: 78dvh;
     overflow-y: auto;
-    padding: 18px 20px 22px;
+    padding: 20px 20px 22px;
     border: 1px solid var(--ci-divider);
     border-radius: 28px;
     background: var(--surface);
     box-shadow: var(--ci-shadow-overlay);
     display: grid;
-    gap: 10px;
     z-index: 999;
   }
   .shorts-cal-drawer:focus {
     outline: none;
   }
-  .shorts-cal-drawer-bar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-  }
-  .shorts-cal-close {
-    width: 34px;
-    height: 34px;
-    min-width: 0;
-    min-height: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: var(--ci-muted);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-  .shorts-cal-close:not(:disabled):is(:hover, :focus-visible) {
-    background: var(--ci-hover);
-    color: var(--ci-text);
-  }
   .shorts-cal-drawer .shorts-cal-weekdays,
   .shorts-cal-drawer .shorts-cal-grid {
-    gap: 6px;
+    --shorts-cal-gap: 6px;
   }
   .shorts-cal-drawer .shorts-cal-day {
     font-size: 13px;
