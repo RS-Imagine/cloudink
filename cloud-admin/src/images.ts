@@ -1,4 +1,3 @@
-import { activeBackup } from './backup-jobs';
 import {
   checkedReferenceKeys,
   imageReferenceMetadata,
@@ -12,7 +11,6 @@ import { withContentMutation } from './storage-mutations';
 export const imageHooks = {
   withContentMutation,
   jsonInput,
-  activeBackup,
   managedImageKeys,
   referenceShardKey,
   readReferenceShard,

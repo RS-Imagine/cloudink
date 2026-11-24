@@ -36,8 +36,11 @@ export default class CloudInkWorker extends RustReaderWorker {
       ) => this.content_request(input, binding, session, createContentHooks(env)),
       siteSettings: (input: Request, binding: R2Bucket) =>
         this.site_settings(input, binding, createSettingsHooks(env)),
-      inspectSiteIcon: (bytes: Uint8Array) =>
-        this.inspect_site_icon(bytes, createSettingsHooks(env)),
+      backupRequest: (
+        input: Request,
+        binding: R2Bucket,
+        session: import('../../cloud-admin/src/auth').Session,
+      ) => this.backup_request(input, binding, session, createContentHooks(env)),
     };
     const response = await this.route_request(
       request,

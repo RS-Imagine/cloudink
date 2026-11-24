@@ -12,14 +12,6 @@ import {
 import { currentRelease } from './publishing';
 import { ensureSiteIcon } from './site-icons';
 
-export type InspectedSiteIcon = {
-  bytes: Uint8Array;
-  key: string;
-  hash: string;
-  ext: string;
-  type: string;
-};
-
 export function createSettingsHooks(env: CloudInkEnv) {
   return {
     jsonInput,

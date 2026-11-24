@@ -29,10 +29,12 @@ declare module '*/reader-worker/index.js' {
       session: import('../../cloud-admin/src/auth').Session,
       hooks: import('../../cloud-admin/src/content').ContentHooks,
     ): Promise<Response>;
-    protected inspect_site_icon(
-      bytes: Uint8Array,
-      hooks: import('../../cloud-admin/src/settings').SettingsHooks,
-    ): Promise<import('../../cloud-admin/src/settings').InspectedSiteIcon>;
+    protected backup_request(
+      request: Request,
+      storage: R2Bucket,
+      session: import('../../cloud-admin/src/auth').Session,
+      hooks: import('../../cloud-admin/src/content').ContentHooks,
+    ): Promise<Response>;
     protected route_request(
       request: Request,
       storage: R2Bucket,

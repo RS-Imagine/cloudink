@@ -1,3 +1,5 @@
+mod backup;
+mod backup_jobs;
 mod browser_publish;
 mod discovery;
 mod draft_listing;
@@ -45,11 +47,21 @@ pub async fn site_settings(
 }
 
 #[wasm_bindgen]
-pub async fn inspect_site_icon(
-    bytes: Uint8Array,
+pub async fn backup_request(
+    request: web_sys::Request,
+    storage: JsValue,
+    session: JsValue,
     hooks: JsValue,
-) -> html_rewriter::JsResult<JsValue> {
-    icon::inspect(bytes, &hooks.unchecked_into()).await
+) -> html_rewriter::JsResult<web_sys::Response> {
+    let url = web_sys::Url::new(&request.url())?;
+    let path = url.pathname();
+    let storage: &R2Bucket = storage.unchecked_ref();
+    let hooks: &drafts::Hooks = hooks.unchecked_ref();
+    if path == "/api/backup/jobs" || path.starts_with("/api/backup/jobs/") {
+        backup_jobs::handle(request, storage, hooks, session).await
+    } else {
+        backup::handle(&request, &url, storage, hooks).await
+    }
 }
 
 #[wasm_bindgen]

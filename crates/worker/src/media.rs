@@ -13,18 +13,7 @@ use crate::runtime::property;
 pub const MAX_IMAGE: u32 = 10 * 1024 * 1024;
 
 pub fn valid_image_key(key: &str) -> bool {
-    if let Some((hash, ext)) = key
-        .strip_prefix(ICON_PREFIX)
-        .and_then(|name| name.split_once('.'))
-        && hash.len() == 64
-        && hash
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        && matches!(
-            ext,
-            "svg" | "ico" | "png" | "jpg" | "jpeg" | "webp" | "gif" | "avif"
-        )
-    {
+    if valid_site_icon_key(key) {
         return true;
     }
     key.len() <= 1024
@@ -39,6 +28,21 @@ pub fn valid_image_key(key: &str) -> bool {
                     })
             })
         && !key.split('/').any(|part| matches!(part, "" | "." | ".."))
+}
+
+pub fn valid_site_icon_key(key: &str) -> bool {
+    key.strip_prefix(ICON_PREFIX)
+        .and_then(|name| name.split_once('.'))
+        .is_some_and(|(hash, ext)| {
+            hash.len() == 64
+                && hash
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+                && matches!(
+                    ext,
+                    "svg" | "ico" | "png" | "jpg" | "jpeg" | "webp" | "gif" | "avif"
+                )
+        })
 }
 
 pub fn legacy_image_path(input: &str, origin: &str) -> Option<String> {

@@ -29,9 +29,6 @@ extern "C" {
     #[wasm_bindgen(method, catch, js_name = jsonInput)]
     pub fn json_input(this: &Hooks, request: &Request, limit: u32) -> JsResult<Promise>;
 
-    #[wasm_bindgen(method, catch, js_name = activeBackup)]
-    pub fn active_backup(this: &Hooks, storage: &R2Bucket) -> JsResult<Promise>;
-
     #[wasm_bindgen(method, catch, js_name = managedImageKeys)]
     pub fn managed_images(this: &Hooks, source: &JsString) -> JsResult<Array>;
 
@@ -189,7 +186,7 @@ async fn heads(storage: &R2Bucket, key: &str) -> JsResult<Vec<JsValue>> {
     Ok(results.iter().filter(JsValue::is_truthy).collect())
 }
 
-fn dimensions(metadata: &Object, info: Option<ImageInfo>) -> JsResult<()> {
+pub fn dimensions(metadata: &Object, info: Option<ImageInfo>) -> JsResult<()> {
     if let Some(info) = info {
         set(metadata, "width", info.width.to_string())?;
         set(metadata, "height", info.height.to_string())?;

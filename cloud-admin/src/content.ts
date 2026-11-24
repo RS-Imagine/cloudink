@@ -1,4 +1,5 @@
 import { PAGE_GENERATION_VERSION, PUBLIC_RESPONSE_VERSION } from './assets.generated';
+import { withBackupBudget } from './backup-budget';
 import type { CloudInkEnv } from './env';
 import { ensureHomeIllustration } from './home-illustration';
 import { ensureManagedImages } from './image-library';
@@ -40,6 +41,7 @@ export function createContentHooks(env: CloudInkEnv) {
     responseVersion: PUBLIC_RESPONSE_VERSION,
     setupToken: env.SETUP_TOKEN,
     withContentMutation,
+    withBackupBudget,
     errorStatus: (error: unknown) => (error instanceof HttpError ? error.status : null),
     error: (status: number, message: string) => new HttpError(status, message),
   };

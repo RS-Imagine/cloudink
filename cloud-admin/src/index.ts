@@ -1,7 +1,5 @@
 import type { BrowserPointer } from './browser-publishing';
-import { backupJobRoute } from './backup-jobs';
 import type { MaintenanceStatus } from './maintenance';
-import type { InspectedSiteIcon } from './settings';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import type { CloudInkEnv } from './env';
 import { ASSETS } from './assets.generated';
@@ -9,14 +7,13 @@ import { Buffer } from 'node:buffer';
 import { authRoute, requireSession, type Session } from './auth';
 import { HttpError, json, limitedBody, readJson, type SiteConfig } from './models';
 
-import { backupRoute } from './backup';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 type AdminEnv = CloudInkEnv & {
   maintainStorage(storage: R2Bucket): Promise<MaintenanceStatus>;
   siteSettings(request: Request, storage: R2Bucket): Promise<Response>;
   imageRequest(request: Request, storage: R2Bucket): Promise<Response>;
   contentRequest(request: Request, storage: R2Bucket, session: Session): Promise<Response>;
-  inspectSiteIcon(bytes: Uint8Array): Promise<InspectedSiteIcon>;
+  backupRequest(request: Request, storage: R2Bucket, session: Session): Promise<Response>;
 };
 
 async function apiRoute(
@@ -40,10 +37,14 @@ async function apiRoute(
       request.method === 'POST')
   )
     return env.imageRequest(request, env.STORAGE);
-  const task = await backupJobRoute(request, env, path, session);
-  if (task) return task;
-  const backup = await backupRoute(request, env, path, env.inspectSiteIcon);
-  if (backup) return backup;
+  if (
+    path === '/api/backup/jobs' ||
+    path.startsWith('/api/backup/jobs/') ||
+    (path === '/api/backup' && request.method === 'GET') ||
+    (path === '/api/backup/restore' && request.method === 'POST') ||
+    (path === '/api/backup/image' && request.method === 'PUT')
+  )
+    return env.backupRequest(request, env.STORAGE, session);
   const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|plan|commit|cancel)$/);
   if (
     browserPublish ||

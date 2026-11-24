@@ -57,6 +57,14 @@ extern "C" {
         origin: &str,
     ) -> JsResult<Promise>;
 
+    #[wasm_bindgen(method, catch, js_name = ensureManagedImages)]
+    pub fn ensure_images_many(
+        this: &Hooks,
+        storage: &R2Bucket,
+        sources: &Array,
+        origin: &str,
+    ) -> JsResult<Promise>;
+
     #[wasm_bindgen(method, getter, js_name = referenceVersion)]
     pub fn ref_version(this: &Hooks) -> JsValue;
 
@@ -87,6 +95,13 @@ extern "C" {
 
     #[wasm_bindgen(method, catch, js_name = withContentMutation)]
     pub fn with_mutation(this: &Hooks, storage: &R2Bucket, work: &Function) -> JsResult<Promise>;
+
+    #[wasm_bindgen(method, catch, js_name = withBackupBudget)]
+    pub fn with_backup_budget(
+        this: &Hooks,
+        storage: &R2Bucket,
+        work: &Function,
+    ) -> JsResult<Promise>;
 
     #[wasm_bindgen(method, js_name = errorStatus)]
     pub fn error_status(this: &Hooks, error: &JsValue) -> JsValue;
@@ -130,14 +145,14 @@ impl Kind {
         }
     }
 
-    fn parse(self, source: &JsString, hooks: &Hooks) -> JsResult<JsValue> {
+    pub fn parse(self, source: &JsString, hooks: &Hooks) -> JsResult<JsValue> {
         match self {
             Self::Post => hooks.parse_post(source),
             Self::Short => hooks.parse_short(source),
         }
     }
 
-    fn serialize(self, draft: &JsValue, hooks: &Hooks) -> JsResult<JsString> {
+    pub fn serialize(self, draft: &JsValue, hooks: &Hooks) -> JsResult<JsString> {
         match self {
             Self::Post => hooks.serialize_post(draft),
             Self::Short => hooks.serialize_short(draft),
@@ -464,7 +479,7 @@ pub async fn draft_summary(
     Ok(summary)
 }
 
-async fn short_summary(
+pub async fn short_summary(
     draft: &JsValue,
     source: &JsString,
     storage: &R2Bucket,
