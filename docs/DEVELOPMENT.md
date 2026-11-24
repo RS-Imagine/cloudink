@@ -47,11 +47,11 @@ cargo xtask dev
 
 修改公开读取时，可在构建和 Wrangler dry run 后运行 `node --test cloud-web/test/reader.test.mjs`，覆盖 RSS、条件请求和缓存失效。后台发布、存储与保留规则见下文。
 
-构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
+`.gitignore` 覆盖构建输出、依赖目录、凭据、本地 R2 和测试报告。个人内容放在 `content/`，临时原型或实验文件可放在 `scratch/`。
 
 ## 云端检查
 
-PR 自动运行构建、编辑器类型检查、Node/Rust 测试和 Chromium 核心流程。合并到 master 后不重复运行；直接推送 master 也不触发 Project checks，代码应通过 PR 验证。
+PR 按改动范围运行 Project checks，合并后由 Cloudflare Workers Builds 部署。参见 [按改动范围执行 CI](#按改动范围执行-ci)。
 
 在 GitHub **Actions → Project checks → Run workflow** 可手动执行基础检查；勾选 `visual_audit` 才运行正式页面的三浏览器回归。Cloudflare Workers Builds 独立负责部署。
 
@@ -98,7 +98,7 @@ npm run test:ui:audit
 
 文章改址通过独立表单完成。草稿改址使用 ETag、目标槽位检查和可恢复的搬移过程；已发布文章沿用发布流程。旧地址存入 `FrontMatter.aliases`，线上返回同源 301，保留查询参数，不生成跳转链；取消发布后不暴露私有草稿地址。
 
-回滚代码使用对应提交的 revert，再部署 Worker。需要恢复旧模板 HTML 时，在确认模板兼容后重新生成已发布页面；不能通过清空 R2 回滚。
+需要恢复旧模板 HTML 时，先确认模板兼容，再生成已发布页面。部署操作见 [回退 Worker 版本](DEPLOYMENT.md#回退-worker-版本)。
 
 ## Markdown、短记与预览
 

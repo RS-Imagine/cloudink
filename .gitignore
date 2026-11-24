@@ -1,21 +1,32 @@
-content/
-.vscode/
-public/
+# 构建产物、依赖和测试报告
 target/
 build-work/
 node_modules/
+dist/
+public/
+coverage/
+playwright-report/
+test-results/
+*.log
+/cloud-admin/ui/wasm/
+/cloud-admin/ui/*.generated.js
+/cloud-admin/src/assets.generated.ts
+/cloud-admin/src/template-version.generated.ts
+worker-configuration.d.ts
+
+# 本地内容、凭据和部署状态
+content/
+/scratch/
+/cloudink-site-*.zip
 .wrangler/
 .dev.vars*
 !.dev.vars.example
-dist/
-cloud-admin/ui/wasm/
-cloud-admin/src/assets.generated.ts
-cloud-admin/ui/*.generated.js
-**/worker-configuration.d.ts
 .env*
 deployment.json
 .deploy/
+
+# 编辑器与系统文件
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
-
-cloud-admin/src/template-version.generated.ts
