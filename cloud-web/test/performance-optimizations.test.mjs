@@ -757,7 +757,7 @@ test('reader-runtime loads Highlight.js asynchronously only when code blocks exi
   assert.equal(kdlCode.dataset.highlighted, 'yes');
 });
 
-test('render.rs, reader.ts, and admin preview.worker.js keep Highlight.js strictly async and conditional', async () => {
+test('the renderer, Rust reader, and preview worker keep Highlight.js async and conditional', async () => {
   const renderRs = await readFile('crates/blog-core/src/render.rs', 'utf8');
   assert.equal(
     renderRs.includes('highlight.min.js'),
@@ -766,8 +766,8 @@ test('render.rs, reader.ts, and admin preview.worker.js keep Highlight.js strict
   );
   assert.match(renderRs, /let has_code = body\.contains\("<pre><code"\);/);
 
-  const readerTs = await readFile('cloud-web/src/reader.ts', 'utf8');
-  assert.match(readerTs, /highlight\(\?:\\\.min\)\?\\\.js/);
+  const reader = await readFile('crates/worker/src/reader.rs', 'utf8');
+  assert.match(reader, /highlight\(\?:\\\.min\)\?\\\.js/);
 
   const previewWorker = await readFile('cloud-admin/ui/preview.worker.js', 'utf8');
   assert.doesNotMatch(
@@ -1027,28 +1027,26 @@ test('reader-runtime promotes async stylesheets via CSP-safe listeners and does 
 });
 
 test('public rendering pipeline uses non-blocking async styles, deferred scripts, and rAF/idle hydration', async () => {
-  const [pageRendering, renderRs, readerTs, devServer, clientJs, readerRuntime] = await Promise.all(
-    [
-      readFile('cloud-admin/src/page-rendering.ts', 'utf8'),
-      readFile('crates/blog-core/src/render.rs', 'utf8'),
-      readFile('cloud-web/src/reader.ts', 'utf8'),
-      readFile('scripts/dev-server.mjs', 'utf8'),
-      readFile('crates/blog-core/src/assets/client.js', 'utf8'),
-      readFile('assets/reader-runtime.js', 'utf8'),
-    ],
-  );
+  const [pageRendering, renderRs, reader, devServer, clientJs, readerRuntime] = await Promise.all([
+    readFile('cloud-admin/src/page-rendering.ts', 'utf8'),
+    readFile('crates/blog-core/src/render.rs', 'utf8'),
+    readFile('crates/worker/src/reader.rs', 'utf8'),
+    readFile('scripts/dev-server.mjs', 'utf8'),
+    readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+    readFile('assets/reader-runtime.js', 'utf8'),
+  ]);
 
   assert.match(pageRendering, /<script src="\/client\.js" defer><\/script>/);
   assert.match(renderRs, /<script src="https:\/\/unpkg\.com\/swup@4" defer><\/script>/);
   assert.match(renderRs, /<script src="\/client\.js\?v=\{client_hash\}" defer><\/script>/);
   assert.match(renderRs, /media="print" data-reader-async="style"/);
-  assert.match(readerTs, /el\.setAttribute\('media', 'print'\)/);
-  assert.match(readerTs, /el\.setAttribute\('data-reader-async', 'style'\)/);
-  assert.match(readerTs, /media="print" data-reader-style="code" data-reader-async="style"/);
+  assert.match(reader, /el\.set_attribute\("media", &"print"\.into\(\)\)/);
+  assert.match(reader, /el\.set_attribute\("data-reader-async", &"style"\.into\(\)\)/);
+  assert.match(reader, /media="print" data-reader-style="code" data-reader-async="style"/);
   assert.equal(
-    readerTs.includes('onload='),
+    reader.includes('onload='),
     false,
-    'reader.ts must never inject inline onload handlers under strict CSP',
+    'the Rust reader must never inject inline onload handlers under strict CSP',
   );
   assert.match(devServer, /<script src="\/client\.js" defer><\/script>/);
   assert.match(devServer, /media="print" data-reader-async="style"/);

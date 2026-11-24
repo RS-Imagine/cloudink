@@ -1,10 +1,9 @@
 import { storageStats } from '../../cloud-admin/src/request-stats';
 import { maintainStorage } from '../../cloud-admin/src/maintenance';
 import { cacheKey, cacheRead, cacheWrite, clientResponse, invalidatePointer } from './cache';
-import { readerHtml, readerEtag } from './reader';
 import admin from '../../cloud-admin/src/index';
 import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
-import { publicImage } from '../../cloud-admin/src/media';
+import { legacyImagePath, publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
 import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
@@ -13,13 +12,17 @@ import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version
 import RustReaderWorker from '../../build-work/reader-worker/index.js';
 
 export type WebBindings = CloudInkEnv;
-type RenderDiscovery = (
-  path: string,
-  origin: string,
-  storage: R2Bucket,
-  release: string | null,
-  pages: Record<string, string> | undefined,
-) => Promise<Response>;
+type PublicReader = {
+  html(response: Response, url: URL, analytics?: boolean, siteIcon?: string): Promise<Response>;
+  etag(value: string, url: URL, siteIcon: string): Promise<string>;
+  discovery(
+    path: string,
+    origin: string,
+    storage: R2Bucket,
+    release: string | null,
+    pages: Record<string, string> | undefined,
+  ): Promise<Response>;
+};
 const editorAssets = new Set([
   '/writing-illustration.svg',
   '/backup.js',
@@ -75,6 +78,7 @@ function protect(
 async function staticAsset(
   request: Request,
   env: WebBindings,
+  reader: PublicReader,
   path: string,
   status = 200,
   analytics = false,
@@ -94,7 +98,7 @@ async function staticAsset(
   } else if (status !== 200)
     response = new Response(response.body, { status, headers: response.headers });
   return protect(
-    await readerHtml(response, new URL(request.url)),
+    await reader.html(response, new URL(request.url)),
     analytics,
     status === 200 ? cacheControl : REVALIDATE_CACHE_CONTROL,
   );
@@ -125,7 +129,7 @@ const web = {
     request: Request,
     env: WebBindings,
     ctx: ExecutionContext,
-    renderDiscovery: RenderDiscovery,
+    reader: PublicReader,
   ): Promise<Response> {
     try {
       const url = new URL(request.url),
@@ -157,7 +161,7 @@ const web = {
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
         );
       if (path === '/sw.js' || READER_BUNDLES.has(path))
-        return staticAsset(request, env, path, 200, false, REVALIDATE_CACHE_CONTROL);
+        return staticAsset(request, env, reader, path, 200, false, REVALIDATE_CACHE_CONTROL);
       if (
         path === '/favicon.svg' ||
         /^\/reader-assets\/(?:highlight\.js|share-card\.js|katex\.css|code\.css|editorial-font\.css|(?:katex|highlight|editorial-font)-LICENSE\.txt|fonts\/(?:KaTeX_[A-Za-z0-9_-]+|noto-serif(?:-sc)?-[a-z0-9-]+)\.woff2)$/.test(
@@ -167,7 +171,7 @@ const web = {
         const policy = /^\/reader-assets\/fonts\/.+\.woff2$/.test(path)
           ? IMMUTABLE_CACHE_CONTROL
           : ASSET_CACHE_CONTROL;
-        return staticAsset(request, env, path, 200, false, policy);
+        return staticAsset(request, env, reader, path, 200, false, policy);
       }
       if (/^\/shorts\/page\/1(?:\/|\/index\.html)?$/.test(path)) {
         const canonical = new URL(url);
@@ -240,7 +244,13 @@ const web = {
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
       if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
-        const response = await renderDiscovery(path, url.origin, env.STORAGE, id, published?.pages);
+        const response = await reader.discovery(
+          path,
+          url.origin,
+          env.STORAGE,
+          id,
+          published?.pages,
+        );
         cacheWrite(ctx, pageKey, response, DISCOVERY_TTL);
         return clientResponse(response, request);
       }
@@ -275,7 +285,7 @@ const web = {
           request.method === 'HEAD' && storageKey ? await env.STORAGE.head(storageKey) : body;
         if (object) {
           const etag = key.endsWith('.html')
-            ? await readerEtag(object.httpEtag, url, siteIcon)
+            ? await reader.etag(object.httpEtag, url, siteIcon)
             : object.httpEtag;
           const headers = new Headers({ 'Content-Type': publicType(key), ETag: etag });
           if (
@@ -289,7 +299,7 @@ const web = {
             return protect(new Response(null, { status: 304, headers }), analytics);
           }
           const response = protect(
-            await readerHtml(
+            await reader.html(
               new Response(body?.body || null, { status: key === '404.html' ? 404 : 200, headers }),
               url,
               analytics,
@@ -309,6 +319,7 @@ const web = {
           return staticAsset(
             request,
             env,
+            reader,
             '/manifest.webmanifest',
             200,
             false,
@@ -327,7 +338,7 @@ const web = {
             : `public/${id}/404.html`;
           const missing = missingKey ? await env.STORAGE.get(missingKey) : null;
           return protect(
-            await readerHtml(
+            await reader.html(
               new Response(request.method === 'HEAD' ? null : missing?.body || 'Not found', {
                 status: 404,
                 headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -341,7 +352,15 @@ const web = {
         }
       }
       if (key === 'manifest.webmanifest')
-        return staticAsset(request, env, '/manifest.webmanifest', 200, false, ASSET_CACHE_CONTROL);
+        return staticAsset(
+          request,
+          env,
+          reader,
+          '/manifest.webmanifest',
+          200,
+          false,
+          ASSET_CACHE_CONTROL,
+        );
       if (key === '_release.json')
         return protect(
           new Response(request.method === 'HEAD' ? null : JSON.stringify({ id }), {
@@ -349,25 +368,34 @@ const web = {
           }),
         );
       if (key === 'index.html')
-        return staticAsset(request, env, '/', 200, false, HTML_CACHE_CONTROL);
+        return staticAsset(request, env, reader, '/', 200, false, HTML_CACHE_CONTROL);
       if (key === 'about/index.html')
-        return staticAsset(request, env, '/about/', 200, false, HTML_CACHE_CONTROL);
+        return staticAsset(request, env, reader, '/about/', 200, false, HTML_CACHE_CONTROL);
       if (key === 'post/index.html')
-        return staticAsset(request, env, '/post/', 200, false, HTML_CACHE_CONTROL);
+        return staticAsset(request, env, reader, '/post/', 200, false, HTML_CACHE_CONTROL);
       if (key === 'shorts/index.html')
-        return staticAsset(request, env, '/shorts/', 200, false, HTML_CACHE_CONTROL);
+        return staticAsset(request, env, reader, '/shorts/', 200, false, HTML_CACHE_CONTROL);
       if (key && /^shorts\/page\/[1-9]\d*\/index\.html$/.test(key))
         return staticAsset(
           request,
           env,
+          reader,
           '/' + key.replace(/index\.html$/, ''),
           200,
           false,
           HTML_CACHE_CONTROL,
         );
       if (key === 'search_index.json')
-        return staticAsset(request, env, '/search_index.json', 200, false, HTML_CACHE_CONTROL);
-      return staticAsset(request, env, '/404.html', 404, analytics);
+        return staticAsset(
+          request,
+          env,
+          reader,
+          '/search_index.json',
+          200,
+          false,
+          HTML_CACHE_CONTROL,
+        );
+      return staticAsset(request, env, reader, '/404.html', 404, analytics);
     } catch (error) {
       console.error(
         JSON.stringify({
@@ -404,11 +432,8 @@ export default class CloudInkWorker extends RustReaderWorker {
     const stats = storageStats(env.STORAGE),
       started = Date.now(),
       id = crypto.randomUUID();
-    const response = await web.fetch(
-      request,
-      { ...env, STORAGE: stats.bucket },
-      ctx,
-      (path, origin, storage, release, pages) =>
+    const response = await web.fetch(request, { ...env, STORAGE: stats.bucket }, ctx, {
+      discovery: (path, origin, storage, release, pages) =>
         this.discovery_response(
           path,
           origin,
@@ -418,7 +443,27 @@ export default class CloudInkWorker extends RustReaderWorker {
           CURRENT_TEMPLATE_VERSION,
           PUBLIC_RESPONSE_VERSION,
         ),
-    );
+      html: async (response, url, analytics = false, siteIcon = '') => {
+        if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
+        const icons = siteIconDerivedKeys(siteIcon);
+        return this.reader_html(
+          response,
+          url,
+          analytics,
+          icons ? '/site-icon/' + icons.apple.slice('uploads/icons/'.length) : undefined,
+          icons ? '/site-icon/' + icons.icon512.slice('uploads/icons/'.length) : undefined,
+          legacyImagePath,
+        );
+      },
+      etag: (value, url, siteIcon) =>
+        this.reader_etag(
+          value,
+          url,
+          String(siteIcon),
+          CURRENT_TEMPLATE_VERSION,
+          PUBLIC_RESPONSE_VERSION,
+        ),
+    });
     const route = new URL(request.url).pathname
       .split('/')
       .slice(0, 3)
