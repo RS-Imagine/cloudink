@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture } from './fixture.mjs';
 
@@ -193,9 +194,26 @@ test('bounded retention removes only expired generated objects and protects shar
     format: 'esm',
     platform: 'node',
   });
-  const { maintainStorage } = await import(
+  const { maintenanceHooks } = await import(
     'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
   );
+  const directory = new URL('../../build-work/reader-worker/', import.meta.url);
+  const workerSource = await readFile(new URL('index.js', directory), 'utf8');
+  const workerShim =
+    'data:text/javascript,' +
+    encodeURIComponent(
+      'export class WorkerEntrypoint {} export const tracing = { getActiveSpan() {} };',
+    );
+  const source =
+    'const addEventListener = () => {};\n' +
+    workerSource
+      .replaceAll('"cloudflare:workers"', JSON.stringify(workerShim))
+      .replace('"./index_bg.wasm"', JSON.stringify(new URL('index_bg.wasm', directory).href));
+  const { default: Worker } = await import(
+    'data:text/javascript;base64,' + Buffer.from(source).toString('base64')
+  );
+  const worker = new Worker();
+  const maintainStorage = (storage) => worker.maintain_storage(storage, maintenanceHooks);
   const initialized = await (await bucket.get('state/published.json')).json();
   await bucket.delete([
     'releases/' + initialized.id + '.json',
@@ -254,7 +272,7 @@ test('bounded retention removes only expired generated objects and protects shar
     'state/pending.json',
     JSON.stringify({ release_id: old, status: 'building', started_at: new Date().toISOString() }),
   );
-  assert.equal((await maintainStorage({ STORAGE: storage })).reason, 'publication_busy');
+  assert.equal((await maintainStorage(storage)).reason, 'publication_busy');
   assert.ok(await bucket.head('public/content/' + orphan));
   await bucket.delete('state/pending.json');
   const expiredSession = 'auth/sessions/' + 'e'.repeat(64);
@@ -267,7 +285,7 @@ test('bounded retention removes only expired generated objects and protects shar
     customMetadata: { expires: String(Date.now() + 86400000) },
   });
   await bucket.put(legacySession, JSON.stringify({ expires: Date.now() - 10000 }));
-  const result = await maintainStorage({ STORAGE: storage });
+  const result = await maintainStorage(storage);
   assert.equal(result.expired_sessions, 2);
   assert.equal(await bucket.head(expiredSession), null);
   assert.equal(await bucket.head(legacySession), null);
@@ -297,11 +315,14 @@ test('bounded retention removes only expired generated objects and protects shar
     `releases/${current}.manifest.json`,
     JSON.stringify({ pages: { bad: 'invalid' } }),
   );
-  const failed = await maintainStorage({ STORAGE: storage });
+  const failed = await maintainStorage(storage);
   assert.equal(failed.status, 'failed');
   assert.equal(failed.stage, 'retained_manifests');
   assert.equal(failed.last_success_at, result.last_success_at);
   assert.equal((await (await bucket.get('state/maintenance.json')).json()).status, 'failed');
+  const manual = await f.request('/api/maintenance', 'POST');
+  assert.equal(manual.status, 200);
+  assert.equal((await manual.json()).maintenance.stage, 'retained_manifests');
 });
 
 test('legacy short-note references remain protected before indexing', async (t) => {

@@ -1,5 +1,5 @@
 import { storageStats } from '../../cloud-admin/src/request-stats';
-import { maintainStorage } from '../../cloud-admin/src/maintenance';
+import { maintenanceHooks } from '../../cloud-admin/src/maintenance';
 import admin from '../../cloud-admin/src/index';
 import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
 import { legacyImagePath, publicImage } from '../../cloud-admin/src/media';
@@ -19,7 +19,11 @@ export default class CloudInkWorker extends RustReaderWorker {
       started = Date.now(),
       id = crypto.randomUUID();
     const storage = stats.bucket;
-    const hostEnv = { ...env, STORAGE: storage };
+    const hostEnv = {
+      ...env,
+      STORAGE: storage,
+      maintainStorage: (binding: R2Bucket) => this.maintain_storage(binding, maintenanceHooks),
+    };
     const response = await this.route_request(
       request,
       storage,
@@ -51,7 +55,7 @@ export default class CloudInkWorker extends RustReaderWorker {
 
   async scheduled(_event: ScheduledController): Promise<void> {
     this.ctx.waitUntil(
-      maintainStorage(this.env).catch((error) => {
+      this.maintain_storage(this.env.STORAGE, maintenanceHooks).catch((error) => {
         console.error(
           JSON.stringify({
             event: 'storage_maintenance_failed',

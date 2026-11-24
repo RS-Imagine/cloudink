@@ -13,6 +13,10 @@ declare module '*/reader-worker/index.js' {
   export default class RustReaderWorker {
     protected readonly env: WebEnv;
     protected readonly ctx: ExecutionContext;
+    protected maintain_storage(
+      storage: R2Bucket,
+      hooks: import('../../cloud-admin/src/maintenance').MaintenanceHooks,
+    ): Promise<import('../../cloud-admin/src/maintenance').MaintenanceStatus>;
     protected route_request(
       request: Request,
       storage: R2Bucket,
