@@ -1,7 +1,7 @@
 import { storageStats } from '../../cloud-admin/src/request-stats';
 import { maintainStorage } from '../../cloud-admin/src/maintenance';
 import { cacheKey, cacheRead, cacheWrite, clientResponse, invalidatePointer } from './cache';
-import { readerHtml, readerEtag, discovery } from './reader';
+import { readerHtml, readerEtag } from './reader';
 import admin from '../../cloud-admin/src/index';
 import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
 import { publicImage } from '../../cloud-admin/src/media';
@@ -10,10 +10,11 @@ import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-pu
 import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
 import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
-import RustFeedWorker from '../../build-work/feed-worker/index.js';
+import RustReaderWorker from '../../build-work/reader-worker/index.js';
 
 export type WebBindings = CloudInkEnv;
-type RenderFeed = (
+type RenderDiscovery = (
+  path: string,
   origin: string,
   storage: R2Bucket,
   release: string | null,
@@ -124,7 +125,7 @@ const web = {
     request: Request,
     env: WebBindings,
     ctx: ExecutionContext,
-    renderFeed: RenderFeed,
+    renderDiscovery: RenderDiscovery,
   ): Promise<Response> {
     try {
       const url = new URL(request.url),
@@ -239,15 +240,7 @@ const web = {
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
       if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
-        const response =
-          path === '/feed.xml'
-            ? await renderFeed(url.origin, env.STORAGE, id, published?.pages)
-            : await discovery(
-                new Request(request, { method: 'GET', headers: {} }),
-                env.STORAGE,
-                id,
-                published?.pages,
-              );
+        const response = await renderDiscovery(path, url.origin, env.STORAGE, id, published?.pages);
         cacheWrite(ctx, pageKey, response, DISCOVERY_TTL);
         return clientResponse(response, request);
       }
@@ -405,7 +398,7 @@ const web = {
   },
 };
 
-export default class CloudInkWorker extends RustFeedWorker {
+export default class CloudInkWorker extends RustReaderWorker {
   async fetch(request: Request): Promise<Response> {
     const { env, ctx } = this;
     const stats = storageStats(env.STORAGE),
@@ -415,8 +408,9 @@ export default class CloudInkWorker extends RustFeedWorker {
       request,
       { ...env, STORAGE: stats.bucket },
       ctx,
-      (origin, storage, release, pages) =>
-        this.rss_response(
+      (path, origin, storage, release, pages) =>
+        this.discovery_response(
+          path,
           origin,
           storage,
           release,

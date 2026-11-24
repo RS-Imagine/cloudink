@@ -20,4 +20,4 @@ export PATH="$worker_tools/bin:$PATH"
 if [[ "$(worker-build --version 2>/dev/null || true)" != 0.9.0 ]]; then
   cargo install --locked --root "$worker_tools" --version 0.9.0 worker-build
 fi
-worker-build --release --out-dir ../../build-work/feed-worker crates/worker -- --locked
+worker-build --release --out-dir ../../build-work/reader-worker crates/worker -- --locked

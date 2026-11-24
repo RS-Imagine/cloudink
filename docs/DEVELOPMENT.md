@@ -7,7 +7,7 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `crates/blog-core`：Markdown、数学公式、配置校验与页面模板。
 - `crates/blog-wasm`：将同一渲染核心提供给浏览器 Worker。
 - `crates/sitegen`：原生静态构建入口。
-- `crates/worker`：Worker 端 Rust/WASM。目前负责 `/feed.xml` 的公开读取，使用独立 `Cargo.lock`。
+- `crates/worker`：Worker 端 Rust/WASM。负责 `/feed.xml`、`/robots.txt` 和 `/sitemap.xml`，使用独立 `Cargo.lock`。
 - `cloud-web/src`：唯一 Worker 入口、公开页面、图片路由与响应增强。
 - `cloud-admin/src`：认证、草稿、短记、设置、图片、备份与发布 API。
 - `cloud-admin/ui`：后台界面、预览线程与图片压缩线程。
@@ -28,7 +28,7 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
-RSS 的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 读取发布内容并生成 RSS 和 ETag，搜索索引由 Worker 原生 JSON 接口解析，WASM 只提取订阅源需要的字段。
+公开发现路由的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 生成订阅源、爬虫规则和站点地图。订阅源通过 Worker 原生 JSON 接口解析索引，WASM 只提取所需字段。站点地图从发布指针读取路径，旧式发布目录仍按 R2 分页读取。
 
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 

@@ -158,12 +158,7 @@ impl FeedItem {
     fn parse(item: &JsValue) -> Option<Self> {
         let title = property(item, "title").as_string()?;
         let slug = property(item, "slug").as_string()?;
-        if title.encode_utf16().count() > 300
-            || !(1..=100).contains(&slug.len())
-            || !slug
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
-        {
+        if title.encode_utf16().count() > 300 || !crate::valid_post_slug(&slug) {
             return None;
         }
         let description = optional_string(item, "description")?;
@@ -210,7 +205,7 @@ fn append_date(xml: &mut String, name: &str, value: NaiveDate) {
     );
 }
 
-fn append_element(xml: &mut String, name: &str, value: &str) -> usize {
+pub(crate) fn append_element(xml: &mut String, name: &str, value: &str) -> usize {
     xml.push('<');
     xml.push_str(name);
     xml.push('>');

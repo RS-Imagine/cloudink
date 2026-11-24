@@ -155,6 +155,37 @@ test('public metadata, lazy images and discovery follow the live release without
   assert.ok(!(await (await f.request('/sitemap.xml')).text()).includes('/posts/public/'));
 });
 
+test('discovery reads every legacy R2 list page and keeps private keys out', async (t) => {
+  const f = await fixture(t);
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const id = '00000000-0000-4000-8000-000000000078';
+  await bucket.put('state/published.json', JSON.stringify({ id, siteIcon: '' }));
+  const keys = [
+    'index.html',
+    'about/index.html',
+    'shorts/index.html',
+    'posts/beta/index.html',
+    'posts/z-last/index.html',
+    'posts/invalid.slug/index.html',
+    ...Array.from({ length: 1000 }, (_, i) => `posts/0-metadata/${i}.json`),
+  ];
+  for (let offset = 0; offset < keys.length; offset += 50) {
+    await Promise.all(
+      keys.slice(offset, offset + 50).map((key) => bucket.put(`public/${id}/${key}`, '')),
+    );
+  }
+
+  const response = await f.request('/sitemap.xml');
+  assert.equal(response.status, 200);
+  const locations = [...(await response.text()).matchAll(/<loc>(.*?)<\/loc>/g)].map(
+    ([, url]) => url,
+  );
+  assert.deepEqual(
+    locations,
+    ['/', '/about/', '/posts/beta/', '/posts/z-last/', '/shorts/'].map((path) => origin + path),
+  );
+});
+
 test('published short calendar data survives HTML sanitization', async (t) => {
   const { default: init, render_release } = await import('../../cloud-admin/ui/wasm/blog_wasm.js');
   await init({
