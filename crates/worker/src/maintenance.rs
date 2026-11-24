@@ -35,9 +35,6 @@ extern "C" {
     #[wasm_bindgen(method, catch, js_name = withContentMutation)]
     fn with_mutation(this: &Hooks, storage: &R2Bucket, work: &Function) -> JsResult<Promise>;
 
-    #[wasm_bindgen(method, catch, js_name = activeBackup)]
-    fn active_backup(this: &Hooks, storage: &R2Bucket) -> JsResult<Promise>;
-
     #[wasm_bindgen(method, catch, js_name = pruneReferenceShard)]
     fn prune_reference(this: &Hooks, storage: &R2Bucket, key: &str) -> JsResult<Promise>;
 
@@ -218,7 +215,7 @@ async fn clean(
         return Ok(Some("publication_busy"));
     }
 
-    let task = JsFuture::from(hooks.active_backup(storage)?).await?;
+    let task = crate::backup_jobs::active(storage).await?;
     let current = property(&pointer, "id");
     let retained = Set::new(&JsValue::UNDEFINED);
     retained.add(&current);

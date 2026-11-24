@@ -1,4 +1,3 @@
-import { activeBackup } from './backup-jobs';
 import { REFERENCE_ROOT, pruneReferenceShard } from './image-reference-index';
 import { HttpError } from './models';
 import { CONTENT_LEASE_MS, withContentMutation } from './storage-mutations';
@@ -21,7 +20,6 @@ export interface MaintenanceStatus {
 
 export const maintenanceHooks = {
   withContentMutation,
-  activeBackup,
   pruneReferenceShard,
   leaseMs: CONTENT_LEASE_MS,
   referenceRoot: REFERENCE_ROOT,

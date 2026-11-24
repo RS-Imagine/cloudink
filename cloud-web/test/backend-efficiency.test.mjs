@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture, draft } from './fixture.mjs';
+import { loadReaderWorker } from './wasm-worker.mjs';
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 test('article batch manifests use ten published posts per page and route extra batches as canonical HTML', async (t) => {
   const f = await fixture(t);
@@ -504,22 +505,31 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
     (await f.request('/api/shorts?limit=2&cursor=' + encodeURIComponent(first.cursor))).status,
     409,
   );
-  const bundle = await build({
-    entryPoints: ['cloud-admin/src/draft-catalog.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-  });
-  const { listActiveDrafts } = await import(
-    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-  );
+  const worker = await loadReaderWorker();
+  const listDrafts = (path, objects) =>
+    worker.content_request(
+      new Request('https://example.net' + path),
+      catalog(objects),
+      {},
+      {
+        error: (status, message) => Object.assign(new Error(message), { status }),
+      },
+    );
   const removed = Array.from({ length: 2100 }, (_, i) => ({
     key: 'drafts/deleted-' + i + '.md',
     customMetadata: { deleted: 'true' },
   }));
   const live = { key: 'drafts/live.md', customMetadata: {} };
   const catalog = (objects) => ({
+    async get(key) {
+      if (key === 'state/published.json')
+        return { json: async () => ({ id: 'release', pages: { 'index.html': 'exists' } }) };
+      if (key === 'releases/release.posts.json')
+        return {
+          json: async () => ({ schema_version: 1, id: 'release', site: {}, posts: {}, shorts: {} }),
+        };
+      return null;
+    },
     list: async ({ cursor, limit }) => {
       const offset = Number(cursor || 0),
         next = offset + limit;
@@ -530,28 +540,28 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
       };
     },
   });
-  assert.deepEqual(await listActiveDrafts(catalog([...removed, live]), 'drafts/'), [live]);
+  const listed = await listDrafts('/api/posts', [...removed, live]);
+  assert.deepEqual(
+    (await listed.json()).posts.map(({ slug }) => slug),
+    ['live'],
+  );
   await assert.rejects(
-    listActiveDrafts(
-      catalog(
-        Array.from({ length: 2001 }, (_, index) => ({
-          ...live,
-          key: 'drafts/live-' + index + '.md',
-        })),
-      ),
-      'drafts/',
+    listDrafts(
+      '/api/posts',
+      Array.from({ length: 2001 }, (_, index) => ({
+        ...live,
+        key: 'drafts/live-' + index + '.md',
+      })),
     ),
     (error) => error.status === 413,
   );
   await assert.rejects(
-    listActiveDrafts(
-      catalog(
-        Array.from({ length: 10001 }, (_, index) => ({
-          key: 'shorts/deleted-' + index + '.md',
-          customMetadata: { deleted: 'true' },
-        })),
-      ),
-      'shorts/',
+    listDrafts(
+      '/api/shorts',
+      Array.from({ length: 10001 }, (_, index) => ({
+        key: 'shorts/deleted-' + index + '.md',
+        customMetadata: { deleted: 'true' },
+      })),
     ),
     (error) => error.status === 413,
   );

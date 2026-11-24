@@ -318,7 +318,7 @@ async fn build_index(storage: &R2Bucket, hooks: &Hooks, pointer: &JsValue) -> Js
     crate::post_index::build(&release, &JsValue::UNDEFINED, &JsValue::UNDEFINED, hooks).await
 }
 
-async fn list_active(storage: &R2Bucket, hooks: &Hooks, kind: Kind) -> JsResult<Vec<JsValue>> {
+pub async fn list_active(storage: &R2Bucket, hooks: &Hooks, kind: Kind) -> JsResult<Vec<JsValue>> {
     let mut objects = Vec::new();
     let mut cursor = JsValue::UNDEFINED;
     let mut scanned = 0;

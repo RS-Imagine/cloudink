@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture } from './fixture.mjs';
+import { loadReaderWorker } from './wasm-worker.mjs';
 
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 async function rendered(f, state, overrides = {}) {
@@ -197,22 +197,7 @@ test('bounded retention removes only expired generated objects and protects shar
   const { maintenanceHooks } = await import(
     'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
   );
-  const directory = new URL('../../build-work/reader-worker/', import.meta.url);
-  const workerSource = await readFile(new URL('index.js', directory), 'utf8');
-  const workerShim =
-    'data:text/javascript,' +
-    encodeURIComponent(
-      'export class WorkerEntrypoint {} export const tracing = { getActiveSpan() {} };',
-    );
-  const source =
-    'const addEventListener = () => {};\n' +
-    workerSource
-      .replaceAll('"cloudflare:workers"', JSON.stringify(workerShim))
-      .replace('"./index_bg.wasm"', JSON.stringify(new URL('index_bg.wasm', directory).href));
-  const { default: Worker } = await import(
-    'data:text/javascript;base64,' + Buffer.from(source).toString('base64')
-  );
-  const worker = new Worker();
+  const worker = await loadReaderWorker();
   const maintainStorage = (storage) => worker.maintain_storage(storage, maintenanceHooks);
   const initialized = await (await bucket.get('state/published.json')).json();
   await bucket.delete([

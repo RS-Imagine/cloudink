@@ -98,14 +98,27 @@ pub async fn address_target(
 }
 
 pub async fn assert_writable(storage: &R2Bucket, slug: &str, hooks: &Hooks) -> JsResult<()> {
-    let (pointer, state) = try_join!(read_json(storage, PUBLISHED), read_json(storage, PENDING))?;
-    if !own_property(&property(&pointer, "postRedirects"), slug).is_undefined() {
+    let (pointer, state) = snapshot(storage).await?;
+    assert_writable_in_snapshot(&pointer, &state, slug, hooks)
+}
+
+pub async fn snapshot(storage: &R2Bucket) -> JsResult<(JsValue, JsValue)> {
+    try_join!(read_json(storage, PUBLISHED), read_json(storage, PENDING))
+}
+
+pub fn assert_writable_in_snapshot(
+    pointer: &JsValue,
+    state: &JsValue,
+    slug: &str,
+    hooks: &Hooks,
+) -> JsResult<()> {
+    if !own_property(&property(pointer, "postRedirects"), slug).is_undefined() {
         return Err(hooks.error(
             409,
             "这篇文章已修改地址，请重新打开文章，旧链接会自动跳转。",
         ));
     }
-    if property(&property(&state, "rename"), "to") == slug && busy(&state) {
+    if property(&property(state, "rename"), "to") == slug && busy(state) {
         return Err(hooks.error(409, "这个地址正在用于文章改址，请等待发布完成。"));
     }
     Ok(())

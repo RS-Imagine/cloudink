@@ -430,7 +430,7 @@ impl<'a> ReferenceScan<'a> {
             self.release(&attribute(&pending, "release_id"), "pending")
                 .await?;
         }
-        let task = JsFuture::from(self.hooks.active_backup(self.storage)?).await?;
+        let task = crate::backup_jobs::active(self.storage).await?;
         if task.is_truthy() {
             let title = if attribute(&task, "mode") == "restore" {
                 "正在恢复的备份"
