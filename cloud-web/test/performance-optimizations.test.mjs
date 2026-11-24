@@ -1372,27 +1372,17 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
 });
 
 test('shorts incremental pagination and lightbox badge removal contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
-  const [
-    renderRs,
-    libRs,
-    bundleRs,
-    publishingTs,
-    workerIndex,
-    workerReader,
-    homeCss,
-    readerToolsCss,
-    clientJs,
-  ] = await Promise.all([
-    readFile('crates/blog-core/src/render.rs', 'utf8'),
-    readFile('crates/blog-core/src/lib.rs', 'utf8'),
-    readFile('crates/blog-core/src/bundle.rs', 'utf8'),
-    readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
-    readFile('cloud-web/src/index.ts', 'utf8'),
-    readFile('cloud-web/src/reader.ts', 'utf8'),
-    readFile('crates/blog-core/src/assets/home.css', 'utf8'),
-    readFile('crates/blog-core/src/assets/reader-tools.css', 'utf8'),
-    readFile('crates/blog-core/src/assets/client.js', 'utf8'),
-  ]);
+  const [renderRs, libRs, bundleRs, publishingTs, workerIndex, homeCss, readerToolsCss, clientJs] =
+    await Promise.all([
+      readFile('crates/blog-core/src/render.rs', 'utf8'),
+      readFile('crates/blog-core/src/lib.rs', 'utf8'),
+      readFile('crates/blog-core/src/bundle.rs', 'utf8'),
+      readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
+      readFile('cloud-web/src/index.ts', 'utf8'),
+      readFile('crates/blog-core/src/assets/home.css', 'utf8'),
+      readFile('crates/blog-core/src/assets/reader-tools.css', 'utf8'),
+      readFile('crates/blog-core/src/assets/client.js', 'utf8'),
+    ]);
 
   // Rust rendering & static page generation (including S3 rel=prev/next & head links)
   assert.match(renderRs, /pub const SHORTS_PER_PAGE: usize = 3;/);
@@ -1417,12 +1407,11 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
   assert.match(bundleRs, /render::SHORTS_PER_PAGE/);
   assert.match(bundleRs, /shorts\/page\/\{page\}\/index\.html/);
 
-  // Browser publishing & Worker routing/sitemap (including S3 /shorts/page/1/ -> /shorts/ 301)
+  // Browser publishing and Worker routing, including /shorts/page/1/ -> /shorts/.
   assert.match(publishingTs, /shorts\/page\/\$\{i \+ 2\}\/index\.html/);
   assert.ok(workerIndex.includes('shorts\\/page\\/([1-9]\\d*)'));
   assert.ok(workerIndex.includes('/^\\/shorts\\/page\\/1(?:\\/|\\/index\\.html)?$/'));
   assert.match(workerIndex, /Response\.redirect\(canonical\.toString\(\), 301\)/);
-  assert.match(workerReader, /\(\?:post\|shorts\)\\\/page\\\/\[1-9\]\\d\*\\\/index\\\.html/);
 
   // Scoped shorts- CSS, strict <=120px peek cap, fixed-height controls, overflow-anchor, & reduced-motion support
   assert.match(homeCss, /\.short-card\.shorts-peek\s*\{/);

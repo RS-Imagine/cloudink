@@ -1,13 +1,15 @@
+mod discovery;
 mod feed;
 
 use worker::js_sys::{self, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures;
 use worker::worker_sys::R2Bucket;
-use worker::{Response, Result, web_sys};
+use worker::{Bucket, Error, Response, Result, web_sys};
 
 #[wasm_bindgen]
-pub async fn rss_response(
+pub async fn discovery_response(
+    path: String,
     origin: String,
     storage: JsValue,
     release: Option<String>,
@@ -15,18 +17,62 @@ pub async fn rss_response(
     template_version: String,
     response_version: String,
 ) -> std::result::Result<web_sys::Response, JsValue> {
-    // The host passes its instrumented STORAGE binding on an RSS cache miss.
-    let storage = storage.unchecked_into::<R2Bucket>();
-    let rss = feed::render(&storage, &origin, release.as_deref(), &pages)
-        .await
-        .map_err(|error| js_sys::Error::new(&error.to_string()))?;
-    let etag = feed_etag(&origin, &rss.text, &template_version, &response_version).await?;
-    let mut response = Response::from_bytes(rss.into_bytes())?;
+    // The host passes its instrumented STORAGE binding on a cache miss.
+    let response = match path.as_str() {
+        "/robots.txt" => discovery::robots(&origin),
+        "/sitemap.xml" => {
+            let storage = storage.unchecked_into::<Bucket>();
+            discovery::sitemap(&origin, &storage, release.as_deref(), &pages).await
+        }
+        "/feed.xml" => {
+            let storage = storage.unchecked_into::<R2Bucket>();
+            rss_response(
+                &origin,
+                &storage,
+                release.as_deref(),
+                &pages,
+                &template_version,
+                &response_version,
+            )
+            .await
+        }
+        _ => Err(Error::RustError("Unknown discovery route".into())),
+    };
+    response
+        .map(Into::into)
+        .map_err(|error| js_sys::Error::new(&error.to_string()).into())
+}
+
+async fn rss_response(
+    origin: &str,
+    storage: &R2Bucket,
+    release: Option<&str>,
+    pages: &JsValue,
+    template_version: &str,
+    response_version: &str,
+) -> Result<Response> {
+    let rss = feed::render(storage, origin, release, pages).await?;
+    let etag = feed_etag(origin, &rss.text, template_version, response_version).await?;
+    let mut response = public_response(
+        Response::from_bytes(rss.into_bytes())?,
+        "application/rss+xml; charset=utf-8",
+    )?;
+    response.headers_mut().set("ETag", &etag)?;
+    Ok(response)
+}
+
+fn public_response(mut response: Response, content_type: &str) -> Result<Response> {
     let headers = response.headers_mut();
-    headers.set("Content-Type", "application/rss+xml; charset=utf-8")?;
+    headers.set("Content-Type", content_type)?;
     headers.set("Cache-Control", "public, max-age=0, must-revalidate")?;
-    headers.set("ETag", &etag)?;
-    Ok(response.into())
+    Ok(response)
+}
+
+fn valid_post_slug(slug: &str) -> bool {
+    (1..=100).contains(&slug.len())
+        && slug
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 async fn feed_etag(
