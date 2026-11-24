@@ -20,6 +20,12 @@ extern "C" {
 
     pub type Element;
 
+    #[wasm_bindgen(method, getter, js_name = tagName)]
+    pub fn tag_name(this: &Element) -> String;
+
+    #[wasm_bindgen(method, getter, js_name = attributes)]
+    pub fn attributes(this: &Element) -> JsValue;
+
     #[wasm_bindgen(method, js_name = getAttribute)]
     pub fn attribute(this: &Element, name: &str) -> Option<JsString>;
 
@@ -37,6 +43,11 @@ extern "C" {
 
     #[wasm_bindgen(method, catch)]
     pub fn append(this: &Element, content: &JsString, options: &Object) -> JsResult<()>;
+
+    pub type Comment;
+
+    #[wasm_bindgen(method, catch, js_name = remove)]
+    pub fn remove_comment(this: &Comment) -> JsResult<()>;
 
     pub type TextChunk;
 
@@ -63,6 +74,15 @@ impl HtmlRewriter {
     pub fn on_text(&self, selector: &str, f: impl FnMut(TextChunk) + 'static) -> JsResult<()> {
         let callback = Closure::wrap(Box::new(f) as Box<dyn FnMut(TextChunk)>);
         self.on_handler(selector, "text", callback.into_js_value())
+    }
+
+    pub fn on_comments(
+        &self,
+        selector: &str,
+        f: impl FnMut(Comment) -> JsResult<()> + 'static,
+    ) -> JsResult<()> {
+        let callback = Closure::wrap(Box::new(f) as Box<dyn FnMut(Comment) -> JsResult<()>>);
+        self.on_handler(selector, "comments", callback.into_js_value())
     }
 
     fn on_handler(&self, selector: &str, event: &str, callback: JsValue) -> JsResult<()> {

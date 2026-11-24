@@ -2,7 +2,8 @@ import { backupSource, legacyHistoryKey } from './backup-contract';
 import { sameSha256 } from './crypto';
 import { ensureHomeIllustration } from './home-illustration';
 import { imageDimensions, parentImageKey, contentImageKey } from './image-variants';
-import { ensureSiteIcon, inspectSiteIcon } from './site-icons';
+import { ensureSiteIcon } from './site-icons';
+import type { InspectedSiteIcon } from './settings';
 import type { CloudInkEnv } from './env';
 import { currentRelease } from './publishing';
 import { draftSummary, shortSummary } from './post-metadata';
@@ -256,6 +257,7 @@ export async function backupRoute(
   request: Request,
   env: CloudInkEnv,
   path: string,
+  inspectSiteIcon: (bytes: Uint8Array) => Promise<InspectedSiteIcon>,
 ): Promise<Response | null> {
   if (path === '/api/backup' && request.method === 'GET') return json(await createBackup(env));
   if (path === '/api/backup/restore' && request.method === 'POST')
@@ -267,8 +269,7 @@ export async function backupRoute(
       type = validSiteIconKey(key) ? await inspectSiteIcon(bytes) : imageType(bytes);
     if (validSiteIconKey(key) && (!('key' in type) || type.key !== key))
       throw new HttpError(400, '备份图标与其内容地址不一致。');
-    const content =
-      'bytes' in type ? (type as Awaited<ReturnType<typeof inspectSiteIcon>>).bytes : bytes;
+    const content = 'bytes' in type ? (type as InspectedSiteIcon).bytes : bytes;
     if (
       key.startsWith('uploads/sha256/') &&
       parentImageKey(key) === key &&

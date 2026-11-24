@@ -1,11 +1,14 @@
 mod discovery;
 mod feed;
 mod html_rewriter;
+mod icon;
+mod icon_raster;
 mod maintenance;
 mod public_cache;
 mod reader;
 mod router;
 mod runtime;
+mod site;
 
 use worker::js_sys::{self, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
@@ -19,6 +22,23 @@ pub async fn maintain_storage(
     hooks: JsValue,
 ) -> html_rewriter::JsResult<JsValue> {
     maintenance::run(storage.unchecked_into(), hooks.unchecked_into()).await
+}
+
+#[wasm_bindgen]
+pub async fn site_settings(
+    request: web_sys::Request,
+    storage: JsValue,
+    hooks: JsValue,
+) -> html_rewriter::JsResult<web_sys::Response> {
+    site::handle(&request, &storage.unchecked_into(), &hooks.unchecked_into()).await
+}
+
+#[wasm_bindgen]
+pub async fn inspect_site_icon(
+    bytes: Uint8Array,
+    hooks: JsValue,
+) -> html_rewriter::JsResult<JsValue> {
+    icon::inspect(bytes, &hooks.unchecked_into()).await
 }
 
 #[wasm_bindgen]
@@ -127,21 +147,11 @@ async fn public_etag(
     template_version: &str,
     response_version: &str,
 ) -> Result<String> {
-    use std::fmt::Write;
-
     let input = format!(
         "reader-v5:{response_version}:{template_version}:{origin}{path}{value}:{site_icon}"
     );
-    let global = js_sys::global().unchecked_into::<web_sys::WorkerGlobalScope>();
-    let digest = global
-        .crypto()?
-        .subtle()
-        .digest_with_str_and_u8_array("SHA-256", input.as_bytes())?;
-    let digest = Uint8Array::new(&wasm_bindgen_futures::JsFuture::from(digest).await?);
-    let mut etag = String::from("\"");
-    for byte in digest.to_vec() {
-        write!(etag, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    etag.push('"');
-    Ok(etag)
+    Ok(format!(
+        "\"{}\"",
+        runtime::sha256_hex(&Uint8Array::from(input.as_bytes())).await?
+    ))
 }

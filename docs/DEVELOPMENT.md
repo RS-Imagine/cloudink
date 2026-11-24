@@ -36,6 +36,8 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 维护任务使用 Rust 保留发布版本、扫描存储和清理过期对象。Cron 和鉴权后的手动维护共用入口，继续通过现有内容变更租约及 R2 条件写入保护并发执行。
 
+设置读写、图标上传与公开读取由 Rust Worker 处理。SVG 沿用 Cloudflare 原生 HTMLRewriter，Rust 校验 XML、图标容器及派生图标，并保留已存图标的内容地址。
+
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
 ## 云端检查

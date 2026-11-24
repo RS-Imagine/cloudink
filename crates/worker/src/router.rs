@@ -62,8 +62,8 @@ extern "C" {
     #[wasm_bindgen(method, catch)]
     fn image(this: &Services, request: &Request) -> JsResult<Promise>;
 
-    #[wasm_bindgen(method, catch)]
-    fn icon(this: &Services, request: &Request) -> JsResult<Promise>;
+    #[wasm_bindgen(method, catch, js_name = iconType)]
+    pub fn icon_type(this: &Services, key: &str) -> JsResult<JsValue>;
 
     #[wasm_bindgen(method, catch)]
     fn asset(this: &Services, request: &Request) -> JsResult<Promise>;
@@ -154,7 +154,8 @@ impl PublicRouter<'_> {
             return await_response(self.services.image(self.request)?).await;
         }
         if path.starts_with("/site-icon/") {
-            return await_response(self.services.icon(self.request)?).await;
+            return crate::site::public_icon(self.request, self.storage, self.ctx, self.services)
+                .await;
         }
         if !can_read {
             return method_not_allowed(true);

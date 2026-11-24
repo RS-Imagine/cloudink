@@ -3,8 +3,8 @@ import { buildPostIndex, readPostIndex } from './post-index';
 import type { BrowserPointer } from './browser-publishing';
 import { backupJobRoute } from './backup-jobs';
 import type { MaintenanceStatus } from './maintenance';
+import type { InspectedSiteIcon } from './settings';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
-import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
 import {
   stageBrowserPage,
@@ -33,17 +33,10 @@ import {
   validSlug,
   validateDraft,
   validateShortDraft,
-  validateSite,
   type Draft,
   type SiteConfig,
 } from './models';
 
-import {
-  backfillSiteIconDerivatives,
-  ensureSiteIcon,
-  hasSiteIconDerivatives,
-  uploadSiteIcon,
-} from './site-icons';
 import { backupRoute } from './backup';
 import { validImageKey } from './media';
 import { uploadImage, optimizeImage } from './image-variants';
@@ -104,6 +97,8 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
 }
 type AdminEnv = CloudInkEnv & {
   maintainStorage(storage: R2Bucket): Promise<MaintenanceStatus>;
+  siteSettings(request: Request, storage: R2Bucket): Promise<Response>;
+  inspectSiteIcon(bytes: Uint8Array): Promise<InspectedSiteIcon>;
 };
 
 async function apiRoute(
@@ -116,17 +111,18 @@ async function apiRoute(
     return json(await readJson<MaintenanceStatus>(env.STORAGE, 'state/maintenance.json'));
   if (path === '/api/maintenance' && request.method === 'POST')
     return json({ maintenance: await env.maintainStorage(env.STORAGE) });
-  if (path === '/api/site-icon' && request.method === 'POST')
-    return uploadSiteIcon(request, env.STORAGE);
-  if (path === '/api/site-icon/derivatives' && request.method === 'POST')
-    return backfillSiteIconDerivatives(request, env.STORAGE);
+  if (
+    (path === '/api/site-icon' || path === '/api/site-icon/derivatives') &&
+    request.method === 'POST'
+  )
+    return env.siteSettings(request, env.STORAGE);
   if (path === '/api/images/optimize' && request.method === 'POST')
     return optimizeImage(request, env.STORAGE);
   const images = await imageLibraryRoute(request, env, path);
   if (images) return images;
   const task = await backupJobRoute(request, env, path, session);
   if (task) return task;
-  const backup = await backupRoute(request, env, path);
+  const backup = await backupRoute(request, env, path, env.inspectSiteIcon);
   if (backup) return backup;
   const browserPublish = path.match(/^\/api\/publish\/([a-f0-9-]{36})\/(file|plan|commit|cancel)$/);
   if (browserPublish) {
@@ -490,37 +486,8 @@ async function apiRoute(
   if (path === '/api/publish' && request.method === 'POST') return publish(request, env);
   if (path === '/api/publish/status' && request.method === 'GET')
     return json(await publishStatus(env));
-  if (path === '/api/settings' && request.method === 'GET') {
-    const siteObj = await env.STORAGE.get('draft-site.json'),
-      release = await currentRelease(env);
-    const site: SiteConfig = siteObj ? await siteObj.json<SiteConfig>() : release.site;
-    const siteIconDerivativesReady = await hasSiteIconDerivatives(env.STORAGE, site.siteIcon);
-    return json({
-      site,
-      etag: siteObj?.etag || null,
-      siteIconDerivativesReady,
-    });
-  }
-  if (path === '/api/settings' && request.method === 'PUT') {
-    const data = await jsonInput(request, 500_000),
-      site = validateSite(data.site);
-    await ensureManagedImages(env.STORAGE, site.about || '', new URL(request.url).origin);
-    await ensureHomeIllustration(env.STORAGE, site);
-    await ensureSiteIcon(env.STORAGE, site);
-    const old = await env.STORAGE.get('draft-site.json');
-    if (old && data.etag !== old.etag) {
-      await old.body.cancel();
-      throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
-    }
-    const text = JSON.stringify(site);
-    if (old && JSON.stringify(validateSite(await old.json())) === text)
-      return json({ site, etag: old.etag, unchanged: true });
-    const saved = await env.STORAGE.put('draft-site.json', text, {
-      onlyIf: old ? { etagMatches: old.etag } : { etagDoesNotMatch: '*' },
-    });
-    if (!saved) throw new HttpError(409, '网站信息刚刚被修改，请重新打开设置。');
-    return json({ site, etag: saved.etag });
-  }
+  if (path === '/api/settings' && (request.method === 'GET' || request.method === 'PUT'))
+    return env.siteSettings(request, env.STORAGE);
   if (path === '/api/export' && request.method === 'GET')
     throw new HttpError(410, '此导出接口已停用，请刷新后台并使用分批备份。');
   throw new HttpError(404, '接口不存在。');
