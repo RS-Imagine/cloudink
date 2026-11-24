@@ -10,8 +10,8 @@
     "check": "npm --prefix cloud-admin run check",
     "format": "prettier --write cloud-admin/src cloud-admin/ui cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
     "format:check": "prettier --check cloud-admin/src cloud-admin/ui cloud-web/test README.md docs/DEPLOYMENT.md docs/DEVELOPMENT.md package.json cloud-admin/package.json wrangler.jsonc .github/workflows/checks.yml .prettierrc.json",
-    "dev": "node scripts/dev-server.mjs",
-    "dev:worker": "wrangler dev --port 3000 --ip 0.0.0.0",
+    "dev": "cargo xtask dev",
+    "dev:worker": "cargo xtask dev",
     "test:icons:preview": "node cloud-web/test/site-icon.preview.mjs",
     "test:ui:audit": "node scripts/ui-audit.mjs",
     "format:ui": "prettier --write scripts/ui-audit.mjs assets/design-tokens.css assets/design-foundation.css assets/theme.js assets/motion.js assets/motion.css assets/mobile.js assets/mobile.css assets/expressive.css assets/reader-runtime.js crates/blog-core/src/assets/home.css crates/blog-core/src/assets/reader.css crates/blog-core/src/assets/reader-tools.css",
@@ -20,9 +20,6 @@
   "devDependencies": {
     "prettier": "3.9.9",
     "wrangler": "4.145.0"
-  },
-  "dependencies": {
-    "swup": "4.10.0"
   },
   "cloudflare": {
     "bindings": {

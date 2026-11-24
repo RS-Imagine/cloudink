@@ -11,13 +11,46 @@ use std::process::Command;
 
 fn main() -> Result<()> {
     let arguments = env::args().skip(1).collect::<Vec<_>>();
-    if arguments != ["build"] {
-        bail!("Usage: cargo xtask build");
-    }
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
         .canonicalize()?;
-    build(&root)
+    match arguments.as_slice() {
+        [command] if command == "build" => build(&root),
+        [command] if command == "dev" => dev(&root),
+        _ => bail!("Usage: cargo xtask build | cargo xtask dev"),
+    }
+}
+
+fn dev(root: &Path) -> Result<()> {
+    let host = env::var("HOST")
+        .ok()
+        .filter(|host| !host.is_empty())
+        .unwrap_or_else(|| "0.0.0.0".to_owned());
+    let port = env::var("PORT")
+        .ok()
+        .filter(|port| !port.is_empty() && port != "0")
+        .unwrap_or_else(|| "3000".to_owned());
+    let port = port
+        .parse::<u16>()
+        .context("PORT must be between 1 and 65535")?;
+    ensure!(port > 0, "PORT must be between 1 and 65535");
+    build(root)?;
+    let npm = if cfg!(windows) { "npm.cmd" } else { "npm" };
+    let mut wrangler = Command::new(npm);
+    wrangler
+        .current_dir(root)
+        .args(["exec", "--yes", "--package=wrangler@4.145.0", "--"])
+        .args(["wrangler", "dev", "--local", "--ip", &host, "--port"])
+        .arg(port.to_string());
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+
+        Err(wrangler.exec()).context("start local Wrangler")
+    }
+    #[cfg(not(unix))]
+    run(&mut wrangler)
 }
 
 fn build(root: &Path) -> Result<()> {
