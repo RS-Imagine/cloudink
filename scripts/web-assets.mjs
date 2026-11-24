@@ -20,13 +20,9 @@ if (process.argv[2] === 'seed') {
     await readFile(resolve(output, 'site.json'), 'utf8'),
   );
   if (!/^[a-f0-9]{64}$/.test(version || '')) throw new Error('Missing Rust template fingerprint.');
-  await writeFile(
-    resolve(root, 'cloud-admin/src/template-version.generated.ts'),
-    '// Generated from the Rust renderer. Do not edit.\n' +
-      'export const CURRENT_TEMPLATE_VERSION = ' +
-      JSON.stringify(version) +
-      ';\n',
-  );
+  const workerAssets = resolve(root, 'build-work/worker-assets');
+  await mkdir(workerAssets, { recursive: true });
+  await writeFile(resolve(workerAssets, 'template-version'), version);
   const motion = await readFile(resolve(root, 'assets/motion.js'), 'utf8');
   const mobile = await readFile(resolve(root, 'assets/mobile.js'), 'utf8');
   const runtime = await readFile(resolve(root, 'assets/reader-runtime.js'), 'utf8');

@@ -1,161 +1,103 @@
+mod admin;
+mod assets;
+mod auth;
 mod backup;
 mod backup_jobs;
 mod browser_publish;
+mod config;
 mod discovery;
 mod draft_listing;
 mod drafts;
+mod entities;
 mod feed;
 mod html_rewriter;
+mod http;
 mod icon;
 mod icon_raster;
 mod image;
 mod image_header;
 mod image_library;
+mod image_references;
 mod maintenance;
 mod media;
+mod models;
 mod page_rendering;
 mod post_addresses;
 mod post_index;
 mod public_cache;
 mod publishing;
 mod reader;
+mod reference_index;
 mod router;
 mod runtime;
 mod site;
+mod site_assets;
+mod storage;
 
-use worker::js_sys::{self, Uint8Array};
-use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
+use worker::js_sys::{self, Date, JSON, Uint8Array};
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::wasm_bindgen_futures;
 use worker::worker_sys::R2Bucket;
-use worker::{Bucket, Context, Error, Response, Result, web_sys};
+use worker::{
+    Bucket, Context, Env, Error, Response, Result, ScheduleContext, ScheduledEvent, event, web_sys,
+};
 
-#[wasm_bindgen]
-pub async fn maintain_storage(
-    storage: JsValue,
-    hooks: JsValue,
-) -> html_rewriter::JsResult<JsValue> {
-    maintenance::run(storage.unchecked_into(), hooks.unchecked_into()).await
-}
-
-#[wasm_bindgen]
-pub async fn site_settings(
-    request: web_sys::Request,
-    storage: JsValue,
-    hooks: JsValue,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    site::handle(&request, &storage.unchecked_into(), &hooks.unchecked_into()).await
-}
-
-#[wasm_bindgen]
-pub async fn backup_request(
-    request: web_sys::Request,
-    storage: JsValue,
-    session: JsValue,
-    hooks: JsValue,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    let url = web_sys::Url::new(&request.url())?;
-    let path = url.pathname();
-    let storage: &R2Bucket = storage.unchecked_ref();
-    let hooks: &drafts::Hooks = hooks.unchecked_ref();
-    if path == "/api/backup/jobs" || path.starts_with("/api/backup/jobs/") {
-        backup_jobs::handle(request, storage, hooks, session).await
-    } else {
-        backup::handle(&request, &url, storage, hooks).await
-    }
-}
-
-#[wasm_bindgen]
-pub async fn image_request(
-    request: web_sys::Request,
-    storage: JsValue,
-    hooks: JsValue,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    image::handle(&request, &storage.unchecked_into(), &hooks.unchecked_into()).await
-}
-
-#[wasm_bindgen]
-pub async fn content_request(
-    request: web_sys::Request,
-    storage: JsValue,
-    session: JsValue,
-    hooks: JsValue,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    let url = web_sys::Url::new(&request.url())?;
-    let path = url.pathname();
-    let storage: &R2Bucket = storage.unchecked_ref();
-    let hooks: &drafts::Hooks = hooks.unchecked_ref();
-    match path.as_str() {
-        "/api/posts" if request.method() == "GET" => {
-            draft_listing::posts(&url, storage, hooks, &session).await
-        }
-        "/api/shorts" if request.method() == "GET" => {
-            draft_listing::shorts(&url, storage, hooks).await
-        }
-        "/api/publish" if request.method() == "POST" => {
-            publishing::publish(&request, storage, hooks).await
-        }
-        "/api/publish/status" if request.method() == "GET" => {
-            let state = publishing::status(storage, hooks, false, &JsValue::UNDEFINED).await?;
-            runtime::json_object(200, &state)
-        }
-        _ => {
-            if let Some(slug) = path
-                .strip_prefix("/api/posts/")
-                .and_then(|rest| rest.strip_suffix("/rename"))
-            {
-                return post_addresses::rename_draft(&request, storage, hooks, slug).await;
-            }
-            if let Some((id, action)) = path
-                .strip_prefix("/api/publish/")
-                .and_then(|rest| rest.split_once('/'))
-            {
-                return match (action, request.method().as_str()) {
-                    ("plan", "POST") => browser_publish::plan(&request, storage, hooks, id).await,
-                    ("file", "PUT") => browser_publish::stage(&request, storage, hooks, id).await,
-                    ("commit", "POST") => {
-                        browser_publish::commit(&request, storage, hooks, id).await
-                    }
-                    ("cancel", "POST") => browser_publish::cancel(storage, hooks, id).await,
-                    _ => Err(hooks.error(405, "请求方式不正确。")),
-                };
-            }
-            let target = path
-                .strip_prefix("/api/posts/")
-                .map(|slug| (drafts::Kind::Post, slug))
-                .or_else(|| {
-                    path.strip_prefix("/api/shorts/")
-                        .map(|slug| (drafts::Kind::Short, slug))
-                });
-            let Some((kind, slug)) = target else {
-                return Err(hooks.error(404, "接口不存在。"));
-            };
-            drafts::item(&request, &url, storage, hooks, kind, slug).await
-        }
-    }
-}
-
-#[wasm_bindgen]
-pub async fn route_request(
-    request: web_sys::Request,
-    storage: JsValue,
-    ctx: JsValue,
-    services: JsValue,
-    template_version: String,
-    response_version: String,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    let storage = storage.unchecked_into::<R2Bucket>();
-    let context = Context::new(ctx.unchecked_into());
-    let services = services.unchecked_into::<router::Services>();
-    router::PublicRouter {
+#[event(fetch)]
+async fn fetch(request: web_sys::Request, env: Env, ctx: Context) -> Result<web_sys::Response> {
+    let storage = env.bucket("STORAGE")?;
+    let storage: &JsValue = storage.as_ref();
+    let stats = storage::Stats::new(storage.unchecked_ref())?;
+    let started = Date::now();
+    let id = storage::uuid()?;
+    let config = config::Config::new(&env);
+    let response = router::PublicRouter {
         request: &request,
-        storage: &storage,
-        ctx: &context,
-        services: &services,
-        template_version: &template_version,
-        response_version: &response_version,
+        storage: &stats.bucket,
+        ctx: &ctx,
+        env: &env,
+        config: &config,
     }
     .respond()
-    .await
+    .await?;
+    let path = web_sys::Url::new(&request.url())?.pathname();
+    let route = path.split('/').take(3).collect::<Vec<_>>().join("/");
+    let route = http::safe_path(&route);
+    stats.report(
+        &id,
+        &route.as_string().unwrap_or_default(),
+        &request.method(),
+        response.status(),
+        started,
+    )?;
+    let headers = web_sys::Headers::new_with_headers(&response.headers())?;
+    headers.set("X-Request-ID", &id)?;
+    Ok(public_cache::stream_response(
+        response.body().as_ref(),
+        response.status(),
+        &headers,
+    )?)
+}
+
+#[event(scheduled)]
+async fn scheduled(_: ScheduledEvent, env: Env, ctx: ScheduleContext) {
+    ctx.wait_until(async move {
+        let result = async {
+            let binding = env
+                .bucket("STORAGE")
+                .map_err(|error| self::js_sys::Error::new(&error.to_string()))?;
+            let binding: &JsValue = binding.as_ref();
+            maintenance::run(binding.unchecked_ref()).await
+        }
+        .await;
+        if let Err(error) = result {
+            let kind = http::error_type(&error);
+            if let Ok(kind) = JSON::stringify(kind.as_ref()) {
+                worker::console_error!(
+                    "{{\"event\":\"storage_maintenance_failed\",\"type\":{kind}}}"
+                );
+            }
+        }
+    });
 }
 
 async fn discovery_response(

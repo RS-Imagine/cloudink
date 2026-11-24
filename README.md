@@ -77,14 +77,12 @@ cloudink/
 │   │   ├── tests/                 # Rust 内容和渲染测试
 │   │   └── build.rs               # 计算模板版本指纹
 │   ├── blog-wasm/                 # 浏览器 WASM 接口，复用 blog-core
-│   └── sitegen/                   # 构建期命令行工具，生成基础站点资源
+│   ├── sitegen/                   # 构建期命令行工具，生成基础站点资源
+│   └── worker/                    # Cloudflare Worker 入口、公开页面与后台 API
 ├── cloud-web/
-│   ├── src/
-│   │   ├── index.ts               # 唯一 Worker 入口，分发前后台请求
-│   │   └── reader.ts              # 阅读响应、图片加载与搜索引擎元信息
 │   └── test/                     # API、存储及浏览器功能测试
 ├── cloud-admin/
-│   ├── src/                      # 认证、文章、短记、图片、备份与发布 API
+│   ├── src/                      # 浏览器使用的备份格式和图片识别
 │   ├── ui/
 │   │   ├── index.html            # 后台页面结构
 │   │   ├── app.js                # 后台主入口与编辑状态协调
@@ -112,7 +110,7 @@ cloudink/
 └── LICENSE                      # MIT 开源协议
 ```
 
-**构建流程：** `npm run build` 编译 Rust/WASM、打包后台，再通过 `sitegen` 和资源脚本生成通用前台资源。Worker 部署入口始终是 `cloud-web/src/index.ts`；`cloud-admin` 是内部模块，不单独部署。
+`npm run build` 编译 Rust/WASM、打包后台，再通过 `sitegen` 和资源脚本生成通用前台资源。Wrangler 从 `build-work/reader-worker/index.js` 部署 workers-rs 生成的入口。后台界面随同一个 Worker 提供。
 
 **写作与发布：** 后台通过 API 保存草稿；预览、Markdown 导入和发布排版调用浏览器线程中的 Rust/WASM。发布页面上传完成后，Worker 切换 R2 中的线上版本指针，读者访问当前已发布内容。浏览器线程不是额外部署的 Cloudflare Worker。
 
@@ -132,4 +130,4 @@ CloudInk 的原创代码与项目资源采用 [MIT License](LICENSE) 发布，�
 
 公开内容使用边缘缓存，日常发布只上传变化页面，新大图默认压缩主图；图片库分页不重复扫描存储桶。每日自动回收过期发布产物，保留当前与最近两个版本，保护原稿、图片、设置和账户。详见[免费额度与自动维护](docs/DEPLOYMENT.md#免费额度与自动维护)。这些措施减少消耗，但不构成 Cloudflare 账号的自动停费上限。
 
-实现位置：`cloud-web/src/cache.ts` 负责公开缓存，`cloud-admin/src/browser-publishing.ts` 负责页面指纹与增量发布，`cloud-admin/src/maintenance.ts` 负责有界回收；仍使用一个 Worker 与一个私有 R2 桶。
+公开缓存、增量发布和有界回收分别位于 `crates/worker/src/public_cache.rs`、`crates/worker/src/browser_publish.rs` 和 `crates/worker/src/maintenance.rs`。CloudInk 使用一个 Worker 与一个私有 R2 桶。

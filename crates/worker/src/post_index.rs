@@ -5,22 +5,20 @@ use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::worker_sys::R2Bucket;
 
 use crate::browser_publish::{copy, entries};
-use crate::drafts::Hooks;
+use crate::drafts::Kind;
 use crate::html_rewriter::JsResult;
+use crate::http::error;
 use crate::media::valid_image_key;
 use crate::runtime::{
     attribute, digest_text, object, own_property, property, read_json, set, set_own,
 };
+use crate::{image_references, models};
 
 pub fn key(id: &str) -> String {
     format!("releases/{id}.posts.json")
 }
 
-pub async fn read(
-    storage: &R2Bucket,
-    id: &str,
-    error: impl Fn(u16, &str) -> JsValue,
-) -> JsResult<JsValue> {
+pub async fn read(storage: &R2Bucket, id: &str) -> JsResult<JsValue> {
     let index = read_json(storage, &key(id)).await?;
     if !index.is_truthy() {
         return Ok(JsValue::NULL);
@@ -59,12 +57,7 @@ pub async fn read(
     Ok(index)
 }
 
-pub async fn build(
-    release: &JsValue,
-    base: &JsValue,
-    prior: &JsValue,
-    hooks: &Hooks,
-) -> JsResult<JsValue> {
+pub async fn build(release: &JsValue, base: &JsValue, prior: &JsValue) -> JsResult<JsValue> {
     let reusable = prior.is_truthy() && property(prior, "id") == property(base, "id");
     let posts = Object::new();
     let shorts = Object::new();
@@ -76,10 +69,10 @@ pub async fn build(
             set_own(&posts, &slug, old_post)?;
             continue;
         }
-        let draft = hooks.parse_post(source.unchecked_ref())?;
+        let draft = models::parse_source(source.unchecked_ref(), Kind::Post)?;
         let front = property(&draft, "front_matter");
         if property(&front, "slug") != slug {
-            return Err(hooks.error(400, "文章地址与原稿不一致。"));
+            return Err(error(400, "文章地址与原稿不一致。"));
         }
         if !property(&front, "draft").is_truthy() {
             let post = copy(&front);
@@ -95,10 +88,10 @@ pub async fn build(
             set_own(&shorts, &slug, old_short)?;
             continue;
         }
-        let draft = hooks.parse_short(source.unchecked_ref())?;
+        let draft = models::parse_source(source.unchecked_ref(), Kind::Short)?;
         let front = property(&draft, "front_matter");
         if property(&front, "slug") != slug {
-            return Err(hooks.error(400, "短记地址与原稿不一致。"));
+            return Err(error(400, "短记地址与原稿不一致。"));
         }
         if !property(&front, "draft").is_truthy() {
             let body = property(&draft, "body_markdown");
@@ -110,7 +103,7 @@ pub async fn build(
             set_own(&shorts, &slug, summary.into())?;
         }
     }
-    let images = image_index(release, base, prior, reusable, hooks)?;
+    let images = image_index(release, base, prior, reusable)?;
     Ok(object(&[
         ("schema_version", 1.into()),
         ("id", property(release, "id")),
@@ -127,9 +120,8 @@ fn image_index(
     base: &JsValue,
     prior: &JsValue,
     reusable: bool,
-    hooks: &Hooks,
 ) -> JsResult<Object> {
-    let version = hooks.ref_version();
+    let version = image_references::VERSION;
     let images = property(prior, "images");
     let mut old = HashMap::new();
     if reusable && property(&images, "version") == version {
@@ -159,7 +151,10 @@ fn image_index(
             set(
                 &entry,
                 "keys",
-                hooks.managed_images(source.unchecked_ref())?,
+                image_references::managed(source.unchecked_ref())?
+                    .into_iter()
+                    .map(JsValue::from)
+                    .collect::<Array>(),
             )?;
             result.push(&entry);
         }
@@ -197,7 +192,7 @@ fn image_index(
         "关于页面",
         None,
     )?;
-    object(&[("version", version), ("entries", result.into())])
+    object(&[("version", version.into()), ("entries", result.into())])
 }
 
 pub async fn editorial_digest(draft: &JsValue) -> JsResult<String> {

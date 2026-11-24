@@ -8,8 +8,10 @@ use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Response, Url};
 use worker::worker_sys::R2Bucket;
 
-use crate::drafts::{Hooks, Kind, deleted};
+use crate::config::Config;
+use crate::drafts::{Kind, deleted};
 use crate::html_rewriter::JsResult;
+use crate::http::error;
 use crate::page_rendering::valid_slug;
 use crate::runtime::{
     attribute, digest_text, js_number, json, list, object, own_property, property, read_json, set,
@@ -22,23 +24,23 @@ thread_local! {
 pub async fn posts(
     url: &Url,
     storage: &R2Bucket,
-    hooks: &Hooks,
+    config: &Config,
     session: &JsValue,
 ) -> JsResult<Response> {
-    let pointer = published_pointer(storage, hooks).await?;
+    let pointer = published_pointer(storage).await?;
     let id = attribute(&pointer, "id");
-    let status = crate::publishing::status(storage, hooks, false, &pointer);
-    let index = crate::post_index::read(storage, &id, |status, text| hooks.error(status, text));
+    let status = crate::publishing::status(storage, false, &pointer);
+    let index = crate::post_index::read(storage, &id);
     let (publishing, drafts, saved_site, index) = try_join!(
         status,
-        list_active(storage, hooks, Kind::Post),
+        list_active(storage, Kind::Post),
         read_json(storage, "draft-site.json"),
         index,
     )?;
     let index = if index.is_truthy() {
         index
     } else {
-        build_index(storage, hooks, &pointer).await?
+        build_index(storage, &pointer).await?
     };
     let released = property(&index, "site");
     let published = property(&index, "posts");
@@ -53,8 +55,8 @@ pub async fn posts(
             .is_truthy());
     let template_status = if !initialized {
         "unpublished"
-    } else if property(&pointer, "templateVersion") == hooks.template_version()
-        && property(&pointer, "generationVersion") == hooks.generation_version()
+    } else if property(&pointer, "templateVersion") == config.template_version
+        && property(&pointer, "generationVersion") == config.generation_version
     {
         "current"
     } else {
@@ -122,8 +124,8 @@ pub async fn posts(
         ("draft", (total - live).into()),
     ])?;
     let params = url.search_params();
-    let limit = limit(params.get("limit"), total)
-        .ok_or_else(|| hooks.error(400, "文章列表分页参数不正确。"))?;
+    let limit =
+        limit(params.get("limit"), total).ok_or_else(|| error(400, "文章列表分页参数不正确。"))?;
     let query = JsString::from(params.get("q").unwrap_or_default())
         .trim()
         .to_lower_case();
@@ -132,7 +134,7 @@ pub async fn posts(
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "all".to_owned());
     if query.length() > 300 || !matches!(filter.as_str(), "all" | "published" | "draft") {
-        return Err(hooks.error(400, "文章列表分页参数不正确。"));
+        return Err(error(400, "文章列表分页参数不正确。"));
     }
     let query_text = query.as_string().unwrap_or_default();
     let selected: Vec<_> = rows
@@ -157,13 +159,7 @@ pub async fn posts(
     let snapshot = snapshot(id.into(), &drafts, Some((query, filter))).await?;
     let matching = selected.len();
     let cursor = params.get("cursor").filter(|value| !value.is_empty());
-    let offset = read_cursor(
-        cursor,
-        &snapshot,
-        matching,
-        hooks,
-        "文章列表已变化，请重新读取。",
-    )?;
+    let offset = read_cursor(cursor, &snapshot, matching, "文章列表已变化，请重新读取。")?;
     let page: Array = selected
         .into_iter()
         .skip(offset)
@@ -215,15 +211,14 @@ pub async fn posts(
     )
 }
 
-pub async fn shorts(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let pointer = published_pointer(storage, hooks).await?;
+pub async fn shorts(url: &Url, storage: &R2Bucket) -> JsResult<Response> {
+    let pointer = published_pointer(storage).await?;
     let id = attribute(&pointer, "id");
-    let stored =
-        crate::post_index::read(storage, &id, |status, text| hooks.error(status, text)).await?;
+    let stored = crate::post_index::read(storage, &id).await?;
     let index = if property(&stored, "shorts").is_truthy() {
         stored
     } else {
-        build_index(storage, hooks, &pointer).await?
+        build_index(storage, &pointer).await?
     };
     let published = property(&index, "shorts");
     let mut rows = Rows::default();
@@ -239,7 +234,7 @@ pub async fn shorts(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Re
             ])?,
         );
     }
-    let drafts = list_active(storage, hooks, Kind::Short).await?;
+    let drafts = list_active(storage, Kind::Short).await?;
     for draft in &drafts {
         let slug = slug_from_key(draft);
         if !valid_slug(&slug) {
@@ -277,14 +272,13 @@ pub async fn shorts(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Re
     rows.sort(Kind::Short);
     let total = rows.values.len();
     let params = url.search_params();
-    let limit = limit(params.get("limit"), total)
-        .ok_or_else(|| hooks.error(400, "短记分页参数不正确。"))?;
+    let limit =
+        limit(params.get("limit"), total).ok_or_else(|| error(400, "短记分页参数不正确。"))?;
     let snapshot = snapshot(id.into(), &drafts, None).await?;
     let offset = read_cursor(
         params.get("cursor"),
         &snapshot,
         total,
-        hooks,
         "短记列表已变化，请重新读取。",
     )?;
     let page: Array = rows
@@ -304,21 +298,21 @@ pub async fn shorts(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Re
     )
 }
 
-async fn published_pointer(storage: &R2Bucket, hooks: &Hooks) -> JsResult<JsValue> {
+async fn published_pointer(storage: &R2Bucket) -> JsResult<JsValue> {
     let pointer = read_json(storage, "state/published.json").await?;
     if pointer.is_truthy() {
         Ok(pointer)
     } else {
-        Err(hooks.error(503, "网站内容尚未初始化。"))
+        Err(error(503, "网站内容尚未初始化。"))
     }
 }
 
-async fn build_index(storage: &R2Bucket, hooks: &Hooks, pointer: &JsValue) -> JsResult<JsValue> {
-    let release = crate::publishing::current_release(storage, hooks, pointer).await?;
-    crate::post_index::build(&release, &JsValue::UNDEFINED, &JsValue::UNDEFINED, hooks).await
+async fn build_index(storage: &R2Bucket, pointer: &JsValue) -> JsResult<JsValue> {
+    let release = crate::publishing::current_release(storage, pointer).await?;
+    crate::post_index::build(&release, &JsValue::UNDEFINED, &JsValue::UNDEFINED).await
 }
 
-pub async fn list_active(storage: &R2Bucket, hooks: &Hooks, kind: Kind) -> JsResult<Vec<JsValue>> {
+pub async fn list_active(storage: &R2Bucket, kind: Kind) -> JsResult<Vec<JsValue>> {
     let mut objects = Vec::new();
     let mut cursor = JsValue::UNDEFINED;
     let mut scanned = 0;
@@ -333,11 +327,14 @@ pub async fn list_active(storage: &R2Bucket, hooks: &Hooks, kind: Kind) -> JsRes
         .await?;
         scanned += page.objects.length();
         if scanned > 10_000 {
-            return Err(hooks.error(413, "原稿目录超过安全扫描上限，请联系维护者整理删除标记。"));
+            return Err(error(
+                413,
+                "原稿目录超过安全扫描上限，请联系维护者整理删除标记。",
+            ));
         }
         objects.extend(page.objects.iter().filter(|item| !deleted(item)));
         if objects.len() > 2_000 {
-            return Err(hooks.error(413, "有效原稿超过 2000 篇，暂时无法完整读取。"));
+            return Err(error(413, "有效原稿超过 2000 篇，暂时无法完整读取。"));
         }
         cursor = page.cursor;
         if !cursor.is_truthy() {
@@ -441,14 +438,13 @@ fn read_cursor(
     cursor: Option<String>,
     snapshot: &str,
     count: usize,
-    hooks: &Hooks,
     stale: &str,
 ) -> JsResult<usize> {
     let Some(cursor) = cursor else { return Ok(0) };
-    let invalid = || hooks.error(400, "分页位置不正确。");
+    let invalid = || error(400, "分页位置不正确。");
     let cursor = JSON::parse(&cursor).map_err(|_| invalid())?;
     if property(&cursor, "snapshot") != snapshot {
-        return Err(hooks.error(409, stale));
+        return Err(error(409, stale));
     }
     property(&cursor, "offset")
         .as_f64()

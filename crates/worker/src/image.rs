@@ -1,12 +1,11 @@
-use std::rc::Rc;
-
-use worker::js_sys::{Array, Function, JsString, Object, Promise, Uint8Array};
-use worker::wasm_bindgen::{self, JsCast, JsValue, closure::Closure, prelude::wasm_bindgen};
-use worker::wasm_bindgen_futures::{JsFuture, future_to_promise};
+use worker::js_sys::{Array, JsString, Object, Promise, Uint8Array};
+use worker::wasm_bindgen::{JsCast, JsValue};
+use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Blob, File, FormData, Headers, ReadableStream, Request, Response, Url};
 use worker::worker_sys::{R2Bucket, R2Object, R2ObjectBody};
 
 use crate::html_rewriter::JsResult;
+use crate::http::error;
 use crate::image_header::{ImageInfo, ImageType, image_info, image_type};
 use crate::media::{MAX_IMAGE, valid_image_key};
 use crate::public_cache::{response_init, stream_response};
@@ -19,44 +18,6 @@ pub const WIDTHS: [u32; 3] = [640, 1280, 1920];
 const VARIANTS_BODY_LIMIT: u32 = 6_000_000 + 64 * 1024;
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
-#[wasm_bindgen]
-extern "C" {
-    pub type Hooks;
-
-    #[wasm_bindgen(method, catch, js_name = withContentMutation)]
-    fn with_mutation(this: &Hooks, storage: &R2Bucket, work: &Function) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = jsonInput)]
-    pub fn json_input(this: &Hooks, request: &Request, limit: u32) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = managedImageKeys)]
-    pub fn managed_images(this: &Hooks, source: &JsString) -> JsResult<Array>;
-
-    #[wasm_bindgen(method, catch, js_name = referenceShardKey)]
-    pub fn shard_key(this: &Hooks, hash: &str) -> JsResult<String>;
-
-    #[wasm_bindgen(method, catch, js_name = readReferenceShard)]
-    pub fn read_shard(this: &Hooks, storage: &R2Bucket, key: &str) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = checkedReferenceKeys)]
-    pub fn checked_keys(this: &Hooks, shard: &JsValue, hash: &str) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = imageReferenceMetadata)]
-    pub fn ref_metadata(this: &Hooks, source: &JsString, storage: &R2Bucket) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, getter, js_name = referenceVersion)]
-    pub fn ref_version(this: &Hooks) -> String;
-
-    #[wasm_bindgen(method, catch, js_name = siteIconDerivedKeys)]
-    pub fn icon_derivatives(this: &Hooks, key: &str) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, js_name = errorStatus)]
-    pub fn error_status(this: &Hooks, error: &JsValue) -> JsValue;
-
-    #[wasm_bindgen(method)]
-    pub fn error(this: &Hooks, status: u16, message: &str) -> JsValue;
-}
-
 pub fn parent_key(key: &str) -> &str {
     let parent = [".w640.webp", ".w1280.webp", ".w1920.webp"]
         .into_iter()
@@ -66,29 +27,27 @@ pub fn parent_key(key: &str) -> &str {
         .unwrap_or(key)
 }
 
-pub async fn handle(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+pub async fn handle(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
     let url = Url::new(&request.url())?;
     match (url.pathname().as_str(), request.method().as_str()) {
-        ("/api/upload", "POST") => upload(request, storage, hooks).await,
-        ("/api/images/optimize", "POST") => optimize(request, storage, hooks).await,
-        ("/api/images/reindex", "POST") => {
-            crate::image_library::reindex(request, storage, hooks).await
-        }
-        ("/api/images", _) => crate::image_library::library(request, &url, storage, hooks).await,
-        ("/api/image", "GET") => read_image(&url, storage, hooks).await,
-        _ => Err(hooks.error(404, "接口不存在。")),
+        ("/api/upload", "POST") => upload(request, storage).await,
+        ("/api/images/optimize", "POST") => optimize(request, storage).await,
+        ("/api/images/reindex", "POST") => crate::image_library::reindex(request, storage).await,
+        ("/api/images", _) => crate::image_library::library(request, &url, storage).await,
+        ("/api/image", "GET") => read_image(&url, storage).await,
+        _ => Err(error(404, "接口不存在。")),
     }
 }
 
-async fn read_image(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+async fn read_image(url: &Url, storage: &R2Bucket) -> JsResult<Response> {
     let Some(key) = url.search_params().get("key").filter(|key| {
         key.len() <= 1024 && !key.contains("..") && !key.starts_with('/') && valid_image_key(key)
     }) else {
-        return Err(hooks.error(400, "图片地址不正确。"));
+        return Err(error(400, "图片地址不正确。"));
     };
     let image = get(storage, &key).await?;
     if !image.is_truthy() {
-        return Err(hooks.error(404, "图片不存在。"));
+        return Err(error(404, "图片不存在。"));
     }
     let headers = Headers::new()?;
     headers.set("Cache-Control", "private, max-age=300")?;
@@ -101,8 +60,8 @@ async fn read_image(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Re
     stream_response(Some(&body), 200, &headers)
 }
 
-async fn read_form(request: &Request, limit: u32, hooks: &Hooks) -> JsResult<FormData> {
-    let bytes = limited_body(request, limit, || hooks.error(413, "上传内容太大。")).await?;
+async fn read_form(request: &Request, limit: u32) -> JsResult<FormData> {
+    let bytes = limited_body(request, limit, || error(413, "上传内容太大。")).await?;
     let headers = Headers::new()?;
     headers.set(
         "Content-Type",
@@ -126,7 +85,6 @@ async fn prepare_variants(
     info: Option<ImageInfo>,
     source_size: f64,
     key: &str,
-    hooks: &Hooks,
 ) -> JsResult<Vec<Variant>> {
     let mut prepared = Vec::new();
     for width in WIDTHS {
@@ -135,14 +93,14 @@ async fn prepare_variants(
             continue;
         }
         if part.is_string() {
-            return Err(hooks.error(400, "压缩图片大小不正确。"));
+            return Err(error(400, "压缩图片大小不正确。"));
         }
         let blob: Blob = part.unchecked_into();
         if blob.size() > 2_000_000.0 || blob.size() >= source_size {
-            return Err(hooks.error(400, "压缩图片大小不正确。"));
+            return Err(error(400, "压缩图片大小不正确。"));
         }
         let bytes = Uint8Array::new(&JsFuture::from(blob.array_buffer()).await?);
-        let format = sniff(&bytes, hooks)?;
+        let format = sniff(&bytes)?;
         let variant = image_info(&bytes);
         if let (Some(variant), Some(source)) = (variant, info)
             && format.mime == "image/webp"
@@ -161,14 +119,14 @@ async fn prepare_variants(
                 info: variant,
             });
         } else {
-            return Err(hooks.error(400, "压缩图片的格式或尺寸不正确。"));
+            return Err(error(400, "压缩图片的格式或尺寸不正确。"));
         }
     }
     Ok(prepared)
 }
 
-fn sniff(bytes: &Uint8Array, hooks: &Hooks) -> JsResult<ImageType> {
-    image_type(bytes).ok_or_else(|| hooks.error(400, "请上传 JPEG、PNG、GIF、WebP 或 AVIF 图片。"))
+fn sniff(bytes: &Uint8Array) -> JsResult<ImageType> {
+    image_type(bytes).ok_or_else(|| error(400, "请上传 JPEG、PNG、GIF、WebP 或 AVIF 图片。"))
 }
 
 pub fn variant_key(key: &str, width: u32) -> String {
@@ -229,53 +187,38 @@ struct Upload {
     variants: Vec<Variant>,
 }
 
-async fn upload(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let form = read_form(request, MAX_IMAGE + VARIANTS_BODY_LIMIT, hooks).await?;
+async fn upload(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
+    let form = read_form(request, MAX_IMAGE + VARIANTS_BODY_LIMIT).await?;
     let file = form.get("file");
     if !file.is_truthy() || file.is_string() {
-        return Err(hooks.error(400, "请选择图片。"));
+        return Err(error(400, "请选择图片。"));
     }
     let file: File = file.unchecked_into();
     if file.size() > f64::from(MAX_IMAGE) {
-        return Err(hooks.error(413, "每张图片最多 10 MB。"));
+        return Err(error(413, "每张图片最多 10 MB。"));
     }
     let bytes = Uint8Array::new(&JsFuture::from(file.array_buffer()).await?);
-    let format = sniff(&bytes, hooks)?;
+    let format = sniff(&bytes)?;
     let info = image_info(&bytes);
     let key = format!(
         "uploads/sha256/{}.{}",
         sha256_hex(&bytes).await?,
         format.ext
     );
-    let variants = prepare_variants(&form, info, file.size(), &key, hooks).await?;
-    let upload = Rc::new(Upload {
+    let variants = prepare_variants(&form, info, file.size(), &key).await?;
+    let upload = Upload {
         key,
         name: file.name(),
         format,
         bytes,
         info,
         variants,
-    });
+    };
     if let Some(existing) = upload.existing(storage).await? {
         return Ok(existing);
     }
-    let error_hook: &JsValue = hooks.as_ref();
-    let error_hook = error_hook.clone();
-    let work = Closure::wrap(Box::new(move |bucket: JsValue| {
-        let upload = Rc::clone(&upload);
-        let hook = error_hook.clone();
-        future_to_promise(async move {
-            upload
-                .write(bucket.unchecked_ref(), hook.unchecked_ref())
-                .await
-                .map(Into::into)
-        })
-    }) as Box<dyn FnMut(JsValue) -> Promise>);
-    Ok(
-        JsFuture::from(hooks.with_mutation(storage, work.as_ref().unchecked_ref())?)
-            .await?
-            .unchecked_into(),
-    )
+    crate::storage::with_mutation(storage, |locked| async move { upload.write(&locked).await })
+        .await
 }
 
 impl Upload {
@@ -288,7 +231,7 @@ impl Upload {
         Ok(Some(self.response(&original, &variants, true)?))
     }
 
-    async fn write(&self, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+    async fn write(&self, storage: &R2Bucket) -> JsResult<Response> {
         if let Some(existing) = self.existing(storage).await? {
             return Ok(existing);
         }
@@ -300,7 +243,7 @@ impl Upload {
                 if !stored.is_truthy() {
                     stored = put_variant(storage, variant).await?;
                     if !stored.is_truthy() {
-                        return Err(hooks.error(409, "图片正在变化，请重试。"));
+                        return Err(error(409, "图片正在变化，请重试。"));
                     }
                     created.push(variant.key.clone().into());
                 }
@@ -317,7 +260,7 @@ impl Upload {
             )?)
             .await?;
             if !saved.is_truthy() {
-                return Err(hooks.error(409, "图片正在变化，请重试。"));
+                return Err(error(409, "图片正在变化，请重试。"));
             }
             self.response(&saved, &variants, false)
         }
@@ -426,8 +369,8 @@ pub fn add_presentation(
     Ok(())
 }
 
-async fn optimize(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let form = read_form(request, VARIANTS_BODY_LIMIT, hooks).await?;
+async fn optimize(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
+    let form = read_form(request, VARIANTS_BODY_LIMIT).await?;
     let Some(key) = form.get("key").as_string().filter(|key| {
         valid_image_key(key)
             && parent_key(key) == key
@@ -435,12 +378,12 @@ async fn optimize(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsRes
                 .rsplit_once('.')
                 .is_some_and(|(_, ext)| matches!(ext, "png" | "jpg" | "jpeg" | "webp"))
     }) else {
-        return Err(hooks.error(400, "请选择可优化的 JPEG、PNG 或 WebP 原图。"));
+        return Err(error(400, "请选择可优化的 JPEG、PNG 或 WebP 原图。"));
     };
-    let stale = || hooks.error(409, "原图已变化，请刷新后重新优化。");
+    let stale = || error(409, "原图已变化，请刷新后重新优化。");
     let stored = get(storage, &key).await?;
     if !stored.is_truthy() {
-        return Err(hooks.error(404, "原图已不存在，请刷新图片库。"));
+        return Err(error(404, "原图已不存在，请刷新图片库。"));
     }
     let etag = property(&stored, "etag");
     if form.get("etag") != etag {
@@ -450,15 +393,15 @@ async fn optimize(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsRes
     let size = js_number(&property(&stored, "size"));
     if size > f64::from(MAX_IMAGE) {
         cancel_body(&stored).await?;
-        return Err(hooks.error(413, "这张原图超过 10 MB，请先在外部处理。"));
+        return Err(error(413, "这张原图超过 10 MB，请先在外部处理。"));
     }
     let body: &R2ObjectBody = stored.unchecked_ref();
     let bytes = Uint8Array::new(&JsFuture::from(body.array_buffer()?).await?);
     let info = image_info(&bytes);
-    let prepared = prepare_variants(&form, info, size, &key, hooks).await?;
+    let prepared = prepare_variants(&form, info, size, &key).await?;
     let old_metadata = property(&stored, "customMetadata");
     if attribute(&old_metadata, "optimization") == "processing" && prepared.is_empty() {
-        return Err(hooks.error(
+        return Err(error(
             409,
             "未能重新生成这张图片的版本，请重试或更换浏览器；已有版本仍保留。",
         ));

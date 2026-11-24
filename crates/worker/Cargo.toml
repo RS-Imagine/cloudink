@@ -15,8 +15,11 @@ chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 crc32fast = "1"
 flate2 = "1"
 futures-util = { version = "0.3", default-features = false, features = ["async-await", "async-await-macro"] }
+html-escape = "0.3"
+pulldown-cmark = { version = "=0.13.6", default-features = false, features = ["html"] }
 web-sys = { version = "0.3", features = ["Blob", "Cache", "CacheStorage", "Crypto", "CryptoKey", "File", "FormData", "Headers", "ReadableStream", "ReadableStreamDefaultReader", "Request", "RequestInit", "Response", "ResponseInit", "SubtleCrypto", "Url", "UrlSearchParams", "WorkerGlobalScope"] }
 worker = "=0.9.0"
+toml = { version = "=0.8.23", default-features = false, features = ["parse"] }
 xml = "1"
 
 [profile.release]

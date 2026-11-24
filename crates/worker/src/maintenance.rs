@@ -1,15 +1,15 @@
 use std::cell::Cell;
-use std::rc::Rc;
 use worker::console_error;
-use worker::js_sys::{Array, Date, Function, JSON, Object, Promise, Reflect, RegExp, Set};
-use worker::wasm_bindgen::{self, JsCast, JsValue, closure::Closure, prelude::wasm_bindgen};
-use worker::wasm_bindgen_futures::{JsFuture, future_to_promise};
+use worker::js_sys::{Array, Date, JSON, Object, Reflect, RegExp, Set};
+use worker::wasm_bindgen::{JsCast, JsValue};
+use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::ReadableStream;
 use worker::worker_sys::R2Bucket;
 
 use crate::feed::{object_json, read_json};
 use crate::html_rewriter::JsResult;
 use crate::runtime::{js_number, js_string, property, set};
+use crate::{http, reference_index, storage as r2};
 
 const STATUS: &str = "state/maintenance.json";
 const GRACE: f64 = 24.0 * 60.0 * 60_000.0;
@@ -27,64 +27,24 @@ thread_local! {
     static SESSION: RegExp = RegExp::new(r"^auth/sessions/[a-f0-9]{64}$", "");
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[derive(Clone)]
-    pub type Hooks;
-
-    #[wasm_bindgen(method, catch, js_name = withContentMutation)]
-    fn with_mutation(this: &Hooks, storage: &R2Bucket, work: &Function) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = pruneReferenceShard)]
-    fn prune_reference(this: &Hooks, storage: &R2Bucket, key: &str) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, getter, js_name = leaseMs)]
-    fn lease_ms(this: &Hooks) -> f64;
-
-    #[wasm_bindgen(method, getter, js_name = referenceRoot)]
-    fn reference_root(this: &Hooks) -> String;
-
-    #[wasm_bindgen(method, js_name = errorStatus)]
-    fn error_status(this: &Hooks, error: &JsValue) -> JsValue;
-
-    #[wasm_bindgen(method)]
-    fn conflict(this: &Hooks) -> JsValue;
-}
-
-pub async fn run(storage: R2Bucket, hooks: Hooks) -> JsResult<JsValue> {
+pub async fn run(storage: &R2Bucket) -> JsResult<JsValue> {
     let attempted = now();
-    let acquired = Rc::new(Cell::new(false));
-    let work = Closure::wrap(Box::new({
-        let owner = Rc::clone(&acquired);
-        let storage = storage.clone();
-        let hooks = hooks.clone();
-        let attempted = attempted.clone();
-        move |binding: JsValue| {
-            owner.set(true);
-            let guarded = binding.unchecked_into::<R2Bucket>();
-            let storage = storage.clone();
-            let hooks = hooks.clone();
-            let attempted = attempted.clone();
-            future_to_promise(
-                async move { run_acquired(&storage, &guarded, &hooks, &attempted).await },
-            )
-        }
-    }) as Box<dyn FnMut(JsValue) -> Promise>);
-    let result = match hooks.with_mutation(&storage, work.as_ref().unchecked_ref()) {
-        Ok(promise) => JsFuture::from(promise).await,
-        Err(error) => Err(error),
-    };
+    let acquired = Cell::new(false);
+    let result = r2::with_mutation(storage, |guarded| {
+        acquired.set(true);
+        let attempted = &attempted;
+        async move { run_acquired(storage, &guarded, attempted).await }
+    })
+    .await;
     match result {
-        Ok(state) => Ok(state),
-        Err(error) if acquired.get() => Err(error),
-        Err(error) => record_lease_failure(&storage, &hooks, &attempted, &error).await,
+        Err(error) if !acquired.get() => record_lease_failure(storage, &attempted, &error).await,
+        result => result,
     }
 }
 
 async fn run_acquired(
     storage: &R2Bucket,
     guarded: &R2Bucket,
-    hooks: &Hooks,
     attempted: &JsValue,
 ) -> JsResult<JsValue> {
     let prior = read_json(guarded, STATUS.into()).await?;
@@ -109,7 +69,7 @@ async fn run_acquired(
     if !started.is_truthy() {
         return Err(worker::js_sys::Error::new("Maintenance status write failed").into());
     }
-    let (status, reason) = match clean(guarded, hooks, &state, &cursors).await {
+    let (status, reason) = match clean(guarded, &state, &cursors).await {
         Ok(None) => ("success", None),
         Ok(Some(reason)) => ("skipped", Some(reason)),
         Err(error) => {
@@ -122,7 +82,7 @@ async fn run_acquired(
             console_error!(
                 "{{\"event\":\"storage_maintenance_failed\",\"stage\":{stage},\"type\":{kind}}}"
             );
-            let reason = if hooks.error_status(&error).as_f64().is_some() {
+            let reason = if http::status(&error).is_some() {
                 "bounded_work_or_storage_conflict"
             } else {
                 "storage_error"
@@ -144,14 +104,13 @@ async fn run_acquired(
     // A successor may have acquired the lease before this invocation finishes.
     let condition = only_if("etagMatches", property(&started, "etag"))?;
     if !write_status(storage, &state, condition).await?.is_truthy() {
-        return Err(hooks.conflict());
+        return Err(http::error(409, "维护状态已由后续任务更新。"));
     }
     Ok(state.into())
 }
 
 async fn record_lease_failure(
     storage: &R2Bucket,
-    hooks: &Hooks,
     attempted: &JsValue,
     error: &JsValue,
 ) -> JsResult<JsValue> {
@@ -164,14 +123,14 @@ async fn record_lease_failure(
     let last_attempt = property(&prior, "last_attempt_at");
     if property(&prior, "status").as_string().as_deref() == Some("running")
         && last_attempt.is_truthy()
-        && Date::now() - date(&last_attempt) < hooks.lease_ms()
+        && Date::now() - date(&last_attempt) < r2::LEASE_MS
     {
         return Ok(prior);
     }
     let state = copy_fields(&prior);
     copy_last_success(&state, &prior)?;
     set(&state, "last_attempt_at", attempted)?;
-    let busy = hooks.error_status(error).as_f64() == Some(503.0);
+    let busy = http::status(error) == Some(503);
     set(&state, "status", if busy { "skipped" } else { "failed" })?;
     set(
         &state,
@@ -194,7 +153,6 @@ async fn record_lease_failure(
 
 async fn clean(
     storage: &R2Bucket,
-    hooks: &Hooks,
     state: &Object,
     cursors: &Object,
 ) -> JsResult<Option<&'static str>> {
@@ -313,7 +271,7 @@ async fn clean(
     set(state, "stage", "references")?;
     let refs = list(
         storage,
-        &hooks.reference_root(),
+        reference_index::ROOT,
         1,
         property(cursors, "references"),
         false,
@@ -325,8 +283,8 @@ async fn clean(
         let key = property(&object, "key").as_string().unwrap_or_default();
         if REFERENCE.with(|pattern| pattern.test(&key)) && uploaded(&object) <= Date::now() - GRACE
         {
-            let pruned = JsFuture::from(hooks.prune_reference(storage, &key)?).await?;
-            increment(state, "pruned_references", js_number(&pruned))?;
+            let pruned = reference_index::prune(storage, &key).await?;
+            increment(state, "pruned_references", f64::from(pruned))?;
         }
     }
     update_cursor(cursors, "references", &refs)?;

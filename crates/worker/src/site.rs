@@ -1,82 +1,45 @@
 use worker::Context;
-use worker::js_sys::{Array, JSON, Object, Promise, Uint8Array};
-use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
+use worker::js_sys::{Array, JSON, Object, Uint8Array};
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Blob, FormData, Headers, ReadableStream, Request, Response, Url};
 use worker::worker_sys::R2Bucket;
 
-use crate::feed::object_json;
 use crate::html_rewriter::JsResult;
+use crate::http::{error, json_input};
 use crate::icon::{self, PREFIX as ICON_PREFIX};
 use crate::public_cache::{self as cache, Group, not_modified, stream_response, text_response};
-use crate::router::Services;
-use crate::runtime::{attribute, cancel_body, get, json, only_if, property, set};
+use crate::runtime::{attribute, cancel_body, get, json, only_if, parse_object, property, set};
+use crate::{image_references, models, publishing, site_assets};
 
 const DRAFT_SITE: &str = "draft-site.json";
 const ICON_CACHE: &str = "public, max-age=31536000, immutable";
 
-#[wasm_bindgen]
-extern "C" {
-    pub type Hooks;
-
-    #[wasm_bindgen(method, catch, js_name = jsonInput)]
-    fn json_input(this: &Hooks, request: &Request, limit: u32) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = validateSite)]
-    fn validate_site(this: &Hooks, input: &JsValue) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = currentSite)]
-    fn current_site(this: &Hooks, storage: &R2Bucket) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureManagedImages)]
-    fn ensure_images(
-        this: &Hooks,
-        storage: &R2Bucket,
-        about: &str,
-        origin: &str,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureHomeIllustration)]
-    fn ensure_illustration(this: &Hooks, storage: &R2Bucket, site: &JsValue) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureSiteIcon)]
-    fn ensure_icon(this: &Hooks, storage: &R2Bucket, site: &JsValue) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = siteIconDerivedKeys)]
-    pub fn derived_keys(this: &Hooks, key: &str) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, js_name = validSiteIconKey)]
-    fn valid_icon_key(this: &Hooks, key: &str) -> bool;
-
-    #[wasm_bindgen(method, js_name = siteIconMime)]
-    fn icon_mime(this: &Hooks, key: &str) -> String;
-
-    #[wasm_bindgen(method)]
-    pub fn error(this: &Hooks, status: u16, message: &str) -> JsValue;
-}
-
-pub async fn handle(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+pub async fn handle(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
     let url = Url::new(&request.url())?;
     match (url.pathname().as_str(), request.method().as_str()) {
-        ("/api/settings", "GET") => read_settings(storage, hooks).await,
-        ("/api/settings", "PUT") => save_settings(request, storage, hooks, &url.origin()).await,
-        ("/api/site-icon", "POST") => upload_icon(request, storage, hooks).await,
-        ("/api/site-icon/derivatives", "POST") => backfill_icon(request, storage, hooks).await,
-        _ => Err(hooks.error(404, "接口不存在。")),
+        ("/api/settings", "GET") => read_settings(storage).await,
+        ("/api/settings", "PUT") => save_settings(request, storage, &url.origin()).await,
+        ("/api/site-icon", "POST") => upload_icon(request, storage).await,
+        ("/api/site-icon/derivatives", "POST") => backfill_icon(request, storage).await,
+        _ => Err(error(404, "接口不存在。")),
     }
 }
 
-async fn read_settings(storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+async fn read_settings(storage: &R2Bucket) -> JsResult<Response> {
     let draft = get(storage, DRAFT_SITE).await?;
-    let released = JsFuture::from(hooks.current_site(storage)?).await?;
+    let released = property(
+        &publishing::current_release(storage, &JsValue::UNDEFINED).await?,
+        "site",
+    );
     let etag = property(&draft, "etag");
     let site = if draft.is_truthy() {
-        object_json(draft).await?
+        parse_object(&draft).await?
     } else {
         released
     };
     let icon = property(&site, "siteIcon");
-    let ready = has_derivatives(storage, &icon, hooks).await?;
+    let ready = site_assets::ready(storage, &icon).await?;
     json(
         200,
         &[
@@ -94,27 +57,22 @@ async fn read_settings(storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> 
     )
 }
 
-async fn save_settings(
-    request: &Request,
-    storage: &R2Bucket,
-    hooks: &Hooks,
-    origin: &str,
-) -> JsResult<Response> {
-    let data = JsFuture::from(hooks.json_input(request, 500_000)?).await?;
-    let site = hooks.validate_site(&property(&data, "site"))?;
+async fn save_settings(request: &Request, storage: &R2Bucket, origin: &str) -> JsResult<Response> {
+    let data = json_input(request, 500_000).await?;
+    let site = models::validate_site(&property(&data, "site"))?;
     let about = property(&site, "about").as_string().unwrap_or_default();
-    JsFuture::from(hooks.ensure_images(storage, &about, origin)?).await?;
-    JsFuture::from(hooks.ensure_illustration(storage, &site)?).await?;
-    JsFuture::from(hooks.ensure_icon(storage, &site)?).await?;
+    image_references::ensure(storage, &about.into(), origin).await?;
+    site_assets::ensure_illustration(storage, &site).await?;
+    site_assets::ensure_icon(storage, &site).await?;
     let old = get(storage, DRAFT_SITE).await?;
     let etag = property(&old, "etag");
     if old.is_truthy() && property(&data, "etag") != etag {
         cancel_body(&old).await?;
-        return Err(settings_conflict(hooks));
+        return Err(settings_conflict());
     }
     let text = JSON::stringify(&site)?;
     let condition = if old.is_truthy() {
-        let prior = hooks.validate_site(&object_json(old).await?)?;
+        let prior = models::validate_site(&parse_object(&old).await?)?;
         if JSON::stringify(&prior)? == text {
             return json(
                 200,
@@ -128,32 +86,32 @@ async fn save_settings(
     let saved =
         JsFuture::from(storage.put(DRAFT_SITE.into(), text.into(), condition.into())?).await?;
     if !saved.is_truthy() {
-        return Err(settings_conflict(hooks));
+        return Err(settings_conflict());
     }
     json(200, &[("site", site), ("etag", property(&saved, "etag"))])
 }
 
-fn settings_conflict(hooks: &Hooks) -> JsValue {
-    hooks.error(409, "网站信息刚刚被修改，请重新打开设置。")
+fn settings_conflict() -> JsValue {
+    error(409, "网站信息刚刚被修改，请重新打开设置。")
 }
 
-async fn upload_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+async fn upload_icon(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
     let content_type = request
         .headers()
         .get("Content-Type")?
         .unwrap_or_default()
         .to_ascii_lowercase();
     if content_type.starts_with("multipart/form-data") {
-        let form = read_form(request, hooks, "无法解析上传的图标表单，请重试。").await?;
+        let form = read_form(request, "无法解析上传的图标表单，请重试。").await?;
         let file = form.get("file");
         if !file.is_truthy() || file.is_string() {
-            return Err(hooks.error(400, "请选择网站图标文件。"));
+            return Err(error(400, "请选择网站图标文件。"));
         }
         let file: Blob = file.unchecked_into();
         let bytes = JsFuture::from(file.array_buffer()).await?;
-        let icon = icon::inspect(Uint8Array::new(&bytes), hooks).await?;
+        let icon = icon::inspect(Uint8Array::new(&bytes)).await?;
         let key = property(&icon, "key").as_string().unwrap_or_default();
-        let derived = icon::derivatives(&form, &key, hooks).await?;
+        let derived = icon::derivatives(&form, &key).await?;
         let result_keys = Array::new();
         let items = Array::new();
         for item in derived.iter() {
@@ -161,7 +119,7 @@ async fn upload_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
             items.push(&item);
         }
         items.push(&icon_with_name(&icon)?);
-        let written = put_icon_objects(storage, hooks, &items).await?;
+        let written = put_icon_objects(storage, &items).await?;
         return icon_response(
             &icon,
             Some(result_keys),
@@ -171,11 +129,11 @@ async fn upload_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
     }
 
     let bytes = JsFuture::from(request.array_buffer()?).await?;
-    let icon = icon::inspect(Uint8Array::new(&bytes), hooks).await?;
+    let icon = icon::inspect(Uint8Array::new(&bytes)).await?;
     let key = property(&icon, "key");
     let key_text = key.as_string().unwrap_or_default();
     let existing = JsFuture::from(storage.head(key_text.clone())?).await?;
-    let ready = has_derivatives(storage, &key, hooks).await?.into();
+    let ready = site_assets::ready(storage, &key).await?.into();
     if same_icon_object(&existing, &icon) {
         return icon_response(&icon, None, ready, true);
     }
@@ -186,22 +144,22 @@ async fn upload_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
     icon_response(&icon, None, ready, false)
 }
 
-async fn backfill_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let form = read_form(request, hooks, "无法解析派生图标表单，请重试。").await?;
+async fn backfill_icon(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
+    let form = read_form(request, "无法解析派生图标表单，请重试。").await?;
     let Some(key) = form
         .get("key")
         .as_string()
-        .filter(|key| hooks.valid_icon_key(key))
+        .filter(|key| crate::media::valid_site_icon_key(key))
     else {
-        return Err(hooks.error(400, "网站图标地址不正确。"));
+        return Err(error(400, "网站图标地址不正确。"));
     };
     let original = JsFuture::from(storage.head(key.clone())?).await?;
     let mime = attribute(&property(&original, "httpMetadata"), "contentType");
-    if !original.is_truthy() || mime != hooks.icon_mime(&key) {
-        return Err(hooks.error(404, "原网站图标不存在，请重新上传图标。"));
+    if !original.is_truthy() || mime != site_assets::mime(&key) {
+        return Err(error(404, "原网站图标不存在，请重新上传图标。"));
     }
-    let derived = icon::derivatives(&form, &key, hooks).await?;
-    let created = put_icon_objects(storage, hooks, &derived).await?;
+    let derived = icon::derivatives(&form, &key).await?;
+    let created = put_icon_objects(storage, &derived).await?;
     json(
         200,
         &[
@@ -212,39 +170,16 @@ async fn backfill_icon(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> 
     )
 }
 
-async fn has_derivatives(storage: &R2Bucket, icon: &JsValue, hooks: &Hooks) -> JsResult<bool> {
-    let Some(icon) = icon.as_string().filter(|icon| !icon.is_empty()) else {
-        return Ok(true);
-    };
-    let keys = hooks.derived_keys(&icon)?;
-    if !keys.is_truthy() {
-        return Ok(true);
-    }
-    let keys: Array = property(&keys, "generated").unchecked_into();
-    let requests = Array::new();
-    for key in keys.iter() {
-        requests.push(&storage.head(key.as_string().unwrap_or_default())?.into());
-    }
-    let objects: Array = JsFuture::from(Promise::all(&requests))
-        .await?
-        .unchecked_into();
-    Ok(keys.iter().zip(objects.iter()).all(|(key, head)| {
-        head.is_truthy()
-            && attribute(&property(&head, "httpMetadata"), "contentType")
-                == hooks.icon_mime(&key.as_string().unwrap_or_default())
-    }))
-}
-
-async fn read_form(request: &Request, hooks: &Hooks, message: &str) -> JsResult<FormData> {
+async fn read_form(request: &Request, message: &str) -> JsResult<FormData> {
     let form = match request.form_data() {
         Ok(promise) => JsFuture::from(promise).await,
         Err(error) => Err(error),
     };
     form.map(JsCast::unchecked_into)
-        .map_err(|_| hooks.error(400, message))
+        .map_err(|_| error(400, message))
 }
 
-async fn put_icon_objects(storage: &R2Bucket, hooks: &Hooks, items: &Array) -> JsResult<Array> {
+async fn put_icon_objects(storage: &R2Bucket, items: &Array) -> JsResult<Array> {
     let created = Array::new();
     let write_all = async {
         for item in items.iter() {
@@ -260,7 +195,7 @@ async fn put_icon_objects(storage: &R2Bucket, hooks: &Hooks, items: &Array) -> J
                 JsFuture::from(storage.put(key_text, property(&item, "bytes"), options.into())?)
                     .await?;
             if !saved.is_truthy() {
-                return Err(hooks.error(500, "保存网站图标失败，请重试。"));
+                return Err(error(500, "保存网站图标失败，请重试。"));
             }
             created.push(&key);
         }
@@ -339,7 +274,6 @@ pub async fn public_icon(
     request: &Request,
     storage: &R2Bucket,
     ctx: &Context,
-    services: &Services,
 ) -> JsResult<Response> {
     let method = request.method();
     if method != "HEAD" && method != "GET" {
@@ -353,9 +287,10 @@ pub async fn public_icon(
         "{ICON_PREFIX}{}",
         path.strip_prefix("/site-icon/").unwrap_or_default()
     );
-    let Some(mime) = services.icon_type(&key)?.as_string() else {
+    if !site_assets::valid_asset_key(&key) {
         return text_response(Some("Not found"), 404, &Headers::new()?);
-    };
+    }
+    let mime = site_assets::mime(&key);
     let key_request = cache::key(&request.url(), Group::Media, "", "")?;
     if let Some(cached) = cache::read(&key_request).await {
         return cache::client_response(&cached, request, true);
@@ -375,7 +310,7 @@ pub async fn public_icon(
     let headers = Headers::new()?;
     let etag = attribute(&object, "httpEtag");
     for (name, value) in [
-        ("Content-Type", mime.as_str()),
+        ("Content-Type", mime),
         ("ETag", etag.as_str()),
         ("Cache-Control", ICON_CACHE),
         ("X-Content-Type-Options", "nosniff"),
