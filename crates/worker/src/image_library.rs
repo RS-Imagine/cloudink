@@ -1,37 +1,22 @@
 use std::collections::HashMap;
 
-use worker::js_sys::{Array, Date, JSON, JsString, Object, Promise, TypeError, Uint8Array};
-use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
+use worker::js_sys::{Array, Date, JSON, JsString, Object, TypeError};
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Request, Response, Url};
 use worker::worker_sys::R2Bucket;
 
-use crate::feed::object_json;
 use crate::html_rewriter::JsResult;
 use crate::image::{Hooks, WIDTHS, add_presentation, parent_key, variant_key};
 use crate::media::{supported_type, valid_image_key};
-use crate::runtime::{attribute, get, js_number, js_string, json, object, only_if, property, set};
+use crate::runtime::{
+    attribute, body_text, encode_utf8, get, js_number, js_string, json, list, object, only_if,
+    parse_object, property, read_json, set,
+};
 
 const MAX_SOURCES: usize = 2000;
 const MAX_TEXT_BYTES: usize = 32 * 1024 * 1024;
 const MAX_UNINDEXED: usize = 30;
-
-#[wasm_bindgen]
-extern "C" {
-    type R2TextBody;
-
-    #[wasm_bindgen(method, catch)]
-    fn text(this: &R2TextBody) -> JsResult<Promise>;
-
-    #[wasm_bindgen(js_name = TextEncoder)]
-    type TextEncoder;
-
-    #[wasm_bindgen(constructor, js_class = TextEncoder)]
-    fn new() -> TextEncoder;
-
-    #[wasm_bindgen(method)]
-    fn encode(this: &TextEncoder, value: &JsString) -> Uint8Array;
-}
 
 pub async fn library(
     request: &Request,
@@ -44,36 +29,6 @@ pub async fn library(
         "DELETE" => delete_image(request, storage, hooks).await,
         _ => Err(hooks.error(405, "请求方式不正确。")),
     }
-}
-
-struct Page {
-    objects: Array,
-    cursor: JsValue,
-}
-
-async fn list(
-    storage: &R2Bucket,
-    prefix: &str,
-    cursor: JsValue,
-    limit: u16,
-    include: &[&str],
-) -> JsResult<Page> {
-    let include: Array = include.iter().copied().map(JsValue::from_str).collect();
-    let options = object(&[
-        ("prefix", prefix.into()),
-        ("cursor", cursor),
-        ("limit", limit.into()),
-        ("include", include.into()),
-    ])?;
-    let page = JsFuture::from(storage.list(options.into())?).await?;
-    Ok(Page {
-        objects: property(&page, "objects").unchecked_into(),
-        cursor: if property(&page, "truncated").is_truthy() {
-            property(&page, "cursor")
-        } else {
-            JsValue::UNDEFINED
-        },
-    })
 }
 
 fn cursor(value: Option<String>, hooks: &Hooks) -> JsResult<Option<(f64, String)>> {
@@ -511,7 +466,10 @@ impl<'a> ReferenceScan<'a> {
     }
 
     async fn release(&mut self, id: &str, kind: &'static str) -> JsResult<()> {
-        let index = JsFuture::from(self.hooks.read_post_index(self.storage, id)?).await?;
+        let index = crate::post_index::read(self.storage, id, |status, text| {
+            self.hooks.error(status, text)
+        })
+        .await?;
         let images = property(&index, "images");
         let label = if kind == "published" {
             "网站设置（已发布）"
@@ -544,7 +502,7 @@ impl<'a> ReferenceScan<'a> {
                 .hooks
                 .error(503, "发布版本无法完整读取，暂时不能安全检查图片引用。"));
         }
-        let data = object_json(release).await?;
+        let data = parse_object(&release).await?;
         for field in ["markdown_posts", "markdown_shorts"] {
             let contents = property(&data, field);
             if !contents.is_truthy() && field == "markdown_shorts" {
@@ -764,19 +722,5 @@ fn array(value: &JsValue, field: &str) -> Array {
 }
 
 fn text_bytes(text: &JsString) -> usize {
-    TextEncoder::new().encode(text).length() as usize
-}
-
-async fn body_text(value: &JsValue) -> JsResult<JsString> {
-    let body: &R2TextBody = value.unchecked_ref();
-    Ok(JsFuture::from(body.text()?).await?.unchecked_into())
-}
-
-async fn read_json(storage: &R2Bucket, key: &str) -> JsResult<JsValue> {
-    let value = get(storage, key).await?;
-    if value.is_truthy() {
-        Ok(object_json(value).await?)
-    } else {
-        Ok(JsValue::NULL)
-    }
+    encode_utf8(text).length() as usize
 }

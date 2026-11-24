@@ -1,5 +1,8 @@
-use worker::js_sys::{JsString, Object, Reflect};
+use std::future::Future;
+
+use worker::js_sys::{JsString, Object, Promise, Reflect};
 use worker::wasm_bindgen::{self, JsValue, closure::Closure, prelude::wasm_bindgen};
+use worker::wasm_bindgen_futures::future_to_promise;
 use worker::web_sys::{Response, ResponseInit};
 
 pub type JsResult<T> = std::result::Result<T, JsValue>;
@@ -74,6 +77,21 @@ impl HtmlRewriter {
     pub fn on_text(&self, selector: &str, f: impl FnMut(TextChunk) + 'static) -> JsResult<()> {
         let callback = Closure::wrap(Box::new(f) as Box<dyn FnMut(TextChunk)>);
         self.on_handler(selector, "text", callback.into_js_value())
+    }
+
+    pub fn on_element_async<F: Future<Output = JsResult<()>> + 'static>(
+        &self,
+        selector: &str,
+        mut handler: impl FnMut(Element) -> F + 'static,
+    ) -> JsResult<()> {
+        let callback = Closure::wrap(Box::new(move |element| {
+            let result = handler(element);
+            future_to_promise(async move {
+                result.await?;
+                Ok(JsValue::UNDEFINED)
+            })
+        }) as Box<dyn FnMut(Element) -> Promise>);
+        self.on_handler(selector, "element", callback.into_js_value())
     }
 
     pub fn on_comments(

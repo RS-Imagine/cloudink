@@ -3,8 +3,6 @@ declare module '*/reader-worker/index.js' {
     admin(request: Request, withContext: boolean): Promise<Response>;
     asset(request: Request): Promise<Response>;
     iconType(key: string): string | null;
-    sanitize(html: string): Promise<string>;
-    mime(path: string): string;
     icons(value: unknown): { apple: string; icon512: string; faviconIco: string } | null;
   };
 
@@ -24,6 +22,12 @@ declare module '*/reader-worker/index.js' {
       request: Request,
       storage: R2Bucket,
       hooks: import('../../cloud-admin/src/images').ImageHooks,
+    ): Promise<Response>;
+    protected content_request(
+      request: Request,
+      storage: R2Bucket,
+      session: import('../../cloud-admin/src/auth').Session,
+      hooks: import('../../cloud-admin/src/content').ContentHooks,
     ): Promise<Response>;
     protected inspect_site_icon(
       bytes: Uint8Array,
