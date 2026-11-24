@@ -27,9 +27,9 @@ fn main() {
         "crates/blog-core/build.rs",
         "assets",
         "Cargo.lock",
-        "package-lock.json",
-        "cloud-admin/package-lock.json",
-        "scripts/web-assets.mjs",
+        "crates/xtask/vendor-lock.json",
+        "crates/xtask/src/bundle.rs",
+        "crates/xtask/src/reader.rs",
     ] {
         collect(root, &root.join(path), &mut files);
     }

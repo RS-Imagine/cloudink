@@ -78,25 +78,22 @@ cloudink/
 │   │   └── build.rs               # 计算模板版本指纹
 │   ├── blog-wasm/                 # 浏览器 WASM 接口，复用 blog-core
 │   ├── sitegen/                   # 构建期命令行工具，生成基础站点资源
-│   └── worker/                    # Cloudflare Worker 入口、公开页面与后台 API
+│   ├── worker/                    # Cloudflare Worker 入口、公开页面与后台 API
+│   └── xtask/                     # 构建编排、静态资源与编辑器打包
 ├── cloud-web/
 │   └── test/                     # API、存储及浏览器功能测试
 ├── cloud-admin/
 │   ├── src/                      # 浏览器使用的备份格式和图片识别
-│   ├── ui/
-│   │   ├── index.html            # 后台页面结构
-│   │   ├── app.js                # 后台主入口与编辑状态协调
-│   │   ├── *.js                  # 图片库、短记、设置、发布等功能模块
-│   │   ├── *.worker.js           # 浏览器预览和图片压缩线程
-│   │   └── *.css                 # 后台布局与功能样式
-│   └── build-ui.mjs              # 打包后台脚本、样式和 WASM 资源
+│   └── ui/
+│       ├── index.html            # 后台页面结构
+│       ├── app.js                # 后台主入口与编辑状态协调
+│       ├── *.js                  # 图片库、短记、设置、发布等功能模块
+│       ├── *.worker.js           # 浏览器预览和图片压缩线程
+│       └── *.css                 # 后台布局与功能样式
 ├── assets/                       # 前后台共享主题、动效、图标与默认插画
 ├── scripts/
 │   ├── build-web.sh              # 完整构建流程入口
-│   ├── web-assets.mjs            # 构建通用资源、打包前台脚本与字体
 │   ├── ensure-rust.sh            # 准备 Rust 工具链
-│   ├── types.mjs                 # 生成 Cloudflare 绑定类型
-│   ├── commands.mjs              # 构建工具共用的命令调用
 │   └── ui-audit.mjs              # 按需检查正式界面并生成截图报告
 ├── docs/
 │   ├── DEPLOYMENT.md             # 部署、配置和故障处理
@@ -110,7 +107,7 @@ cloudink/
 └── LICENSE                      # MIT 开源协议
 ```
 
-`npm run build` 编译 Rust/WASM、打包后台，再通过 `sitegen` 和资源脚本生成通用前台资源。Wrangler 从 `build-work/reader-worker/index.js` 部署 workers-rs 生成的入口。后台界面随同一个 Worker 提供。
+`cargo xtask build` 编译 Rust/WASM，打包后台，再通过 `sitegen` 生成公开资源。构建工具下载版本固定的资源和打包器，并校验归档摘要。Wrangler 从 `build-work/reader-worker/index.js` 部署生成的入口。
 
 **写作与发布：** 后台通过 API 保存草稿；预览、Markdown 导入和发布排版调用浏览器线程中的 Rust/WASM。发布页面上传完成后，Worker 切换 R2 中的线上版本指针，读者访问当前已发布内容。浏览器线程不是额外部署的 Cloudflare Worker。
 

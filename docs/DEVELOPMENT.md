@@ -7,23 +7,30 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `crates/blog-core`：Markdown、数学公式、配置校验与页面模板。
 - `crates/blog-wasm`：将同一渲染核心提供给浏览器 Worker。
 - `crates/sitegen`：原生静态构建入口。
+- `crates/xtask` 编排构建并打包浏览器资源。
 - `crates/worker` 包含 Cloudflare Worker 的 Rust 入口、公开路由、后台 API 和定时任务，使用独立的 `Cargo.lock`。
 - `cloud-admin/src` 包含浏览器共用的备份格式和图片识别代码。
 - `cloud-admin/ui`：后台界面、预览线程与图片压缩线程。
 - `assets`：正式前后台共用的主题、动效、图标与默认插画。
-- `scripts`：构建、类型生成与正式界面回归工具。
+- `scripts` 包含云端构建启动脚本及界面回归工具。
 - `cloud-web/test`、`crates/blog-core/tests`：功能与渲染测试。
 
-需要 Node.js 24、Rust 1.98.1。Rust 版本由 `rust-toolchain.toml` 固定，根目录的 `packageManager` 固定 npm 版本。
+构建需要 Rust 1.98.1。Wrangler 和现有浏览器测试使用 Node.js 24。Rust 版本由 `rust-toolchain.toml` 固定，构建资源的下载地址与摘要在 `crates/xtask/vendor-lock.json` 中。
+
+```bash
+cargo xtask build
+npm exec --yes --package=wrangler@4.145.0 -- wrangler deploy --dry-run --outdir cloud-web/dist
+```
+
+`cargo xtask build` 准备浏览器 Rust/WASM、前后台资源和 Worker 模块。它调用固定版本的 esbuild 命令行处理浏览器 JavaScript 和 CSS。Wrangler 根据根目录的 `wrangler.jsonc` 部署 workers-rs 生成的入口。
+
+运行仓库测试前分别安装根目录和编辑器的测试依赖：
 
 ```bash
 npm exec --yes --package=npm@10.9.11 -- npm ci
-npm run build
+npm exec --yes --package=npm@10.9.11 -- npm --prefix cloud-admin ci
 npm run check
-npx wrangler deploy --dry-run --outdir cloud-web/dist
 ```
-
-`build` 准备浏览器 Rust/WASM、后台资源和 Worker 模块。Wrangler 根据根目录的 `wrangler.jsonc` 部署 workers-rs 生成的入口。
 
 修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
@@ -47,7 +54,7 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 ## 云端检查
 
-PR 自动运行构建、类型检查、Node/Rust 测试和 Chromium 核心流程。合并到 master 后不重复运行；直接推送 master 也不触发 Project checks，代码应通过 PR 验证。
+PR 自动运行构建、编辑器类型检查、Node/Rust 测试和 Chromium 核心流程。合并到 master 后不重复运行；直接推送 master 也不触发 Project checks，代码应通过 PR 验证。
 
 在 GitHub **Actions → Project checks → Run workflow** 可手动执行基础检查；勾选 `visual_audit` 才运行正式页面的三浏览器回归。Cloudflare Workers Builds 独立负责部署。
 
