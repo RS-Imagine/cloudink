@@ -1,32 +1,38 @@
 use chrono::NaiveDate;
-use worker::js_sys::{Array, Reflect};
-use worker::wasm_bindgen::{JsCast, JsValue};
+use worker::js_sys::{Array, Promise, Reflect};
+use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures::JsFuture;
-use worker::{Bucket, Error, Response, Result, web_sys};
+use worker::worker_sys::R2Bucket;
+use worker::{Error, Result};
 
-async fn read_json(storage: &Bucket, key: &str) -> Result<JsValue> {
-    let Some(object) = storage.get(key).execute().await? else {
+#[wasm_bindgen]
+extern "C" {
+    type R2JsonObject;
+
+    #[wasm_bindgen(method, catch, js_name = json)]
+    fn json(this: &R2JsonObject) -> std::result::Result<Promise, JsValue>;
+}
+
+async fn read_json(storage: &R2Bucket, key: String) -> Result<JsValue> {
+    let object = JsFuture::from(storage.get(key, JsValue::UNDEFINED)?).await?;
+    if object.is_null() {
         return Ok(JsValue::UNDEFINED);
-    };
-    let body = object
-        .body()
-        .ok_or_else(|| Error::RustError("Published object has no body".into()))?;
-    // Decode the stream in the Worker runtime. The full search index can contain
-    // several megabytes of article text that the feed never reads into Wasm.
-    let response = web_sys::Response::from(Response::from_body(body.response_body()?)?);
-    Ok(JsFuture::from(response.json()?).await?)
+    }
+    // Bind the native R2 JSON method so the full search index stays in the runtime.
+    let object = object.unchecked_into::<R2JsonObject>();
+    Ok(JsFuture::from(object.json()?).await?)
 }
 
 pub async fn render(
-    storage: &Bucket,
+    storage: &R2Bucket,
     origin: &str,
     id: Option<&str>,
     pages: &JsValue,
 ) -> Result<FeedXml> {
     let (site, index) = match id {
         Some(id) => (
-            read_json(storage, &object_key(id, pages, "site.json")).await?,
-            read_json(storage, &object_key(id, pages, "search_index.json")).await?,
+            read_json(storage, object_key(id, pages, "site.json")).await?,
+            read_json(storage, object_key(id, pages, "search_index.json")).await?,
         ),
         None => (JsValue::UNDEFINED, JsValue::UNDEFINED),
     };

@@ -3,7 +3,8 @@ mod feed;
 use worker::js_sys::{self, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures;
-use worker::{Bucket, Response, Result, web_sys};
+use worker::worker_sys::R2Bucket;
+use worker::{Response, Result, web_sys};
 
 #[wasm_bindgen]
 pub async fn rss_response(
@@ -15,7 +16,7 @@ pub async fn rss_response(
     response_version: String,
 ) -> std::result::Result<web_sys::Response, JsValue> {
     // The host passes its instrumented STORAGE binding on an RSS cache miss.
-    let storage = storage.unchecked_into::<Bucket>();
+    let storage = storage.unchecked_into::<R2Bucket>();
     let rss = feed::render(&storage, &origin, release.as_deref(), &pages)
         .await
         .map_err(|error| js_sys::Error::new(&error.to_string()))?;
