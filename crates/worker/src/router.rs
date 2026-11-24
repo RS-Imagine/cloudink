@@ -9,6 +9,7 @@ use crate::html_rewriter::{JsResult, string_response};
 use crate::public_cache::{
     self as cache, Group, REVALIDATE, not_modified, stream_response, text_response,
 };
+use crate::runtime::{js_string, property};
 
 const EDITOR_ASSETS: &[&str] = &[
     "/writing-illustration.svg",
@@ -79,8 +80,6 @@ extern "C" {
     #[wasm_bindgen(method, getter, js_name = legacyImagePath)]
     fn legacy_image_path(this: &Services) -> Function;
 
-    #[wasm_bindgen(js_name = String)]
-    fn js_string(value: &JsValue) -> JsString;
 }
 
 pub struct PublicRouter<'a> {
@@ -606,13 +605,6 @@ fn article_key_slug(key: &str) -> Option<&str> {
     key.strip_prefix("posts/")?
         .strip_suffix("/index.html")
         .filter(|slug| crate::valid_post_slug(slug))
-}
-
-fn property(object: &JsValue, key: &str) -> JsValue {
-    if object.is_object() {
-        return Reflect::get(object, &key.into()).unwrap_or(JsValue::UNDEFINED);
-    }
-    JsValue::UNDEFINED
 }
 
 fn truthy_string(value: &JsValue) -> Option<String> {

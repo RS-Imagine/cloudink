@@ -2,7 +2,7 @@ import { listActiveDrafts } from './draft-catalog';
 import { buildPostIndex, readPostIndex } from './post-index';
 import type { BrowserPointer } from './browser-publishing';
 import { backupJobRoute } from './backup-jobs';
-import { maintainStorage, type MaintenanceStatus } from './maintenance';
+import type { MaintenanceStatus } from './maintenance';
 import { CURRENT_TEMPLATE_VERSION } from './template-version.generated';
 import { ensureHomeIllustration } from './home-illustration';
 import type { CloudInkEnv } from './env';
@@ -102,16 +102,20 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
     changed,
   });
 }
+type AdminEnv = CloudInkEnv & {
+  maintainStorage(storage: R2Bucket): Promise<MaintenanceStatus>;
+};
+
 async function apiRoute(
   request: Request,
-  env: CloudInkEnv,
+  env: AdminEnv,
   path: string,
   session: Session,
 ): Promise<Response> {
   if (path === '/api/maintenance' && request.method === 'GET')
     return json(await readJson<MaintenanceStatus>(env.STORAGE, 'state/maintenance.json'));
   if (path === '/api/maintenance' && request.method === 'POST')
-    return json({ maintenance: await maintainStorage(env) });
+    return json({ maintenance: await env.maintainStorage(env.STORAGE) });
   if (path === '/api/site-icon' && request.method === 'POST')
     return uploadSiteIcon(request, env.STORAGE);
   if (path === '/api/site-icon/derivatives' && request.method === 'POST')
@@ -535,7 +539,7 @@ function protect(response: Response, asset = false): Response {
   return new Response(response.body, { status: response.status, headers });
 }
 export default {
-  async fetch(request: Request, env: CloudInkEnv, ctx?: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: AdminEnv, ctx?: ExecutionContext): Promise<Response> {
     try {
       const path = new URL(request.url).pathname;
       if (path === '/api/config' && request.method === 'GET') {
@@ -604,4 +608,4 @@ export default {
       return protect(json({ error: '操作未完成，请稍后重试。' }, 500));
     }
   },
-} satisfies ExportedHandler<CloudInkEnv>;
+} satisfies ExportedHandler<AdminEnv>;

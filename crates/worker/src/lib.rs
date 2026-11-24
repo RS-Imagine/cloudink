@@ -1,15 +1,25 @@
 mod discovery;
 mod feed;
 mod html_rewriter;
+mod maintenance;
 mod public_cache;
 mod reader;
 mod router;
+mod runtime;
 
 use worker::js_sys::{self, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures;
 use worker::worker_sys::R2Bucket;
 use worker::{Bucket, Context, Error, Response, Result, web_sys};
+
+#[wasm_bindgen]
+pub async fn maintain_storage(
+    storage: JsValue,
+    hooks: JsValue,
+) -> html_rewriter::JsResult<JsValue> {
+    maintenance::run(storage.unchecked_into(), hooks.unchecked_into()).await
+}
 
 #[wasm_bindgen]
 pub async fn route_request(
