@@ -196,13 +196,19 @@ for (const [path, file, type] of paths) {
   };
 }
 const responseHash = createHash('sha256');
-for (const directory of ['src/', '../cloud-web/src/']) {
+for (const [directory, extension] of [
+  ['src/', '.ts'],
+  ['../cloud-web/src/', '.ts'],
+  ['../crates/worker/src/', '.rs'],
+]) {
   for (const file of (await readdir(new URL(directory, root)))
-    .filter((file) => file.endsWith('.ts') && !file.endsWith('.generated.ts'))
+    .filter((file) => file.endsWith(extension) && !file.endsWith('.generated.ts'))
     .sort()) {
     responseHash.update(directory + file).update(await readFile(new URL(directory + file, root)));
   }
 }
+for (const file of ['../crates/worker/Cargo.toml', '../crates/worker/Cargo.lock'])
+  responseHash.update(file).update(await readFile(new URL(file, root)));
 const generationHash = createHash('sha256');
 for (const file of [
   'src/page-rendering.ts',

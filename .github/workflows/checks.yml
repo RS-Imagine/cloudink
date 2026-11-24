@@ -50,7 +50,7 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         if: steps.scope.outputs.code == 'true'
-        run: npm ci
+        run: npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
       - name: Check source formatting
         if: steps.scope.outputs.code == 'true'
         run: npm run format:check
@@ -86,6 +86,8 @@ jobs:
           rustup component add rustfmt clippy
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --locked
+          cargo fmt --manifest-path crates/worker/Cargo.toml -- --check
+          cargo clippy --manifest-path crates/worker/Cargo.toml --target wasm32-unknown-unknown --locked
       - name: Install Chromium
         if: steps.scope.outputs.browser == 'true'
         working-directory: cloud-admin
@@ -118,7 +120,7 @@ jobs:
             package-lock.json
             cloud-admin/package-lock.json
       - name: Install project tools
-        run: npm ci
+        run: npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
       - name: Check shared UI source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture

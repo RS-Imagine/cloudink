@@ -1,6 +1,7 @@
 {
   "name": "cloudink",
   "private": true,
+  "packageManager": "npm@10.9.11",
   "scripts": {
     "build": "bash scripts/build-web.sh",
     "deploy": "wrangler deploy",

@@ -2,6 +2,7 @@ import {
   Miniflare,
   convertV4MiniflareOptions,
 } from '../../cloud-admin/node_modules/miniflare/dist/src/index.js';
+import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
 export const setupToken = 'local-private-setup-token-26';
@@ -19,10 +20,16 @@ export const draft = (slug = 'public', text = 'Public **Markdown** $x^2$') => ({
   body_markdown: text,
 });
 export function workerOptions(bindings = {}) {
+  const output = resolve('cloud-web/dist');
   return {
     name: 'web',
-    scriptPath: resolve('cloud-web/dist/index.js'),
-    modules: true,
+    modulesRoot: output,
+    modules: [
+      { type: 'ESModule', path: resolve(output, 'index.js') },
+      ...readdirSync(output)
+        .filter((file) => file.endsWith('.wasm'))
+        .map((file) => ({ type: 'CompiledWasm', path: resolve(output, file) })),
+    ],
     compatibilityDate: '2026-10-01',
     compatibilityFlags: ['nodejs_compat'],
     assets: {
