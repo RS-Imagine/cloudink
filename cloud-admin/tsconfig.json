@@ -15,7 +15,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "../cloud-web/src/**/*.ts",
     "../worker-configuration.d.ts"
   ]
 }

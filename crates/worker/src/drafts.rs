@@ -1,114 +1,19 @@
-use worker::js_sys::{Array, Date, Function, JsString, Object, Promise, RegExp};
-use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
+use worker::js_sys::{Date, JsString, Object, RegExp};
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Request, Response, Url};
 use worker::worker_sys::R2Bucket;
 
 use crate::html_rewriter::JsResult;
+use crate::http::{error, json_input};
 use crate::page_rendering::valid_slug;
 use crate::runtime::{
     body_text, digest_text, get, json, object, only_if, own_property, property, read_json, set,
 };
+use crate::{image_references, models, reference_index};
 
 const DRAFT_DATE: &str = "2000-01-01";
 const SHORT_DATE: &str = "2000-01-01 00:00";
-
-#[wasm_bindgen]
-extern "C" {
-    pub type Hooks;
-
-    #[wasm_bindgen(method, catch, js_name = jsonInput)]
-    pub fn json_input(this: &Hooks, request: &Request, max: u32) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = managedImageKeys)]
-    pub fn managed_images(this: &Hooks, source: &JsString) -> JsResult<Array>;
-
-    #[wasm_bindgen(method, catch, js_name = imageReferenceMetadata)]
-    pub fn ref_metadata(
-        this: &Hooks,
-        source: &JsString,
-        storage: &R2Bucket,
-        previous: &JsValue,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = parseSource)]
-    pub fn parse_post(this: &Hooks, source: &JsString) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = parseShortSource)]
-    pub fn parse_short(this: &Hooks, source: &JsString) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = validateDraft)]
-    fn validate_post(this: &Hooks, draft: &JsValue) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = validateShortDraft)]
-    fn validate_short(this: &Hooks, draft: &JsValue) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = serializeDraft)]
-    pub fn serialize_post(this: &Hooks, draft: &JsValue) -> JsResult<JsString>;
-
-    #[wasm_bindgen(method, catch, js_name = serializeShortDraft)]
-    pub fn serialize_short(this: &Hooks, draft: &JsValue) -> JsResult<JsString>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureManagedImages)]
-    pub fn ensure_images(
-        this: &Hooks,
-        storage: &R2Bucket,
-        source: &JsString,
-        origin: &str,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureManagedImages)]
-    pub fn ensure_images_many(
-        this: &Hooks,
-        storage: &R2Bucket,
-        sources: &Array,
-        origin: &str,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, getter, js_name = referenceVersion)]
-    pub fn ref_version(this: &Hooks) -> JsValue;
-
-    #[wasm_bindgen(method, getter, js_name = templateVersion)]
-    pub fn template_version(this: &Hooks) -> JsValue;
-
-    #[wasm_bindgen(method, getter, js_name = generationVersion)]
-    pub fn generation_version(this: &Hooks) -> JsValue;
-
-    #[wasm_bindgen(method, getter, js_name = responseVersion)]
-    pub fn response_version(this: &Hooks) -> JsValue;
-
-    #[wasm_bindgen(method, getter, js_name = setupToken)]
-    pub fn setup_token(this: &Hooks) -> JsString;
-
-    #[wasm_bindgen(method, catch, js_name = validateSite)]
-    pub fn validate_site(this: &Hooks, value: &JsValue) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureHomeIllustration)]
-    pub fn ensure_illustration(
-        this: &Hooks,
-        storage: &R2Bucket,
-        site: &JsValue,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = ensureSiteIcon)]
-    pub fn ensure_icon(this: &Hooks, storage: &R2Bucket, site: &JsValue) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = withContentMutation)]
-    pub fn with_mutation(this: &Hooks, storage: &R2Bucket, work: &Function) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = withBackupBudget)]
-    pub fn with_backup_budget(
-        this: &Hooks,
-        storage: &R2Bucket,
-        work: &Function,
-    ) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, js_name = errorStatus)]
-    pub fn error_status(this: &Hooks, error: &JsValue) -> JsValue;
-
-    #[wasm_bindgen(method)]
-    pub fn error(this: &Hooks, status: u16, message: &str) -> JsValue;
-}
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Kind {
@@ -144,68 +49,46 @@ impl Kind {
             Self::Short => "短记已修改，请重新打开。",
         }
     }
-
-    pub fn parse(self, source: &JsString, hooks: &Hooks) -> JsResult<JsValue> {
-        match self {
-            Self::Post => hooks.parse_post(source),
-            Self::Short => hooks.parse_short(source),
-        }
-    }
-
-    pub fn serialize(self, draft: &JsValue, hooks: &Hooks) -> JsResult<JsString> {
-        match self {
-            Self::Post => hooks.serialize_post(draft),
-            Self::Short => hooks.serialize_short(draft),
-        }
-    }
 }
 
 pub async fn item(
     request: &Request,
     url: &Url,
     storage: &R2Bucket,
-    hooks: &Hooks,
     kind: Kind,
     slug: &str,
 ) -> JsResult<Response> {
     if !valid_slug(slug) {
-        return Err(hooks.error(
+        return Err(error(
             400,
             "文章地址只能使用英文字母、数字、短横线和下划线（最多 100 个字符）。",
         ));
     }
     let key = format!("{}{slug}.md", kind.storage_prefix());
     match request.method().as_str() {
-        "GET" => read_item(storage, hooks, kind, &key, slug).await,
-        "PUT" => save_item(request, url, storage, hooks, kind, &key, slug).await,
-        "DELETE" => delete_item(request, storage, hooks, kind, &key, slug).await,
-        _ => Err(hooks.error(404, "接口不存在。")),
+        "GET" => read_item(storage, kind, &key, slug).await,
+        "PUT" => save_item(request, url, storage, kind, &key, slug).await,
+        "DELETE" => delete_item(request, storage, kind, &key, slug).await,
+        _ => Err(error(404, "接口不存在。")),
     }
 }
 
-async fn read_item(
-    storage: &R2Bucket,
-    hooks: &Hooks,
-    kind: Kind,
-    key: &str,
-    slug: &str,
-) -> JsResult<Response> {
+async fn read_item(storage: &R2Bucket, kind: Kind, key: &str, slug: &str) -> JsResult<Response> {
     let stored = get(storage, key).await?;
     let (source, etag) = if stored.is_truthy() && !deleted(&stored) {
         (body_text(&stored).await?, property(&stored, "etag"))
     } else {
-        let release =
-            crate::publishing::current_release(storage, hooks, &JsValue::UNDEFINED).await?;
+        let release = crate::publishing::current_release(storage, &JsValue::UNDEFINED).await?;
         let source = own_property(&property(&release, kind.release_field()), slug);
         if !source.is_truthy() {
-            return Err(hooks.error(404, kind.not_found()));
+            return Err(error(404, kind.not_found()));
         }
         (source.unchecked_into(), JsValue::NULL)
     };
     json(
         200,
         &[
-            ("draft", kind.parse(&source, hooks)?),
+            ("draft", models::parse_source(&source, kind)?),
             ("source", source.into()),
             ("etag", etag),
         ],
@@ -216,56 +99,55 @@ async fn save_item(
     request: &Request,
     url: &Url,
     storage: &R2Bucket,
-    hooks: &Hooks,
     kind: Kind,
     key: &str,
     slug: &str,
 ) -> JsResult<Response> {
     if kind == Kind::Post {
-        crate::post_addresses::assert_writable(storage, slug, hooks).await?;
+        crate::post_addresses::assert_writable(storage, slug).await?;
     }
-    let input = JsFuture::from(hooks.json_input(
+    let input = json_input(
         request,
         if kind == Kind::Post {
             2_100_000
         } else {
             1_000_000
         },
-    )?)
+    )
     .await?;
     let explicit_source = property(&input, "source");
     let (draft, source) = match kind {
         Kind::Post if explicit_source.is_string() => {
             let source: JsString = explicit_source.unchecked_into();
-            (hooks.parse_post(&source)?, source)
+            (models::parse_source(&source, Kind::Post)?, source)
         }
         Kind::Post => {
-            let draft = hooks.validate_post(&property(&input, "draft"))?;
+            let draft = models::validate_draft(&property(&input, "draft"), Kind::Post)?;
             set(&property(&draft, "front_matter"), "draft", true)?;
-            let source = hooks.serialize_post(&draft)?;
+            let source = models::serialize(&draft)?;
             (draft, source)
         }
         Kind::Short => {
-            let draft = hooks.validate_short(&input)?;
+            let draft = models::validate_draft(&input, Kind::Short)?;
             let front = property(&draft, "front_matter");
             if property(&front, "slug") != slug {
-                return Err(hooks.error(400, "短记地址与请求地址不一致。"));
+                return Err(error(400, "短记地址与请求地址不一致。"));
             }
             set(&front, "draft", true)?;
-            let source = hooks.serialize_short(&draft)?;
+            let source = models::serialize(&draft)?;
             (draft, source)
         }
     };
     if kind == Kind::Post && property(&property(&draft, "front_matter"), "slug") != slug {
-        return Err(hooks.error(400, "文章地址与保存地址不一致。"));
+        return Err(error(400, "文章地址与保存地址不一致。"));
     }
-    JsFuture::from(hooks.ensure_images(storage, &source, &url.origin())?).await?;
+    image_references::ensure(storage, &source, &url.origin()).await?;
     let existing = JsFuture::from(storage.head(key.to_owned())?).await?;
     let active = existing.is_truthy() && !deleted(&existing);
     let etag = property(&existing, "etag");
     let expected = property(&input, "etag");
     if active && expected != etag {
-        return Err(hooks.error(
+        return Err(error(
             409,
             match kind {
                 Kind::Post => "这篇文章在另一个窗口中发生了修改。请导出当前内容，再重新打开文章。",
@@ -274,7 +156,7 @@ async fn save_item(
         ));
     }
     if !active && expected.is_truthy() {
-        return Err(hooks.error(
+        return Err(error(
             409,
             match kind {
                 Kind::Post => "文章已删除或改址，请重新打开。",
@@ -284,22 +166,17 @@ async fn save_item(
     }
     let previous = property(&existing, "customMetadata");
     if kind == Kind::Post {
-        let summary = draft_summary(&draft, storage, &previous, hooks).await?;
+        let summary = draft_summary(&draft, storage, &previous).await?;
         let pointer = read_json(storage, "state/published.json").await?;
         let index = if pointer.is_truthy() {
-            crate::post_index::read(
-                storage,
-                &crate::runtime::attribute(&pointer, "id"),
-                |status, text| hooks.error(status, text),
-            )
-            .await?
+            crate::post_index::read(storage, &crate::runtime::attribute(&pointer, "id")).await?
         } else {
             JsValue::NULL
         };
         let published = own_property(&property(&index, "posts"), slug);
         let changed = !published.is_truthy()
             || property(&published, "digest") != property(&summary, "digest");
-        if active && unchanged(&previous, &source, hooks).await? {
+        if active && unchanged(&previous, &source).await? {
             let uploaded: Date = property(&existing, "uploaded").unchecked_into();
             return json(
                 200,
@@ -318,7 +195,7 @@ async fn save_item(
         set(&metadata, "source_digest", source_digest(&source).await?)?;
         let saved = save_source(storage, key, &existing, &source, metadata).await?;
         if !saved.is_truthy() {
-            return Err(hooks.error(409, "这篇文章刚刚发生了修改，请重新打开。"));
+            return Err(error(409, "这篇文章刚刚发生了修改，请重新打开。"));
         }
         return json(
             200,
@@ -332,7 +209,7 @@ async fn save_item(
             ],
         );
     }
-    if active && unchanged(&previous, &source, hooks).await? {
+    if active && unchanged(&previous, &source).await? {
         return json(
             200,
             &[
@@ -342,10 +219,10 @@ async fn save_item(
             ],
         );
     }
-    let summary = short_summary(&draft, &source, storage, &previous, hooks).await?;
+    let summary = short_summary(&draft, &source, storage, &previous).await?;
     let saved = save_source(storage, key, &existing, &source, summary).await?;
     if !saved.is_truthy() {
-        return Err(hooks.error(409, "这条短记刚刚发生了修改，请重新打开。"));
+        return Err(error(409, "这条短记刚刚发生了修改，请重新打开。"));
     }
     json(
         200,
@@ -377,21 +254,20 @@ async fn save_source(
 async fn delete_item(
     request: &Request,
     storage: &R2Bucket,
-    hooks: &Hooks,
     kind: Kind,
     key: &str,
     slug: &str,
 ) -> JsResult<Response> {
-    let release = crate::publishing::current_release(storage, hooks, &JsValue::UNDEFINED).await?;
+    let release = crate::publishing::current_release(storage, &JsValue::UNDEFINED).await?;
     if own_property(&property(&release, kind.release_field()), slug).is_truthy() {
-        return Err(hooks.error(409, "请先取消发布，再删除草稿。"));
+        return Err(error(409, "请先取消发布，再删除草稿。"));
     }
-    let input = JsFuture::from(hooks.json_input(request, 4096)?).await?;
+    let input = json_input(request, 4096).await?;
     let existing = JsFuture::from(storage.head(key.to_owned())?).await?;
     if existing.is_truthy() {
         let etag = property(&existing, "etag");
         if property(&input, "etag") != etag {
-            return Err(hooks.error(409, kind.modified()));
+            return Err(error(409, kind.modified()));
         }
         let (front, metadata) = match kind {
             Kind::Post => (
@@ -415,13 +291,13 @@ async fn delete_item(
         };
         // Retain the ETag-guarded tombstone so a stale writer cannot restore the item.
         let draft = object(&[("front_matter", front.into()), ("body_markdown", "".into())])?;
-        let source = kind.serialize(&draft, hooks)?;
+        let source = models::serialize(&draft)?;
         let options = only_if("etagMatches", etag)?;
         set(&options, "customMetadata", metadata)?;
         let saved =
             JsFuture::from(storage.put(key.to_owned(), source.into(), options.into())?).await?;
         if !saved.is_truthy() {
-            return Err(hooks.error(409, kind.modified()));
+            return Err(error(409, kind.modified()));
         }
     }
     json(200, &[("ok", true.into())])
@@ -431,9 +307,9 @@ pub fn deleted(object: &JsValue) -> bool {
     property(&property(object, "customMetadata"), "deleted").is_truthy()
 }
 
-async fn unchanged(metadata: &JsValue, source: &JsString, hooks: &Hooks) -> JsResult<bool> {
+async fn unchanged(metadata: &JsValue, source: &JsString) -> JsResult<bool> {
     Ok(
-        property(metadata, "image_refs_version") == hooks.ref_version()
+        property(metadata, "image_refs_version") == image_references::VERSION
             && property(metadata, "source_digest") == source_digest(source).await?,
     )
 }
@@ -447,7 +323,6 @@ pub async fn draft_summary(
     draft: &JsValue,
     storage: &R2Bucket,
     previous: &JsValue,
-    hooks: &Hooks,
 ) -> JsResult<Object> {
     let front = property(draft, "front_matter");
     let title = property(&front, "title");
@@ -464,11 +339,11 @@ pub async fn draft_summary(
         ),
     ])?;
     let body = property(draft, "body_markdown");
-    let references = JsFuture::from(hooks.ref_metadata(
+    let references = reference_index::metadata(
         body.unchecked_ref(),
         storage,
         &property(previous, "image_refs_hash"),
-    )?)
+    )
     .await?;
     Object::assign(&summary, references.unchecked_ref());
     set(
@@ -484,7 +359,6 @@ pub async fn short_summary(
     source: &JsString,
     storage: &R2Bucket,
     previous: &JsValue,
-    hooks: &Hooks,
 ) -> JsResult<Object> {
     let body = property(draft, "body_markdown");
     let summary = object(&[
@@ -498,12 +372,8 @@ pub async fn short_summary(
                 .into(),
         ),
     ])?;
-    let references = JsFuture::from(hooks.ref_metadata(
-        source,
-        storage,
-        &property(previous, "image_refs_hash"),
-    )?)
-    .await?;
+    let references =
+        reference_index::metadata(source, storage, &property(previous, "image_refs_hash")).await?;
     Object::assign(&summary, references.unchecked_ref());
     Ok(summary)
 }

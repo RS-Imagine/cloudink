@@ -1,11 +1,12 @@
-use worker::js_sys::{self, Array, Date, JSON, JsString, Object, Uint8Array};
+use worker::js_sys::{Array, Date, JSON, JsString, Object, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures::JsFuture;
-use worker::web_sys::{CryptoKey, Request, Response, Url, WorkerGlobalScope};
+use worker::web_sys::{CryptoKey, Request, Response, Url};
 use worker::worker_sys::R2Bucket;
 
-use crate::drafts::Hooks;
+use crate::config::Config;
 use crate::html_rewriter::JsResult;
+use crate::http::{error, json_input};
 use crate::page_rendering::{public_type, responsive_images, sanitize};
 use crate::runtime::{
     attribute, body_text, cancel_body, digest_text, encode_utf8, get, js_number, js_string, json,
@@ -30,27 +31,14 @@ extern "C" {
     #[wasm_bindgen(method, catch)]
     fn decode(this: &TextDecoder, bytes: &Uint8Array) -> JsResult<JsString>;
 
-    type ConstantTimeCrypto;
-
-    #[wasm_bindgen(method, js_name = timingSafeEqual)]
-    fn timing_safe_equal(
-        this: &ConstantTimeCrypto,
-        first: &Uint8Array,
-        second: &Uint8Array,
-    ) -> bool;
 }
 
-pub async fn plan(
-    request: &Request,
-    storage: &R2Bucket,
-    hooks: &Hooks,
-    id: &str,
-) -> JsResult<Response> {
-    let (stored, state) = pending(storage, hooks, id).await?;
-    let input = JsFuture::from(hooks.json_input(request, 150_000)?).await?;
+pub async fn plan(request: &Request, storage: &R2Bucket, id: &str) -> JsResult<Response> {
+    let (stored, state) = pending(storage, id).await?;
+    let input = json_input(request, 150_000).await?;
     let supplied = property(&input, "sources");
     let files = generated_files(&state);
-    let invalid = || hooks.error(400, "发布页面指纹不完整或无效。");
+    let invalid = || error(400, "发布页面指纹不完整或无效。");
     if !record(&supplied)
         || entries(&supplied).any(|(path, hash)| !files.contains(&path) || !is_hash(&hash))
     {
@@ -86,7 +74,7 @@ pub async fn plan(
             .iter()
             .any(|path| property(&planned, path) != property(&sources, path))
         {
-            return Err(hooks.error(409, "这次发布的页面已确定，请重新发布。"));
+            return Err(error(409, "这次发布的页面已确定，请重新发布。"));
         }
         let files = missing_pages(
             storage,
@@ -146,7 +134,7 @@ pub async fn plan(
         .await?
         .is_truthy()
     {
-        return Err(hooks.error(409, "发布状态已经变化，请重试。"));
+        return Err(error(409, "发布状态已经变化，请重试。"));
     }
     json(200, &[("files", changed.into())])
 }
@@ -154,21 +142,21 @@ pub async fn plan(
 pub async fn stage(
     request: &Request,
     storage: &R2Bucket,
-    hooks: &Hooks,
+    config: &Config,
     id: &str,
 ) -> JsResult<Response> {
-    let (_, state) = pending(storage, hooks, id).await?;
+    let (_, state) = pending(storage, id).await?;
     let url = Url::new(&request.url())?;
     let path = url.search_params().get("path").unwrap_or_default();
     if !contains(&property(&state, "files"), &path) {
-        return Err(hooks.error(400, "这不是当前发布中的页面。"));
+        return Err(error(400, "这不是当前发布中的页面。"));
     }
     let limit = if path == "_release.json" {
         MAX_MARKER
     } else {
         MAX_PAGE
     };
-    let bytes = limited_body(request, limit, || hooks.error(413, "上传内容太大。")).await?;
+    let bytes = limited_body(request, limit, || error(413, "上传内容太大。")).await?;
     let decoder = TextDecoder::with_options(
         "utf-8",
         &object(&[("fatal", true.into()), ("ignoreBOM", false.into())])?,
@@ -179,16 +167,16 @@ pub async fn stage(
     if plan.is_truthy()
         && property(&property(&plan, "sources"), &path) != digest_text(&body).await?
     {
-        return Err(hooks.error(409, "网页内容与本次发布指纹不一致，请重新生成。"));
+        return Err(error(409, "网页内容与本次发布指纹不一致，请重新生成。"));
     }
     if path == "_release.json" {
-        validate_marker(&body, &state, hooks)?;
+        validate_marker(&body, &state)?;
     }
     if plan.is_truthy() {
         let existing = JsFuture::from(storage.head(key.clone())?).await?;
         if existing.is_truthy() {
             let size = property(&existing, "size");
-            let receipt = signed_receipt(hooks, &state, &path, &size).await?;
+            let receipt = signed_receipt(config, &state, &path, &size).await?;
             return json(
                 200,
                 &[
@@ -215,23 +203,23 @@ pub async fn stage(
         size = property(&JsFuture::from(storage.head(key)?).await?, "size");
     }
     if size.is_undefined() {
-        return Err(hooks.error(409, "页面未能保存，请重试。"));
+        return Err(error(409, "页面未能保存，请重试。"));
     }
     if plan.is_truthy() {
-        let receipt = signed_receipt(hooks, &state, &path, &size).await?;
+        let receipt = signed_receipt(config, &state, &path, &size).await?;
         return json(200, &[("ok", true.into()), ("receipt", receipt.into())]);
     }
     json(200, &[("ok", true.into())])
 }
 
-pub async fn cancel(storage: &R2Bucket, hooks: &Hooks, id: &str) -> JsResult<Response> {
+pub async fn cancel(storage: &R2Bucket, id: &str) -> JsResult<Response> {
     let pending = get(storage, PENDING).await?;
     if !pending.is_truthy() {
-        return Err(hooks.error(409, "这次发布已经结束。"));
+        return Err(error(409, "这次发布已经结束。"));
     }
     let state = parse_object(&pending).await?;
     if property(&state, "release_id") != id {
-        return Err(hooks.error(409, "发布版本已经变化。"));
+        return Err(error(409, "发布版本已经变化。"));
     }
     let object = get(storage, PUBLISHED).await?;
     let pointer = if object.is_truthy() {
@@ -253,7 +241,7 @@ pub async fn cancel(storage: &R2Bucket, hooks: &Hooks, id: &str) -> JsResult<Res
             if property(&current, "id") == id {
                 return json_object(200, &with_status(&state, "deployed")?);
             }
-            return Err(hooks.error(409, "发布状态已经变化，请刷新后重试。"));
+            return Err(error(409, "发布状态已经变化，请刷新后重试。"));
         }
     }
     let failed = with_status(&state, "failed")?;
@@ -269,33 +257,33 @@ pub async fn cancel(storage: &R2Bucket, hooks: &Hooks, id: &str) -> JsResult<Res
 pub async fn commit(
     request: &Request,
     storage: &R2Bucket,
-    hooks: &Hooks,
+    config: &Config,
     id: &str,
 ) -> JsResult<Response> {
-    let input = JsFuture::from(hooks.json_input(request, 250_000)?).await?;
+    let input = json_input(request, 250_000).await?;
     let receipts = property(&input, "receipts");
     if !receipts.is_undefined() && !record(&receipts) {
-        return Err(hooks.error(400, "页面保存凭据格式不正确。"));
+        return Err(error(400, "页面保存凭据格式不正确。"));
     }
-    let (stored, state) = pending(storage, hooks, id).await?;
+    let (stored, state) = pending(storage, id).await?;
     let locked = write_state(storage, PENDING, &with_status(&state, "built")?, &stored).await?;
     if !locked.is_truthy() {
-        return Err(hooks.error(409, "另一个窗口正在完成发布。"));
+        return Err(error(409, "另一个窗口正在完成发布。"));
     }
     let mut committed = false;
     let result = async {
         let (sizes, verification, total) =
-            verify_pages(storage, hooks, id, &state, &receipts).await?;
+            verify_pages(storage, config, id, &state, &receipts).await?;
         let release = read_json(storage, &format!("releases/{id}.json")).await?;
         if !release.is_truthy() {
-            return Err(hooks.error(503, "发布版本缺失。"));
+            return Err(error(503, "发布版本缺失。"));
         }
         if total > 16_000_000.0 {
-            return Err(hooks.error(413, "生成后的网页超过 16 MB，请减少内容后重试。"));
+            return Err(error(413, "生成后的网页超过 16 MB，请减少内容后重试。"));
         }
         let latest = JsFuture::from(storage.head(PENDING.to_owned())?).await?;
         if property(&latest, "etag") != property(&locked, "etag") {
-            return Err(hooks.error(409, "这次发布已取消，请重新发布。"));
+            return Err(error(409, "这次发布已取消，请重新发布。"));
         }
         let pointer = get(storage, PUBLISHED).await?;
         let current = if pointer.is_truthy() {
@@ -307,9 +295,9 @@ pub async fn commit(
             || property(&current, "id") != property(&state, "previous_id")
             || property(&current, "publishing") != id
         {
-            return Err(hooks.error(409, "这次发布已取消或线上版本已经变化，请重新发布。"));
+            return Err(error(409, "这次发布已取消或线上版本已经变化，请重新发布。"));
         }
-        crate::post_addresses::assert_rename_unchanged(storage, &state, hooks).await?;
+        crate::post_addresses::assert_rename_unchanged(storage, &state).await?;
         let plan = property(&state, "plan");
         if plan.is_truthy() {
             let manifest = copy(&plan);
@@ -345,7 +333,7 @@ pub async fn commit(
         set(
             &live,
             "postRedirects",
-            crate::post_addresses::redirects(&release, hooks)?,
+            crate::post_addresses::redirects(&release)?,
         )?;
         for (public, state_key) in [
             ("templateVersion", "template_version"),
@@ -358,10 +346,10 @@ pub async fn commit(
             .await?
             .is_truthy()
         {
-            return Err(hooks.error(409, "线上版本已经变化，请重新发布。"));
+            return Err(error(409, "线上版本已经变化，请重新发布。"));
         }
         committed = true;
-        crate::post_addresses::finish_rename(storage, &state, &release, hooks).await?;
+        crate::post_addresses::finish_rename(storage, &state, &release).await?;
         let done = with_status(&state, "deployed")?;
         write_state(storage, PENDING, &done, &locked).await?;
         set(&done, "verification", verification)?;
@@ -378,7 +366,7 @@ pub async fn commit(
 
 async fn verify_pages(
     storage: &R2Bucket,
-    hooks: &Hooks,
+    config: &Config,
     id: &str,
     state: &JsValue,
     receipts: &JsValue,
@@ -397,27 +385,27 @@ async fn verify_pages(
         let size = if path == "_release.json" {
             let marker = get(storage, &key).await?;
             if !marker.is_truthy() {
-                return Err(hooks.error(409, "发布标记尚未上传，请重新发布。"));
+                return Err(error(409, "发布标记尚未上传，请重新发布。"));
             }
             let marker_size = property(&marker, "size");
             if js_number(&marker_size) > f64::from(MAX_MARKER) {
                 cancel_body(&marker).await?;
-                return Err(hooks.error(413, "发布标记过大。"));
+                return Err(error(413, "发布标记过大。"));
             }
-            validate_marker(&body_text(&marker).await?, state, hooks)?;
+            validate_marker(&body_text(&marker).await?, state)?;
             marker_size
         } else if !prior_size.is_undefined() {
             reused += 1;
             prior_size
         } else if !submitted.is_undefined() {
-            let size = verify_receipt(hooks, state, &plan, &path, &submitted).await?;
+            let size = verify_receipt(config, state, &plan, &path, &submitted).await?;
             signed += 1;
             size
         } else {
             heads += 1;
             let file = JsFuture::from(storage.head(key)?).await?;
             if !file.is_truthy() {
-                return Err(hooks.error(409, "页面尚未上传完整，请重新发布。"));
+                return Err(error(409, "页面尚未上传完整，请重新发布。"));
             }
             property(&file, "size")
         };
@@ -433,13 +421,13 @@ async fn verify_pages(
 }
 
 async fn verify_receipt(
-    hooks: &Hooks,
+    config: &Config,
     state: &JsValue,
     plan: &JsValue,
     path: &str,
     submitted: &JsValue,
 ) -> JsResult<JsValue> {
-    let invalid = || hooks.error(409, "页面保存凭据无效，请重新发布。");
+    let invalid = || error(409, "页面保存凭据无效，请重新发布。");
     if !Array::is_array(submitted) || !plan.is_truthy() {
         return Err(invalid());
     }
@@ -454,32 +442,27 @@ async fn verify_receipt(
     {
         return Err(invalid());
     }
-    let expected = receipt(hooks, state, path, &size).await?;
-    let crypto = js_sys::global()
-        .unchecked_into::<WorkerGlobalScope>()
-        .crypto()?
-        .subtle();
-    let crypto: &ConstantTimeCrypto = crypto.unchecked_ref();
-    if !crypto.timing_safe_equal(
+    let expected = receipt(config, state, path, &size).await?;
+    if !crate::runtime::same_bytes(
         &encode_utf8(hash.unchecked_ref()),
         &encode_utf8(&expected.into()),
-    ) {
+    )? {
         return Err(invalid());
     }
     Ok(size)
 }
 
-async fn pending(storage: &R2Bucket, hooks: &Hooks, id: &str) -> JsResult<(JsValue, JsValue)> {
+async fn pending(storage: &R2Bucket, id: &str) -> JsResult<(JsValue, JsValue)> {
     let object = get(storage, PENDING).await?;
     if !object.is_truthy() {
-        return Err(hooks.error(409, "没有待完成的发布，请重新发布。"));
+        return Err(error(409, "没有待完成的发布，请重新发布。"));
     }
     let state = parse_object(&object).await?;
     if property(&state, "release_id") != id
         || !matches!(attribute(&state, "status").as_str(), "queued" | "building")
         || Date::now() - Date::parse(&attribute(&state, "started_at")) > 30.0 * 60_000.0
     {
-        return Err(hooks.error(409, "这次发布已结束或失效，请重新发布。"));
+        return Err(error(409, "这次发布已结束或失效，请重新发布。"));
     }
     Ok((object, state))
 }
@@ -531,15 +514,15 @@ async fn missing_pages(storage: &R2Bucket, pages: &JsValue, sizes: &JsValue) -> 
     Ok(missing)
 }
 
-fn validate_marker(body: &JsString, state: &JsValue, hooks: &Hooks) -> JsResult<()> {
+fn validate_marker(body: &JsString, state: &JsValue) -> JsResult<()> {
     let marker = JSON::parse(&body.as_string().unwrap_or_default())
-        .map_err(|_| hooks.error(400, "发布标记无效。"))?;
+        .map_err(|_| error(400, "发布标记无效。"))?;
     if property(&marker, "id") != property(state, "release_id") {
-        return Err(hooks.error(400, "发布标记与当前版本不一致。"));
+        return Err(error(400, "发布标记与当前版本不一致。"));
     }
     let template = property(state, "template_version");
     if template.is_truthy() && property(&marker, "template_version") != template {
-        return Err(hooks.error(
+        return Err(error(
             409,
             "后台版本已更新，请刷新页面后重试；草稿和线上内容仍保留。",
         ));
@@ -548,24 +531,19 @@ fn validate_marker(body: &JsString, state: &JsValue, hooks: &Hooks) -> JsResult<
 }
 
 async fn signed_receipt(
-    hooks: &Hooks,
+    config: &Config,
     state: &JsValue,
     path: &str,
     size: &JsValue,
 ) -> JsResult<Array> {
-    let receipt = receipt(hooks, state, path, size).await?;
+    let receipt = receipt(config, state, path, size).await?;
     Ok([size.clone(), receipt.into()].into_iter().collect())
 }
 
-async fn receipt(hooks: &Hooks, state: &JsValue, path: &str, size: &JsValue) -> JsResult<String> {
-    use std::fmt::Write;
-
-    let crypto = js_sys::global()
-        .unchecked_into::<WorkerGlobalScope>()
-        .crypto()?
-        .subtle();
+async fn receipt(config: &Config, state: &JsValue, path: &str, size: &JsValue) -> JsResult<String> {
+    let crypto = crate::runtime::crypto()?.subtle();
     let options = object(&[("name", "HMAC".into()), ("hash", "SHA-256".into())])?;
-    let key = encode_utf8(&hooks.setup_token());
+    let key = encode_utf8(&config.setup_token);
     let usage: Array = [JsValue::from_str("sign")].into_iter().collect();
     let key: CryptoKey = JsFuture::from(crypto.import_key_with_object(
         "raw",
@@ -588,11 +566,7 @@ async fn receipt(hooks: &Hooks, state: &JsValue, path: &str, size: &JsValue) -> 
     let message = encode_utf8(&JSON::stringify(&payload)?);
     let signature =
         JsFuture::from(crypto.sign_with_str_and_js_u8_array("HMAC", &key, &message)?).await?;
-    let mut hex = String::with_capacity(64);
-    for byte in Uint8Array::new(&signature).to_vec() {
-        write!(hex, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    Ok(hex)
+    Ok(crate::runtime::hex(&Uint8Array::new(&signature)))
 }
 
 pub async fn write_state(

@@ -7,35 +7,32 @@ use worker::web_sys::{Request, Response, Url};
 use worker::worker_sys::R2Bucket;
 
 use crate::html_rewriter::JsResult;
-use crate::image::{Hooks, WIDTHS, add_presentation, parent_key, variant_key};
+use crate::http::{error, json_input, status};
+use crate::image::{WIDTHS, add_presentation, parent_key, variant_key};
 use crate::media::{supported_type, valid_image_key};
 use crate::runtime::{
     attribute, body_text, encode_utf8, get, js_number, js_string, json, list, object, only_if,
     parse_object, property, read_json, set,
 };
+use crate::{image_references, reference_index, site_assets};
 
 const MAX_SOURCES: usize = 2000;
 const MAX_TEXT_BYTES: usize = 32 * 1024 * 1024;
 const MAX_UNINDEXED: usize = 30;
 
-pub async fn library(
-    request: &Request,
-    url: &Url,
-    storage: &R2Bucket,
-    hooks: &Hooks,
-) -> JsResult<Response> {
+pub async fn library(request: &Request, url: &Url, storage: &R2Bucket) -> JsResult<Response> {
     match request.method().as_str() {
-        "GET" => list_images(url, storage, hooks).await,
-        "DELETE" => delete_image(request, storage, hooks).await,
-        _ => Err(hooks.error(405, "请求方式不正确。")),
+        "GET" => list_images(url, storage).await,
+        "DELETE" => delete_image(request, storage).await,
+        _ => Err(error(405, "请求方式不正确。")),
     }
 }
 
-fn cursor(value: Option<String>, hooks: &Hooks) -> JsResult<Option<(f64, String)>> {
+fn cursor(value: Option<String>) -> JsResult<Option<(f64, String)>> {
     let Some(value) = value.filter(|value| !value.is_empty()) else {
         return Ok(None);
     };
-    let invalid = || hooks.error(400, "分页位置不正确。");
+    let invalid = || error(400, "分页位置不正确。");
     let parsed = JSON::parse(&value).map_err(|_| invalid())?;
     if !Array::is_array(&parsed) {
         return Err(invalid());
@@ -49,9 +46,9 @@ fn cursor(value: Option<String>, hooks: &Hooks) -> JsResult<Option<(f64, String)
     }
 }
 
-async fn list_images(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
+async fn list_images(url: &Url, storage: &R2Bucket) -> JsResult<Response> {
     let params = url.search_params();
-    let after = cursor(params.get("cursor"), hooks)?;
+    let after = cursor(params.get("cursor"))?;
     let mut catalog = Vec::new();
     let mut current = JsValue::UNDEFINED;
     loop {
@@ -74,7 +71,10 @@ async fn list_images(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<R
                 .count()
                 > MAX_SOURCES
         {
-            return Err(hooks.error(413, "当前图片超过 2000 张，暂时无法在网页图片库完整管理。"));
+            return Err(error(
+                413,
+                "当前图片超过 2000 张，暂时无法在网页图片库完整管理。",
+            ));
         }
         current = page.cursor;
         if !current.is_truthy() {
@@ -120,14 +120,10 @@ async fn list_images(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<R
     } else {
         JsValue::NULL
     };
-    let mut scan = ReferenceScan::new(
-        images.iter().map(|(_, key, _, _, _)| key.clone()),
-        storage,
-        hooks,
-    );
+    let mut scan = ReferenceScan::new(images.iter().map(|(_, key, _, _, _)| key.clone()), storage);
     let mut reference_error = String::new();
     if let Err(error) = scan.run().await {
-        if hooks.error_status(&error).is_null() {
+        if status(&error).is_none() {
             return Err(error);
         }
         reference_error = attribute(&error, "message");
@@ -183,29 +179,32 @@ async fn list_images(url: &Url, storage: &R2Bucket, hooks: &Hooks) -> JsResult<R
     )
 }
 
-async fn delete_image(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let input = JsFuture::from(hooks.json_input(request, 4096)?).await?;
+async fn delete_image(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
+    let input = json_input(request, 4096).await?;
     let Some(key) = property(&input, "key")
         .as_string()
         .filter(|key| valid_image_key(key))
     else {
-        return Err(hooks.error(400, "图片路径不正确。"));
+        return Err(error(400, "图片路径不正确。"));
     };
     if parent_key(&key) != key {
-        return Err(hooks.error(400, "请从图片库删除整张图片。"));
+        return Err(error(400, "请从图片库删除整张图片。"));
     }
     let object = JsFuture::from(storage.head(key.clone())?).await?;
     if !object.is_truthy() {
-        return Err(hooks.error(404, "图片已经不存在，请刷新图片库。"));
+        return Err(error(404, "图片已经不存在，请刷新图片库。"));
     }
     if property(&input, "etag") != property(&object, "etag") {
-        return Err(hooks.error(409, "图片已变化，请刷新图片库后重试。"));
+        return Err(error(409, "图片已变化，请刷新图片库后重试。"));
     }
     let pending = read_json(storage, "state/pending.json").await?;
     if publication_pending(&pending) {
-        return Err(hooks.error(409, "网站正在发布，请等待完成或取消发布后再删除图片。"));
+        return Err(error(
+            409,
+            "网站正在发布，请等待完成或取消发布后再删除图片。",
+        ));
     }
-    let mut scan = ReferenceScan::new([key.clone()].into_iter(), storage, hooks);
+    let mut scan = ReferenceScan::new([key.clone()].into_iter(), storage);
     scan.run().await?;
     let references = reference_array(scan.references.get(&key))?;
     if references.length() != 0 {
@@ -221,31 +220,30 @@ async fn delete_image(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> J
         .into_iter()
         .map(|width| variant_key(&key, width).into())
         .collect();
-    let icon_keys = hooks.icon_derivatives(&key)?;
-    if icon_keys.is_truthy() {
-        keys.extend(array(&icon_keys, "generated").iter());
+    if let Some(icons) = site_assets::derivatives(&key) {
+        keys.extend(icons.generated().into_iter().map(JsValue::from_str));
     }
     keys.push(key.clone().into());
     JsFuture::from(storage.delete_multiple(keys)?).await?;
     json(200, &[("deleted", true.into()), ("key", key.into())])
 }
 
-pub async fn reindex(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> JsResult<Response> {
-    let input = JsFuture::from(hooks.json_input(request, 4096)?).await?;
+pub async fn reindex(request: &Request, storage: &R2Bucket) -> JsResult<Response> {
+    let input = json_input(request, 4096).await?;
     let prefix = property(&input, "prefix");
     let cursor = property(&input, "cursor");
     let Some(section) = DraftSection::for_prefix(&prefix) else {
-        return Err(hooks.error(400, "引用索引分页参数不正确。"));
+        return Err(error(400, "引用索引分页参数不正确。"));
     };
     if !cursor.is_undefined()
         && cursor
             .as_string()
             .is_none_or(|value| value.encode_utf16().count() > 2048)
     {
-        return Err(hooks.error(400, "引用索引分页参数不正确。"));
+        return Err(error(400, "引用索引分页参数不正确。"));
     }
     let page = list(storage, section.prefix(), cursor, 8, &["customMetadata"]).await?;
-    let version = hooks.ref_version();
+    let version = image_references::VERSION;
     let mut updated = 0;
     for item in page.objects.iter() {
         let meta = property(&item, "customMetadata");
@@ -257,15 +255,15 @@ pub async fn reindex(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
                 continue;
             }
             if let Some(hash) = valid_hash(&meta) {
-                let shard = hooks.shard_key(&hash)?;
+                let shard = reference_index::shard_key(&hash);
                 let checked = async {
-                    let content = JsFuture::from(hooks.read_shard(storage, &shard)?).await?;
-                    JsFuture::from(hooks.checked_keys(&content, &hash)?).await
+                    let content = reference_index::read_shard(storage, &shard).await?;
+                    reference_index::checked(&content, &hash).await
                 }
                 .await;
                 match checked {
                     Ok(_) => continue,
-                    Err(error) if hooks.error_status(&error).as_f64() == Some(503.0) => {}
+                    Err(error) if status(&error) == Some(503) => {}
                     Err(error) => return Err(error),
                 }
             }
@@ -277,12 +275,15 @@ pub async fn reindex(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
             .is_none()
             || js_number(&property(&item, "size")) > 2_100_000.0
         {
-            return Err(hooks.error(413, "原稿格式或大小超出引用索引更新范围；图片仍受保护。"));
+            return Err(error(
+                413,
+                "原稿格式或大小超出引用索引更新范围；图片仍受保护。",
+            ));
         }
         let draft = get(storage, &key).await?;
         let etag = property(&draft, "etag");
         if !draft.is_truthy() || etag != property(&item, "etag") {
-            return Err(hooks.error(409, "原稿已变化，请重新更新索引。"));
+            return Err(error(409, "原稿已变化，请重新更新索引。"));
         }
         let text = body_text(&draft).await?;
         let metadata = Object::new();
@@ -290,14 +291,14 @@ pub async fn reindex(request: &Request, storage: &R2Bucket, hooks: &Hooks) -> Js
         if previous.is_object() {
             Object::assign(&metadata, previous.unchecked_ref());
         }
-        let indexed = JsFuture::from(hooks.ref_metadata(&text, storage)?).await?;
+        let indexed = reference_index::metadata(&text, storage, &JsValue::UNDEFINED).await?;
         Object::assign(&metadata, indexed.unchecked_ref());
         let options = only_if("etagMatches", etag)?;
         set(&options, "customMetadata", metadata)?;
         set(&options, "httpMetadata", property(&draft, "httpMetadata"))?;
         let saved = JsFuture::from(storage.put(key, text.into(), options.into())?).await?;
         if !saved.is_truthy() {
-            return Err(hooks.error(409, "原稿已变化，请重新更新索引。"));
+            return Err(error(409, "原稿已变化，请重新更新索引。"));
         }
         updated += 1;
     }
@@ -385,8 +386,6 @@ fn reference_array(references: Option<&Vec<Reference>>) -> JsResult<Array> {
 
 struct ReferenceScan<'a> {
     storage: &'a R2Bucket,
-    hooks: &'a Hooks,
-    version: String,
     references: HashMap<String, Vec<Reference>>,
     shards: HashMap<String, JsValue>,
     text_bytes: usize,
@@ -398,11 +397,9 @@ struct ReferenceScan<'a> {
 }
 
 impl<'a> ReferenceScan<'a> {
-    fn new(keys: impl Iterator<Item = String>, storage: &'a R2Bucket, hooks: &'a Hooks) -> Self {
+    fn new(keys: impl Iterator<Item = String>, storage: &'a R2Bucket) -> Self {
         Self {
             storage,
-            hooks,
-            version: hooks.ref_version(),
             references: keys.map(|key| (key, Vec::new())).collect(),
             shards: HashMap::new(),
             text_bytes: 0,
@@ -452,9 +449,7 @@ impl<'a> ReferenceScan<'a> {
         let settings = get(self.storage, "draft-site.json").await?;
         if settings.is_truthy() {
             if js_number(&property(&settings, "size")) > 500_000.0 {
-                return Err(self
-                    .hooks
-                    .error(413, "网站设置过大，无法安全检查图片引用。"));
+                return Err(error(413, "网站设置过大，无法安全检查图片引用。"));
             }
             self.source(
                 &body_text(&settings).await?,
@@ -466,17 +461,14 @@ impl<'a> ReferenceScan<'a> {
     }
 
     async fn release(&mut self, id: &str, kind: &'static str) -> JsResult<()> {
-        let index = crate::post_index::read(self.storage, id, |status, text| {
-            self.hooks.error(status, text)
-        })
-        .await?;
+        let index = crate::post_index::read(self.storage, id).await?;
         let images = property(&index, "images");
         let label = if kind == "published" {
             "网站设置（已发布）"
         } else {
             "网站设置（待发布）"
         };
-        if attribute(&images, "version") == self.version {
+        if attribute(&images, "version") == image_references::VERSION {
             for entry in array(&images, "entries").iter() {
                 let settings = property(&entry, "settings").is_truthy();
                 let title = attribute(&entry, "title");
@@ -498,9 +490,10 @@ impl<'a> ReferenceScan<'a> {
         }
         let release = get(self.storage, &format!("releases/{id}.json")).await?;
         if !release.is_truthy() || js_number(&property(&release, "size")) > 16_000_000.0 {
-            return Err(self
-                .hooks
-                .error(503, "发布版本无法完整读取，暂时不能安全检查图片引用。"));
+            return Err(error(
+                503,
+                "发布版本无法完整读取，暂时不能安全检查图片引用。",
+            ));
         }
         let data = parse_object(&release).await?;
         for field in ["markdown_posts", "markdown_shorts"] {
@@ -546,9 +539,7 @@ impl<'a> ReferenceScan<'a> {
             for item in page.objects.iter() {
                 self.scanned += 1;
                 if self.scanned > 10000 {
-                    return Err(self
-                        .hooks
-                        .error(413, "原稿目录超过安全扫描上限；图片仍受保护。"));
+                    return Err(error(413, "原稿目录超过安全扫描上限；图片仍受保护。"));
                 }
                 let meta = property(&item, "customMetadata");
                 if property(&meta, "deleted").is_truthy() {
@@ -556,13 +547,14 @@ impl<'a> ReferenceScan<'a> {
                 }
                 self.sources += 1;
                 if self.sources > MAX_SOURCES {
-                    return Err(self
-                        .hooks
-                        .error(413, "原稿超过 2000 篇，无法完整检查引用；图片不会被删除。"));
+                    return Err(error(
+                        413,
+                        "原稿超过 2000 篇，无法完整检查引用；图片不会被删除。",
+                    ));
                 }
                 let key = attribute(&item, "key");
                 let slug = section.slug(&key).ok_or_else(|| {
-                    self.hooks.error(
+                    error(
                         503,
                         match section {
                             DraftSection::Posts => {
@@ -603,10 +595,10 @@ impl<'a> ReferenceScan<'a> {
         reference: Reference,
         section: DraftSection,
     ) -> JsResult<()> {
-        if attribute(meta, "image_refs_version") == self.version {
+        if attribute(meta, "image_refs_version") == image_references::VERSION {
             let indexed = property(meta, "image_refs");
             if !indexed.is_undefined() {
-                let invalid = || self.hooks.error(503, "图片引用索引无效，请重新保存原稿。");
+                let invalid = || error(503, "图片引用索引无效，请重新保存原稿。");
                 let source = js_string(&indexed).as_string().unwrap_or_default();
                 let parsed = JSON::parse(&source).map_err(|_| invalid())?;
                 if !Array::is_array(&parsed) {
@@ -636,51 +628,45 @@ impl<'a> ReferenceScan<'a> {
         self.reindex_required = true;
         self.unindexed += 1;
         if self.unindexed > section.unindexed_limit() {
-            return Err(self.hooks.error(
+            return Err(error(
                 413,
                 "旧原稿较多，暂时无法完成引用检查；为避免误删，图片会保留。",
             ));
         }
         if self.text_bytes as f64 + js_number(&property(item, "size")) > MAX_TEXT_BYTES as f64 {
-            return Err(self
-                .hooks
-                .error(413, "原稿超过图片管理检查上限，图片不会被删除。"));
+            return Err(error(413, "原稿超过图片管理检查上限，图片不会被删除。"));
         }
         let body = get(self.storage, key).await?;
         if !body.is_truthy() {
-            return Err(self.hooks.error(409, "原稿正在变化，请刷新图片库后重试。"));
+            return Err(error(409, "原稿正在变化，请刷新图片库后重试。"));
         }
         self.source(&body_text(&body).await?, reference)
     }
 
     async fn checked_shard(&mut self, hash: &str) -> JsResult<Array> {
-        let key = self.hooks.shard_key(hash)?;
+        let key = reference_index::shard_key(hash);
         if !self.shards.contains_key(&key) {
-            let shard = JsFuture::from(self.hooks.read_shard(self.storage, &key)?).await?;
+            let shard = reference_index::read_shard(self.storage, &key).await?;
             self.shard_bytes += text_bytes(&JSON::stringify(&shard)?);
             if self.shard_bytes > MAX_TEXT_BYTES {
-                return Err(self
-                    .hooks
-                    .error(413, "引用索引超过安全检查上限；图片仍受保护。"));
+                return Err(error(413, "引用索引超过安全检查上限；图片仍受保护。"));
             }
             self.shards.insert(key.clone(), shard);
         }
-        Ok(
-            JsFuture::from(self.hooks.checked_keys(&self.shards[&key], hash)?)
-                .await?
-                .unchecked_into(),
-        )
+        reference_index::checked(&self.shards[&key], hash).await
     }
 
     fn source(&mut self, text: &JsString, reference: Reference) -> JsResult<()> {
         self.text_bytes += text_bytes(text);
         if self.text_bytes > MAX_TEXT_BYTES {
-            return Err(self.hooks.error(
+            return Err(error(
                 413,
                 "引用内容超过图片管理检查上限，无法安全判断图片是否可删除。",
             ));
         }
-        self.add_many(&self.hooks.managed_images(text)?, &reference);
+        for key in image_references::managed(text)? {
+            self.add(&key, &reference);
+        }
         Ok(())
     }
 

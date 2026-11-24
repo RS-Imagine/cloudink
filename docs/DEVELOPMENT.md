@@ -7,9 +7,8 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `crates/blog-core`：Markdown、数学公式、配置校验与页面模板。
 - `crates/blog-wasm`：将同一渲染核心提供给浏览器 Worker。
 - `crates/sitegen`：原生静态构建入口。
-- `crates/worker`：Worker 端 Rust/WASM。负责 `/feed.xml`、`/robots.txt` 和 `/sitemap.xml`，使用独立 `Cargo.lock`。
-- `cloud-web/src`：唯一 Worker 入口、公开页面、图片路由与响应增强。
-- `cloud-admin/src`：认证、草稿、短记、设置、图片、备份与发布 API。
+- `crates/worker` 包含 Cloudflare Worker 的 Rust 入口、公开路由、后台 API 和定时任务，使用独立的 `Cargo.lock`。
+- `cloud-admin/src` 包含浏览器共用的备份格式和图片识别代码。
 - `cloud-admin/ui`：后台界面、预览线程与图片压缩线程。
 - `assets`：正式前后台共用的主题、动效、图标与默认插画。
 - `scripts`：构建、类型生成与正式界面回归工具。
@@ -24,7 +23,7 @@ npm run check
 npx wrangler deploy --dry-run --outdir cloud-web/dist
 ```
 
-`build` 准备浏览器 Rust/WASM、后台资源和 Worker 端 Rust 模块。Wrangler 把 TypeScript 入口和 Rust 模块打进同一个 Worker，使用根目录的 `wrangler.jsonc`。绑定类型从该配置与 `.dev.vars.example` 生成。
+`build` 准备浏览器 Rust/WASM、后台资源和 Worker 模块。Wrangler 根据根目录的 `wrangler.jsonc` 部署 workers-rs 生成的入口。
 
 修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
@@ -32,7 +31,7 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 读站 HTML 的元信息、图片和样式改写由 Rust 配置 Cloudflare 原生 HTMLRewriter 完成，整页 HTML 由运行时处理。公开页面和 RSS 共用 ETag 计算规则。
 
-公开读取的路由分发、发布指针及页面缓存位于 Rust Worker。TypeScript 入口接入各绑定和现有后台及媒体处理器。
+同一个 Rust Worker 分发公开路由和后台请求，直接使用 Cloudflare 的 R2、静态资源和登录限流绑定。
 
 维护任务使用 Rust 保留发布版本、扫描存储和清理过期对象。Cron 和鉴权后的手动维护共用入口，继续通过现有内容变更租约及 R2 条件写入保护并发执行。
 
@@ -81,7 +80,7 @@ npm run test:ui:audit
 
 桶必须私有；路径前缀不是权限边界。公开 Worker 只提供当前版本的固定页面和经过校验的图片路径，不代理任意 R2 对象。代码更新不得清空桶、重置账号或覆盖用户配置。
 
-账号初始化使用 R2 条件写入保证唯一性。密码使用加盐 PBKDF2；会话 Cookie 使用 HttpOnly、Secure、SameSite，写接口检查来源与 CSRF。文章与设置通过 ETag 防止并发覆盖；涉及图片引用的内容变更通过 `storage-mutations.ts` 的租约协调。
+账号初始化使用 R2 条件写入保证唯一性。密码使用加盐 PBKDF2；会话 Cookie 使用 HttpOnly、Secure、SameSite，写接口检查来源与 CSRF。文章与设置通过 ETag 防止并发覆盖；涉及图片引用的内容变更通过 `crates/worker/src/storage.rs` 的租约协调。
 
 ## 发布、地址与模板更新
 

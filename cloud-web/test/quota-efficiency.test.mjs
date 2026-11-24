@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture } from './fixture.mjs';
 import { loadReaderWorker } from './wasm-worker.mjs';
 
@@ -187,18 +186,13 @@ test('bounded retention removes only expired generated objects and protects shar
   const f = await fixture(t);
   await f.login();
   const bucket = await f.mf.getR2Bucket('STORAGE');
-  const bundle = await build({
-    entryPoints: ['cloud-admin/src/maintenance.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-  });
-  const { maintenanceHooks } = await import(
-    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-  );
-  const worker = await loadReaderWorker();
-  const maintainStorage = (storage) => worker.maintain_storage(storage, maintenanceHooks);
+  async function maintainStorage(storage) {
+    const tasks = [];
+    const worker = await loadReaderWorker(storage, (pending) => tasks.push(pending));
+    await worker.scheduled({ cron: '17 3 * * *', scheduledTime: Date.now() });
+    await Promise.all(tasks);
+    return (await storage.get('state/maintenance.json')).json();
+  }
   const initialized = await (await bucket.get('state/published.json')).json();
   await bucket.delete([
     'releases/' + initialized.id + '.json',

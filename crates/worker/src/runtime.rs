@@ -3,7 +3,8 @@ use std::fmt::Write;
 use worker::js_sys::{self, Array, JSON, JsString, Object, Promise, Reflect, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::web_sys::{
-    Headers, ReadableStream, ReadableStreamDefaultReader, Request, Response, WorkerGlobalScope,
+    Crypto, Headers, ReadableStream, ReadableStreamDefaultReader, Request, Response,
+    WorkerGlobalScope,
 };
 use worker::worker_sys::R2Bucket;
 
@@ -35,6 +36,15 @@ extern "C" {
 
     #[wasm_bindgen(method)]
     fn encode(this: &TextEncoder, value: &JsString) -> Uint8Array;
+
+    type ConstantTimeCrypto;
+
+    #[wasm_bindgen(method, catch, js_name = timingSafeEqual)]
+    fn timing_safe_equal(
+        this: &ConstantTimeCrypto,
+        first: &Uint8Array,
+        second: &Uint8Array,
+    ) -> JsResult<bool>;
 }
 
 pub fn property(object: &JsValue, key: &str) -> JsValue {
@@ -208,16 +218,34 @@ pub async fn limited_body(
     Ok(whole)
 }
 
-pub async fn sha256_hex(bytes: &Uint8Array) -> JsResult<String> {
-    let global = js_sys::global().unchecked_into::<WorkerGlobalScope>();
-    let digest = global
-        .crypto()?
+pub fn crypto() -> JsResult<Crypto> {
+    js_sys::global()
+        .unchecked_into::<WorkerGlobalScope>()
+        .crypto()
+}
+
+pub fn same_bytes(first: &Uint8Array, second: &Uint8Array) -> JsResult<bool> {
+    crypto()?
+        .subtle()
+        .unchecked_ref::<ConstantTimeCrypto>()
+        .timing_safe_equal(first, second)
+}
+
+pub async fn sha256(bytes: &Uint8Array) -> JsResult<Uint8Array> {
+    let digest = crypto()?
         .subtle()
         .digest_with_str_and_js_u8_array("SHA-256", bytes)?;
-    let digest = Uint8Array::new(&JsFuture::from(digest).await?);
-    let mut hex = String::with_capacity(64);
-    for byte in digest.to_vec() {
+    Ok(Uint8Array::new(&JsFuture::from(digest).await?))
+}
+
+pub fn hex(bytes: &Uint8Array) -> String {
+    let mut hex = String::with_capacity((bytes.length() * 2) as usize);
+    for byte in bytes.to_vec() {
         write!(hex, "{byte:02x}").expect("writing to String cannot fail");
     }
-    Ok(hex)
+    hex
+}
+
+pub async fn sha256_hex(bytes: &Uint8Array) -> JsResult<String> {
+    Ok(hex(&sha256(bytes).await?))
 }

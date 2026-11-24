@@ -15,7 +15,7 @@ const token = randomBytes(24).toString('hex');
 const path = resolve('build-work/icon-preview.wrangler.json');
 const config = {
   name: worker,
-  main: resolve('cloud-web/src/index.ts'),
+  main: resolve('build-work/reader-worker/index.js'),
   compatibility_date: '2026-10-01',
   compatibility_flags: ['nodejs_compat'],
   assets: {

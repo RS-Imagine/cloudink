@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture, draft } from './fixture.mjs';
-import { loadReaderWorker } from './wasm-worker.mjs';
+import { authenticatedWorker } from './wasm-worker.mjs';
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 test('article batch manifests use ten published posts per page and route extra batches as canonical HTML', async (t) => {
   const f = await fixture(t);
@@ -361,23 +360,22 @@ test('more than thirty multi-image drafts retain complete deletion protection an
   assert.equal(catalog.referencesChecked, true);
 });
 test('bounded mutation work stops before lease expiry and keeps normal saves available after failure', async () => {
-  const bundle = await build({
-    entryPoints: ['cloud-admin/src/storage-mutations.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-  });
-  const { withContentMutation, CONTENT_LEASE_MS } = await import(
-    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-  );
   let now = Date.now(),
-    version = 0;
+    version = 0,
+    expire = true;
   const originalNow = Date.now;
   Date.now = () => now;
   const objects = new Map();
   const storage = {
     async get(key) {
+      if (key === 'draft-site.json' && expire) {
+        assert.equal(
+          JSON.parse(objects.get('state/content-mutation.json').body).expires,
+          now + 3 * 60_000,
+        );
+        now += 60_001;
+        expire = false;
+      }
       const o = objects.get(key);
       return o ? { ...o, json: async () => JSON.parse(o.body) } : null;
     },
@@ -392,20 +390,17 @@ test('bounded mutation work stops before lease expiry and keeps normal saves ava
     },
   };
   try {
-    await assert.rejects(
-      withContentMutation(storage, async (guarded) => {
-        assert.equal(
-          JSON.parse(objects.get('state/content-mutation.json').body).expires,
-          now + CONTENT_LEASE_MS,
-        );
-        now += 60001;
-        await guarded.put('drafts/late.md', 'unsafe');
-      }),
-      /本批操作已暂停/,
-    );
-    assert.equal(objects.has('drafts/late.md'), false);
-    await withContentMutation(storage, (guarded) => guarded.put('drafts/safe.md', 'saved'));
-    assert.ok(objects.has('drafts/safe.md'));
+    const request = await authenticatedWorker(storage);
+    const save = () =>
+      request('/api/settings', 'PUT', {
+        site: { title: 'Reader blog', subtitle: '', description: '', author: 'Reader' },
+      });
+    const blocked = await save();
+    assert.equal(blocked.status, 503);
+    assert.match((await blocked.json()).error, /本批操作已暂停/);
+    assert.equal(objects.has('draft-site.json'), false);
+    assert.equal((await save()).status, 200);
+    assert.ok(objects.has('draft-site.json'));
   } finally {
     Date.now = originalNow;
   }
@@ -505,16 +500,10 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
     (await f.request('/api/shorts?limit=2&cursor=' + encodeURIComponent(first.cursor))).status,
     409,
   );
-  const worker = await loadReaderWorker();
-  const listDrafts = (path, objects) =>
-    worker.content_request(
-      new Request('https://example.net' + path),
-      catalog(objects),
-      {},
-      {
-        error: (status, message) => Object.assign(new Error(message), { status }),
-      },
-    );
+  const listDrafts = async (path, objects) => {
+    const request = await authenticatedWorker(catalog(objects));
+    return request(path);
+  };
   const removed = Array.from({ length: 2100 }, (_, i) => ({
     key: 'drafts/deleted-' + i + '.md',
     customMetadata: { deleted: 'true' },
@@ -545,72 +534,72 @@ test('short pagination rejects changed snapshots and tombstones do not consume l
     (await listed.json()).posts.map(({ slug }) => slug),
     ['live'],
   );
-  await assert.rejects(
-    listDrafts(
-      '/api/posts',
-      Array.from({ length: 2001 }, (_, index) => ({
-        ...live,
-        key: 'drafts/live-' + index + '.md',
-      })),
-    ),
-    (error) => error.status === 413,
+  const tooManyDrafts = await listDrafts(
+    '/api/posts',
+    Array.from({ length: 2001 }, (_, index) => ({ ...live, key: 'drafts/live-' + index + '.md' })),
   );
-  await assert.rejects(
-    listDrafts(
-      '/api/shorts',
-      Array.from({ length: 10001 }, (_, index) => ({
-        key: 'shorts/deleted-' + index + '.md',
-        customMetadata: { deleted: 'true' },
-      })),
-    ),
-    (error) => error.status === 413,
+  assert.equal(tooManyDrafts.status, 413);
+  const tooManyTombstones = await listDrafts(
+    '/api/shorts',
+    Array.from({ length: 10001 }, (_, index) => ({
+      key: 'shorts/deleted-' + index + '.md',
+      customMetadata: { deleted: 'true' },
+    })),
   );
+  assert.equal(tooManyTombstones.status, 413);
 });
 
 test('request diagnostics keep bindings bound, isolate counters and exclude object keys and payloads', async () => {
-  const bundle = await build({
-    entryPoints: ['cloud-admin/src/request-stats.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-  });
-  const { storageStats } = await import(
-    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-  );
+  const listed = Promise.withResolvers();
   const storage = {
-    async get() {
+    async get(key) {
       assert.equal(this, storage);
+      if (key === 'state/published.json')
+        return { json: async () => ({ id: 'fixture', pages: { 'index.html': 'exists' } }) };
+      if (key === 'releases/fixture.posts.json') {
+        await listed.promise;
+        throw new Error('private payload');
+      }
       return null;
     },
     async list() {
       assert.equal(this, storage);
+      listed.resolve();
       return { objects: [{}, {}] };
     },
     async put() {
+      assert.equal(this, storage);
       throw new Error('private payload');
     },
   };
-  const first = storageStats(storage),
-    second = storageStats(storage);
-  await first.bucket.get('auth/sessions/private-token');
-  await first.bucket.list({ prefix: 'drafts/' });
-  await assert.rejects(first.bucket.put('private', 'secret-body'));
-  const original = console.log,
-    logs = [];
+  const request = await authenticatedWorker(storage);
+  const original = console.log;
+  const logs = [];
   console.log = (line) => logs.push(JSON.parse(line));
   try {
-    first.report('request-a', '/api/posts', 'GET', 500, Date.now());
-    second.report('request-b', '/api/posts', 'GET', 500, Date.now());
+    const first = await request('/api/posts');
+    const second = await request('/api/settings', 'PUT', { site: 'secret-body' });
+    assert.equal(first.status, 500);
+    assert.equal(second.status, 500);
+    const byId = (response) =>
+      logs.find((row) => row.request_id === response.headers.get('X-Request-ID'));
+    const read = byId(first);
+    assert.equal(read.get, 6);
+    assert.equal(read.list, 1);
+    assert.equal(read.objects, 2);
+    assert.equal(read.put, 0);
+    assert.equal(read.errors, 1);
+    const write = byId(second);
+    assert.equal(write.get, 3);
+    assert.equal(write.list, 0);
+    assert.equal(write.objects, 0);
+    assert.equal(write.put, 1);
+    assert.equal(write.errors, 1);
   } finally {
     console.log = original;
   }
-  assert.equal(logs[0].get, 1);
-  assert.equal(logs[0].list, 1);
-  assert.equal(logs[0].objects, 2);
-  assert.equal(logs[0].put, 1);
-  assert.equal(logs[0].errors, 1);
-  assert.equal(logs[1].get, 0);
-  assert.equal(logs[1].errors, 0);
-  assert.doesNotMatch(JSON.stringify(logs), /private-token|secret-body|private payload/);
+  assert.doesNotMatch(
+    JSON.stringify(logs),
+    /private-token|secret-body|private payload|auth\/sessions/,
+  );
 });

@@ -1,40 +1,18 @@
-use worker::js_sys::{JSON, Object, Promise, Reflect, RegExp};
-use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
+use worker::js_sys::{JSON, Object, Reflect, RegExp};
+use worker::wasm_bindgen::{JsCast, JsValue};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Headers, ReadableStream, Request, RequestInit, Response, Url};
 use worker::worker_sys::R2Bucket;
-use worker::{Context, console_error};
+use worker::{Context, Env, console_error};
 
+use crate::config::Config;
 use crate::html_rewriter::{JsResult, string_response};
 use crate::public_cache::{
     self as cache, Group, REVALIDATE, not_modified, stream_response, text_response,
 };
 use crate::runtime::{js_string, property};
+use crate::{admin, assets};
 
-const EDITOR_ASSETS: &[&str] = &[
-    "/writing-illustration.svg",
-    "/backup.js",
-    "/publication.js",
-    "/home-illustration.js",
-    "/post-address.js",
-    "/editorial-botanical.svg",
-    "/editorial-botanical.webp",
-    "/image.worker.js",
-    "/image-maintenance.js",
-    "/admin-theme.js",
-    "/app.js",
-    "/shorts.js",
-    "/images.js",
-    "/editor-tools.js",
-    "/markdown-import.js",
-    "/preview.js",
-    "/image-upload.js",
-    "/style.css",
-    "/preview.worker.js",
-    "/preview-highlight.js",
-    "/blog_wasm.js",
-    "/blog_wasm_bg.wasm",
-];
 const ASSET_CACHE: &str = "public, max-age=300, stale-while-revalidate=86400";
 const IMMUTABLE: &str = "public, max-age=31536000, immutable";
 const PTR_TTL: u32 = 30;
@@ -52,31 +30,12 @@ thread_local! {
     static PUBLISH_COMMIT: RegExp = RegExp::new(r"/api/publish/[a-f0-9-]{36}/commit$", "");
 }
 
-#[wasm_bindgen]
-extern "C" {
-    pub type Services;
-
-    #[wasm_bindgen(method, catch)]
-    fn admin(this: &Services, request: &Request, with_context: bool) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = iconType)]
-    pub fn icon_type(this: &Services, key: &str) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, catch)]
-    fn asset(this: &Services, request: &Request) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch)]
-    fn icons(this: &Services, value: &JsValue) -> JsResult<JsValue>;
-
-}
-
 pub struct PublicRouter<'a> {
     pub request: &'a Request,
     pub storage: &'a R2Bucket,
     pub ctx: &'a Context,
-    pub services: &'a Services,
-    pub template_version: &'a str,
-    pub response_version: &'a str,
+    pub env: &'a Env,
+    pub config: &'a Config,
 }
 
 impl PublicRouter<'_> {
@@ -120,15 +79,23 @@ impl PublicRouter<'_> {
             init.set_method("GET");
             init.set_headers_headers(&self.request.headers());
             let admin_request = Request::new_with_str_and_init(&url.href(), &init)?;
-            let response = await_response(self.services.admin(&admin_request, false)?).await?;
+            let response =
+                admin::respond(&admin_request, self.env, self.storage, self.config, None).await?;
             return if head {
                 stream_response(None, response.status(), &response.headers())
             } else {
                 Ok(response)
             };
         }
-        if path.starts_with("/api/") || EDITOR_ASSETS.contains(&path.as_str()) {
-            let response = await_response(self.services.admin(self.request, true)?).await?;
+        if path.starts_with("/api/") || assets::editor_route(&path) {
+            let response = admin::respond(
+                self.request,
+                self.env,
+                self.storage,
+                self.config,
+                Some(self.ctx),
+            )
+            .await?;
             if method == "POST"
                 && response.ok()
                 && PUBLISH_COMMIT.with(|pattern| pattern.test(&path))
@@ -142,8 +109,7 @@ impl PublicRouter<'_> {
             return crate::media::public_image(self.request, self.storage, self.ctx).await;
         }
         if path.starts_with("/site-icon/") {
-            return crate::site::public_icon(self.request, self.storage, self.ctx, self.services)
-                .await;
+            return crate::site::public_icon(self.request, self.storage, self.ctx).await;
         }
         if !can_read {
             return method_not_allowed(true);
@@ -176,7 +142,7 @@ impl PublicRouter<'_> {
         let icon = property(&published, "siteIcon");
         let site_icon = truthy_string(&icon).unwrap_or_default();
         if path == "/favicon.ico" {
-            let icons = self.services.icons(&icon)?;
+            let icons = crate::site_assets::reader_icons(&icon)?;
             let location = icon_path(&icons, "faviconIco").unwrap_or_else(|| "/favicon.svg".into());
             let headers = Headers::new()?;
             headers.set(
@@ -219,8 +185,8 @@ impl PublicRouter<'_> {
                 self.storage,
                 id.as_deref(),
                 &pages,
-                self.template_version,
-                self.response_version,
+                self.config.template_version,
+                self.config.response_version,
             )
             .await?;
             cache::write(self.ctx, &page_key, &response, DISCOVERY_TTL)?;
@@ -303,8 +269,8 @@ impl PublicRouter<'_> {
         cache::key(
             &self.request.url(),
             group,
-            self.template_version,
-            self.response_version,
+            self.config.template_version,
+            self.config.response_version,
         )
     }
 
@@ -403,8 +369,8 @@ impl PublicRouter<'_> {
                     &url.pathname(),
                     &etag,
                     release.site_icon,
-                    self.template_version,
-                    self.response_version,
+                    self.config.template_version,
+                    self.config.response_version,
                 )
                 .await?
             } else {
@@ -504,7 +470,14 @@ impl PublicRouter<'_> {
         if path == "/" || path.ends_with('/') || path.ends_with(".html") {
             request.headers().delete("If-None-Match")?;
         }
-        let response = await_response(self.services.asset(&request)?).await?;
+        let binding = self
+            .env
+            .assets("ASSETS")
+            .map_err(|error| worker::js_sys::Error::new(&error.to_string()))?;
+        let binding = binding.into_rpc::<worker::worker_sys::Fetcher>();
+        let response: Response = JsFuture::from(binding.fetch(&request)?)
+            .await?
+            .unchecked_into();
         let response = if self.request.method() != "HEAD" && is_html(&response)? {
             let body = JsFuture::from(response.text()?).await?.unchecked_into();
             let clean = crate::page_rendering::sanitize(&body).await?;
@@ -534,7 +507,7 @@ impl PublicRouter<'_> {
         if !is_html(&response)? {
             return Ok(response);
         }
-        let icons = self.services.icons(icon)?;
+        let icons = crate::site_assets::reader_icons(icon)?;
         crate::reader::render(
             response,
             Clone::clone(url),
@@ -616,10 +589,6 @@ fn is_html(response: &Response) -> JsResult<bool> {
         .headers()
         .get("Content-Type")?
         .is_some_and(|header| header.contains("text/html")))
-}
-
-async fn await_response(promise: Promise) -> JsResult<Response> {
-    Ok(JsFuture::from(promise).await?.unchecked_into())
 }
 
 fn method_not_allowed(allow_header: bool) -> JsResult<Response> {

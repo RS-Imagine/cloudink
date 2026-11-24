@@ -9,10 +9,11 @@ use worker::web_sys::{Blob, FormData, Headers, ResponseInit};
 use xml::reader::{ParserConfig, XmlEvent};
 
 use crate::html_rewriter::{Element, HtmlRewriter, JsResult, string_response};
+use crate::http::error;
 use crate::icon_raster::{validate_derived_png, validate_ico};
 use crate::image_header::{image_info, image_type};
-use crate::runtime::{property, set, sha256_hex};
-use crate::site::Hooks;
+use crate::runtime::{set, sha256_hex};
+use crate::site_assets;
 
 pub const PREFIX: &str = "uploads/icons/";
 const ELEMENTS: &[&str] = &[
@@ -122,21 +123,21 @@ impl IconError {
         }
     }
 
-    fn as_js(&self, hooks: &Hooks) -> JsValue {
-        hooks.error(self.status, &self.message)
+    fn as_js(&self) -> JsValue {
+        error(self.status, &self.message)
     }
 }
 
-pub async fn inspect(mut bytes: Uint8Array, hooks: &Hooks) -> JsResult<JsValue> {
+pub async fn inspect(mut bytes: Uint8Array) -> JsResult<JsValue> {
     if bytes.length() == 0 {
-        return Err(hooks.error(400, "请选择有效的网站图标文件。"));
+        return Err(error(400, "请选择有效的网站图标文件。"));
     }
     let (ext, mime) = if bytes.subarray(0, 4).to_vec() == [0, 0, 1, 0] {
-        validate_ico(&bytes.to_vec()).map_err(|error| error.as_js(hooks))?;
+        validate_ico(&bytes.to_vec()).map_err(|error| error.as_js())?;
         ("ico", "image/x-icon")
     } else if let Some(format) = image_type(&bytes) {
         if format.ext != "avif" && image_info(&bytes).is_none() {
-            return Err(hooks.error(400, "图片文件已损坏或无法读取尺寸，请重新选择图片。"));
+            return Err(error(400, "图片文件已损坏或无法读取尺寸，请重新选择图片。"));
         }
         (format.ext, format.mime)
     } else {
@@ -145,12 +146,12 @@ pub async fn inspect(mut bytes: Uint8Array, hooks: &Hooks) -> JsResult<JsValue> 
             .trim_start_matches(js_whitespace)
             .starts_with('<')
         {
-            return Err(hooks.error(
+            return Err(error(
                 400,
                 "不支持的文件格式，请上传有效的 PNG、JPG、WebP、GIF、AVIF、SVG 或 ICO 图片。",
             ));
         }
-        bytes = sanitize_svg(bytes.to_vec(), hooks).await?;
+        bytes = sanitize_svg(bytes.to_vec()).await?;
         ("svg", "image/svg+xml")
     };
     let hash = sha256_hex(&bytes).await?;
@@ -163,32 +164,29 @@ pub async fn inspect(mut bytes: Uint8Array, hooks: &Hooks) -> JsResult<JsValue> 
     Ok(icon.into())
 }
 
-pub async fn derivatives(form: &FormData, key: &str, hooks: &Hooks) -> JsResult<Array> {
-    let keys = hooks.derived_keys(key)?;
-    if !keys.is_truthy() {
-        return Err(hooks.error(400, "网站图标地址不正确。"));
-    }
+pub async fn derivatives(form: &FormData, key: &str) -> JsResult<Array> {
+    let keys = site_assets::derivatives(key).ok_or_else(|| error(400, "网站图标地址不正确。"))?;
     let prepared = Array::new();
-    for (field, name, size, label) in [
-        ("derived_180", "apple", 180, "Apple 主屏 180×180"),
-        ("derived_192", "icon192", 192, "PWA 192×192"),
-        ("derived_512", "icon512", 512, "PWA 512×512"),
+    for (field, key, size, label) in [
+        ("derived_180", &keys.apple, 180, "Apple 主屏 180×180"),
+        ("derived_192", &keys.icon192, 192, "PWA 192×192"),
+        ("derived_512", &keys.icon512, 512, "PWA 512×512"),
         (
             "derived_512_maskable",
-            "maskable512",
+            &keys.maskable512,
             512,
             "PWA 512×512 Maskable",
         ),
     ] {
-        let bytes = form_bytes(form, field, label, hooks).await?;
-        validate_derived_png(&bytes.to_vec(), size).map_err(|error| error.as_js(hooks))?;
-        prepared.push(&prepared_icon(property(&keys, name), bytes, "image/png")?);
+        let bytes = form_bytes(form, field, label).await?;
+        validate_derived_png(&bytes.to_vec(), size).map_err(|error| error.as_js())?;
+        prepared.push(&prepared_icon(key.as_str().into(), bytes, "image/png")?);
     }
-    if property(&keys, "ext").as_string().as_deref() != Some("ico") {
-        let bytes = form_bytes(form, "derived_ico", "favicon.ico", hooks).await?;
-        validate_ico(&bytes.to_vec()).map_err(|error| error.as_js(hooks))?;
+    if keys.ext != "ico" {
+        let bytes = form_bytes(form, "derived_ico", "favicon.ico").await?;
+        validate_ico(&bytes.to_vec()).map_err(|error| error.as_js())?;
         prepared.push(&prepared_icon(
-            property(&keys, "faviconIco"),
+            keys.favicon_ico.into(),
             bytes,
             "image/x-icon",
         )?);
@@ -196,20 +194,15 @@ pub async fn derivatives(form: &FormData, key: &str, hooks: &Hooks) -> JsResult<
     Ok(prepared)
 }
 
-async fn form_bytes(
-    form: &FormData,
-    field: &str,
-    label: &str,
-    hooks: &Hooks,
-) -> JsResult<Uint8Array> {
+async fn form_bytes(form: &FormData, field: &str, label: &str) -> JsResult<Uint8Array> {
     let part = form.get(field);
     if !part.is_truthy() || part.is_string() {
-        return Err(hooks.error(400, &format!("缺少{label}派生图标。")));
+        return Err(error(400, &format!("缺少{label}派生图标。")));
     }
     let blob: Blob = part.unchecked_into();
     let bytes = Uint8Array::new(&JsFuture::from(blob.array_buffer()).await?);
     if bytes.length() == 0 {
-        return Err(hooks.error(400, &format!("{label}派生图标为空。")));
+        return Err(error(400, &format!("{label}派生图标为空。")));
     }
     Ok(bytes)
 }
@@ -222,11 +215,11 @@ fn prepared_icon(key: JsValue, bytes: Uint8Array, mime: &str) -> JsResult<JsValu
     Ok(icon.into())
 }
 
-async fn sanitize_svg(bytes: Vec<u8>, hooks: &Hooks) -> JsResult<Uint8Array> {
+async fn sanitize_svg(bytes: Vec<u8>) -> JsResult<Uint8Array> {
     let source =
-        std::str::from_utf8(&bytes).map_err(|_| hooks.error(400, "SVG 必须使用 UTF-8 编码。"))?;
+        std::str::from_utf8(&bytes).map_err(|_| error(400, "SVG 必须使用 UTF-8 编码。"))?;
     let source = remove_xml_declaration(source.trim_matches(js_whitespace));
-    validate_svg(source).map_err(|error| error.as_js(hooks))?;
+    validate_svg(source).map_err(|error| error.as_js())?;
     let headers = Headers::new()?;
     headers.set("Content-Type", "text/html; charset=utf-8")?;
     let init = ResponseInit::new();
@@ -235,20 +228,16 @@ async fn sanitize_svg(bytes: Vec<u8>, hooks: &Hooks) -> JsResult<Uint8Array> {
     let counts = Rc::new(SvgElements::default());
     let rewriter = HtmlRewriter::new();
     let observed = Rc::clone(&counts);
-    let error_hook: &JsValue = hooks.as_ref();
-    let error_hook = error_hook.clone();
-    rewriter.on_element("*", move |element| {
-        observed.rewrite(&element, error_hook.unchecked_ref())
-    })?;
+    rewriter.on_element("*", move |element| observed.rewrite(&element))?;
     rewriter.on_comments("*", |comment| comment.remove_comment())?;
     let response = rewriter.transform(&response)?;
     let output = JsFuture::from(response.text()?)
         .await?
         .as_string()
         .unwrap_or_default();
-    validate_svg(&output).map_err(|error| error.as_js(hooks))?;
+    validate_svg(&output).map_err(|error| error.as_js())?;
     if counts.roots.get() != 1 || counts.shapes.get() == 0 {
-        return Err(hooks.error(400, "SVG 需要一个根元素和可显示的图形。"));
+        return Err(error(400, "SVG 需要一个根元素和可显示的图形。"));
     }
     Ok(Uint8Array::from(output.as_bytes()))
 }
@@ -307,10 +296,10 @@ struct SvgElements {
 }
 
 impl SvgElements {
-    fn rewrite(&self, element: &Element, hooks: &Hooks) -> JsResult<()> {
+    fn rewrite(&self, element: &Element) -> JsResult<()> {
         self.nodes.set(self.nodes.get() + 1);
         if self.nodes.get() > 5000 {
-            return Err(COMPLEX_SVG.as_js(hooks));
+            return Err(COMPLEX_SVG.as_js());
         }
         let tag = element.tag_name().to_lowercase();
         if !ELEMENTS.contains(&tag.as_str()) {
