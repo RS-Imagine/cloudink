@@ -796,7 +796,7 @@ test('shared admin UI dom.js helpers format bytes and compute SHA-256 hex consis
 test('frontend code splitting defers non-core admin modules and reader share card via dynamic imports', async () => {
   const appJs = await readFile('cloud-admin/ui/app.js', 'utf8');
   const buildUi = await readFile('cloud-admin/build-ui.mjs', 'utf8');
-  const workerIndex = await readFile('cloud-web/src/index.ts', 'utf8');
+  const workerRouter = await readFile('crates/worker/src/router.rs', 'utf8');
   const devServer = await readFile('scripts/dev-server.mjs', 'utf8');
   const clientJs = await readFile('crates/blog-core/src/assets/client.js', 'utf8');
   const webAssets = await readFile('scripts/web-assets.mjs', 'utf8');
@@ -812,7 +812,7 @@ test('frontend code splitting defers non-core admin modules and reader share car
   for (const chunk of lazyAdminChunks) {
     assert.ok(appJs.includes(`import('${chunk}')`), `app.js must dynamically import ${chunk}`);
     assert.ok(buildUi.includes(`'${chunk}'`), `build-ui.mjs must bundle and register ${chunk}`);
-    assert.ok(workerIndex.includes(`'${chunk}'`), `cloud-web/src/index.ts must route ${chunk}`);
+    assert.ok(workerRouter.includes(`"${chunk}"`), `the Worker router must serve ${chunk}`);
     assert.ok(devServer.includes(`'${chunk}'`), `dev-server.mjs must serve ${chunk}`);
   }
   for (const eagerModule of [
@@ -845,8 +845,8 @@ test('frontend code splitting defers non-core admin modules and reader share car
     'web-assets.mjs must build share-card.js',
   );
   assert.ok(
-    workerIndex.includes('share-card\\.js'),
-    'cloud-web/src/index.ts must serve /reader-assets/share-card.js',
+    workerRouter.includes('share-card\\.js'),
+    'the Worker router must serve /reader-assets/share-card.js',
   );
   assert.ok(
     devServer.includes("'/reader-assets/share-card.js'"),
@@ -1370,13 +1370,13 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
 });
 
 test('shorts incremental pagination and lightbox badge removal contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
-  const [renderRs, libRs, bundleRs, publishingTs, workerIndex, homeCss, readerToolsCss, clientJs] =
+  const [renderRs, libRs, bundleRs, publishingTs, workerRouter, homeCss, readerToolsCss, clientJs] =
     await Promise.all([
       readFile('crates/blog-core/src/render.rs', 'utf8'),
       readFile('crates/blog-core/src/lib.rs', 'utf8'),
       readFile('crates/blog-core/src/bundle.rs', 'utf8'),
       readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
-      readFile('cloud-web/src/index.ts', 'utf8'),
+      readFile('crates/worker/src/router.rs', 'utf8'),
       readFile('crates/blog-core/src/assets/home.css', 'utf8'),
       readFile('crates/blog-core/src/assets/reader-tools.css', 'utf8'),
       readFile('crates/blog-core/src/assets/client.js', 'utf8'),
@@ -1407,9 +1407,9 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
 
   // Browser publishing and Worker routing, including /shorts/page/1/ -> /shorts/.
   assert.match(publishingTs, /shorts\/page\/\$\{i \+ 2\}\/index\.html/);
-  assert.ok(workerIndex.includes('shorts\\/page\\/([1-9]\\d*)'));
-  assert.ok(workerIndex.includes('/^\\/shorts\\/page\\/1(?:\\/|\\/index\\.html)?$/'));
-  assert.match(workerIndex, /Response\.redirect\(canonical\.toString\(\), 301\)/);
+  assert.ok(workerRouter.includes('^/shorts/page/([1-9]\\d*)'));
+  assert.match(workerRouter, /capture\(&SHORT_PAGE, &path\)\.as_deref\(\) == Some\("1"\)/);
+  assert.match(workerRouter, /Response::redirect_with_status\(&url\.href\(\), 301\)/);
 
   // Scoped shorts- CSS, strict <=120px peek cap, fixed-height controls, overflow-anchor, & reduced-motion support
   assert.match(homeCss, /\.short-card\.shorts-peek\s*\{/);

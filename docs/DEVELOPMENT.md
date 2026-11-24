@@ -32,6 +32,8 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 读站 HTML 的元信息、图片和样式改写由 Rust 配置 Cloudflare 原生 HTMLRewriter 完成，整页 HTML 由运行时处理。公开页面和 RSS 共用 ETag 计算规则。
 
+公开读取的路由分发、发布指针及页面缓存位于 Rust Worker。TypeScript 入口接入各绑定和现有后台及媒体处理器。
+
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
 ## 云端检查

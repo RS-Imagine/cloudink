@@ -1,18 +1,7 @@
-import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
-import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
-
-// Only public objects belong here. Authentication, drafts and mutations never
-// use this cache. Entries are scoped to origin and deployment template.
-export function cacheKey(request: Request, group: string, version = ''): Request {
+// Scope public media entries to their serving origin and media format.
+export function mediaCacheKey(request: Request): Request {
   const url = new URL(request.url);
-  url.pathname =
-    '/__cloudink_cache/' +
-    (group === 'image' ? 'media-v1' : CURRENT_TEMPLATE_VERSION + '/' + PUBLIC_RESPONSE_VERSION) +
-    '/' +
-    group +
-    '/' +
-    encodeURIComponent(version) +
-    (group === 'pointer' ? '/' : url.pathname);
+  url.pathname = '/__cloudink_cache/media-v1/image/' + url.pathname;
   url.search = '';
   return new Request(url, { method: 'GET' });
 }
@@ -58,11 +47,4 @@ export function clientResponse(response: Response, request: Request, hit = false
     status: response.status,
     headers,
   });
-}
-export async function invalidatePointer(request: Request): Promise<void> {
-  try {
-    await caches.default.delete(cacheKey(request, 'pointer'));
-  } catch {
-    /* The cached pointer expires even if invalidation fails. */
-  }
 }

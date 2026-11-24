@@ -1,4 +1,4 @@
-import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
+import { cacheRead, cacheWrite, clientResponse, mediaCacheKey } from './media-cache';
 import { SaxesParser } from 'saxes';
 import { sha256Hex } from './crypto';
 import { imageInfo } from './image-info';
@@ -842,7 +842,7 @@ export async function publicSiteIcon(
   const name = new URL(request.url).pathname.slice('/site-icon/'.length);
   const key = 'uploads/icons/' + name;
   if (!validSiteIconAssetKey(key)) return new Response('Not found', { status: 404 });
-  const cache = cacheKey(request, 'image');
+  const cache = mediaCacheKey(request);
   const cached = ctx ? await cacheRead(cache) : undefined;
   if (cached) return clientResponse(cached, request, true);
   const body = request.method === 'GET' ? await storage.get(key) : null;

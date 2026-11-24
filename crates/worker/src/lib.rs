@@ -1,80 +1,64 @@
 mod discovery;
 mod feed;
 mod html_rewriter;
+mod public_cache;
 mod reader;
+mod router;
 
 use worker::js_sys::{self, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures;
 use worker::worker_sys::R2Bucket;
-use worker::{Bucket, Error, Response, Result, web_sys};
+use worker::{Bucket, Context, Error, Response, Result, web_sys};
 
 #[wasm_bindgen]
-pub async fn reader_html(
-    response: web_sys::Response,
-    url: web_sys::Url,
-    analytics: bool,
-    apple_icon: Option<String>,
-    fallback_icon: Option<String>,
-    legacy_image_path: js_sys::Function,
-) -> html_rewriter::JsResult<web_sys::Response> {
-    reader::render(
-        response,
-        url,
-        analytics,
-        apple_icon,
-        fallback_icon,
-        legacy_image_path,
-    )
-    .await
-}
-
-#[wasm_bindgen]
-pub async fn reader_etag(
-    value: String,
-    url: web_sys::Url,
-    site_icon: String,
-    template_version: String,
-    response_version: String,
-) -> html_rewriter::JsResult<String> {
-    public_etag(
-        &url.origin(),
-        &url.pathname(),
-        &value,
-        &site_icon,
-        &template_version,
-        &response_version,
-    )
-    .await
-    .map_err(Into::into)
-}
-
-#[wasm_bindgen]
-pub async fn discovery_response(
-    path: String,
-    origin: String,
+pub async fn route_request(
+    request: web_sys::Request,
     storage: JsValue,
-    release: Option<String>,
-    pages: JsValue,
+    ctx: JsValue,
+    services: JsValue,
     template_version: String,
     response_version: String,
+) -> html_rewriter::JsResult<web_sys::Response> {
+    let storage = storage.unchecked_into::<R2Bucket>();
+    let context = Context::new(ctx.unchecked_into());
+    let services = services.unchecked_into::<router::Services>();
+    router::PublicRouter {
+        request: &request,
+        storage: &storage,
+        ctx: &context,
+        services: &services,
+        template_version: &template_version,
+        response_version: &response_version,
+    }
+    .respond()
+    .await
+}
+
+async fn discovery_response(
+    path: &str,
+    origin: &str,
+    storage: &R2Bucket,
+    release: Option<&str>,
+    pages: &JsValue,
+    template_version: &str,
+    response_version: &str,
 ) -> std::result::Result<web_sys::Response, JsValue> {
-    // The host passes its instrumented STORAGE binding on a cache miss.
-    let response = match path.as_str() {
-        "/robots.txt" => discovery::robots(&origin),
+    let response = match path {
+        "/robots.txt" => discovery::robots(origin),
         "/sitemap.xml" => {
-            let storage = storage.unchecked_into::<Bucket>();
-            discovery::sitemap(&origin, &storage, release.as_deref(), &pages).await
+            let binding: &JsValue = storage.as_ref();
+            let bucket = binding.clone().unchecked_into::<Bucket>();
+            discovery::sitemap(origin, &bucket, release, pages).await
         }
         "/feed.xml" => {
-            let storage = storage.unchecked_into::<R2Bucket>();
             rss_response(
-                &origin,
-                &storage,
-                release.as_deref(),
-                &pages,
-                &template_version,
-                &response_version,
+                origin,
+                storage,
+                release,
+                pages,
+                template_version,
+                response_version,
             )
             .await
         }
