@@ -71,10 +71,6 @@ pub fn build_site(content_root: impl AsRef<Path>, output_root: impl AsRef<Path>)
         output_root.join("editorial-botanical.webp"),
         include_bytes!("../../../assets/editorial-botanical.webp"),
     )?;
-    write_if_changed(
-        output_root.join("editorial-botanical.svg"),
-        include_str!("../../../assets/editorial-botanical.svg"),
-    )?;
     write_if_changed(output_root.join("client.js"), render::client_script())?;
 
     // Shorts feed ("短记").

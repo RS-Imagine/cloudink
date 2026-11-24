@@ -5,20 +5,11 @@
   "scripts": {
     "check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@fontsource/noto-serif": "5.3.0",
-    "@fontsource/noto-serif-sc": "5.3.1",
-    "fflate": "^0.8.2",
-    "highlight.js": "^11.11.1"
-  },
   "devDependencies": {
     "@playwright/test": "latest",
     "@types/node": "latest",
     "esbuild": "latest",
-    "katex": "0.16.11",
     "miniflare": "latest",
-    "tsx": "latest",
-    "typescript": "latest",
-    "wrangler": "latest"
+    "typescript": "latest"
   }
 }

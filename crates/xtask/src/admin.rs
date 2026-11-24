@@ -69,11 +69,6 @@ const ASSETS: &[(&str, &str, &str)] = &[
         JS,
     ),
     (
-        "/editorial-botanical.svg",
-        "assets/editorial-botanical.svg",
-        SVG,
-    ),
-    (
         "/editorial-botanical.webp",
         "assets/editorial-botanical.webp",
         "image/webp",

@@ -6,7 +6,7 @@ import {
   formatImageReferenceLabel,
   extractMarkdownHeadings,
   mapScrollBetweenAnchors,
-} from './admin-text-utils.js';
+} from '../../cloud-admin/ui/admin-text-utils.js';
 
 test('formatMiddleEllipsis preserves icon variant suffixes distinctly', () => {
   const hash = '7d1a4c9e2b3f5a608192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8';
