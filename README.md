@@ -93,7 +93,6 @@ cloudink/
 ├── assets/                       # 前后台共享主题、动效、图标与默认插画
 ├── scripts/
 │   ├── build-web.sh              # 完整构建流程入口
-│   ├── ensure-rust.sh            # 准备 Rust 工具链
 │   └── ui-audit.mjs              # 按需检查正式界面并生成截图报告
 ├── docs/
 │   ├── DEPLOYMENT.md             # 部署、配置和故障处理

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { packPngIco } from '../../cloud-admin/ui/home-illustration.js';
+import { packPngIco } from '../../cloud-admin/ui/site-icon.js';
 import { fixture } from './fixture.mjs';
 
 const TINY_PNG = Uint8Array.from(
@@ -1440,15 +1440,12 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
 });
 
 test('article reading page removes related panel, gives TOC full right-rail height, and adds mobile floating TOC button', async () => {
-  const [renderRs, clientJs, readerCss, mobileCss] = await Promise.all([
-    readFile('crates/blog-core/src/render.rs', 'utf8'),
+  const [clientJs, readerCss, mobileCss] = await Promise.all([
     readFile('crates/blog-core/src/assets/client.js', 'utf8'),
     readFile('crates/blog-core/src/assets/reader.css', 'utf8'),
     readFile('assets/mobile.css', 'utf8'),
   ]);
 
-  // Related panels are absent from the renderer, client, styles, and generated article.
-  assert.doesNotMatch(renderRs, /related-panel|related-stories|继续阅读/);
   assert.doesNotMatch(clientJs, /mountRelatedStories|related-stories|related-story/);
   assert.doesNotMatch(readerCss, /related-panel|related-stories|related-story/);
   const wasm = new URL('../../cloud-admin/ui/wasm/', import.meta.url);
@@ -1471,9 +1468,9 @@ test('article reading page removes related panel, gives TOC full right-rail heig
   );
   const article = release['posts/fixture/index.html'];
   assert.match(article, /Reader layout/);
-  assert.doesNotMatch(article, /related-panel|related-stories|related-story/);
+  assert.doesNotMatch(article, /related-panel|related-stories|related-story|继续阅读/);
   // Bottom return-to-list link remains intact
-  assert.match(renderRs, /返回文章列表/);
+  assert.match(article, /返回文章列表/);
 
   // R1: TOC 40vh cap removed; right rail stays within viewport without outer scroll
   assert.doesNotMatch(readerCss, /max-height:\s*40vh/);

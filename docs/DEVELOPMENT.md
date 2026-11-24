@@ -43,23 +43,9 @@ cargo xtask dev
 
 `cargo xtask dev` 先构建资源，再用 Wrangler 本地运行与线上相同的 Rust Worker。本地 R2 数据保存在 `.wrangler/state`，重启后可继续使用。可用 `HOST` 和 `PORT` 指定监听地址与端口。修改 Rust 或打包资源后，重新运行开发命令以构建新版。
 
-修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
+同一个 Rust Worker 分发公开路由、后台 API 和定时维护，直接使用 Cloudflare 的 R2、静态资源和登录限流绑定。读站改写使用 Cloudflare 原生 HTMLRewriter。RSS 和公开页面共用 ETag 计算，站点地图支持带页面映射的发布指针与历史发布目录。
 
-公开发现路由的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 生成订阅源、爬虫规则和站点地图。订阅源通过 Worker 原生 JSON 接口解析索引，WASM 只提取所需字段。站点地图从发布指针读取路径，旧式发布目录仍按 R2 分页读取。
-
-读站 HTML 的元信息、图片和样式改写由 Rust 配置 Cloudflare 原生 HTMLRewriter 完成，整页 HTML 由运行时处理。公开页面和 RSS 共用 ETag 计算规则。
-
-同一个 Rust Worker 分发公开路由和后台请求，直接使用 Cloudflare 的 R2、静态资源和登录限流绑定。
-
-维护任务使用 Rust 保留发布版本、扫描存储和清理过期对象。Cron 和鉴权后的手动维护共用入口，继续通过现有内容变更租约及 R2 条件写入保护并发执行。
-
-设置读写、图标上传与公开读取由 Rust Worker 处理。SVG 沿用 Cloudflare 原生 HTMLRewriter，Rust 校验 XML、图标容器及派生图标，并保留已存图标的内容地址。
-
-图片上传、优化、公开响应和图片库读写由 Rust Worker 处理。图片库继续通过既有索引和原稿检查引用，索引缺失或损坏时仍保留相关图片。
-
-文章与短记的草稿、改址、列表和发布操作使用 Rust。发布仍采用浏览器生成页面、Worker 清洗和校验、R2 条件写入切换指针的流程。
-
-备份的分批导出、预检、恢复与完成操作由 Rust 处理。历史备份路径和任务检查点沿用原格式，恢复会检查原稿版本和图片引用。
+修改公开读取时，可在构建和 Wrangler dry run 后运行 `node --test cloud-web/test/reader.test.mjs`，覆盖 RSS、条件请求和缓存失效。后台发布、存储与保留规则见下文。
 
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
@@ -156,7 +142,7 @@ Markdown 公式预处理使用现有 pulldown-cmark 的源位置识别代码范�
 
 后台 `cloud-admin/ui/prism.css` 实现 V4 的浅色侧栏、文章管理列表和编辑布局，颜色继续使用共享 Token。默认进入文章管理，不再重复展示统计卡和文章切换列表。手机保留一套四项底部导航；进入编辑器时隐藏底栏，文章日期和地址通过 `editor-info-dialog` 按需查看，使用原输入节点，避免丢失选择或保存状态。保存状态在标题下持续可见；发布前确认，仍沿用原保存队列、ETag 和发布协议。
 
-公开页面保留左栏、`#reader-center` 和 `#reader-context`；Swup 只替换两列内的内容节点。直接访问仍是完整服务端页面，缺少新容器的旧页面回退普通导航。`reader-tools.css` 保留代码、图片、搜索等阅读工具与旧快照的基本可读性。正文全文搜索继续匹配公开索引的 `title`、`description` 和 `body`。相关文章复用同一公开索引，不改变单篇增量发布的范围；字体失败使用系统回退，不阻止阅读。
+公开页面保留左栏、`#reader-center` 和 `#reader-context`；Swup 只替换两列内的内容节点。直接访问仍是完整服务端页面，缺少新容器的旧页面回退普通导航。`reader-tools.css` 保留代码、图片、搜索等阅读工具与旧快照的基本可读性。正文全文搜索继续匹配公开索引的 `title`、`description` 和 `body`。字体失败时使用系统字体回退，阅读可以继续。
 
 `ui-audit-regressions.browser.mjs` 已接入 Chromium 常规流程和三浏览器审计，专门覆盖短记总数、完整原稿与异步保存的身份保护，复用常规初始化流程；布局、排版入口、主题和导航由既有对应模块负责，避免重复矩阵。
 

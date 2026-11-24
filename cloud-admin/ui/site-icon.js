@@ -161,7 +161,7 @@ async function renderSquarePng(decoded, size, { background = '', insetRatio = 0 
   return blob;
 }
 
-export async function generateDerivedIcons(blob, kind) {
+async function generateDerivedIcons(blob, kind) {
   const decoded = await decodeImage(blob, kind);
   const [png180, png192, png512, png512Maskable] = await Promise.all([
     renderSquarePng(decoded, 180, { background: '#ffffff' }),
