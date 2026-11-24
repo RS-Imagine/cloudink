@@ -32,6 +32,17 @@ npm exec --yes --package=npm@10.9.11 -- npm --prefix cloud-admin ci
 npm run check
 ```
 
+## 本地开发
+
+复制 `.dev.vars.example` 为 `.dev.vars` 并填写本地初始化口令。启动后打开 `http://localhost:3000/admin`，按后台向导创建本地账户。
+
+```bash
+cp .dev.vars.example .dev.vars
+cargo xtask dev
+```
+
+`cargo xtask dev` 先构建资源，再用 Wrangler 本地运行与线上相同的 Rust Worker。本地 R2 数据保存在 `.wrangler/state`，重启后可继续使用。可用 `HOST` 和 `PORT` 指定监听地址与端口。修改 Rust 或打包资源后，重新运行开发命令以构建新版。
+
 修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
 公开发现路由的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 生成订阅源、爬虫规则和站点地图。订阅源通过 Worker 原生 JSON 接口解析索引，WASM 只提取所需字段。站点地图从发布指针读取路径，旧式发布目录仍按 R2 分页读取。

@@ -797,7 +797,6 @@ test('shared admin UI dom.js helpers format bytes and compute SHA-256 hex consis
 test('frontend code splitting defers non-core admin modules and reader share card via dynamic imports', async (t) => {
   const web = await fixture(t);
   const appJs = await readFile('cloud-admin/ui/app.js', 'utf8');
-  const devServer = await readFile('scripts/dev-server.mjs', 'utf8');
   const clientJs = await readFile('crates/blog-core/src/assets/client.js', 'utf8');
 
   const lazyAdminChunks = [
@@ -814,7 +813,6 @@ test('frontend code splitting defers non-core admin modules and reader share car
     assert.equal(response.status, 200, `the Worker router must serve ${chunk}`);
     assert.match(response.headers.get('Content-Type'), /^text\/javascript/);
     await response.body.cancel();
-    assert.ok(devServer.includes(`'${chunk}'`), `dev-server.mjs must serve ${chunk}`);
   }
   for (const eagerModule of [
     './images.js',
@@ -845,11 +843,6 @@ test('frontend code splitting defers non-core admin modules and reader share car
   assert.equal(shareCard.status, 200);
   assert.match(shareCard.headers.get('Content-Type'), /javascript/);
   await shareCard.body.cancel();
-  assert.ok(
-    devServer.includes("'/reader-assets/share-card.js'"),
-    'dev-server.mjs must serve /reader-assets/share-card.js',
-  );
-
   const shareCardModule = await import('../../assets/reader-share-card.js');
   assert.equal(typeof shareCardModule.openShareCard, 'function');
 });
@@ -1023,12 +1016,11 @@ test('reader-runtime promotes async stylesheets via CSP-safe listeners and does 
   assert.equal(katexFontResolved, true);
 });
 
-test('public rendering pipeline uses non-blocking async styles, deferred scripts, and rAF/idle hydration', async () => {
-  const [pageRendering, renderRs, reader, devServer, clientJs, readerRuntime] = await Promise.all([
+test('public rendering pipeline uses non-blocking async styles, deferred scripts, and rAF/idle hydration', async (t) => {
+  const [pageRendering, renderRs, reader, clientJs, readerRuntime] = await Promise.all([
     readFile('crates/worker/src/page_rendering.rs', 'utf8'),
     readFile('crates/blog-core/src/render.rs', 'utf8'),
     readFile('crates/worker/src/reader.rs', 'utf8'),
-    readFile('scripts/dev-server.mjs', 'utf8'),
     readFile('crates/blog-core/src/assets/client.js', 'utf8'),
     readFile('assets/reader-runtime.js', 'utf8'),
   ]);
@@ -1045,8 +1037,12 @@ test('public rendering pipeline uses non-blocking async styles, deferred scripts
     false,
     'the Rust reader must never inject inline onload handlers under strict CSP',
   );
-  assert.match(devServer, /<script src="\/client\.js" defer><\/script>/);
-  assert.match(devServer, /media="print" data-reader-async="style"/);
+  const web = await fixture(t);
+  const preview = await web.request('/');
+  assert.equal(preview.status, 200);
+  const html = await preview.text();
+  assert.match(html, /<script src="\/client\.js(?:\?v=[^"]+)?" defer><\/script>/);
+  assert.match(html, /media="print" data-reader-async="style"/);
 
   // client.js defer-safe boot and rAF scroll cue measurement
   assert.match(clientJs, /if \(document\.readyState === 'loading'\)/);
@@ -1444,19 +1440,38 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
 });
 
 test('article reading page removes related panel, gives TOC full right-rail height, and adds mobile floating TOC button', async () => {
-  const [renderRs, clientJs, readerCss, mobileCss, devServer] = await Promise.all([
+  const [renderRs, clientJs, readerCss, mobileCss] = await Promise.all([
     readFile('crates/blog-core/src/render.rs', 'utf8'),
     readFile('crates/blog-core/src/assets/client.js', 'utf8'),
     readFile('crates/blog-core/src/assets/reader.css', 'utf8'),
     readFile('assets/mobile.css', 'utf8'),
-    readFile('scripts/dev-server.mjs', 'utf8'),
   ]);
 
-  // R1: related-panel / #related-stories completely removed across Rust renderer, client.js, CSS, dev server
+  // Related panels are absent from the renderer, client, styles, and generated article.
   assert.doesNotMatch(renderRs, /related-panel|related-stories|继续阅读/);
   assert.doesNotMatch(clientJs, /mountRelatedStories|related-stories|related-story/);
   assert.doesNotMatch(readerCss, /related-panel|related-stories|related-story/);
-  assert.doesNotMatch(devServer, /related-panel|related-stories|related-story/);
+  const wasm = new URL('../../cloud-admin/ui/wasm/', import.meta.url);
+  const { default: init, render_release } = await import(new URL('blog_wasm.js', wasm));
+  await init({ module_or_path: await readFile(new URL('blog_wasm_bg.wasm', wasm)) });
+  const release = JSON.parse(
+    render_release(
+      JSON.stringify({
+        schema_version: 1,
+        id: 'fixture',
+        created_at: '2026-11-24T00:00:00Z',
+        site: { title: 'Test Blog', subtitle: '', author: 'Reader', description: '' },
+        markdown_posts: {
+          fixture:
+            '+++\ntitle = "Reader layout"\nslug = "fixture"\ndate = "2026-11-24"\ndraft = false\n+++\n\n## Section\n\nArticle body.',
+        },
+        render_paths: ['posts/fixture/index.html'],
+      }),
+    ),
+  );
+  const article = release['posts/fixture/index.html'];
+  assert.match(article, /Reader layout/);
+  assert.doesNotMatch(article, /related-panel|related-stories|related-story/);
   // Bottom return-to-list link remains intact
   assert.match(renderRs, /返回文章列表/);
 

@@ -107,7 +107,7 @@ cloudink/
 └── LICENSE                      # MIT 开源协议
 ```
 
-`cargo xtask build` 编译 Rust/WASM，打包后台，再通过 `sitegen` 生成公开资源。构建工具下载版本固定的资源和打包器，并校验归档摘要。Wrangler 从 `build-work/reader-worker/index.js` 部署生成的入口。
+`cargo xtask build` 编译 Rust/WASM，打包后台，再通过 `sitegen` 生成公开资源。构建工具下载版本固定的资源和打包器，并校验归档摘要。Wrangler 从 `build-work/reader-worker/index.js` 部署生成的入口。本地开发使用 `cargo xtask dev` 启动同一 Worker。
 
 **写作与发布：** 后台通过 API 保存草稿；预览、Markdown 导入和发布排版调用浏览器线程中的 Rust/WASM。发布页面上传完成后，Worker 切换 R2 中的线上版本指针，读者访问当前已发布内容。浏览器线程不是额外部署的 Cloudflare Worker。
 
