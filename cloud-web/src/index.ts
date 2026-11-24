@@ -14,10 +14,11 @@ import RustFeedWorker from '../../build-work/feed-worker/index.js';
 
 export type WebBindings = CloudInkEnv;
 type RenderFeed = (
-  request: Request,
+  origin: string,
   storage: R2Bucket,
-  ctx: ExecutionContext,
-) => Promise<[Response, boolean | null]>;
+  release: string | null,
+  pages: Record<string, string> | undefined,
+) => Promise<Response>;
 const editorAssets = new Set([
   '/writing-illustration.svg',
   '/backup.js',
@@ -154,17 +155,6 @@ const web = {
         return protect(
           new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } }),
         );
-      if (path === '/feed.xml') {
-        const [feed, analyticsOnHit] = await renderFeed(request, env.STORAGE, ctx);
-        const response = clientResponse(feed, request, analyticsOnHit !== null);
-        return analyticsOnHit === null
-          ? response
-          : protect(
-              response,
-              analyticsOnHit,
-              response.headers.get('Cache-Control') || HTML_CACHE_CONTROL,
-            );
-      }
       if (path === '/sw.js' || READER_BUNDLES.has(path))
         return staticAsset(request, env, path, 200, false, REVALIDATE_CACHE_CONTROL);
       if (
@@ -248,13 +238,16 @@ const web = {
       }
       const clarityId = published?.clarityId || '';
       const analytics = /^[A-Za-z0-9]{1,64}$/.test(clarityId);
-      if (path === '/robots.txt' || path === '/sitemap.xml') {
-        const response = await discovery(
-          new Request(request, { method: 'GET', headers: {} }),
-          env.STORAGE,
-          id,
-          published?.pages,
-        );
+      if (path === '/robots.txt' || path === '/sitemap.xml' || path === '/feed.xml') {
+        const response =
+          path === '/feed.xml'
+            ? await renderFeed(url.origin, env.STORAGE, id, published?.pages)
+            : await discovery(
+                new Request(request, { method: 'GET', headers: {} }),
+                env.STORAGE,
+                id,
+                published?.pages,
+              );
         cacheWrite(ctx, pageKey, response, DISCOVERY_TTL);
         return clientResponse(response, request);
       }
@@ -422,11 +415,12 @@ export default class CloudInkWorker extends RustFeedWorker {
       request,
       { ...env, STORAGE: stats.bucket },
       ctx,
-      (feedRequest, storage, feedContext) =>
+      (origin, storage, release, pages) =>
         this.rss_response(
-          feedRequest,
+          origin,
           storage,
-          feedContext,
+          release,
+          pages,
           CURRENT_TEMPLATE_VERSION,
           PUBLIC_RESPONSE_VERSION,
         ),

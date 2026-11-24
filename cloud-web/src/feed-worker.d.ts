@@ -3,11 +3,12 @@ declare module '*/feed-worker/index.js' {
     protected readonly env: WebEnv;
     protected readonly ctx: ExecutionContext;
     protected rss_response(
-      request: Request,
+      origin: string,
       storage: R2Bucket,
-      ctx: ExecutionContext,
+      release: string | null,
+      pages: Record<string, string> | undefined,
       templateVersion: string,
       responseVersion: string,
-    ): Promise<[Response, boolean | null]>;
+    ): Promise<Response>;
   }
 }

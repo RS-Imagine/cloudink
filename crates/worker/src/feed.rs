@@ -1,89 +1,80 @@
 use chrono::NaiveDate;
-use serde_json::Value;
-use worker::{Bucket, Error, Result};
+use worker::js_sys::{Array, Reflect};
+use worker::wasm_bindgen::{JsCast, JsValue};
+use worker::wasm_bindgen_futures::JsFuture;
+use worker::{Bucket, Error, Response, Result, web_sys};
 
-pub async fn read_json(storage: &Bucket, key: &str) -> Result<Option<Value>> {
+async fn read_json(storage: &Bucket, key: &str) -> Result<JsValue> {
     let Some(object) = storage.get(key).execute().await? else {
-        return Ok(None);
+        return Ok(JsValue::UNDEFINED);
     };
     let body = object
         .body()
         .ok_or_else(|| Error::RustError("Published object has no body".into()))?;
-    Ok(Some(serde_json::from_slice(&body.bytes().await?)?))
-}
-
-pub async fn fill_legacy_icon(storage: &Bucket, pointer: &mut Value) -> Result<()> {
-    let Some(fields) = pointer.as_object_mut() else {
-        return Ok(());
-    };
-    let Some(id) = fields
-        .get("id")
-        .and_then(Value::as_str)
-        .filter(|id| !id.is_empty())
-    else {
-        return Ok(());
-    };
-    if fields.contains_key("siteIcon") {
-        return Ok(());
-    }
-
-    let legacy = storage
-        .get(format!("releases/{id}.posts.json"))
-        .execute()
-        .await?;
-    let legacy = match legacy.as_ref().and_then(|object| object.body()) {
-        Some(body) => body
-            .bytes()
-            .await
-            .ok()
-            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-            .unwrap_or_default(),
-        None => Value::Null,
-    };
-    let site = &legacy["site"];
-    let icon = site["siteIcon"].as_str().unwrap_or_default();
-    fields.insert("siteIcon".into(), Value::from(icon));
-    if let Some(size) = site["siteIconSize"].as_u64().filter(|size| *size != 0) {
-        fields.insert("siteIconSize".into(), Value::from(size));
-    }
-    Ok(())
+    // Decode the stream in the Worker runtime. The full search index can contain
+    // several megabytes of article text that the feed never reads into Wasm.
+    let response = web_sys::Response::from(Response::from_body(body.response_body()?)?);
+    Ok(JsFuture::from(response.json()?).await?)
 }
 
 pub async fn render(
     storage: &Bucket,
     origin: &str,
     id: Option<&str>,
-    pages: &Value,
+    pages: &JsValue,
 ) -> Result<FeedXml> {
     let (site, index) = match id {
         Some(id) => (
-            read_json(storage, &object_key(id, pages, "site.json"))
-                .await?
-                .unwrap_or_default(),
+            read_json(storage, &object_key(id, pages, "site.json")).await?,
             read_json(storage, &object_key(id, pages, "search_index.json")).await?,
         ),
-        None => (Value::Null, None),
+        None => (JsValue::UNDEFINED, JsValue::UNDEFINED),
     };
-    let entries = match index.as_ref() {
-        Some(index) => index
-            .as_array()
-            .ok_or_else(|| Error::RustError("Published feed index is invalid".into()))?
-            .as_slice(),
-        None => &[],
+    let entries: Vec<_> = if index.is_undefined() {
+        Vec::new()
+    } else if Array::is_array(&index) {
+        index
+            .unchecked_into::<Array>()
+            .iter()
+            .filter_map(|row| FeedItem::parse(&row))
+            .take(50)
+            .collect()
+    } else {
+        return Err(Error::RustError("Published feed index is invalid".into()));
     };
-    let title = site["title"]
-        .as_str()
+    let title = property(&site, "title")
+        .as_string()
         .filter(|title| !title.is_empty())
-        .unwrap_or("Blog");
-    let description = site["description"].as_str().unwrap_or_default();
-    Ok(render_xml(origin, title, description, entries))
+        .unwrap_or_else(|| "Blog".into());
+    let description = property(&site, "description")
+        .as_string()
+        .unwrap_or_default();
+    Ok(render_xml(origin, &title, &description, &entries))
 }
 
-fn object_key(id: &str, pages: &Value, path: &str) -> String {
-    match pages[path].as_str().filter(|key| !key.is_empty()) {
+fn object_key(id: &str, pages: &JsValue, path: &str) -> String {
+    match property(pages, path)
+        .as_string()
+        .filter(|key| !key.is_empty())
+    {
         Some(key) => format!("public/content/{key}"),
         None => format!("public/{id}/{path}"),
     }
+}
+
+fn property(object: &JsValue, key: &str) -> JsValue {
+    if object.is_object() {
+        return Reflect::get(object, &JsValue::from_str(key)).unwrap_or(JsValue::UNDEFINED);
+    }
+    JsValue::UNDEFINED
+}
+
+fn optional_string(object: &JsValue, key: &str) -> Option<String> {
+    let value = property(object, key);
+    if value.is_undefined() {
+        return Some(String::new());
+    }
+    value.as_string()
 }
 
 pub struct FeedXml {
@@ -118,12 +109,7 @@ impl FeedXml {
     }
 }
 
-fn render_xml(origin: &str, title: &str, description: &str, entries: &[Value]) -> FeedXml {
-    let feed = entries
-        .iter()
-        .filter_map(FeedItem::parse)
-        .take(50)
-        .collect::<Vec<_>>();
+fn render_xml(origin: &str, title: &str, description: &str, feed: &[FeedItem]) -> FeedXml {
     let last_build = feed.iter().filter_map(|item| item.last_update).max();
     let mut feed_xml = FeedXml {
         text: String::from(
@@ -141,31 +127,31 @@ fn render_xml(origin: &str, title: &str, description: &str, entries: &[Value]) -
     for item in feed {
         let link = format!("{origin}/posts/{}/", item.slug);
         xml.push_str("<item>");
-        append_element(xml, "title", item.title);
+        append_element(xml, "title", &item.title);
         append_element(xml, "link", &link);
         append_element(xml, "guid", &link);
         if let Some(date) = item.date {
             append_date(xml, "pubDate", date);
         }
-        append_element(xml, "description", item.description);
+        append_element(xml, "description", &item.description);
         xml.push_str("</item>");
     }
     xml.push_str("</channel></rss>");
     feed_xml
 }
 
-struct FeedItem<'a> {
-    title: &'a str,
-    slug: &'a str,
-    description: &'a str,
+struct FeedItem {
+    title: String,
+    slug: String,
+    description: String,
     date: Option<NaiveDate>,
     last_update: Option<NaiveDate>,
 }
 
-impl<'a> FeedItem<'a> {
-    fn parse(item: &'a Value) -> Option<Self> {
-        let title = item["title"].as_str()?;
-        let slug = item["slug"].as_str()?;
+impl FeedItem {
+    fn parse(item: &JsValue) -> Option<Self> {
+        let title = property(item, "title").as_string()?;
+        let slug = property(item, "slug").as_string()?;
         if title.encode_utf16().count() > 300
             || !(1..=100).contains(&slug.len())
             || !slug
@@ -174,28 +160,28 @@ impl<'a> FeedItem<'a> {
         {
             return None;
         }
-        let description = match item.get("description") {
-            Some(value) => value.as_str()?,
-            None => "",
-        };
+        let description = optional_string(item, "description")?;
         if description.encode_utf16().count() > 2000 {
             return None;
         }
-        let date = match item.get("date") {
-            Some(value) => value.as_str()?,
-            None => "",
+        let date = iso_date(&optional_string(item, "date")?);
+        let updated = property(item, "updated");
+        let last_update = if updated.is_null() || updated.is_undefined() {
+            date
+        } else {
+            let updated = updated.as_string()?;
+            if updated.is_empty() {
+                date
+            } else {
+                iso_date(&updated)
+            }
         };
-        let updated = match item.get("updated") {
-            Some(value) if !value.is_null() => value.as_str()?,
-            _ => "",
-        };
-        let last_update = if updated.is_empty() { date } else { updated };
         Some(Self {
             title,
             slug,
             description,
-            date: iso_date(date),
-            last_update: iso_date(last_update),
+            date,
+            last_update,
         })
     }
 }

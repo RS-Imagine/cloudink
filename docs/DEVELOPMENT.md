@@ -28,6 +28,8 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 修改 RSS 读取时，可用 `node --test cloud-web/test/reader.test.mjs` 验证现有发布数据、条件请求和缓存失效。运行前先完成构建和 Wrangler dry run。
 
+RSS 的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 读取发布内容并生成 RSS 和 ETag，搜索索引由 Worker 原生 JSON 接口解析，WASM 只提取订阅源需要的字段。
+
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
 ## 云端检查
