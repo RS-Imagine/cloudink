@@ -155,7 +155,7 @@ test('public metadata, lazy images and discovery follow the live release without
   assert.ok(!(await (await f.request('/sitemap.xml')).text()).includes('/posts/public/'));
 });
 
-test('discovery reads every legacy R2 list page and keeps private keys out', async (t) => {
+test('sitemap preserves pagination for mapped and legacy publications', async (t) => {
   const f = await fixture(t);
   const bucket = await f.mf.getR2Bucket('STORAGE');
   const id = '00000000-0000-4000-8000-000000000078';
@@ -184,6 +184,19 @@ test('discovery reads every legacy R2 list page and keeps private keys out', asy
     locations,
     ['/', '/about/', '/posts/beta/', '/posts/z-last/', '/shorts/'].map((path) => origin + path),
   );
+
+  const pages = {
+    'post/page/2/index.html': 'posts-page-two',
+    'shorts/page/11/index.html': 'shorts-page-eleven',
+    'shorts/page/02/index.html': 'not-a-public-page',
+  };
+  await bucket.put('state/published.json', JSON.stringify({ id, siteIcon: '', pages }));
+  const mapped = await f.mf.dispatchFetch('https://mapped.reader.example/sitemap.xml');
+  assert.equal(mapped.status, 200);
+  const sitemap = await mapped.text();
+  assert.match(sitemap, /\/post\/page\/2\/<\/loc>/);
+  assert.match(sitemap, /\/shorts\/page\/11\/<\/loc>/);
+  assert.doesNotMatch(sitemap, /\/shorts\/page\/02\//);
 });
 
 test('published short calendar data survives HTML sanitization', async (t) => {
