@@ -12,7 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
-web-sys = { version = "0.3", features = ["Crypto", "Response", "SubtleCrypto", "WorkerGlobalScope"] }
+web-sys = { version = "0.3", features = ["Crypto", "Headers", "Response", "ResponseInit", "SubtleCrypto", "Url", "WorkerGlobalScope"] }
 worker = "=0.9.0"
 
 [profile.release]

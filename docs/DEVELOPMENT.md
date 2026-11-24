@@ -30,6 +30,8 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 公开发现路由的缓存命中由共用的读站逻辑直接返回。冷读时 Rust 生成订阅源、爬虫规则和站点地图。订阅源通过 Worker 原生 JSON 接口解析索引，WASM 只提取所需字段。站点地图从发布指针读取路径，旧式发布目录仍按 R2 分页读取。
 
+读站 HTML 的元信息、图片和样式改写由 Rust 配置 Cloudflare 原生 HTMLRewriter 完成，整页 HTML 由运行时处理。公开页面和 RSS 共用 ETag 计算规则。
+
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
 ## 云端检查
