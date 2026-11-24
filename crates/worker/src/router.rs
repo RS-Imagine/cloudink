@@ -1,4 +1,4 @@
-use worker::js_sys::{JSON, JsString, Object, Promise, Reflect, RegExp};
+use worker::js_sys::{JSON, Object, Promise, Reflect, RegExp};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Headers, ReadableStream, Request, RequestInit, Response, Url};
@@ -64,12 +64,6 @@ extern "C" {
 
     #[wasm_bindgen(method, catch)]
     fn asset(this: &Services, request: &Request) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch)]
-    fn sanitize(this: &Services, html: &JsString) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch)]
-    fn mime(this: &Services, path: &str) -> JsResult<String>;
 
     #[wasm_bindgen(method, catch)]
     fn icons(this: &Services, value: &JsValue) -> JsResult<JsValue>;
@@ -417,7 +411,7 @@ impl PublicRouter<'_> {
                 etag
             };
             let headers = Headers::new()?;
-            headers.set("Content-Type", &self.services.mime(key)?)?;
+            headers.set("Content-Type", crate::page_rendering::public_type(key))?;
             headers.set("ETag", &etag)?;
             if head && not_modified(self.request, Some(&etag))? {
                 return Ok(Some(protect(
@@ -513,9 +507,7 @@ impl PublicRouter<'_> {
         let response = await_response(self.services.asset(&request)?).await?;
         let response = if self.request.method() != "HEAD" && is_html(&response)? {
             let body = JsFuture::from(response.text()?).await?.unchecked_into();
-            let clean = JsFuture::from(self.services.sanitize(&body)?)
-                .await?
-                .unchecked_into();
+            let clean = crate::page_rendering::sanitize(&body).await?;
             string_response(&clean, &cache::response_init(status, &response.headers()))?
         } else if status != 200 {
             stream_response(response.body().as_ref(), status, &response.headers())?

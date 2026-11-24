@@ -32,9 +32,6 @@ extern "C" {
     #[wasm_bindgen(method, catch, js_name = activeBackup)]
     pub fn active_backup(this: &Hooks, storage: &R2Bucket) -> JsResult<Promise>;
 
-    #[wasm_bindgen(method, catch, js_name = readPostIndex)]
-    pub fn read_post_index(this: &Hooks, storage: &R2Bucket, id: &str) -> JsResult<Promise>;
-
     #[wasm_bindgen(method, catch, js_name = managedImageKeys)]
     pub fn managed_images(this: &Hooks, source: &JsString) -> JsResult<Array>;
 

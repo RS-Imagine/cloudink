@@ -211,10 +211,11 @@ for (const file of ['../crates/worker/Cargo.toml', '../crates/worker/Cargo.lock'
   responseHash.update(file).update(await readFile(new URL(file, root)));
 const generationHash = createHash('sha256');
 for (const file of [
-  'src/page-rendering.ts',
-  'src/image-variants.ts',
-  'src/image-info.ts',
-  'src/media.ts',
+  '../crates/worker/src/page_rendering.rs',
+  '../crates/worker/src/html_rewriter.rs',
+  '../crates/worker/src/image.rs',
+  '../crates/worker/src/image_header.rs',
+  '../crates/worker/src/media.rs',
 ])
   generationHash.update(file).update(await readFile(new URL(file, root)));
 await writeFile(

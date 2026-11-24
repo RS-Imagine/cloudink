@@ -5,35 +5,44 @@ import { build } from '../../cloud-admin/node_modules/esbuild/lib/main.js';
 import { fixture, draft } from './fixture.mjs';
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 test('article batch manifests use ten published posts per page and route extra batches as canonical HTML', async (t) => {
-  const bundle = await build({
-    entryPoints: ['cloud-admin/src/browser-publishing.ts'],
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-  });
-  const { requiredPages, publicType } = await import(
-    'data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64')
-  );
+  const f = await fixture(t);
+  await f.login();
+  const bucket = await f.mf.getR2Bucket('STORAGE');
+  const current = await (await bucket.get('state/published.json')).json();
+  const releaseKey = `releases/${current.id}.json`;
+  const release = await (await bucket.get(releaseKey)).json();
   const source = (slug, hidden = false) =>
     '+++\ntitle = "Article"\nslug = "' +
     slug +
     '"\ndate = "2026-11-09"\ndraft = ' +
     hidden +
     '\n+++\n\nBody';
-  const release = { markdown_posts: {}, markdown_shorts: {} };
   for (let i = 0; i < 21; i++) release.markdown_posts['item-' + i] = source('item-' + i);
   release.markdown_posts.private = source('private', true);
+  await bucket.put(releaseKey, JSON.stringify(release));
+  const many = await f.prepare();
   assert.deepEqual(
-    requiredPages(release).filter((p) => p.startsWith('post/')),
+    many.files.filter((p) => p.startsWith('post/')),
     ['post/index.html', 'post/page/2/index.html', 'post/page/3/index.html'],
   );
+  assert.equal((await f.request(`/api/publish/${many.release_id}/cancel`, 'POST', {})).status, 200);
   delete release.markdown_posts['item-20'];
-  assert(!requiredPages(release).includes('post/page/3/index.html'));
-  assert.match(publicType('post/page/2/index.html'), /text\/html/);
-  const f = await fixture(t);
-  await f.login();
-  const bucket = await f.mf.getR2Bucket('STORAGE');
+  await bucket.put(releaseKey, JSON.stringify(release));
+  const fewer = await f.prepare();
+  assert(!fewer.files.includes('post/page/3/index.html'));
+  const page = 'post/page/2/index.html';
+  const staged = await f.request(
+    `/api/publish/${fewer.release_id}/file?path=${encodeURIComponent(page)}`,
+    'PUT',
+    '<html><head><title>Batch</title></head><body>Public batch</body></html>',
+  );
+  assert.equal(staged.status, 200, await staged.text());
+  const uploaded = await bucket.head(`public/${fewer.release_id}/${page}`);
+  assert.match(uploaded.httpMetadata.contentType, /text\/html/);
+  assert.equal(
+    (await f.request(`/api/publish/${fewer.release_id}/cancel`, 'POST', {})).status,
+    200,
+  );
   const key = 'a'.repeat(64);
   await bucket.put(
     'public/content/' + key,

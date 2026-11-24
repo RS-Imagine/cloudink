@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use worker::js_sys::{self, JSON, JsString, Object, Reflect, Uint8Array};
+use worker::js_sys::{self, Array, JSON, JsString, Object, Promise, Reflect, Uint8Array};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::web_sys::{
     Headers, ReadableStream, ReadableStreamDefaultReader, Request, Response, WorkerGlobalScope,
@@ -18,6 +18,23 @@ extern "C" {
 
     #[wasm_bindgen(js_name = Number)]
     pub fn js_number(value: &JsValue) -> f64;
+
+    type R2JsonText;
+
+    #[wasm_bindgen(method, catch)]
+    fn text(this: &R2JsonText) -> JsResult<Promise>;
+
+    #[wasm_bindgen(method, catch, js_name = json)]
+    fn parse_json(this: &R2JsonText) -> JsResult<Promise>;
+
+    #[wasm_bindgen(js_name = TextEncoder)]
+    type TextEncoder;
+
+    #[wasm_bindgen(constructor, js_class = TextEncoder)]
+    fn new() -> TextEncoder;
+
+    #[wasm_bindgen(method)]
+    fn encode(this: &TextEncoder, value: &JsString) -> Uint8Array;
 }
 
 pub fn property(object: &JsValue, key: &str) -> JsValue {
@@ -33,6 +50,23 @@ pub fn set(object: &JsValue, key: &str, value: impl Into<JsValue>) -> Result<(),
 
 pub fn attribute(object: &JsValue, key: &str) -> String {
     property(object, key).as_string().unwrap_or_default()
+}
+
+pub fn own_property(object: &JsValue, key: &str) -> JsValue {
+    if object.is_object() && Object::has_own::<JsValue>(object.unchecked_ref(), &key.into()) {
+        return property(object, key);
+    }
+    JsValue::UNDEFINED
+}
+
+pub fn set_own(target: &Object, key: &str, value: JsValue) -> JsResult<()> {
+    let descriptor = object(&[
+        ("value", value),
+        ("writable", true.into()),
+        ("enumerable", true.into()),
+        ("configurable", true.into()),
+    ])?;
+    Reflect::define_property(target, &key.into(), &descriptor).map(drop)
 }
 
 pub fn object(fields: &[(&str, JsValue)]) -> JsResult<Object> {
@@ -57,6 +91,63 @@ pub fn json_object(status: u16, value: &JsValue) -> JsResult<Response> {
 
 pub async fn get(storage: &R2Bucket, key: &str) -> JsResult<JsValue> {
     JsFuture::from(storage.get(key.to_owned(), JsValue::UNDEFINED)?).await
+}
+
+pub async fn body_text(value: &JsValue) -> JsResult<JsString> {
+    let body: &R2JsonText = value.unchecked_ref();
+    Ok(JsFuture::from(body.text()?).await?.unchecked_into())
+}
+
+pub async fn parse_object(value: &JsValue) -> JsResult<JsValue> {
+    let body: &R2JsonText = value.unchecked_ref();
+    JsFuture::from(body.parse_json()?).await
+}
+
+pub async fn read_json(storage: &R2Bucket, key: &str) -> JsResult<JsValue> {
+    let value = get(storage, key).await?;
+    if value.is_truthy() {
+        parse_object(&value).await
+    } else {
+        Ok(JsValue::NULL)
+    }
+}
+
+pub struct ListPage {
+    pub objects: Array,
+    pub cursor: JsValue,
+}
+
+pub async fn list(
+    storage: &R2Bucket,
+    prefix: &str,
+    cursor: JsValue,
+    limit: u16,
+    include: &[&str],
+) -> JsResult<ListPage> {
+    let include: Array = include.iter().copied().map(JsValue::from_str).collect();
+    let options = object(&[
+        ("prefix", prefix.into()),
+        ("cursor", cursor),
+        ("limit", limit.into()),
+        ("include", include.into()),
+    ])?;
+    let page = JsFuture::from(storage.list(options.into())?).await?;
+    Ok(ListPage {
+        objects: property(&page, "objects").unchecked_into(),
+        cursor: if property(&page, "truncated").is_truthy() {
+            property(&page, "cursor")
+        } else {
+            JsValue::UNDEFINED
+        },
+    })
+}
+
+pub fn encode_utf8(text: &JsString) -> Uint8Array {
+    TextEncoder::new().encode(text)
+}
+
+pub async fn digest_text(text: &JsString) -> JsResult<String> {
+    sha256_hex(&encode_utf8(text)).await
 }
 
 pub fn only_if(condition: &str, value: JsValue) -> JsResult<Object> {

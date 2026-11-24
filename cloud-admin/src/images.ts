@@ -7,14 +7,12 @@ import {
 } from './image-reference-index';
 import { IMAGE_REFERENCE_VERSION, managedImageKeys } from './image-references';
 import { HttpError, jsonInput, siteIconDerivedKeys } from './models';
-import { readPostIndex } from './post-index';
 import { withContentMutation } from './storage-mutations';
 
 export const imageHooks = {
   withContentMutation,
   jsonInput,
   activeBackup,
-  readPostIndex,
   managedImageKeys,
   referenceShardKey,
   readReferenceShard,

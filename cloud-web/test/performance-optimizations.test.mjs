@@ -1028,7 +1028,7 @@ test('reader-runtime promotes async stylesheets via CSP-safe listeners and does 
 
 test('public rendering pipeline uses non-blocking async styles, deferred scripts, and rAF/idle hydration', async () => {
   const [pageRendering, renderRs, reader, devServer, clientJs, readerRuntime] = await Promise.all([
-    readFile('cloud-admin/src/page-rendering.ts', 'utf8'),
+    readFile('crates/worker/src/page_rendering.rs', 'utf8'),
     readFile('crates/blog-core/src/render.rs', 'utf8'),
     readFile('crates/worker/src/reader.rs', 'utf8'),
     readFile('scripts/dev-server.mjs', 'utf8'),
@@ -1370,12 +1370,12 @@ test('reader-runtime shorts peek and batch planning helpers handle boundaries ac
 });
 
 test('shorts incremental pagination and lightbox badge removal contracts stay aligned across Rust, Worker, Admin, CSS, and Client', async () => {
-  const [renderRs, libRs, bundleRs, publishingTs, workerRouter, homeCss, readerToolsCss, clientJs] =
+  const [renderRs, libRs, bundleRs, publishingRs, workerRouter, homeCss, readerToolsCss, clientJs] =
     await Promise.all([
       readFile('crates/blog-core/src/render.rs', 'utf8'),
       readFile('crates/blog-core/src/lib.rs', 'utf8'),
       readFile('crates/blog-core/src/bundle.rs', 'utf8'),
-      readFile('cloud-admin/src/browser-publishing.ts', 'utf8'),
+      readFile('crates/worker/src/publishing.rs', 'utf8'),
       readFile('crates/worker/src/router.rs', 'utf8'),
       readFile('crates/blog-core/src/assets/home.css', 'utf8'),
       readFile('crates/blog-core/src/assets/reader-tools.css', 'utf8'),
@@ -1406,7 +1406,8 @@ test('shorts incremental pagination and lightbox badge removal contracts stay al
   assert.match(bundleRs, /shorts\/page\/\{page\}\/index\.html/);
 
   // Browser publishing and Worker routing, including /shorts/page/1/ -> /shorts/.
-  assert.match(publishingTs, /shorts\/page\/\$\{i \+ 2\}\/index\.html/);
+  assert.match(publishingRs, /\(2\.\.=shorts\.div_ceil\(3\)\)/);
+  assert.match(publishingRs, /shorts\/page\/\{number\}\/index\.html/);
   assert.ok(workerRouter.includes('^/shorts/page/([1-9]\\d*)'));
   assert.match(workerRouter, /capture\(&SHORT_PAGE, &path\)\.as_deref\(\) == Some\("1"\)/);
   assert.match(workerRouter, /Response::redirect_with_status\(&url\.href\(\), 301\)/);
