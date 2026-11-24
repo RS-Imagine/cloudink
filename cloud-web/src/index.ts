@@ -1,11 +1,15 @@
 import { storageStats } from '../../cloud-admin/src/request-stats';
 import { maintenanceHooks } from '../../cloud-admin/src/maintenance';
 import admin from '../../cloud-admin/src/index';
-import { publicSiteIcon } from '../../cloud-admin/src/site-icons';
+import { createSettingsHooks } from '../../cloud-admin/src/settings';
 import { legacyImagePath, publicImage } from '../../cloud-admin/src/media';
 import type { CloudInkEnv } from '../../cloud-admin/src/env';
 import { publicType, sanitizePublicHtml } from '../../cloud-admin/src/browser-publishing';
-import { siteIconDerivedKeys } from '../../cloud-admin/src/models';
+import {
+  siteIconDerivedKeys,
+  siteIconMime,
+  validSiteIconAssetKey,
+} from '../../cloud-admin/src/models';
 import { PUBLIC_RESPONSE_VERSION } from '../../cloud-admin/src/assets.generated';
 import { CURRENT_TEMPLATE_VERSION } from '../../cloud-admin/src/template-version.generated';
 import RustReaderWorker from '../../build-work/reader-worker/index.js';
@@ -23,6 +27,10 @@ export default class CloudInkWorker extends RustReaderWorker {
       ...env,
       STORAGE: storage,
       maintainStorage: (binding: R2Bucket) => this.maintain_storage(binding, maintenanceHooks),
+      siteSettings: (input: Request, binding: R2Bucket) =>
+        this.site_settings(input, binding, createSettingsHooks(env)),
+      inspectSiteIcon: (bytes: Uint8Array) =>
+        this.inspect_site_icon(bytes, createSettingsHooks(env)),
     };
     const response = await this.route_request(
       request,
@@ -33,7 +41,7 @@ export default class CloudInkWorker extends RustReaderWorker {
           withContext ? admin.fetch(input, hostEnv, ctx) : admin.fetch(input, hostEnv),
         asset: (input) => env.ASSETS.fetch(input),
         image: (input) => publicImage(input, storage, ctx),
-        icon: (input) => publicSiteIcon(input, storage, ctx),
+        iconType: (key) => (validSiteIconAssetKey(key) ? siteIconMime(key) : null),
         sanitize: sanitizePublicHtml,
         mime: publicType,
         icons: siteIconDerivedKeys,

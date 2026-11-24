@@ -3,7 +3,7 @@ declare module '*/reader-worker/index.js' {
     admin(request: Request, withContext: boolean): Promise<Response>;
     asset(request: Request): Promise<Response>;
     image(request: Request): Promise<Response>;
-    icon(request: Request): Promise<Response>;
+    iconType(key: string): string | null;
     sanitize(html: string): Promise<string>;
     mime(path: string): string;
     icons(value: unknown): { apple: string; icon512: string; faviconIco: string } | null;
@@ -17,6 +17,15 @@ declare module '*/reader-worker/index.js' {
       storage: R2Bucket,
       hooks: import('../../cloud-admin/src/maintenance').MaintenanceHooks,
     ): Promise<import('../../cloud-admin/src/maintenance').MaintenanceStatus>;
+    protected site_settings(
+      request: Request,
+      storage: R2Bucket,
+      hooks: import('../../cloud-admin/src/settings').SettingsHooks,
+    ): Promise<Response>;
+    protected inspect_site_icon(
+      bytes: Uint8Array,
+      hooks: import('../../cloud-admin/src/settings').SettingsHooks,
+    ): Promise<import('../../cloud-admin/src/settings').InspectedSiteIcon>;
     protected route_request(
       request: Request,
       storage: R2Bucket,

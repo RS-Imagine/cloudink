@@ -9,7 +9,7 @@ use worker::worker_sys::R2Bucket;
 
 use crate::feed::{object_json, read_json};
 use crate::html_rewriter::JsResult;
-use crate::runtime::{js_number, js_string, property};
+use crate::runtime::{js_number, js_string, property, set};
 
 const STATUS: &str = "state/maintenance.json";
 const GRACE: f64 = 24.0 * 60.0 * 60_000.0;
@@ -380,10 +380,6 @@ async fn clean(
     update_cursor(cursors, "sessions", &sessions)?;
     set(state, "stage", "complete")?;
     Ok(None)
-}
-
-fn set(object: &JsValue, key: &str, value: impl Into<JsValue>) -> JsResult<()> {
-    Reflect::set(object, &key.into(), &value.into()).map(drop)
 }
 
 fn copy_fields(value: &JsValue) -> Object {

@@ -14,6 +14,7 @@ pub const REVALIDATE: &str = "public, max-age=0, must-revalidate";
 pub enum Group<'a> {
     Pointer,
     Page(&'a str),
+    Media,
 }
 
 pub fn key(
@@ -23,19 +24,20 @@ pub fn key(
     response_version: &str,
 ) -> JsResult<Request> {
     let url = Url::new(url)?;
-    let suffix = match group {
-        Group::Pointer => "pointer//".to_owned(),
+    let path = match group {
+        Group::Pointer => {
+            format!("/__cloudink_cache/{template_version}/{response_version}/pointer//")
+        }
         Group::Page(version) => format!(
-            "page/{}{}",
+            "/__cloudink_cache/{template_version}/{response_version}/page/{}{}",
             js_sys::encode_uri_component(version)
                 .as_string()
                 .unwrap_or_default(),
             url.pathname(),
         ),
+        Group::Media => format!("/__cloudink_cache/media-v1/image/{}", url.pathname()),
     };
-    url.set_pathname(&format!(
-        "/__cloudink_cache/{template_version}/{response_version}/{suffix}"
-    ));
+    url.set_pathname(&path);
     url.set_search("");
     Request::new_with_str(&url.href())
 }
