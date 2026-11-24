@@ -1,4 +1,4 @@
-import { cacheKey, cacheRead, cacheWrite, clientResponse } from '../../cloud-web/src/cache';
+import { cacheRead, cacheWrite, clientResponse, mediaCacheKey } from './media-cache';
 import { HttpError, validSiteIconKey } from './models';
 
 export const MAX_IMAGE = 10 * 1024 * 1024;
@@ -77,7 +77,7 @@ export async function publicImage(
       status: 403,
       headers: { Vary: 'Referer', 'Cache-Control': 'no-store' },
     });
-  const keyRequest = cacheKey(request, 'image');
+  const keyRequest = mediaCacheKey(request);
   const cached = ctx ? await cacheRead(keyRequest) : undefined;
   if (cached) {
     const headers = new Headers(cached.headers);

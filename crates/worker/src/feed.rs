@@ -13,11 +13,15 @@ extern "C" {
     fn json(this: &R2JsonObject) -> std::result::Result<Promise, JsValue>;
 }
 
-async fn read_json(storage: &R2Bucket, key: String) -> Result<JsValue> {
+pub async fn read_json(storage: &R2Bucket, key: String) -> Result<JsValue> {
     let object = JsFuture::from(storage.get(key, JsValue::UNDEFINED)?).await?;
     if object.is_null() {
         return Ok(JsValue::UNDEFINED);
     }
+    object_json(object).await
+}
+
+pub async fn object_json(object: JsValue) -> Result<JsValue> {
     // Bind the native R2 JSON method so the full search index stays in the runtime.
     let object = object.unchecked_into::<R2JsonObject>();
     Ok(JsFuture::from(object.json()?).await?)
