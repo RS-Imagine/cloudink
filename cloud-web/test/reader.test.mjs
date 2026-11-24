@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeHTMLAttribute } from '../../cloud-admin/node_modules/entities/dist/index.js';
 import { fixture, draft, origin } from './fixture.mjs';
 
 test('legacy published image URLs use public media without changing stored snapshots or API authentication', async (t) => {
@@ -238,7 +237,7 @@ test('published short calendar data survives HTML sanitization', async (t) => {
   const served = await response.text();
   const attribute = served.match(/data-shorts-cal-root\s+data-shorts-cal="([^"]+)"/)?.[1];
   assert.ok(attribute, 'The sanitized short feed must retain the calendar attribute');
-  assert.deepEqual(JSON.parse(decodeHTMLAttribute(attribute)), {
+  assert.deepEqual(JSON.parse(attribute.replaceAll('&quot;', '"')), {
     '2026-11-06': { count: 2, firstId: 'note:earlier' },
   });
 });
