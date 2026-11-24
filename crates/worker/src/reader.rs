@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use worker::js_sys::{Array, Function, JSON, JsString, Object, Reflect, RegExp};
+use worker::js_sys::{Array, JSON, JsString, Object, Reflect, RegExp};
 use worker::wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Headers, Response, ResponseInit, Url};
@@ -169,7 +169,6 @@ pub async fn render(
     analytics: bool,
     apple_icon: Option<String>,
     fallback_icon: Option<String>,
-    legacy_image_path: Function,
 ) -> JsResult<Response> {
     let status = response.status();
     let origin = url.origin();
@@ -193,7 +192,7 @@ pub async fn render(
     let page = url.href();
     let image_origin = origin.clone();
     rewriter.on_element("img, source", move |el| {
-        normalize_image_urls(el, &image_origin, &legacy_image_path)
+        normalize_image_urls(el, &image_origin)
     })?;
     rewriter.on_element(r#"script[src="/analytics.js"]"#, move |el| {
         if !analytics {
@@ -337,15 +336,12 @@ fn reader_image(el: Element, page: &str, meta: &mut Metadata) -> JsResult<()> {
     Ok(())
 }
 
-fn normalize_image_urls(el: Element, origin: &str, legacy_image_path: &Function) -> JsResult<()> {
-    let base = JsValue::from_str(origin);
+fn normalize_image_urls(el: Element, origin: &str) -> JsResult<()> {
     let rewrite = |src: &JsString| {
-        legacy_image_path
-            .call2(&JsValue::UNDEFINED, decode(src).as_ref(), &base)
-            .map(|path| path.is_truthy().then(|| path.unchecked_into::<JsString>()))
+        crate::media::legacy_image_path(&decode(src).as_string()?, origin).map(JsString::from)
     };
     for name in ["src", "data-full-src"] {
-        if let Some(path) = rewrite(&attribute(&el, name))? {
+        if let Some(path) = rewrite(&attribute(&el, name)) {
             el.set_attribute(name, &path)?;
         }
     }
@@ -354,7 +350,7 @@ fn normalize_image_urls(el: Element, origin: &str, legacy_image_path: &Function)
         for candidate in srcset.split(",").iter() {
             let candidate: JsString = candidate.unchecked_into();
             let parts = SPACE.with(|space| candidate.trim().split_by_pattern(space));
-            if let Some(path) = rewrite(&parts.get(0).unchecked_into())? {
+            if let Some(path) = rewrite(&parts.get(0).unchecked_into()) {
                 parts.set(0, path.into());
                 normalized.push(parts.join(" ").as_ref());
             } else {

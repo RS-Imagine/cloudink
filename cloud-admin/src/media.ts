@@ -1,4 +1,3 @@
-import { cacheRead, cacheWrite, clientResponse, mediaCacheKey } from './media-cache';
 import { HttpError, validSiteIconKey } from './models';
 
 export const MAX_IMAGE = 10 * 1024 * 1024;
@@ -44,72 +43,4 @@ export function imageType(bytes: Uint8Array): { type: string; ext: string } {
   if (text.slice(4, 8) === 'ftyp' && ['avif', 'avis'].includes(text.slice(8, 12)))
     return { type: 'image/avif', ext: 'avif' };
   throw new HttpError(400, '请上传 JPEG、PNG、GIF、WebP 或 AVIF 图片。');
-}
-
-/** The only public image route: uploaded media, never arbitrary bucket objects. */
-export async function publicImage(
-  request: Request,
-  storage: R2Bucket,
-  ctx?: ExecutionContext,
-): Promise<Response> {
-  if (!['GET', 'HEAD'].includes(request.method))
-    return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
-  let key: string;
-  try {
-    key = decodeURIComponent(new URL(request.url).pathname.slice('/images/'.length));
-  } catch {
-    return new Response('Invalid image path', { status: 400 });
-  }
-  if (!validImageKey(key)) return new Response('Not found', { status: 404 });
-  // Preview crawlers, direct links and privacy settings may omit Referer.
-  // This is a hotlink check, not authorization for private bucket objects.
-  const referrer = request.headers.get('Referer');
-  let allowed = referrer === null;
-  if (referrer !== null) {
-    try {
-      allowed = new URL(referrer).origin === new URL(request.url).origin;
-    } catch {
-      allowed = false;
-    }
-  }
-  if (!allowed)
-    return new Response('Forbidden', {
-      status: 403,
-      headers: { Vary: 'Referer', 'Cache-Control': 'no-store' },
-    });
-  const keyRequest = mediaCacheKey(request);
-  const cached = ctx ? await cacheRead(keyRequest) : undefined;
-  if (cached) {
-    const headers = new Headers(cached.headers);
-    headers.set('Vary', 'Referer');
-    return clientResponse(new Response(cached.body, { headers }), request, true);
-  }
-  const body = request.method === 'GET' ? await storage.get(key) : null;
-  const object = request.method === 'HEAD' ? await storage.head(key) : body;
-  if (!object) return new Response('Not found', { status: 404 });
-  const headers = new Headers({
-    'X-Content-Type-Options': 'nosniff',
-    Vary: 'Referer',
-    'Content-Security-Policy': "sandbox; default-src 'none'",
-    'Cache-Control': 'public, max-age=86400',
-  });
-  object.writeHttpMetadata(headers);
-  if (
-    !/^image\/(jpeg|png|webp|gif|avif|svg\+xml|x-icon)$/.test(headers.get('Content-Type') || '')
-  ) {
-    if (body) await body.body.cancel();
-    return new Response('Unsupported image', { status: 415 });
-  }
-  headers.set('ETag', object.httpEtag);
-  const validators = request.headers
-    .get('If-None-Match')
-    ?.split(',')
-    .map((x) => x.trim().replace(/^W\//, ''));
-  if (validators?.some((x) => x === '*' || x === object.httpEtag)) {
-    if (body) await body.body.cancel();
-    return new Response(null, { status: 304, headers });
-  }
-  const response = new Response(body?.body || null, { headers });
-  if (ctx && request.method === 'GET') cacheWrite(ctx, keyRequest, response, 86400);
-  return response;
 }

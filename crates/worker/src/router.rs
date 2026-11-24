@@ -1,4 +1,4 @@
-use worker::js_sys::{Function, JSON, JsString, Object, Promise, Reflect, RegExp};
+use worker::js_sys::{JSON, JsString, Object, Promise, Reflect, RegExp};
 use worker::wasm_bindgen::{self, JsCast, JsValue, prelude::wasm_bindgen};
 use worker::wasm_bindgen_futures::JsFuture;
 use worker::web_sys::{Headers, ReadableStream, Request, RequestInit, Response, Url};
@@ -59,9 +59,6 @@ extern "C" {
     #[wasm_bindgen(method, catch)]
     fn admin(this: &Services, request: &Request, with_context: bool) -> JsResult<Promise>;
 
-    #[wasm_bindgen(method, catch)]
-    fn image(this: &Services, request: &Request) -> JsResult<Promise>;
-
     #[wasm_bindgen(method, catch, js_name = iconType)]
     pub fn icon_type(this: &Services, key: &str) -> JsResult<JsValue>;
 
@@ -76,9 +73,6 @@ extern "C" {
 
     #[wasm_bindgen(method, catch)]
     fn icons(this: &Services, value: &JsValue) -> JsResult<JsValue>;
-
-    #[wasm_bindgen(method, getter, js_name = legacyImagePath)]
-    fn legacy_image_path(this: &Services) -> Function;
 
 }
 
@@ -151,7 +145,7 @@ impl PublicRouter<'_> {
             return Ok(response);
         }
         if path.starts_with("/images/") {
-            return await_response(self.services.image(self.request)?).await;
+            return crate::media::public_image(self.request, self.storage, self.ctx).await;
         }
         if path.starts_with("/site-icon/") {
             return crate::site::public_icon(self.request, self.storage, self.ctx, self.services)
@@ -555,7 +549,6 @@ impl PublicRouter<'_> {
             analytics,
             icon_path(&icons, "apple"),
             icon_path(&icons, "icon512"),
-            self.services.legacy_image_path(),
         )
         .await
     }

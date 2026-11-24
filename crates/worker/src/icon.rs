@@ -10,6 +10,7 @@ use xml::reader::{ParserConfig, XmlEvent};
 
 use crate::html_rewriter::{Element, HtmlRewriter, JsResult, string_response};
 use crate::icon_raster::{validate_derived_png, validate_ico};
+use crate::image_header::{image_info, image_type};
 use crate::runtime::{property, set, sha256_hex};
 use crate::site::Hooks;
 
@@ -132,28 +133,25 @@ pub async fn inspect(mut bytes: Uint8Array, hooks: &Hooks) -> JsResult<JsValue> 
     }
     let (ext, mime) = if bytes.subarray(0, 4).to_vec() == [0, 0, 1, 0] {
         validate_ico(&bytes.to_vec()).map_err(|error| error.as_js(hooks))?;
-        ("ico".to_owned(), "image/x-icon".to_owned())
-    } else {
-        let raster = hooks.detect_raster(&bytes)?;
-        if raster.is_truthy() {
-            (
-                property(&raster, "ext").as_string().unwrap_or_default(),
-                property(&raster, "type").as_string().unwrap_or_default(),
-            )
-        } else {
-            let sample = bytes.subarray(0, 512).to_vec();
-            if !String::from_utf8_lossy(&sample)
-                .trim_start_matches(js_whitespace)
-                .starts_with('<')
-            {
-                return Err(hooks.error(
-                    400,
-                    "不支持的文件格式，请上传有效的 PNG、JPG、WebP、GIF、AVIF、SVG 或 ICO 图片。",
-                ));
-            }
-            bytes = sanitize_svg(bytes.to_vec(), hooks).await?;
-            ("svg".to_owned(), "image/svg+xml".to_owned())
+        ("ico", "image/x-icon")
+    } else if let Some(format) = image_type(&bytes) {
+        if format.ext != "avif" && image_info(&bytes).is_none() {
+            return Err(hooks.error(400, "图片文件已损坏或无法读取尺寸，请重新选择图片。"));
         }
+        (format.ext, format.mime)
+    } else {
+        let sample = bytes.subarray(0, 512).to_vec();
+        if !String::from_utf8_lossy(&sample)
+            .trim_start_matches(js_whitespace)
+            .starts_with('<')
+        {
+            return Err(hooks.error(
+                400,
+                "不支持的文件格式，请上传有效的 PNG、JPG、WebP、GIF、AVIF、SVG 或 ICO 图片。",
+            ));
+        }
+        bytes = sanitize_svg(bytes.to_vec(), hooks).await?;
+        ("svg", "image/svg+xml")
     };
     let hash = sha256_hex(&bytes).await?;
     let icon = Object::new();

@@ -10,7 +10,7 @@ import {
   validateSite,
 } from './models';
 import { currentRelease } from './publishing';
-import { detectRasterIcon, ensureSiteIcon } from './site-icons';
+import { ensureSiteIcon } from './site-icons';
 
 export type InspectedSiteIcon = {
   bytes: Uint8Array;
@@ -30,7 +30,6 @@ export function createSettingsHooks(env: CloudInkEnv) {
     ensureManagedImages,
     ensureHomeIllustration,
     ensureSiteIcon,
-    detectRasterIcon,
     siteIconDerivedKeys,
     validSiteIconKey,
     siteIconMime,
