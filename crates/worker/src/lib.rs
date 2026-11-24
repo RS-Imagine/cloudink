@@ -3,7 +3,11 @@ mod feed;
 mod html_rewriter;
 mod icon;
 mod icon_raster;
+mod image;
+mod image_header;
+mod image_library;
 mod maintenance;
+mod media;
 mod public_cache;
 mod reader;
 mod router;
@@ -39,6 +43,15 @@ pub async fn inspect_site_icon(
     hooks: JsValue,
 ) -> html_rewriter::JsResult<JsValue> {
     icon::inspect(bytes, &hooks.unchecked_into()).await
+}
+
+#[wasm_bindgen]
+pub async fn image_request(
+    request: web_sys::Request,
+    storage: JsValue,
+    hooks: JsValue,
+) -> html_rewriter::JsResult<web_sys::Response> {
+    image::handle(&request, &storage.unchecked_into(), &hooks.unchecked_into()).await
 }
 
 #[wasm_bindgen]

@@ -38,6 +38,8 @@ npx wrangler deploy --dry-run --outdir cloud-web/dist
 
 设置读写、图标上传与公开读取由 Rust Worker 处理。SVG 沿用 Cloudflare 原生 HTMLRewriter，Rust 校验 XML、图标容器及派生图标，并保留已存图标的内容地址。
 
+图片上传、优化、公开响应和图片库读写由 Rust Worker 处理。图片库继续通过既有索引和原稿检查引用，索引缺失或损坏时仍保留相关图片。
+
 构建产物、个人文章、凭据、真实部署配置和截图不提交。仓库不保存设计原型、历史审阅包和阶段性实施计划。保留必要的开发、部署与许可说明。
 
 ## 云端检查

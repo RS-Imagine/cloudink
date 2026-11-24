@@ -6,11 +6,11 @@ use worker::web_sys::{Blob, FormData, Headers, ReadableStream, Request, Response
 use worker::worker_sys::R2Bucket;
 
 use crate::feed::object_json;
-use crate::html_rewriter::{JsResult, string_response};
+use crate::html_rewriter::JsResult;
 use crate::icon::{self, PREFIX as ICON_PREFIX};
 use crate::public_cache::{self as cache, Group, not_modified, stream_response, text_response};
 use crate::router::Services;
-use crate::runtime::{property, set};
+use crate::runtime::{attribute, cancel_body, get, json, only_if, property, set};
 
 const DRAFT_SITE: &str = "draft-site.json";
 const ICON_CACHE: &str = "public, max-age=31536000, immutable";
@@ -41,9 +41,6 @@ extern "C" {
 
     #[wasm_bindgen(method, catch, js_name = ensureSiteIcon)]
     fn ensure_icon(this: &Hooks, storage: &R2Bucket, site: &JsValue) -> JsResult<Promise>;
-
-    #[wasm_bindgen(method, catch, js_name = detectRasterIcon)]
-    pub fn detect_raster(this: &Hooks, bytes: &Uint8Array) -> JsResult<JsValue>;
 
     #[wasm_bindgen(method, catch, js_name = siteIconDerivedKeys)]
     pub fn derived_keys(this: &Hooks, key: &str) -> JsResult<JsValue>;
@@ -398,39 +395,4 @@ pub async fn public_icon(
         cache::write(ctx, &key_request, &response, 604800)?;
     }
     Ok(response)
-}
-
-async fn get(storage: &R2Bucket, key: &str) -> JsResult<JsValue> {
-    JsFuture::from(storage.get(key.to_owned(), JsValue::UNDEFINED)?).await
-}
-
-async fn cancel_body(object: &JsValue) -> JsResult<()> {
-    let body: ReadableStream = property(object, "body").unchecked_into();
-    JsFuture::from(body.cancel()).await.map(drop)
-}
-
-fn only_if(condition: &str, value: JsValue) -> JsResult<Object> {
-    let conditional = Object::new();
-    set(&conditional, condition, value)?;
-    let options = Object::new();
-    set(&options, "onlyIf", conditional)?;
-    Ok(options)
-}
-
-fn attribute(object: &JsValue, key: &str) -> String {
-    property(object, key).as_string().unwrap_or_default()
-}
-
-fn json(status: u16, fields: &[(&str, JsValue)]) -> JsResult<Response> {
-    let value = Object::new();
-    for (key, data) in fields {
-        set(&value, key, data)?;
-    }
-    let headers = Headers::new()?;
-    headers.set("Content-Type", "application/json; charset=utf-8")?;
-    headers.set("Cache-Control", "no-store")?;
-    string_response(
-        &JSON::stringify(&value)?,
-        &cache::response_init(status, &headers),
-    )
 }

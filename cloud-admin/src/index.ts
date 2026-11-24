@@ -38,9 +38,7 @@ import {
 } from './models';
 
 import { backupRoute } from './backup';
-import { validImageKey } from './media';
-import { uploadImage, optimizeImage } from './image-variants';
-import { imageLibraryRoute, ensureManagedImages } from './image-library';
+import { ensureManagedImages } from './image-library';
 import { changesContentReferences, withContentMutation } from './storage-mutations';
 const listDrafts = (bucket: R2Bucket) => listActiveDrafts(bucket, 'drafts/');
 async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Promise<Response> {
@@ -98,6 +96,7 @@ async function saveDraft(request: Request, env: CloudInkEnv, slug: string): Prom
 type AdminEnv = CloudInkEnv & {
   maintainStorage(storage: R2Bucket): Promise<MaintenanceStatus>;
   siteSettings(request: Request, storage: R2Bucket): Promise<Response>;
+  imageRequest(request: Request, storage: R2Bucket): Promise<Response>;
   inspectSiteIcon(bytes: Uint8Array): Promise<InspectedSiteIcon>;
 };
 
@@ -116,10 +115,12 @@ async function apiRoute(
     request.method === 'POST'
   )
     return env.siteSettings(request, env.STORAGE);
-  if (path === '/api/images/optimize' && request.method === 'POST')
-    return optimizeImage(request, env.STORAGE);
-  const images = await imageLibraryRoute(request, env, path);
-  if (images) return images;
+  if (
+    path === '/api/images' ||
+    ((path === '/api/images/optimize' || path === '/api/images/reindex') &&
+      request.method === 'POST')
+  )
+    return env.imageRequest(request, env.STORAGE);
   const task = await backupJobRoute(request, env, path, session);
   if (task) return task;
   const backup = await backupRoute(request, env, path, env.inspectSiteIcon);
@@ -461,28 +462,11 @@ async function apiRoute(
       return json({ ok: true });
     }
   }
-  if (path === '/api/upload' && request.method === 'POST') return uploadImage(request, env.STORAGE);
-  if (path === '/api/image' && request.method === 'GET') {
-    const key = new URL(request.url).searchParams.get('key');
-    if (
-      !key ||
-      key.length > 1024 ||
-      key.includes('..') ||
-      key.startsWith('/') ||
-      !validImageKey(key)
-    )
-      throw new HttpError(400, '图片地址不正确。');
-    const image = await env.STORAGE.get(key);
-    if (!image) throw new HttpError(404, '图片不存在。');
-    const headers = new Headers({
-      'Cache-Control': 'private, max-age=300',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    image.writeHttpMetadata(headers);
-    headers.set('ETag', image.httpEtag);
-    headers.set('Content-Security-Policy', "sandbox; default-src 'none'");
-    return new Response(image.body, { headers });
-  }
+  if (
+    (path === '/api/upload' && request.method === 'POST') ||
+    (path === '/api/image' && request.method === 'GET')
+  )
+    return env.imageRequest(request, env.STORAGE);
   if (path === '/api/publish' && request.method === 'POST') return publish(request, env);
   if (path === '/api/publish/status' && request.method === 'GET')
     return json(await publishStatus(env));
