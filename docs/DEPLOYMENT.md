@@ -14,7 +14,7 @@
 
 部署页面会要求 `SETUP_TOKEN`：填写一个自己保管的 16–128 字符私密口令。建议使用密码管理器生成。它作为 Cloudflare 加密 Secret 保存，不放进 GitHub，也不用添加到 Builds 环境变量。
 
-保留默认构建命令 `npm run build`、部署命令 `npm run deploy` 和根目录 `/`。不需要额外填写邮箱、网址、存储访问密钥、构建 Token 或 Deploy Hook。
+根目录保持 `/`。在 Workers Builds 中，构建命令填 `bash scripts/build-web.sh`，部署命令填 `npm exec --yes --package=wrangler@4.145.0 -- wrangler deploy`。添加构建变量 `SKIP_DEPENDENCY_INSTALL=1` 即可跳过平台的 npm 依赖安装。部署按钮保留 `npm run build` 与 `npm run deploy` 两个兼容入口。
 
 点击部署，等待 Cloudflare 显示成功。首次构建会安装 Rust 工具链、编译 WASM 和后台，耗时取决于构建环境。
 

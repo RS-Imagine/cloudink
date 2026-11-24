@@ -1,0 +1,92 @@
+{
+  "esbuild": {
+    "darwin-arm64": {
+      "integrity": "sha512-n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp+KsxiyUSrRdIXnt73VhrPAx0fV44hgfmIVKjxMN9J1t5jySVkw==",
+      "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.28.2.tgz"
+    },
+    "darwin-x64": {
+      "integrity": "sha512-uq6suIWYP37qzGddBKPw5QEQPi6HiLGsO7UmkpfyaYNQ3D+rN6w6WfwH+nuqcGXWvawGwxOEroO4YGnFh95azw==",
+      "url": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.28.2.tgz"
+    },
+    "linux-arm64": {
+      "integrity": "sha512-pW4AC0P3it8c7do9MVM4p51FzHzdM/TZrerurgRcHJ2WTa1VQ1CIq18xncfpBJw4ojkiZZrKW2yIBWBP92j6Ug==",
+      "url": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.28.2.tgz"
+    },
+    "linux-x64": {
+      "integrity": "sha512-4xTZr1FUmSoQW4XIWmit3tzQrUTZM+N3P0XV8xROKYF50XfI7xeO90+1bZvNwxIufQ9hDQVRJH5YhgPVF8A/HQ==",
+      "url": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.28.2.tgz"
+    },
+    "win32-arm64": {
+      "integrity": "sha512-PIhhEkE9uPBleRBrQEJpUn7MBnibZzbGzYWPmY3x+YoVg/95zbjB4CxPPOQ8l5tYYM4mMaCthF8/1DIfBQQyWQ==",
+      "url": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.28.2.tgz"
+    },
+    "win32-x64": {
+      "integrity": "sha512-5ebpxr3nWMzrL/rnUI755Jkuee0bHL/Gq0WTF9lvcpv73wAp5eu8MfBUgWK9bhWvZjj7yX8etf/8tI8Ney695g==",
+      "url": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.28.2.tgz"
+    }
+  },
+  "packages": {
+    "@fontsource/noto-serif": {
+      "integrity": "sha512-ZrMzjuQlBIcw+qma1slZQdU3YDJvrjLG+9CWU1bxSf3YTkucwqd3EYa/Kfo4Ts19w8IMTGAmtOE3d6wWlgnBtA==",
+      "url": "https://registry.npmjs.org/@fontsource/noto-serif/-/noto-serif-5.3.0.tgz"
+    },
+    "@fontsource/noto-serif-sc": {
+      "integrity": "sha512-nIK2HyNGcUi2TGwIfrk2MItkh0O3Y5+TI8iPfPSzoNY6uyXYfQ9qqch8czk3aa1VhV4EU52uwCYCe1UDKJELpg==",
+      "url": "https://registry.npmjs.org/@fontsource/noto-serif-sc/-/noto-serif-sc-5.3.1.tgz"
+    },
+    "delegate-it": {
+      "integrity": "sha512-NbMljKgnyvQQFLRx3hjPs2x++R3GzIZgvtINq/Q7PzxiC58CSG+N2RT8x4qF7JhkFZI4h9zZ1BszoJYdYREkbA==",
+      "url": "https://registry.npmjs.org/delegate-it/-/delegate-it-6.4.0.tgz"
+    },
+    "fflate": {
+      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==",
+      "url": "https://registry.npmjs.org/fflate/-/fflate-0.8.3.tgz"
+    },
+    "highlight.js": {
+      "integrity": "sha512-nbfWpyRMcMrPMmDwJB+dhX/eiaPKtc2RB+0QZskqJ3WjRA/FDS0e9hZrx8EC/lbEv8gXy98FcDbNa/dspAaJMg==",
+      "url": "https://registry.npmjs.org/highlight.js/-/highlight.js-11.12.0.tgz"
+    },
+    "katex": {
+      "integrity": "sha512-RQrI8rlHY92OLf3rho/Ts8i/XvjgguEjOkO1BEXcU3N8BqPpSzBNwV/G0Ukr+P/l3ivvJUE/Fa/CwbS6HesGNQ==",
+      "url": "https://registry.npmjs.org/katex/-/katex-0.16.11.tgz"
+    },
+    "path-to-regexp": {
+      "integrity": "sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==",
+      "url": "https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.3.0.tgz"
+    },
+    "swup": {
+      "integrity": "sha512-bzl5u94ovy5YDc+6No28De2TgMWK47Ym0uuMpN9kmzu+NWm3/mhQrmRPjArsFpfVTWO1nMFUZrKRwpRjS6eNJg==",
+      "url": "https://registry.npmjs.org/swup/-/swup-4.10.0.tgz"
+    },
+    "typed-query-selector": {
+      "integrity": "sha512-lF6/OY655DSWZeuNovde8TZhju6QyC0Xtav57b07oZQ1EQvfSowA3+WfLEhvFJOc9sVfAtW5hie1lGIppOqbpQ==",
+      "url": "https://registry.npmjs.org/typed-query-selector/-/typed-query-selector-2.12.4.tgz"
+    }
+  },
+  "wasm_pack": {
+    "darwin-arm64": {
+      "integrity": "sha256:bcaf2a418ae39c874b072ea122fec58e11970862cbd8fd4eca2f00a17f76c536",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-aarch64-apple-darwin.tar.gz"
+    },
+    "darwin-x64": {
+      "integrity": "sha256:9387715ad345a1fe58751d60c80f49d9139957540728bafd0668d005a37cef62",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-x86_64-apple-darwin.tar.gz"
+    },
+    "linux-arm64": {
+      "integrity": "sha256:7004853c7925ae1984033b5f25866ec604bbc921ef956d5e6c5595bc5af6d30c",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-aarch64-unknown-linux-musl.tar.gz"
+    },
+    "linux-x64": {
+      "integrity": "sha256:410101009739b9d01c7d5affaaad6e9c9a24b4cba6791a4805db8e89b9bf7af2",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-x86_64-unknown-linux-musl.tar.gz"
+    },
+    "win32-arm64": {
+      "integrity": "sha256:ea0d7da57b84fe256885ae0ee9d29f510303c9abc0c8253aa2d7dfbad49dbec8",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-aarch64-pc-windows-msvc.tar.gz"
+    },
+    "win32-x64": {
+      "integrity": "sha256:80afe1f95aaa3f7442917c4457c8316bd1a383c1f27eb0e40601ff3ee3217583",
+      "url": "https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.1/wasm-pack-v0.15.1-x86_64-pc-windows-msvc.tar.gz"
+    }
+  }
+}

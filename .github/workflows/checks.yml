@@ -35,7 +35,7 @@ jobs:
           const pr = event.pull_request;
           const files = pr ? execFileSync('git', ['diff', '--name-only', 'HEAD^1', 'HEAD'], {encoding:'utf8'}).trim().split('\n') : null;
           const code = !files || files.some(path => !/^(?:docs\/.*|README(?:\.[^/]*)?|LICENSE|.*\.md)$/.test(path));
-          const browser = code && (!files || files.some(path => /^(?:cloud-admin\/(?:ui\/|build-ui\.mjs$)|cloud-admin\/src\/(?:browser-publishing|publishing|image|media|models|site-icons|home-illustration)|cloud-web\/src\/|cloud-web\/test\/(?:.*browser|fixture\.mjs$)|assets\/|crates\/|scripts\/|.*package(?:-lock)?\.json$|wrangler\.jsonc$|\.github\/)/.test(path)));
+          const browser = code && (!files || files.some(path => /^(?:cloud-admin\/(?:ui|src)\/|cloud-web\/test\/(?:.*browser|fixture\.mjs$)|assets\/|crates\/|scripts\/|.*package(?:-lock)?\.json$|wrangler\.jsonc$|\.github\/)/.test(path)));
           const rust = code && (!files || files.some(path => /^(?:crates\/|Cargo\.|.*\/Cargo\.|rust-toolchain|\.github\/)/.test(path)));
           for (const [key, value] of Object.entries({code, browser, rust})) appendFileSync(process.env.GITHUB_OUTPUT, key + '=' + value + '\n');
           console.log(JSON.stringify({code, browser, rust, files}));
@@ -50,13 +50,15 @@ jobs:
             cloud-admin/package-lock.json
       - name: Install project tools
         if: steps.scope.outputs.code == 'true'
-        run: npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
+        run: |
+          npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
+          npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm --prefix cloud-admin ci
       - name: Check source formatting
         if: steps.scope.outputs.code == 'true'
         run: npm run format:check
       - name: Build the browser deployment
         if: steps.scope.outputs.code == 'true'
-        run: npm run build
+        run: cargo xtask build
       - name: Report UI resource sizes
         if: steps.scope.outputs.code == 'true'
         run: |
@@ -66,7 +68,7 @@ jobs:
           for (const path of ['cloud-admin/ui/app.generated.js','cloud-admin/ui/home-illustration.generated.js','cloud-admin/ui/wasm/blog_wasm_bg.wasm'])
             console.log(JSON.stringify({asset:path,gzip:gzipSync(await readFile(path)).length}));
           JS
-      - name: Generate binding types and check TypeScript
+      - name: Check editor TypeScript
         if: steps.scope.outputs.code == 'true'
         run: npm run check
       - name: Bundle the Worker without deploying
@@ -88,6 +90,8 @@ jobs:
           cargo clippy --workspace --all-targets --locked
           cargo fmt --manifest-path crates/worker/Cargo.toml -- --check
           cargo clippy --manifest-path crates/worker/Cargo.toml --target wasm32-unknown-unknown --locked
+          cargo fmt --manifest-path crates/xtask/Cargo.toml -- --check
+          cargo clippy --manifest-path crates/xtask/Cargo.toml --locked
       - name: Install Chromium
         if: steps.scope.outputs.browser == 'true'
         working-directory: cloud-admin
@@ -120,11 +124,13 @@ jobs:
             package-lock.json
             cloud-admin/package-lock.json
       - name: Install project tools
-        run: npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
+        run: |
+          npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm ci
+          npm exec --yes --package="$(node -p 'require("./package.json").packageManager')" -- npm --prefix cloud-admin ci
       - name: Check shared UI source formatting
         run: npm run format:ui:check
       - name: Build isolated UI fixture
-        run: npm run build
+        run: cargo xtask build
       - name: Bundle local Worker without deploying
         run: npx wrangler deploy --dry-run --outdir cloud-web/dist
       - name: Install three browser engines

@@ -3,7 +3,7 @@
 if ! command -v cargo >/dev/null 2>&1; then
   mkdir -p build-work
   curl --fail --silent --show-error --location https://sh.rustup.rs -o build-work/rustup.sh
-  sh build-work/rustup.sh -y --profile minimal --no-modify-path
+  sh build-work/rustup.sh -y --profile minimal --default-toolchain none --no-modify-path
   export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 fi
 if command -v rustup >/dev/null 2>&1; then

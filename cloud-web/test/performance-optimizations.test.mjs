@@ -797,11 +797,8 @@ test('shared admin UI dom.js helpers format bytes and compute SHA-256 hex consis
 test('frontend code splitting defers non-core admin modules and reader share card via dynamic imports', async (t) => {
   const web = await fixture(t);
   const appJs = await readFile('cloud-admin/ui/app.js', 'utf8');
-  const buildUi = await readFile('cloud-admin/build-ui.mjs', 'utf8');
-  const workerRouter = await readFile('crates/worker/src/router.rs', 'utf8');
   const devServer = await readFile('scripts/dev-server.mjs', 'utf8');
   const clientJs = await readFile('crates/blog-core/src/assets/client.js', 'utf8');
-  const webAssets = await readFile('scripts/web-assets.mjs', 'utf8');
 
   const lazyAdminChunks = [
     '/shorts.js',
@@ -813,7 +810,6 @@ test('frontend code splitting defers non-core admin modules and reader share car
   ];
   for (const chunk of lazyAdminChunks) {
     assert.ok(appJs.includes(`import('${chunk}')`), `app.js must dynamically import ${chunk}`);
-    assert.ok(buildUi.includes(`'${chunk}'`), `build-ui.mjs must bundle and register ${chunk}`);
     const response = await web.request(chunk);
     assert.equal(response.status, 200, `the Worker router must serve ${chunk}`);
     assert.match(response.headers.get('Content-Type'), /^text\/javascript/);
@@ -845,14 +841,10 @@ test('frontend code splitting defers non-core admin modules and reader share car
     false,
     'client.js must not inline share card canvas rendering',
   );
-  assert.ok(
-    webAssets.includes('assets/reader-share-card.js'),
-    'web-assets.mjs must build share-card.js',
-  );
-  assert.ok(
-    workerRouter.includes('share-card\\.js'),
-    'the Worker router must serve /reader-assets/share-card.js',
-  );
+  const shareCard = await web.request('/reader-assets/share-card.js');
+  assert.equal(shareCard.status, 200);
+  assert.match(shareCard.headers.get('Content-Type'), /javascript/);
+  await shareCard.body.cancel();
   assert.ok(
     devServer.includes("'/reader-assets/share-card.js'"),
     'dev-server.mjs must serve /reader-assets/share-card.js',
