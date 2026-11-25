@@ -39,12 +39,11 @@ cargo xtask dev
 
 `cargo xtask build` 编译 Rust Worker 与浏览器 WASM，并打包前后台资源。开发命令通过 Wrangler 运行同一个 Worker，本地 R2 状态保存在 `.wrangler/state`。
 
-| 目录              | 内容                                       |
-| ----------------- | ------------------------------------------ |
-| `crates/`         | Rust Worker、排版核心、WASM 接口及构建工具 |
-| `cloud-admin/`    | 后台界面、编辑与图片处理                   |
-| `assets/`         | 共享样式、脚本和图片                       |
-| `cloud-web/test/` | API、存储与浏览器回归测试                  |
+| 目录           | 内容                                       |
+| -------------- | ------------------------------------------ |
+| `crates/`      | Rust Worker、排版核心、WASM 接口及构建工具 |
+| `cloud-admin/` | 后台界面、编辑与图片处理                   |
+| `assets/`      | 共享样式、脚本和图片                       |
 
 构建产物、依赖目录、本地凭据、测试报告和临时实验由 `.gitignore` 管理，临时文件可放在 `scratch/`。工具版本、仓库检查和 R2 数据布局见 [开发说明](docs/DEVELOPMENT.md)。
 

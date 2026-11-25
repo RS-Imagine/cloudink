@@ -305,6 +305,7 @@ pub fn frontend_key(root: &Path) -> Result<String> {
         "assets",
         "cloud-admin/src",
         "cloud-admin/ui",
+        "cloud-admin/tsconfig.json",
         "crates/blog-core/build.rs",
         "crates/blog-core/Cargo.toml",
         "crates/blog-core/src",
