@@ -12,4 +12,4 @@ if command -v rustup >/dev/null 2>&1; then
   rustup toolchain install 1.98.1 --profile minimal
 fi
 
-exec cargo xtask build
+exec cargo xtask build-deploy

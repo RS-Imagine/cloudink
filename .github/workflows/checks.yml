@@ -81,7 +81,9 @@ jobs:
           npm test
       - name: Verify changed Rust code
         if: steps.scope.outputs.rust == 'true'
-        run: cargo test --workspace --locked
+        run: |
+          cargo test --workspace --locked
+          cargo test --manifest-path crates/xtask/Cargo.toml --locked
       - name: Check touched Rust formatting and Clippy
         if: steps.scope.outputs.rust == 'true'
         run: |
