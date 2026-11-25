@@ -1,9 +1,11 @@
 mod admin;
 mod bundle;
+mod cache;
 mod reader;
 mod vendor;
 
 use anyhow::{Context, Result, bail, ensure};
+use cache::{Artifact, Cache};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
@@ -15,9 +17,10 @@ fn main() -> Result<()> {
         .join("../..")
         .canonicalize()?;
     match arguments.as_slice() {
-        [command] if command == "build" => build(&root),
+        [command] if command == "build" => build(&root, None),
+        [command] if command == "build-deploy" => build(&root, Cache::configured().as_ref()),
         [command] if command == "dev" => dev(&root),
-        _ => bail!("Usage: cargo xtask build | cargo xtask dev"),
+        _ => bail!("Usage: cargo xtask build | cargo xtask build-deploy | cargo xtask dev"),
     }
 }
 
@@ -34,7 +37,7 @@ fn dev(root: &Path) -> Result<()> {
         .parse::<u16>()
         .context("PORT must be between 1 and 65535")?;
     ensure!(port > 0, "PORT must be between 1 and 65535");
-    build(root)?;
+    build(root, None)?;
     let npm = if cfg!(windows) { "npm.cmd" } else { "npm" };
     let mut wrangler = Command::new(npm);
     wrangler
@@ -53,7 +56,7 @@ fn dev(root: &Path) -> Result<()> {
     run(&mut wrangler)
 }
 
-fn build(root: &Path) -> Result<()> {
+fn build(root: &Path, cache: Option<&Cache>) -> Result<()> {
     let work = root.join("build-work");
     fs::create_dir_all(&work)?;
     let lock = OpenOptions::new()
@@ -63,18 +66,55 @@ fn build(root: &Path) -> Result<()> {
         .open(work.join(".build.lock"))?;
     lock.lock().context("lock CloudInk build outputs")?;
 
-    let tools = vendor::prepare(&work)?;
+    run(Command::new("rustup").current_dir(root).args([
+        "target",
+        "add",
+        "wasm32-unknown-unknown",
+    ]))?;
+    let frontend = cache.and_then(|cache| match cache::frontend_key(root) {
+        Ok(key) => Some((cache, key)),
+        Err(error) => {
+            eprintln!("CloudInk frontend cache disabled: {error:#}");
+            None
+        }
+    });
+    let frontend_restored = frontend.as_ref().is_some_and(|(cache, key)| {
+        cache.restore(Artifact::Frontend, key, &work)
+            && admin::restore_generated(root, &work.join("worker-assets"))
+                .inspect_err(|error| eprintln!("CloudInk frontend cache incomplete: {error:#}"))
+                .is_ok()
+    });
+    if !frontend_restored {
+        build_frontend(root, &work)?;
+    }
+    admin::write_versions(root, &work.join("worker-versions.rs"))?;
+
+    let (worker_build, tool_to_save) = worker_build(root, &work, cache)?;
+    run(Command::new(worker_build).current_dir(root).args([
+        "--release",
+        "--out-dir",
+        "../../build-work/reader-worker",
+        "crates/worker",
+        "--",
+        "--locked",
+    ]))?;
+    if let Some((cache, key)) = frontend.filter(|_| !frontend_restored) {
+        cache.save(Artifact::Frontend, &key, &work);
+    }
+    if let (Some(cache), Some(key)) = (cache, tool_to_save) {
+        cache.save(Artifact::WorkerBuild, &key, &work);
+    }
+    Ok(())
+}
+
+fn build_frontend(root: &Path, work: &Path) -> Result<()> {
+    let tools = vendor::prepare(work)?;
     let sources = tempfile::tempdir_in(&tools.vendor)?;
     bundle::snapshot_sources(root, sources.path())?;
     let bundler = bundle::Bundler {
         program: &tools.esbuild,
         sources: sources.path(),
     };
-    run(Command::new("rustup").current_dir(root).args([
-        "target",
-        "add",
-        "wasm32-unknown-unknown",
-    ]))?;
     run(Command::new(tools.wasm_pack)
         .current_dir(root)
         .args([
@@ -109,40 +149,57 @@ fn build(root: &Path) -> Result<()> {
         ])
         .env("BLOG_CONTENT_ROOT", &content)
         .env("BLOG_OUTPUT_ROOT", &output))?;
-    reader::bundle(root, &output, &worker_assets, &tools.vendor, &bundler)?;
-
-    let worker_build = worker_build(root, &work)?;
-    run(Command::new(worker_build).current_dir(root).args([
-        "--release",
-        "--out-dir",
-        "../../build-work/reader-worker",
-        "crates/worker",
-        "--",
-        "--locked",
-    ]))
+    reader::bundle(root, &output, &worker_assets, &tools.vendor, &bundler)
 }
 
 fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| "cargo".into()))
 }
 
-fn worker_build(root: &Path, work: &Path) -> Result<PathBuf> {
+fn worker_build(
+    root: &Path,
+    work: &Path,
+    cache: Option<&Cache>,
+) -> Result<(PathBuf, Option<String>)> {
     const VERSION: &str = "0.9.0";
     let location = work.join("worker-tools");
     let executable = location
         .join("bin")
         .join(format!("worker-build{}", env::consts::EXE_SUFFIX));
-    let installed = Command::new(&executable).arg("--version").output().ok();
-    if !installed.is_some_and(|output| {
-        output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == VERSION
-    }) {
+    let matches_version = || {
+        Command::new(&executable)
+            .arg("--version")
+            .output()
+            .is_ok_and(|output| {
+                output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == VERSION
+            })
+    };
+    let key = cache.map(|_| {
+        format!(
+            "worker-build-{VERSION}-{}-{}-opt0-{}",
+            env::consts::OS,
+            env::consts::ARCH,
+            vendor::sha256(include_bytes!("../../../rust-toolchain.toml"))
+        )
+    });
+    let installed = matches_version();
+    let restored = !installed
+        && cache.zip(key.as_deref()).is_some_and(|(cache, key)| {
+            cache.restore(Artifact::WorkerBuild, key, work) && matches_version()
+        });
+    if !installed && !restored {
         run(cargo()
             .current_dir(root)
-            .args(["install", "--locked", "--root"])
+            .env("CARGO_PROFILE_RELEASE_OPT_LEVEL", "0")
+            .args(["install", "--locked", "--force", "--root"])
             .arg(&location)
             .args(["--version", VERSION, "worker-build"]))?;
+        ensure!(
+            matches_version(),
+            "worker-build did not report version {VERSION}"
+        );
     }
-    Ok(executable)
+    Ok((executable, key.filter(|_| !installed && !restored)))
 }
 
 fn run(command: &mut Command) -> Result<()> {

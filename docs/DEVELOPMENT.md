@@ -12,19 +12,18 @@ CloudInk 使用单个 Cloudflare Worker 和一个私有 R2 桶。Rust/WASM 负�
 - `cloud-admin/src` 包含浏览器共用的备份格式和图片识别代码。
 - `cloud-admin/ui`：后台界面、预览线程与图片压缩线程。
 - `assets`：正式前后台共用的主题、动效、图标与默认插画。
-- `scripts` 包含云端构建启动脚本及界面回归工具。
-- `cloud-web/test`、`crates/blog-core/tests`：功能与渲染测试。
+- `scripts/build-web.sh` 是云端构建入口。
 
-构建需要 Rust 1.98.1。Wrangler 和现有浏览器测试使用 Node.js 24。Rust 版本由 `rust-toolchain.toml` 固定，构建资源的下载地址与摘要在 `crates/xtask/vendor-lock.json` 中。
+构建需要 Rust 1.98.1。Wrangler 使用 Node.js 24。Rust 版本由 `rust-toolchain.toml` 固定，构建资源的下载地址与摘要在 `crates/xtask/vendor-lock.json` 中。
 
 ```bash
 cargo xtask build
-npm exec --yes --package=wrangler@4.145.0 -- wrangler deploy --dry-run --outdir cloud-web/dist
+npm exec --yes --package=wrangler@4.145.0 -- wrangler deploy --dry-run --outdir build-work/deploy-check
 ```
 
 `cargo xtask build` 准备浏览器 Rust/WASM、前后台资源和 Worker 模块。它调用固定版本的 esbuild 命令行处理浏览器 JavaScript 和 CSS。Wrangler 根据根目录的 `wrangler.jsonc` 部署 workers-rs 生成的入口。
 
-运行仓库测试前分别安装根目录和编辑器的测试依赖：
+运行格式和类型检查前，安装根目录和编辑器的依赖。
 
 ```bash
 npm exec --yes --package=npm@10.9.11 -- npm ci
@@ -45,32 +44,21 @@ cargo xtask dev
 
 同一个 Rust Worker 分发公开路由、后台 API 和定时维护，直接使用 Cloudflare 的 R2、静态资源和登录限流绑定。读站改写使用 Cloudflare 原生 HTMLRewriter。RSS 和公开页面共用 ETag 计算，站点地图支持带页面映射的发布指针与历史发布目录。
 
-修改公开读取时，可在构建和 Wrangler dry run 后运行 `node --test cloud-web/test/reader.test.mjs`，覆盖 RSS、条件请求和缓存失效。后台发布、存储与保留规则见下文。
-
 `.gitignore` 覆盖构建输出、依赖目录、凭据、本地 R2 和测试报告。个人内容放在 `content/`，临时原型或实验文件可放在 `scratch/`。
 
-## 云端检查
+## 本地检查
 
-PR 按改动范围运行 Project checks，合并后由 Cloudflare Workers Builds 部署。参见 [按改动范围执行 CI](#按改动范围执行-ci)。
-
-在 GitHub **Actions → Project checks → Run workflow** 可手动执行基础检查；勾选 `visual_audit` 才运行正式页面的三浏览器回归。Cloudflare Workers Builds 独立负责部署。
-
-可用命令：
+代码合并到生产分支后，由 Cloudflare Workers Builds 部署。格式、类型与 Rust 检查可在本地运行。
 
 ```bash
 npm run format:check
 npm run format:ui:check
-npm test
+npm run check
 cargo test --workspace --locked
+cargo test --manifest-path crates/xtask/Cargo.toml --locked
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --locked
-npm run test:web:browser
-npm run test:ui:audit
 ```
-
-测试使用临时 Miniflare 存储与示例内容，不连接生产 R2。浏览器检查需要在 `cloud-admin` 下安装对应 Playwright 浏览器。完整审查输出到被忽略的 `build-work/ui-audit/`，包含正式页面截图、资源预算和实验测量；不包含历史设计原型。真实手机输入法、辅助技术与能耗仍需真机验证。
-
-基础回归保护认证、草稿并发、图片引用、发布原子性、备份恢复及路由。视觉检查按需运行，不用截图数量代替功能验证，也不通过提高预算掩盖资源增长。
 
 ## R2 数据与权限
 
@@ -144,13 +132,11 @@ Markdown 公式预处理使用现有 pulldown-cmark 的源位置识别代码范�
 
 公开页面保留左栏、`#reader-center` 和 `#reader-context`；Swup 只替换两列内的内容节点。直接访问仍是完整服务端页面，缺少新容器的旧页面回退普通导航。`reader-tools.css` 保留代码、图片、搜索等阅读工具与旧快照的基本可读性。正文全文搜索继续匹配公开索引的 `title`、`description` 和 `body`。字体失败时使用系统字体回退，阅读可以继续。
 
-`ui-audit-regressions.browser.mjs` 已接入 Chromium 常规流程和三浏览器审计，专门覆盖短记总数、完整原稿与异步保存的身份保护，复用常规初始化流程；布局、排版入口、主题和导航由既有对应模块负责，避免重复矩阵。
-
 短记草稿仍需手动保存。新建、切换编辑对象、取消和退出前，未保存的正文或日期修改需明确确认放弃；普通栏目切换保留编辑内容，刷新或离开页面使用浏览器原生提示。保存成功只更新对应请求的已保存基线，保存期间继续输入或保存失败仍视为未保存；退出成功后清除当前编辑缓冲。
 
 默认写作插画、登录页枝叶资源、项目图标和共享 CSS 都是正式运行资源，不能按文件名中的设计词汇删除。自定义首页插画及关闭选项由网站设置管理。
 
-前后台的回弹过渡统一由 `motion.js`、`mobile.js` 提供。导航选中背景与按钮按压使用可连续转向的物理弹簧；页面、栏目、编辑视图、弹窗、提示和图片放大使用同一欠阻尼求解器采样的 `linear()` 缓动，共享 CSS 过渡也使用该轨迹；旧浏览器回退到有回弹的兼容曲线。公开导航保留旧内容直到资源准备好，再播放新内容的回弹入场，不叠加 Swup 淡出或浏览器快照动画。支持减少动态效果、取消、键盘替代、焦点恢复与移动面板；停止后不保留动画循环，业务保存不得依赖动画完成回调。常规 Chromium 流程检查实际选中背景和内容的越界回弹、连续切换、横向溢出与减少动态效果。
+前后台的回弹过渡统一由 `motion.js`、`mobile.js` 提供。导航选中背景与按钮按压使用可连续转向的物理弹簧；页面、栏目、编辑视图、弹窗、提示和图片放大使用同一欠阻尼求解器采样的 `linear()` 缓动，共享 CSS 过渡也使用该轨迹；旧浏览器回退到有回弹的兼容曲线。公开导航保留旧内容直到资源准备好，再播放新内容的回弹入场，不叠加 Swup 淡出或浏览器快照动画。支持减少动态效果、取消、键盘替代、焦点恢复与移动面板；停止后不保留动画循环，业务保存不得依赖动画完成回调。
 
 全局动效增加了导航和分段控件的选中背景跟随，以及共用的物理缓动采样。压缩后的共享 JS＋CSS 实测从 3327 字节增至 4605 字节，预算从 4 KiB 调整为 5 KiB；后台入口实测 30873 字节，预算从 30 KiB 调整为 31 KiB。其余资源预算保持不变。这部分只处理本地界面，不增加依赖、业务请求、R2 操作或云端资源。
 
@@ -166,17 +152,9 @@ Markdown 公式预处理使用现有 pulldown-cmark 的源位置识别代码范�
 - 功能变更补充对应行为验证；可逆的文档或样式整理避免重复测试。
 - 格式化仅限需要修改的文件，审查 diff，避免整目录重排。
 
-## 按改动范围执行 CI
-
-PR 先根据基线与提交的文件差异选择检查。纯文档改动只完成范围检查；代码改动执行格式、构建、类型与存储/认证/发布测试。Rust 源码、Cargo 或 CI 变动才运行 Rust 测试和 Clippy；影响界面、公开响应或构建配置时才运行 Chromium。完整三浏览器视觉审计继续仅手动触发，合并后不再重复运行 PR 检查。
-
-新增的存储优化回归测试使用临时 Miniflare R2 与测试内的时间适配器，检查页面复用、缓存边界及生成产物保留规则，不访问生产桶。每日维护通常执行五个 LIST（生成物三个、引用分片一个、会话一个），删除只限严格识别的发布键；维护与内容变更共用原有条件写入锁。缓存仅用于公开响应，不缓存账户或后台 API。
-
-图片功能冒烟默认只验证两个视口的响应式加载、字节数、延迟加载、预览和备份保护。需要重新测量完整性能对比时，构建后显式运行 `CLOUDINK_PERF_AUDIT=1 node cloud-web/test/images.browser.mjs`；这才执行 3 次交错样本和网络/CPU 限速，不在每次 PR 上重复测速。
-
-手动启用完整视觉审计时只运行对应的审计任务，避免再启动一次相同的功能验证构建。PR 检查的文件范围取自实际合并快照与其基线，避免把上游新增、且本 PR 未改动的文件误算成自己的变更。
-
 ## 后端读取与写入预算
+
+每日维护通常执行五个 LIST（生成物三个、引用分片一个、会话一个），删除只限严格识别的发布键；维护与内容变更共用原有条件写入锁。缓存仅用于公开响应，不缓存账户或后台 API。
 
 旧的 `GET /api/export` 返回 410，后台备份统一使用现有分批任务。账户鉴权后才返回升级提示，不读取全量原稿。
 

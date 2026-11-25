@@ -31,6 +31,24 @@
 
 向导随后生成并发布首页。请保持页面打开并联网，等到“最新发布已上线”。如果首次发布失败，账号与设置已保存，重新登录后点击“发布博客首页”重试。
 
+## 自动部署提速
+
+在 Worker 的 **Settings → Builds → Build watch paths** 保持 Include paths 为 `*`，将 `README.md` 和 `docs/*` 加到 Exclude paths。只修改说明的提交会跳过部署，包含其他文件改动的提交会照常触发。[Cloudflare 构建路径说明](https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/)
+
+可在 Workers Builds 的生产构建配置中启用 R2 缓存，复用 `STORAGE` 所用的私有桶。前端产物和打包工具各占用一个固定对象，单个压缩包上限为 16 MiB。
+
+| 构建变量                              | 值                                           |
+| ------------------------------------- | -------------------------------------------- |
+| `CLOUDINK_CACHE_R2_ACCOUNT_ID`        | Cloudflare 账号 ID                           |
+| `CLOUDINK_CACHE_R2_BUCKET`            | 现有私有 R2 桶的名称                         |
+| `CLOUDINK_CACHE_R2_ACCESS_KEY_ID`     | R2 S3 访问密钥 ID，保存为构建密钥            |
+| `CLOUDINK_CACHE_R2_SECRET_ACCESS_KEY` | R2 S3 访问密钥，保存为构建密钥               |
+| `CLOUDINK_CACHE_R2_SESSION_TOKEN`     | 使用短期凭据时填写的会话令牌，保存为构建密钥 |
+
+缓存凭据供受信任的生产构建使用。短期凭据可将权限限定为对 `build-cache/` 前缀的 `GetObject` 和 `PutObject`，并在到期前更新。普通 R2 写入令牌的范围是所选桶。[R2 访问令牌](https://developers.cloudflare.com/r2/api/tokens/) · [R2 短期凭据](https://developers.cloudflare.com/r2/api/s3/temporary-credentials/)
+
+生产构建校验前端源码指纹、工具版本和压缩包摘要。只改后端时复用前端产物，并重新计算当前 Worker 的缓存版本。缓存缺失、失效或连接失败时直接构建，成功后覆盖需要更新的缓存。首次启用会先完整构建并填充缓存。
+
 ## 日常只使用后台
 
 | 操作                            | 入口                            |

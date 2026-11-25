@@ -14,6 +14,10 @@ include!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../build-work/worker-assets/assets.rs"
 ));
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../build-work/worker-versions.rs"
+));
 
 pub const TEMPLATE_VERSION: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
